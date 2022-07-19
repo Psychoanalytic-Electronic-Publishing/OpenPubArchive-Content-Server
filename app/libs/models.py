@@ -253,6 +253,15 @@ class AuthorIndexStruct(BaseModel):
 
 class AuthorIndex(BaseModel):
     authorIndex: AuthorIndexStruct
+
+#-------------------------------------------------------
+class ClientConfigs(BaseModel):
+    config_id: int = 0
+    client_id: int = 0
+    config_name: str = None
+    config_settings: str = None
+    session_id: str
+    last_update: datetime = None
     
 #-------------------------------------------------------
 class ClientConfigItem(BaseModel):

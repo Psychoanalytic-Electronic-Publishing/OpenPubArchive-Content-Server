@@ -84,7 +84,6 @@ class MostCitedArticles(BaseModel):
     A view with rxCode counts derived from the fullbiblioxml table and the articles table
       for citing sources in one of the date ranges.
       
-    Definition copied to keep this independent, from GitHub\openpubarchive\app\libs\modelsOpasCentralPydantic.py   
     """
     document_id: str = None
     countAll: int = 0

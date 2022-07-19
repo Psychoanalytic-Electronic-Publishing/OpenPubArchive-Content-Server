@@ -91,9 +91,7 @@ import xml.etree.ElementTree as ET
 import models
 
 # All opasCentral Database Models here
-import modelsOpasCentralPydantic
-# from modelsOpasCentralPydantic import User, UserInDB
-#from models import SessionInfo
+import models
 
 DEFAULTSESSIONLENGTH = 1800 # seconds (timeout)
 API_STATUS_SUCCESS = "Success"
@@ -283,6 +281,7 @@ class opasCentralDB(object):
 
         except Exception as e:
             self.connected = False
+            opasCentralDB.connection_count -= 1
             logger.error(f"Database connection could not be opened ({caller_name}) ({e}). Opening connection number: {opasCentralDB.connection_count}")
             self.db = None
         
@@ -290,13 +289,14 @@ class opasCentralDB(object):
 
     def close_connection(self, caller_name=""):
         try:
+            opasCentralDB.connection_count -= 1
             self.db.close()
             self.db = None
-            opasCentralDB.connection_count -= 1
             # logger.debug(f"Database closed by ({caller_name})")
                 
         except Exception as e:
-            logger.error(f"caller: {caller_name} the db is not open ({e}).")
+            opasCentralDB.connection_count = 0
+            logger.info(f"caller: {caller_name} the db is not open ({e}).")
 
         self.connected = False
         return self.connected
@@ -2033,7 +2033,7 @@ class opasCentralDB(object):
                             
                             if curs.rowcount >= 1:
                                 clientConfig = curs.fetchone()
-                                ret_val = modelsOpasCentralPydantic.ClientConfigs(**clientConfig)
+                                ret_val = models.ClientConfigs(**clientConfig)
                             else:
                                 ret_val = None
     

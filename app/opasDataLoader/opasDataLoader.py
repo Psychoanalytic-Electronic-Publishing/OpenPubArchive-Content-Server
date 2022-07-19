@@ -156,24 +156,17 @@ import opasXMLProcessor
 bib_total_reference_count = 0
 
 def get_defaults(options, default_input_build_pattern, default_input_build):
-    if options.input_build_pattern is None:
-        if options.input_build is None:
-            input_build_pattern = default_input_build_pattern
-            selected_input_build = default_input_build
-        else:
-            selected_input_build = input_build_pattern = options.input_build
-    else:
-        input_build_pattern = options.input_build_pattern
-        if options.input_build is None:
-            selected_input_build = input_build_pattern
-        else:
-            if options.input_build == default_input_build:
-                # this is an error, no doubt, they are not Precompiled
-                print (f"Error: cannot use {default_input_build} as precompiled input build.  Changing to {loaderConfig.default_precompiled_input_build}")
-                selected_input_build = default_input_build
-            else:
-                selected_input_build = options.input_build
 
+    if options.input_build is not None:
+        selected_input_build = options.input_build
+    else:
+        selected_input_build = default_input_build
+        
+    if options.input_build_pattern is not None:
+        input_build_pattern = options.input_build_pattern
+    else:
+        input_build_pattern = default_input_build_pattern
+        
     return (input_build_pattern, selected_input_build)
 #------------------------------------------------------------------------------------------------------
 def find_all(name_pat, path):
@@ -501,7 +494,7 @@ def main():
         if options.file_key is not None:  
             # print (f"File Key Specified: {options.file_key}")
             # Changed from opasDataLoader (reading in bKBD3 files rather than EXP_ARCH1)
-            pat = fr"({options.file_key}.*)\({input_build_pattern}\)\.(xml|XML)$"
+            pat = fr"({options.file_key})\({input_build_pattern}\)\.(xml|XML)$"
             print (f"Reading {pat} files")
             filenames = fs.get_matching_filelist(filespec_regex=pat, path=start_folder, max_items=1000)
             if len(filenames) is None:
@@ -677,7 +670,7 @@ def main():
                         fname = str(n.filespec)
                         fname = re.sub("\(b.*\)", options.output_build, fname)
                         
-                        msg = f"Exporting! Writing compiled file to {fname}"
+                        msg = f"\t...Exporting! Writing compiled file to {fname}"
                         if options.display_verbose:
                             print (msg)
 
@@ -952,7 +945,7 @@ if __name__ == "__main__":
     parser.add_option("--whatsnewfile", dest="whatsnewfile", default=None,
                       help="File name to force the file and path rather than a generated name for the log of files added in the last n days.")
     # New OpasLoader2 Options
-    parser.add_option("--inputbuildpattern", dest="input_build_pattern", default="(bEXP_ARCH1|bSeriesTOC)",
+    parser.add_option("--inputbuildpattern", dest="input_build_pattern", default=None,
                       help="Pattern of the build specifier to load (input), e.g., (bEXP_ARCH1|bSeriesTOC), or (bKBD3|bSeriesTOC)")
     
     parser.add_option("--inputbuild", dest="input_build", default=None,
@@ -992,6 +985,9 @@ if __name__ == "__main__":
                       #help="for use with option writeprocessed, don't load Solr...just process.")
 
     (options, args) = parser.parse_args()
+    
+    if options.smartload:
+        options.loadprecompiled = False # override default
     
     if not (options.loadprecompiled or options.compiletoload or options.compiletosave or options.compiletorebuild):
         options.smartload = True

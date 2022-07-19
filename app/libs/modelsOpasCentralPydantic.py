@@ -102,13 +102,13 @@ from pydantic import BaseModel
     #count10: int = 0
     #count20: int = 0
 
-class ClientConfigs(BaseModel):
-    config_id: int = 0
-    client_id: int = 0
-    config_name: str = None
-    config_settings: str = None
-    session_id: str
-    last_update: datetime = None
+#class ClientConfigs(BaseModel):
+    #config_id: int = 0
+    #client_id: int = 0
+    #config_name: str = None
+    #config_settings: str = None
+    #session_id: str
+    #last_update: datetime = None
 
 #class Biblioxml(BaseModel):
     #art_id: str = None

@@ -482,7 +482,15 @@ class GlossaryRecognitionEngine(UserDict):
             try:
                 parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True)
                 reparsed_xml = lxml.etree.fromstring(node_text, parser)
-                #root = pepxml.getroottree()
+                # don't do impx in biblios
+                root = reparsed_xml.getroottree()
+                #lxml.etree.strip_tags(root.find("bib"), "impx")
+                tags = ("//bib", "//arttitle", "//h?", "//binc")
+                for tag in tags:
+                    locations = root.findall(tag)
+                    for location in locations:
+                        lxml.etree.strip_tags(location, "impx")
+                
             except Exception as e:
                 detail = "Skipped:$%s$ " % node_text.encode("utf-8")
                 logger.warning(f"Glossary Replacement makes this section unparseable. {detail}")
@@ -514,7 +522,7 @@ class GlossaryRecognitionEngine(UserDict):
         endTime = time.time()
         timeDiff = endTime - startTime
         if gDbg1: print (f"Time to do glossary markup: {timeDiff}")
-
+        
         return ret_val, ret_status # return new reparsed_xml if ret_status is true, orig parsed_xml if not.
 
     ##--------------------------------------------------------------------------------

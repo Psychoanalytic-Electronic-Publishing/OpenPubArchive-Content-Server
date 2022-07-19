@@ -89,25 +89,107 @@ class TestXMLProcessing(unittest.TestCase):
         """
         Tests:
         
-        1) load dbs from EXP_ARCH1 files (previous funct.)
+        1) load dbs from EXP_ARCH1 files (as per previous funct.)
 
-           opasloader -d X:\_PEPA1\_PEPa1v\_PEPCurrent --verbose
+           opasloader -d X:\_PEPA1\_PEPa1v\_PEPCurrent --sub ANIJP-TR
            
            same as 
 
-           opasloader -d X:\_PEPA1\_PEPa1v\_PEPCurrent --verbose --inputbuild=bEXP_ARCH1
-
-           or 
-
-           opasloader --only "X:\_PEPA1\_PEPa1v\_PEPCurrent\CFP\012.2022\CFP.012.0022A(bKBD3).xml" --nocheck --processxml --writeprocessed --outputbuild=bEXP_TEST
+           opasloader -d X:\_PEPA1\_PEPa1v\_PEPCurrent --sub ANIJP-TR --inputbuild=bEXP_ARCH1
            
-        2) load dbs from KBD3 files directly
+           Messaging verbose:  False
+           
+           Output (on PC):
+              ...
+              Input data Root:  X:\_PEPA1\_PEPa1v\_PEPCurrent
+              Input data Subfolder:  ANIJP-TR
+              Precompiled XML of build (bEXP_ARCH1) will be loaded to the databases without further compiling/processing:
+              Reset Core Data:  False
+              ********************************************************************************
+              Database will be updated. Location: development.org
+              Solr Full-Text Core will be updated:  http://development.org:8983/solr/pepwebdocs
+              Solr Authors Core will be updated:  http://development.org:8983/solr/pepwebauthors
+              Solr Glossary Core will be updated:  http://development.org:8983/solr/pepwebglossary
+              ********************************************************************************
+              Paragraphs only stored for sources indicated in loaderConfig.
+              ********************************************************************************
+              Locating files for processing at X:\_PEPA1\_PEPa1v\_PEPCurrent\ANIJP-TR with build pattern (bEXP_ARCH1). Started at (Tue Jul 19 11:15:25 2022).
+              --------------------------------------------------------------------------------
+              Ready to Load 25 files *if modified* at path: X:\_PEPA1\_PEPa1v\_PEPCurrent\ANIJP-TR
+              Processing started at (Tue Jul 19 11:15:25 2022).
+              --------------------------------------------------------------------------------
+              Load started (Tue Jul 19 11:15:25 2022).  Examining files.
+              Load process complete (Tue Jul 19 11:15:26 2022 ). Time: 0.03997325897216797 seconds.
+              Cleaned up artstat: removed article statistics for any article ids not in article table.
+              Finished! Loaded 0 documents (bEXP_ARCH1). Total file load time: 1.32 secs (0.02 minutes.)
+              Note: File load time is not total elapsed time. Total elapsed time is: 1.32 secs (0.02 minutes.)
 
-           opasloader -d X:\_PEPA1\_PEPa1v\_PEPCurrent --verbose --processxml --inputbuild=bKBD3
+           
+        2) force reload dbs from EXP_ARCH1 files (as per previous funct.)
 
-              should be same as
+           opasloader -d X:\_PEPA1\_PEPa1v\_PEPCurrent --sub ANIJP-TR --reload
+           
+              Output on PC:
+              
+                 Messaging verbose:  False
+                 Input data Root:  X:\_PEPA1\_PEPa1v\_PEPCurrent
+                 Input data Subfolder:  ANIJP-TR
+                 Precompiled XML of build (bEXP_ARCH1) will be loaded to the databases without further compiling/processing:
+                 Reset Core Data:  False
+                 Forced Rebuild - All files added, regardless of whether they are the same as in Solr.
+                 ********************************************************************************
+                 Database will be updated. Location: development.org
+                 Solr Full-Text Core will be updated:  http://development.org:8983/solr/pepwebdocs
+                 Solr Authors Core will be updated:  http://development.org:8983/solr/pepwebauthors
+                 Solr Glossary Core will be updated:  http://development.org:8983/solr/pepwebglossary
+                 ********************************************************************************
+                 Paragraphs only stored for sources indicated in loaderConfig.
+                 ********************************************************************************
+                 Locating files for processing at X:\_PEPA1\_PEPa1v\_PEPCurrent\ANIJP-TR with build pattern (bEXP_ARCH1). Started at (Tue Jul 19 11:15:37 2022).
+                 --------------------------------------------------------------------------------
+                 Ready to Load records from 25 files at path X:\_PEPA1\_PEPa1v\_PEPCurrent\ANIJP-TR
+                 Processing started at (Tue Jul 19 11:15:37 2022).
+                 --------------------------------------------------------------------------------
+                 Load started (Tue Jul 19 11:15:37 2022).  Examining files.
+                 Load process complete (Tue Jul 19 11:15:47 2022 ). Time: 0.22304987907409668 seconds.
+                 Performing final commit.
+                 Cleaned up artstat: removed article statistics for any article ids not in article table.
+                 Finished! Loaded 25 documents and 5 references. Total file inspection/load time: 10.99 secs (0.18 minutes.)
+                 ...Files per Min: 136.4688
+                 ...Files evaluated per Min (includes skipped files): 136.4688
+                 Note: File load time is not total elapsed time. Total elapsed time is: 10.99 secs (0.18 minutes.)
+                 Files per elapsed min: 136.4565
+          
 
-           opasloader -d X:\_PEPA1\_PEPa1v\_PEPCurrent --verbose --processxml
+        3) load dbs from EXP_ARCH1 files, but process KBD3 to EXP_ARCH1 if KBD3 file has been modified or there's no EXP_ARCH1
+
+           opasloader -d X:\_PEPA1\_PEPa1v\_PEPCurrent --sub ANIJP-TR --smartload
+
+              Output on PC:
+                 Messaging verbose:  False
+                 Input data Root:  X:\_PEPA1\_PEPa1v\_PEPCurrent
+                 Input data Subfolder:  ANIJP-TR
+                 Input form of XML of build (bKBD3|bSeriesTOC) will be compiled, saved, and loaded to the database unless already compiled version
+                 Reset Core Data:  False
+                 ********************************************************************************
+                 Database will be updated. Location: development.org
+                 Solr Full-Text Core will be updated:  http://development.org:8983/solr/pepwebdocs
+                 Solr Authors Core will be updated:  http://development.org:8983/solr/pepwebauthors
+                 Solr Glossary Core will be updated:  http://development.org:8983/solr/pepwebglossary
+                 ********************************************************************************
+                 Paragraphs only stored for sources indicated in loaderConfig.
+                 ********************************************************************************
+                 Locating files for processing at X:\_PEPA1\_PEPa1v\_PEPCurrent\ANIJP-TR with build pattern (bKBD3). Started at (Tue Jul 19 11:22:21 2022).
+                 --------------------------------------------------------------------------------
+                 Ready to Smart compile, save and load 25 files *if modified* at path: X:\_PEPA1\_PEPa1v\_PEPCurrent\ANIJP-TR
+                 Processing started at (Tue Jul 19 11:22:21 2022).
+                 --------------------------------------------------------------------------------
+                 Smart compile, save and load started (Tue Jul 19 11:22:21 2022).  Examining files.
+                 Smart compile, save and load process complete (Tue Jul 19 11:22:22 2022 ). Time: 0.032021522521972656 seconds.
+                 Cleaned up artstat: removed article statistics for any article ids not in article table.
+                 Finished! Smart compiled, saved and loaded 0 documents (bEXP_ARCH1). Total file load time: 1.08 secs (0.02 minutes.)
+                 Note: File load time is not total elapsed time. Total elapsed time is: 1.08 secs (0.02 minutes.)
+              
            
         
         3) only build EXP_ARCH1 files from KBD3

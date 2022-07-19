@@ -20,12 +20,14 @@ __status__      = "Development"
 programNameShort = "opasXMLProcessor"
 XMLProcessingEnabled = True
 
-gDbg1 = True
+gDbg1 = False # display errors on stdout
+gDbg2 = False # processing details
 
 import logging
 logger = logging.getLogger(programNameShort)
+from loggingDebugStream import log_everywhere_if    # log as usual, but if first arg is true, also put to stdout for watching what's happening
 
-import lxml
+# import lxml
 import sys
 if sys.version_info[0] < 3:
     raise Exception("Must be using Python 3")
@@ -34,7 +36,7 @@ import opasXMLHelper as opasxmllib
 
 #from opasFileSupport import FileInfo
 import PEPAuthorID
-import modelsOpasCentralPydantic
+import models
 import opasLocator
 from opasLocator import Locator
 import opasGenSupportLib as opasgenlib
@@ -45,7 +47,7 @@ import PEPGlossaryRecognitionEngine
 import PEPSplitBookData  # Module not done and may not be needed.
 import opasLocalID
 
-import opasConfig
+# import opasConfig
 import opasDocuments
 
 glossEngine = PEPGlossaryRecognitionEngine.GlossaryRecognitionEngine(gather=False)
@@ -53,23 +55,22 @@ glossEngine = PEPGlossaryRecognitionEngine.GlossaryRecognitionEngine(gather=Fals
 #----------------------------------------------------------------------------------------------------------------
 def normalize_local_ids(pepxml, verbose=False):
     
-    global gDbg1
-    
     nodes = pepxml.xpath("//be | //binc | //note | //ftn")
     ret_val = len(nodes)
+
+    global gDbg1, gDbg2
     if verbose:
         print ("\t...Normalizing local ids.")
     else:
         gDbg1 = False
+        gDbg2 = False
     
     for node in nodes:
         noteid = node.attrib.get("id", None)
         if noteid is not None:
             nodeid_normal = str(opasLocalID.LocalID(noteid))
             if nodeid_normal != noteid and nodeid_normal != "":
-                if gDbg1:
-                    print (f"\t\t...Normalized id: {noteid} to {nodeid_normal}")
-                    
+                log_everywhere_if(gDbg2, level="info", msg=f"\t\t\t...Normalized id: {noteid} to {nodeid_normal}")
                 node.attrib["id"] = nodeid_normal
 
     # return node count
@@ -106,13 +107,11 @@ def pgxPreProcessing(pepxml, ocd, artInfo, split_book_data=None, verbose=False):
     
     Deal with the pgxs that go to articles.  Many do, and they rely on the bx entry just before the reference
     """
-    global gDbg1
-    
-    if verbose:
-        print ("\t...pgx Preprocessing.")
-    else:
+    global gDbg1, gDbg2
+    if not verbose:
         gDbg1 = False
-
+        gDbg2 = False
+    
     bxRefR = ""
     bxRefRX = ""
     bibRef = None
@@ -168,19 +167,16 @@ def pgxPreProcessing(pepxml, ocd, artInfo, split_book_data=None, verbose=False):
                 local = splitLoc.localID(fulltext_cleaned).upper()
                 pgx.attrib["rx"] = local
                 pgx.attrib["type"] = pgxlink_type
-                if gDbg1:
-                    print (f"\t\t...Reference to non-Split Book. Set link (type={pgxlink_type}) including local to: {local}")
+                log_everywhere_if(gDbg2, level="info", msg=f"\t\t\t...Reference to non-Split Book. Set link (type={pgxlink_type}) including local to: {local}")
             else:
                 splitLoc = opasLocator.Locator(split_inst_from_fulltext, ocd=ocd)
                 #print (splitLoc, SEPage)
                 local = splitLoc.localID(fulltext_cleaned).upper()
                 pgx.attrib["rx"] = local
                 pgx.attrib["type"] = pgxlink_type
-                if gDbg1:
-                    print (f"\t\t...Reference to Split Book. Set link (type={pgxlink_type}) including local to: {local}")
+                log_everywhere_if(gDbg2, level="info", msg=f"\t\t\t...Reference to Split Book. Set link (type={pgxlink_type}) including local to: {local}")
         else:
-            if gDbg1:
-                print (f"\t\tRx link for pgx already set: {current_rx_link}")
+            log_everywhere_if(gDbg2, level="info", msg=f"\t\t\t...Rx link for pgx already set: {current_rx_link}")
  
     nodes = pepxml.xpath("/pepkbd3//bxe")
     for node in nodes:
@@ -188,9 +184,19 @@ def pgxPreProcessing(pepxml, ocd, artInfo, split_book_data=None, verbose=False):
             fulltext = opasxmllib.xml_elem_or_str_to_text(node) # x.find("pgx")
             bxRefRX = node.attrib.get("rx", None)
             if bxRefRX is None:
-                logger.warning(f"BXE tag {fulltext} found in {artInfo.art_id} without rx info. {bxRefRX is None}")
-                if gDbg1:
-                    print (f"\t\tBXE tag {fulltext} found in {artInfo.art_id} without rx info.")
+                log_everywhere_if(gDbg2, level="warning", msg=f"\t\t\t...BXE tag {fulltext} found in {artInfo.art_id} without rx info.")
+        
+    ## update local ids for biblios if applicable
+    #nodes = pepxml.xpath("/pepkbd3//bx|bxe")
+    #for node in nodes:
+        #if node.tag == "bx":
+            #bxRefR = node.get("r")
+            #bibRef = aLoc.localID(bxRefR, saveLocalID=True)
+            #node.set("r", aLoc.getLocalID())
+        #elif node.tag == "bxe":
+            #bxRefRX = node.attrib.get("rx", None)
+            #bibRef = aLoc.localID(bxRefRX, saveLocalID=True)
+            #node.set("r", bibRef)
         
     #should not need to do pgx links here at all.      
     #nodes = pepxml.xpath("/pepkbd3//pgx|bx|bxe")
@@ -202,12 +208,12 @@ def pgxPreProcessing(pepxml, ocd, artInfo, split_book_data=None, verbose=False):
                 # add articleID
                 bibRef = aLoc.localID(bxRefR)
                 bxRefRX = "" # forget the last one
-                if gDbg1: print (f"\t\t...bx r: {bxRefR} bibRef={bibRef}")
+                log_everywhere_if(gDbg2, level="info", msg=f"\t\t\t...bx r: {bxRefR} bibRef={bibRef}")
                 continue	# until you find the next pgx
     
             elif node.tag == "bxe":
                 bxRefRX = node.attrib.get("rx", None)
-                if gDbg1: print (f"\t\t...bx rxe: {bxRefRX}")
+                log_everywhere_if(gDbg2, level="info", msg=f"\t\t\t...bx rxe: {bxRefRX}")
                 bxRefR = "" # forget the last one
                 continue	# until you find the next pgx
     
@@ -220,7 +226,7 @@ def pgxPreProcessing(pepxml, ocd, artInfo, split_book_data=None, verbose=False):
                 if pgRefRX is not None:
                     continue
                 else:        
-                    print (f"\t\t...pgx r: {pgRefR}  rx: {pgRefRX} re: {pgRefRE} type: {pgxtype}")
+                    log_everywhere_if(gDbg2, level="info", msg=f"\t\t\t...pgx r: {pgRefR}  rx: {pgRefRX} re: {pgRefRE} type: {pgxtype}")
                 
                 if pgxtype in ["BIBJUMP"]:
                     # don't link these
@@ -230,7 +236,6 @@ def pgxPreProcessing(pepxml, ocd, artInfo, split_book_data=None, verbose=False):
                     linktype = pgxtype
     
                 pgTextRaw = node.text
-                if gDbg1: print (f'\t\t...pgTextRaw: {pgTextRaw}')
                 if opasgenlib.isRoman(pgTextRaw):
                     pgText = pgTextRaw
                 else:
@@ -245,37 +250,44 @@ def pgxPreProcessing(pepxml, ocd, artInfo, split_book_data=None, verbose=False):
                 # See if there's no marked reference link
                 if opasgenlib.is_empty(pgRefRE) and opasgenlib.is_empty(pgRefRX) and opasgenlib.is_empty(pgRefR):
                     # Nothing Specified.  See what the last reference bx or bxe has, from previous loops.
-                    if gDbg1:
-                        print ("\t\tNothing Specified.  See what the last reference bx or bxe has, from previous loops.")
-                        
+                    log_everywhere_if(gDbg2, level="debug", msg="\t\t\t...No links in attributes.  See what the last reference bx or bxe has, from previous loops.")
+
+                    msg="\t\t\t...As per 2022 process, the references in splits should already be tagged with the bibliography split instance and id"
                     if bibRef != None: # don't look for a reference if we're in the index!
                         # these split references are mostly and should be linked in the KBD3.  So for now, we don't do this anymore!
-                        logger.warning("\t\tAs per 2022 process, the references in splits should already be tagged with the bibliography split instance and id")
+                        log_everywhere_if(gDbg2, level="warning", msg=msg)
     
                     # now see if it could also be internal... (if both, then we need to resolve ambiguity)
                     if artInfo.pgRange.contains(pgStart):
                         # this could be a reference to the curernt paper.
                         if aLoc.isSplitBook():
                             #localID looks up split book instance as long as biblioID is supplied
-                            logger.warning("As per 2022 process, the references in splits should already be tagged with the bibliography split instance and id")
+                            logger.warning()
+                            log_everywhere_if(gDbg2, level="warning", msg=msg)
                         else:
                             # not a split book so page is internal
                             pgLink2 = aLoc.localID(pgStart)
-                            if gDbg1: print ("\t\tPgxLink Calculated: ", pgLink2)
+                            msg = f"\t\t\t...PgxLink Calculated: {pgLink2}"
+                            log_everywhere_if(gDbg2, level="info", msg=msg)
                     else:
                         if aLoc.isSplitBook():
                             #localID looks up split book instance as long as biblioID is supplied
                             #print ("Lookup splitbook page: ", pgStartStr)
-                            pgLink2 = aLoc.localID(pgStart, checkSplitInThisBiblioDB=PEPProcInst.biblioDB)
-                            if gDbg1: print ("\t\tSplitBook.  PgxLink Calculated: ", pgLink2)
+                            # pgLink2 = aLoc.localID(pgStart, checkSplitInThisBiblioDB=PEPProcInst.biblioDB)
+                            # for now using localid
+                            pgLink2 = aLoc.localID(pgStart)
+                            msg = f"\t\t\t...SplitBook. PgxLink cannot be calculated yet (TBD - needs to be computed).  Trying localID {pgLink2} for now."
+                            log_everywhere_if(gDbg1, level="error", msg=msg)
+                            
                         else:
                             # not a split book so page is internal
-                            if gDbg1: print ("\t\tpgStart: %s not in page range: %s-%s" % (pgStart, artInfo.art_pgstart, artInfo.art_pgend))
+                            msg = "\t\t\t...pgStart: %s not in page range: %s-%s" % (pgStart, artInfo.art_pgstart, artInfo.art_pgend)
+                            log_everywhere_if(gDbg2, level="warning", msg=msg)
     
                     if pgLink1 != None and pgLink2 != None:
                         # BOTH the prior match and the article are possible.
-                        msg = "\t\tWARNING: Both bx/bxe and internal linking (%s/%s) is possible with this page reference." % (pgLink1, pgLink2)
-                        logger.warning(msg)
+                        msg = "\t\t\t...WARNING: Both bx/bxe and internal linking (%s/%s) is possible with this page reference." % (pgLink1, pgLink2)
+                        log_everywhere_if(gDbg2, level="warning", msg=msg)
                         # if it's not a book though, it's probably the external link that matters.
                         if artInfo.isBook:
                             # pick the internal
@@ -290,8 +302,8 @@ def pgxPreProcessing(pepxml, ocd, artInfo, split_book_data=None, verbose=False):
                         #print ("\t\tLink is pgLink1: %s" % pgLink1)
                         pgLink = pgLink1
                     else:
-                        msg = "No RE/RX/R attr specified, and no link found for pgx: %s within parent (%s)" % (pgTextRaw, node.getparent().tag)
-                        logger.warning(msg)
+                        msg = "\t\t\t...No RE/RX/R attr specified, and no link found for pgx: %s within parent (%s)" % (pgTextRaw, node.getparent().tag)
+                        log_everywhere_if(gDbg2, level="warning", msg=msg)
     
                     node.attrib["rx"] = pgLink
     
@@ -302,9 +314,8 @@ def pgxPreProcessing(pepxml, ocd, artInfo, split_book_data=None, verbose=False):
                         # get link from this internal reference
                         target = "pgRefR"
                         bibRef = aLoc.localID(pgRefR)
-                        msg = "This may not be needed and thus is still in development.  Skipping link"
-                        logger.error(msg)
-                        print (msg)
+                        msg = "\t\t\t...This may not be needed and thus is still in development.  Skipping link"
+                        log_everywhere_if(gDbg2, level="error", msg=msg)
                         pgLink = None
                         #pgLink = PEPSplitBookData.getBibEntryPageLink(bibRef, pageNumber=pgStart)
                     elif not opasgenlib.is_empty(pgRefRX):
@@ -316,16 +327,13 @@ def pgxPreProcessing(pepxml, ocd, artInfo, split_book_data=None, verbose=False):
                             pgLink = pgRefRX
                         else:
                             # what to do with this
-                            msg = f"Can't resolve RX.  Bad link info in pgx... {pgRefRX}"
-                            logger.error(msg)
-                            if gDbg1: print (msg)
+                            msg = f"\t\t\t...Can't resolve RX.  Bad link info in pgx... {pgRefRX}"
+                            log_everywhere_if(gDbg2, level="error", msg=msg)
     
                     elif not opasgenlib.is_empty(pgRefRE): # external biblio locator
-                        if gDbg1: print (f"pgRefRE empty - watch this")
                         target = "pgRefRE" 
-                        msg = "This may not be needed and thus is still in development.  Skipping link"
-                        logger.error(msg)
-                        print (msg)
+                        msg = "\t\t\t...pgRefRE empty - watch this.  This may not be needed and thus is still in development.  Skipping link"
+                        log_everywhere_if(gDbg2, level="error", msg=msg)
                         pgLink = None
                         #pgLink = PEPSplitBookData.getBibEntryPageLink(bibRef, pageNumber=pgStart) # may not be needed or appropritate
     
@@ -333,7 +341,8 @@ def pgxPreProcessing(pepxml, ocd, artInfo, split_book_data=None, verbose=False):
     
                     # we have our link
                     if pgLink != None:
-                        if gDbg1: print ("\t\tSetting Link to %s based on value that was in %s." % (pgLink, target))
+                        msg = "\t\t\t...Setting Link to %s based on value that was in %s." % (pgLink, target)
+                        log_everywhere_if(gDbg2, level="warning", msg=msg)
                         if not opasgenlib.is_empty(pgLink):
                             node.attrib["rx"] = pgLink
     
@@ -346,15 +355,15 @@ def pgxPreProcessing(pepxml, ocd, artInfo, split_book_data=None, verbose=False):
 #------------------------------------------------------------------------------------------------------
 def xml_update(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
     
-    global gDbg1
-    
     ret_val = None
     ret_status = False
 
+    global gDbg1, gDbg2
     if verbose:
         print ("\t...XML processing for database use.")
     else:
         gDbg1 = False
+        gDbg2 = False
 
     # write issn and id to artinfo
     xml_artinfo = parsed_xml.find("artinfo")
@@ -427,7 +436,7 @@ def xml_update(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
             #print (artInfo.art_author_id_list)
     
     # normalize local ids
-    normalize_local_ids(parsed_xml, verbose=verbose)
+    # normalize_local_ids(parsed_xml, verbose=verbose)
     
     # add nextpgnum with id to n, possibly filling in prefixused
     pgnbr_add_next_attrib(parsed_xml)
@@ -450,7 +459,7 @@ def xml_update(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
             if bib_saved_entry_tuple is not None and bib_saved_entry_tuple != []:
                 bib_saved_entry = bib_saved_entry_tuple[0]
             else:
-                bib_saved_entry = modelsOpasCentralPydantic.Biblioxml()
+                bib_saved_entry = models.Biblioxml()
             
             # merge record info
             bib_total_reference_count += 1
@@ -466,7 +475,6 @@ def xml_update(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
                     bib_pgstart = ""
                     bib_pgend = ""
                 
-            bk_locator = None
             if bib_entry.source_type != "book":
                 if not opasgenlib.is_empty(bib_entry.sourcecode):
                     locator = Locator(strLocator=None,
@@ -485,29 +493,31 @@ def xml_update(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
                                        filename=artInfo.filename)
                     # need to check if it's whole, and if it works, but for now.
                     if locator.valid == 0:
-                        if gDbg1:
-                            print(f"Bib ID {ref_id} does not have enough info to link. {bib_entry.vol}.{bib_entry.pgStart}")
+                        msg = f"\t\t\t...Bib ID {ref_id} does not have enough info to link. {bib_entry.year}.{bib_entry.volume}.{bib_pgstart}"
+                        log_everywhere_if(gDbg2, level="info", msg=msg)
                         continue
                         
                     ref.attrib["rx"] = locator.articleID()
                     search_str = f"//be[@id='{ref_id}']"
-                    if gDbg1:
-                        print(f"Matched Journal {opasxmllib.xml_xpath_return_xmlstringlist(parsed_xml, search_str)[0]}")
+                    msg = f"\t\t\t...Matched Journal {opasxmllib.xml_xpath_return_xmlstringlist(parsed_xml, search_str)[0]}"
+                    log_everywhere_if(gDbg2, level="debug", msg=msg)
                 else:
                     locator = None
-                    logger.info("Skipped: ", bib_saved_entry)
+                    msg = f"\t\t\t...Skipped: {bib_saved_entry}"
+                    log_everywhere_if(gDbg2, level="debug", msg=msg)
                 
             else:
                 bk_locator_str, match_val, whatever = known_books.getPEPBookCodeStr(bib_entry.ref_entry_text)
                 if bk_locator_str is not None:
                     ref.attrib["rx"] = bk_locator_str 
                     search_str = f"//be[@id='{ref_id}']"
-                    if gDbg1:
-                        print(f"Matched Book {match_val}. {opasxmllib.xml_xpath_return_xmlstringlist(parsed_xml, search_str)[0]}")
+                    msg = f"\t\t\t...Matched Book {match_val}. {opasxmllib.xml_xpath_return_xmlstringlist(parsed_xml, search_str)[0]}"
+                    log_everywhere_if(gDbg1, level="warning", msg=msg)
                     
                 else:
                     locator = None
-                    logger.debug("Skipped: ", bib_entry.ref_entry_text)
+                    msg = f"\t\t\t...Skipped: {bib_entry.ref_entry_text}"
+                    log_everywhere_if(gDbg2, level="debug", msg=msg)
 
         #try:
             #ocd.db.commit()

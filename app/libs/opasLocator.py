@@ -380,6 +380,17 @@ class Locator:
 
         return str(retVal)
 
+    #--------------------------------------------------------------------------------
+    def getLocalID(self):
+        """
+        Get the localID component only
+        """
+        if self.__localIDRef != None:
+            retVal = str(self.__localIDRef)
+        else:
+            retVal = None
+
+        return retVal
 
     #--------------------------------------------------------------------------------
     def hasLocalID(self):
@@ -904,12 +915,15 @@ class Locator:
         else:
             if self.jrnlVol != None:
                 self.jrnlYear = gJrnlData.getYear(self.jrnlCode, self.jrnlVol)
-                #print self.jrnlYear
 
                 if self.jrnlVol.volSuffix != "" and self.jrnlVol.volSuffix != "S": # not for Supplements
-                    jrnlIss = str(ord(self.jrnlVol.volSuffix[0]) - ord("A") + 1)
-                    if jrnlIss > 0 and jrnlIss < 8: # only allow 8 issues, otherwise must be "special" like Supplement
-                        self.jrnlIss = jrnlIss
+                    jrnlIss = ord(self.jrnlVol.volSuffix[0]) - ord("A") + 1
+                    try:
+                        if jrnlIss > 0 and jrnlIss < 8: # only allow 8 issues, otherwise must be "special" like Supplement
+                            self.jrnlIss = jrnlIss
+                    except Exception as e:
+                        logger.error(f"Journal Issue error; {e}")
+                        
 
         retVal = 1
 
