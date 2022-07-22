@@ -194,7 +194,7 @@ class TestXMLProcessing(unittest.TestCase):
         
         3) only build EXP_ARCH1 files from KBD3
 
-           opasloader -d X:\_PEPA1\_PEPa1v\_PEPCurrent --verbose --processxml
+           opasloader -d X:\_PEPA1\_PEPa1v\_PEPCurrent --verbose --compiletosave --sub ANIJP-TR 
         
         4) load dbs from KBD3 files and write EXP_ARCH1's for quicker reprocessing later or QA
         

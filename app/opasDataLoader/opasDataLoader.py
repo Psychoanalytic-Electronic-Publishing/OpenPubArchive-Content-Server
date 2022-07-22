@@ -968,7 +968,7 @@ if __name__ == "__main__":
                       help="Compile input XML (e.g., (bKBD3) to processed XML. Just save compiled XML to the output build (e.g., (bEXP_ARCH1), for later loading")
 
     parser.add_option("--compiletorebuild", "--compilerebuild", action="store_true", dest="compiletorebuild", default=False,
-                      help="Compile input XML (e.g., (bKBD3) to a processed build of XML, Save, AND load into database.")
+                      help="Deprecated, replaced by --smartload --rebuild)")
 
     parser.add_option("--prettyprint", action="store_true", dest="pretty_printed", default=True,
                       help="Pretty format the compiled XML.")
