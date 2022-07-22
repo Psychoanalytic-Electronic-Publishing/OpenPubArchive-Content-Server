@@ -270,7 +270,7 @@ class FlexFileSystem(object):
         return ret_val        
 
     #-----------------------------------------------------------------------------
-    def create_text_file(self, filespec, path=None, data=" "):
+    def create_text_file(self, filespec, path=None, data=" ", encoding="utf-8", delete_existing=True):
         """
          >>> fs = FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root=localsecrets.XML_ORIGINALS_PATH)
          >>> res = fs.delete(filespec="test-delete.txt", path=localsecrets.XML_ORIGINALS_PATH)
@@ -281,15 +281,18 @@ class FlexFileSystem(object):
         ret_val = False
         filespec = self.fullfilespec(path=path, filespec=filespec) 
         if self.exists(filespec, path):
-            logger.error(f"FlexFileSystemError: File {filespec} already exists...exiting.")
-            ret_val = False
+            if delete_existing:
+                self.delete(filespec=filespec, path=path)
+            else:
+                logger.error(f"FlexFileSystemError: File {filespec} already exists...exiting.")
+                ret_val = False
         else:
             try:
                 if self.key is not None:
-                    with self.fs.open(filespec, 'a') as out:
+                    with self.fs.open(filespec, 'a', encoding=encoding) as out:
                         out.write(data)
                 else:
-                    with open(filespec, 'a') as out:
+                    with open(filespec, 'a', encoding=encoding) as out:
                         out.write(data)
 
             except Exception as e:

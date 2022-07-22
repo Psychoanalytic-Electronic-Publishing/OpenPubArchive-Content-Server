@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.0628/v2.0.004"   # semver versioning after date.
+__version__     = "2022.0722/v2.0.005"   # semver versioning after date.
 __status__      = "Development"
 
 programNameShort = "opasDataLoader"
@@ -99,7 +99,7 @@ help_text = (
                  
 
         Note:
-          S3 is set up with root pep-web-xml (default).  The root must be the bucket name.
+          S3 is set up with root=localsecrets.FILESYSTEM_ROOT (default).  The root must be the bucket name.
           
           S3 has subfolders _PEPArchive, _PEPCurrent, _PEPFree, _PEPOffsite
             to allow easy processing of one archive type at a time simply using
@@ -297,7 +297,7 @@ def main():
 
     processed_files_count = 0
     ocd =  opasCentralDBLib.opasCentralDB()
-    fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root="pep-web-xml")
+    fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root=localsecrets.FILESYSTEM_ROOT)
 
     # set toplevel logger to specified loglevel
     logger = logging.getLogger()
@@ -674,12 +674,17 @@ def main():
                         if options.display_verbose:
                             print (msg)
 
-                        root = parsed_xml.getroottree()
-                        root.write(fname, encoding="utf-8", method="xml", pretty_print=True, xml_declaration=True, doctype=options.output_doctype)
+                        # root = parsed_xml.getroottree()
+                        # this only works on a local file system...using 
+                        # root.write(fname, encoding="utf-8", method="xml", pretty_print=True, xml_declaration=True, doctype=options.output_doctype)
                     
                         # xml_text version, not reconverted to tree
-                        #file_text = lxml.etree.tostring(parsed_xml, pretty_print=options.pretty_printed, encoding="utf8").decode("utf-8")
-                        #fname = fname.replace(options.output_build, "(bXML_TEXT)")
+                        file_text = lxml.etree.tostring(parsed_xml, pretty_print=options.pretty_printed, encoding="utf8").decode("utf-8")
+                        
+                        # this is required if running on S3
+                        fs.create_text_file(fname, data=file_text)
+                        
+                        # fname = fname.replace(options.output_build, "(bXML_TEXT)")
                         #with open(fname, 'w', encoding="utf8") as fo:
                             #fo.write( f'<?xml version="1.0" encoding="UTF-8"?>\n')
                             #fo.write(file_text)

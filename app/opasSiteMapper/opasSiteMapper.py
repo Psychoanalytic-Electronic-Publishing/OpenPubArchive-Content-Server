@@ -83,7 +83,7 @@ def sitemapper( path: str=localsecrets.SITEMAP_PATH, # local path or bucket for 
     'pep-web-google/sitemapindex.xml'
   
     """
-    fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root="pep-web-xml")
+    fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root=localsecrets.FILESYSTEM_ROOT)
     import opasSiteMap
     ret_val = {
         "siteMapIndexFile": "", 
