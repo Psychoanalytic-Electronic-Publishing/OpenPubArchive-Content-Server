@@ -359,9 +359,8 @@ def xml_update(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
     ret_status = False
 
     global gDbg1, gDbg2
-    if verbose:
-        print ("\t...XML processing for database use.")
-    else:
+    print ("\t...Preprocessing/converting keyboarded XML.")
+    if not verbose:
         gDbg1 = False
         gDbg2 = False
 
@@ -444,7 +443,7 @@ def xml_update(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
     # add links to biblio entries, rx to be
     if artInfo.ref_count > 0:
         bibReferences = parsed_xml.xpath("/pepkbd3//be")  # this is the second time we do this (also in artinfo, but not sure or which is better per space vs time considerations)
-        logger.info(("\t...Processing %s references for links." % (artInfo.ref_count)))
+        logger.info(("\t...Examining %s references for links." % (artInfo.ref_count)))
 
         #processedFilesCount += 1
         bib_total_reference_count = 0

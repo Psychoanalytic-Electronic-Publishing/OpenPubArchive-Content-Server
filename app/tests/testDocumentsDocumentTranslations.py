@@ -33,6 +33,7 @@ class TestGetDocumentTranslations(unittest.TestCase):
         print (f"Current Session: ")
         data = opasAPISupportLib.documents_get_document(self.doc_with_translations, session_info=session_info, option_flags=opasConfig.OPTION_2_RETURN_TRANSLATION_SET)
         # Confirm that the request-response cycle completed successfully.
+        print (f"Document: {self.doc_with_translations}, Fullcount: {data.documents.responseInfo.fullCount}, Translationset Size: {len(data.documents.responseSet[0].translationSet)}")
         assert data.documents.responseInfo.fullCount == 1, f"Document {self.doc_with_translations} not found"
         assert len(data.documents.responseSet[0].translationSet) >= 3, f"Document {self.doc_with_translations} has too few translations returned"
 
@@ -44,6 +45,7 @@ class TestGetDocumentTranslations(unittest.TestCase):
         assert(response.ok == True)
         r = response.json()
         data = r["documents"]["responseSet"] 
+        print (f"Document: {self.doc_with_translations}, Translationset Size: {len(data[0]['translationSet'])}")  # len(data[0]['translationSet'])
         assert len(data[0]["translationSet"]) >= 3, f"Document {self.doc_with_translations} has two few translations returned"
 
     def test_api_translation_request_alt(self):
@@ -54,6 +56,7 @@ class TestGetDocumentTranslations(unittest.TestCase):
         assert(response.ok == True)
         r = response.json()
         data = r["documents"]["responseSet"] 
+        print (f"Document: {self.doc_with_translations}, Translationset Size: {len(data[0]['translationSet'])}")
         assert len(data[0]["translationSet"]) >= 3, f"Document {self.doc_with_translations} has two few translations returned"
 
 if __name__ == '__main__':

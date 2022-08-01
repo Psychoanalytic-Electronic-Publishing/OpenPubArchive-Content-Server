@@ -7,6 +7,7 @@ default_process_pattern = "(bKBD3|bSeriesTOC)"
 default_input_build = "(bKBD3)"
 default_output_build = "(bEXP_ARCH1)"
 default_doctype = '<!DOCTYPE pepkbd3 SYSTEM "http://peparchive.org/pepa1dtd/pepkbd3.dtd">'
+default_xml_declaration = "<?xml version='1.0' encoding='UTF-8'?>"
 
 # Global variables (for data and instances)
 options = None

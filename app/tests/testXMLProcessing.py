@@ -194,7 +194,7 @@ class TestXMLProcessing(unittest.TestCase):
         
         3) only build EXP_ARCH1 files from KBD3
 
-           opasloader -d X:\_PEPA1\_PEPa1v\_PEPCurrent --verbose --compiletosave --sub ANIJP-TR 
+           opasloader --verbose --sub _PEPCurrent/ANIJP-TR 
         
         4) load dbs from KBD3 files and write EXP_ARCH1's for quicker reprocessing later or QA
         
@@ -220,24 +220,23 @@ class TestXMLProcessing(unittest.TestCase):
         print (f"Data file3 folder: {data_file3}")
                
         command_lines = [
-            ("Processing file", "bEXP_TEST2", fr"{pycmd} {data_file2} --nocheck --verbose --load --outputbuild=(bEXP_TEST2)"),
             # Force build via REBUILD option (or RELOAD) forces the build
-            ("Finished!", "Loaded 10 documents", fr"{pycmd} {data_file3} --nocheck --verbose --rebuild --inputbuild=bKBD3 --outputbuild=bEXP_TEST1"),
+            ("Finished!", "Loaded 10 documents", fr"{pycmd} {data_file3} --nocheck --nohelp --rebuild --inputbuild=bKBD3 --outputbuild=bEXP_TEST1"),
             # The parens () around builds now optional, they will be added if missing
-            ("Finished!", "Loaded 0 documents (bEXP_TEST1)", fr"{pycmd} {data_file3} --nocheck --verbose --smartload --inputbuild=bKBD3 --outputbuild=bEXP_TEST1"),
-            ("Finished!", "Finished! Loaded 10 documents (bEXP_ARCH1)", fr"{pycmd} {data_file3} --nocheck --verbose --rebuild --inputbuild=(bKBD3) --outputbuild=(bEXP_ARCH1)"),
+            ("Finished!", "loaded 0 documents (bEXP_TEST1)", fr"{pycmd} {data_file3} --nocheck --nohelp --verbose --smartload --inputbuild=bKBD3 --outputbuild=bEXP_TEST1"),
+            ("Finished!", "Finished! Loaded 10 documents (bEXP_ARCH1)", fr"{pycmd} {data_file3} --nocheck --nohelp --verbose --rebuild --inputbuild=(bKBD3) --outputbuild=(bEXP_ARCH1)"),
             # bEXP_ARCH1 files deleted automatically after above command
             # bEXP_TEST1 files still in place
-            ("Finished!", "Loaded 0 documents (bEXP_TEST1)", fr"{pycmd} {data_file3} --nocheck --verbose --smartload --outputbuild=(bEXP_TEST1)"), # should not reprocess if not changed
-            ("Finished!", "Loaded 10 documents (bEXP_TEST1)", fr"{pycmd} {data_file3} --nocheck --reload --verbose --inputbuild=(bEXP_TEST1) --outputbuild=(bEXP_TEST1)"), # force rebuild, implied bKBD3 input
+            ("Finished!", "loaded 0 documents (bEXP_TEST1)", fr"{pycmd} {data_file3} --nocheck --nohelp --verbose --smartload --outputbuild=(bEXP_TEST1)"), # should not reprocess if not changed
+            ("Finished!", "Loaded 10 documents (bEXP_TEST1)", fr"{pycmd} {data_file3} --nocheck --nohelp --reload --verbose --inputbuild=(bEXP_TEST1) --outputbuild=(bEXP_TEST1)"), # force rebuild, implied bKBD3 input
             
-            ("Finished!", "56 references", fr"{pycmd} {data_file1} --nocheck --verbose --smartload --outputbuild=(bEXP_TEST1)"),
+            ("Finished!", "56 references", fr"{pycmd} {data_file1} --nocheck --nohelp --verbose --smartload --outputbuild=(bEXP_TEST1)"),
             #  note it always builds when there's only one file specified.
-            ("Exporting!", "Writing compiled file", fr"{pycmd} {data_file1} --nocheck --verbose --smartload --outputbuild=(bEXP_TEST1)"),
-            ("Processing file", "bEXP_ARCH1", fr"{pycmd} {data_file1} --nocheck --load --verbose"),
+            ("Exporting!", "Writing precompiled XML file", fr"{pycmd} {data_file1} --nocheck --nohelp --verbose --smartload --outputbuild=(bEXP_TEST1)"),
+            ("Processing file", "bEXP_ARCH1", fr"{pycmd} {data_file1} --nocheck --nohelp --load --verbose"),
             # Already built, should not load any
-            ("Finished!", "Loaded 0 documents (bEXP_ARCH1)", fr"{pycmd} {data_file3} --nocheck --verbose --smartload"),
-            ("Finished!", "Loaded 0 documents (bEXP_TEST1)", fr"{pycmd} {data_file3} --nocheck --verbose --smartload --inputbuild=(bKBD3) --outputbuild=(bEXP_TEST1)"),
+            ("Finished!", "loaded 10 documents (bEXP_ARCH1)", fr"{pycmd} {data_file3} --nocheck --nohelp --verbose --smartload"),
+            ("Finished!", "loaded 0 documents (bEXP_TEST1)", fr"{pycmd} {data_file3} --nocheck --nohelp --verbose --smartload --inputbuild=(bKBD3) --outputbuild=(bEXP_TEST1)"),
         ]
         
         test_counter = 0

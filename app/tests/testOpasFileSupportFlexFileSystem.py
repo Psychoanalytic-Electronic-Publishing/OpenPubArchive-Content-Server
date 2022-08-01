@@ -54,7 +54,7 @@ class TestFSFileSystem(unittest.TestCase):
         assert fs.exists(filespec2) == False
         
     def test_04(self):
-        filespec="PEPTOPAUTHVS.001.0021A(bEXP_ARCH1).XML"
+        filespec="PEPTOPAUTHVS.001.0021A(bEXP_ARCH1).xml"
         # create text file
         fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY,
                                             secret=localsecrets.S3_SECRET,

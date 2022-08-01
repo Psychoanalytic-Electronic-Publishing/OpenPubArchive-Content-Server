@@ -24,7 +24,7 @@ class TestOpasFileSupport(unittest.TestCase):
         fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY,
                                             secret=localsecrets.S3_SECRET,
                                             root=localsecrets.XML_ORIGINALS_PATH)
-        filename = "ADPSA.001.0007A(bEXP_ARCH1).XML"
+        filename = "ADPSA.001.0007A(bEXP_ARCH1).xml"
         ret_val = fs.find(filename)
         print (ret_val)
         try:
@@ -40,7 +40,7 @@ class TestOpasFileSupport(unittest.TestCase):
         fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY,
                                             secret=localsecrets.S3_SECRET,
                                             root=localsecrets.XML_ORIGINALS_PATH)
-        filename = "ADPSA.001.0007A(bEXP_ARCH1).XML"
+        filename = "ADPSA.001.0007A(bEXP_ARCH1).xml"
         ret_val = fs.find(filename)
         print (ret_val)
         try:
@@ -55,7 +55,7 @@ class TestOpasFileSupport(unittest.TestCase):
                                             secret=localsecrets.S3_SECRET,
                                             root=localsecrets.XML_ORIGINALS_PATH)
 
-        filename="PEPTOPAUTHVS.001.0021A(bEXP_ARCH1).XML"
+        filename="PEPTOPAUTHVS.001.0021A(bEXP_ARCH1).xml"
         filespec = fs.find(filename)
         ret = fs.fileinfo(filespec=filespec)
         assert (ret.filesize >= 15000)
@@ -131,8 +131,8 @@ class TestOpasFileSupport(unittest.TestCase):
         
         """
         fs = opasFileSupport.FlexFileSystem(root=localsecrets.XML_ORIGINALS_PATH) # must be for the image if not the root
-        filespec = "ADPSA.001.0007A(bEXP_ARCH1).XML"
-        content = fs.get_file_contents(filespec=filespec, path=localsecrets.XML_ORIGINALS_PATH)
+        filespec = "ADPSA.001.0007A(bEXP_ARCH1).xml"
+        content, fileinfo = fs.get_file_contents(filespec=filespec, path=localsecrets.XML_ORIGINALS_PATH)
         content_len = len(content)
         print (content_len)
         assert(content_len >= 691)

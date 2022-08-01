@@ -735,14 +735,16 @@ class ArticleInfo(object):
             if self.src_code == "GW":
                 self.bk_seriestoc = "GW.000.0000A"
 #------------------------------------------------------------------------------------------------------
-def get_file_dates_solr(solrcore, filename=None, art_id=None):
+def get_file_dates_solr(solrcore, art_id=None, filename=None):
     """
     Fetch the article dates
     """
     ret_val = {}
     max_rows = 1000000
 
-    if filename is not None:
+    if art_id is not None:
+        getFileInfoSOLR = f'art_level:1 && art_id:{art_id}'
+    elif filename is not None:
         basename = os.path.basename(filename)
 
         # these legal file name chars are special chars to Solr, so escape them!
@@ -753,8 +755,6 @@ def get_file_dates_solr(solrcore, filename=None, art_id=None):
                                                       }))    
 
         getFileInfoSOLR = f'art_level:1 && file_name:"{b_escaped}"'
-    elif art_id is not None:
-        getFileInfoSOLR = f'art_level:1 && art_id:{art_id}'
     else:
         raise Exception("Must supply filename or art_id")
 
@@ -868,7 +868,7 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents, in
 
     """
     ret_val = False
-    msg = f"\t...Processing XML for Docs Core."
+    msg = f"\t...Loading XML to Docs Core."
     logger.info(msg)
     if verbose:
         print (msg)
@@ -1260,7 +1260,7 @@ def process_info_for_author_core(pepxml, artInfo, solrAuthor, verbose=None):
     #<!-- ID = PEP articleID + authorID -->
     
     ret_val = False
-    msg = f"\t...Processing XML for Author Core."
+    msg = f"\t...Loading XML to Author Core."
     logger.info(msg)
     if verbose:
         print (msg)
@@ -1442,7 +1442,7 @@ def add_article_to_api_articles_table(ocd, artInfo, verbose=None):
       
     """
     ret_val = False
-    msg = f"\t...Processing metadata for Articles DB."
+    msg = f"\t...Loading metadata to Articles DB."
     logger.info(msg)
     if verbose:
         print (msg)
@@ -1690,7 +1690,7 @@ def add_to_artstat_table(ocd, artInfo, verbose=None):
     """
     ret_val = False
     procname = "AddToArtStatDB"
-    msg = f"\t...Processing statistics for artStat table."
+    msg = f"\t...Loading statistics to artStat table."
     logger.info(msg)
     if verbose:
         print (msg)

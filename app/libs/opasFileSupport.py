@@ -41,7 +41,11 @@ def file_exists(document_id, year, ext, path=localsecrets.PDF_ORIGINALS_PATH):
     return ret_val
 
 class FileInfo(object):
-    def __init__(self): 
+    def __init__(self, path=None):
+        self.fs = FlexFileSystem(key=localsecrets.S3_KEY,
+                                 secret=localsecrets.S3_SECRET,
+                                 root=path) 
+        self.fs_s3type = localsecrets.S3_KEY is not None
         self.build_date = time.time()
         self.filespec:str = None
         self.basename:str = None
@@ -55,37 +59,64 @@ class FileInfo(object):
         self.fileinfo:dict = {}       
         
     def mapS3(self, fileinfo: dict):
-        self.fileinfo = fileinfo
-        self.filespec = fileinfo["Key"]
-        self.basename = os.path.basename(self.filespec)
-        self.filesize = fileinfo["Size"]
-        self.filetype = fileinfo["type"]
-        self.build_date = time.time() # current time
-        # there's no create time on S3, so use LastModified.
-        self.create_time = datetime.datetime.strftime(fileinfo["LastModified"], opasConfig.TIME_FORMAT_STR)
-        # modified date
-        self.timestamp_str = datetime.datetime.strftime(fileinfo["LastModified"], opasConfig.TIME_FORMAT_STR)
-        self.timestamp = datetime.datetime.strptime(self.timestamp_str, opasConfig.TIME_FORMAT_STR)
-        self.date_modified = self.timestamp.date()
-        # self.date_modified_str = str(self.date_modified)
-        self.etag = fileinfo.get("Etag", None)
+        ret_val = True
+        try:
+            self.fileinfo = fileinfo
+            self.filespec = fileinfo["Key"]
+            self.basename = os.path.basename(self.filespec)
+            self.filesize = fileinfo["Size"]
+            self.filetype = fileinfo["type"]
+            self.build_date = time.time() # current time
+            # there's no create time on S3, so use LastModified.
+            self.create_time = datetime.datetime.strftime(fileinfo["LastModified"], opasConfig.TIME_FORMAT_STR)
+            # modified date
+            self.timestamp_str = datetime.datetime.strftime(fileinfo["LastModified"], opasConfig.TIME_FORMAT_STR)
+            self.timestamp = datetime.datetime.strptime(self.timestamp_str, opasConfig.TIME_FORMAT_STR)
+            self.date_modified = self.timestamp.date()
+            # self.date_modified_str = str(self.date_modified)
+            self.etag = fileinfo.get("Etag", None)
+        except Exception as e:
+            logger.error(f"mapS3 exception: {e}")
+            ret_val = False
+            
+        return ret_val
     
-    def mapLocalFS(self, filespec):
-        self.fileinfo = {}
-        self.filespec = filespec
-        self.basename = self.fileinfo["base_filename"] = os.path.basename(self.filespec)
-        self.filesize = self.fileinfo["Size"] = os.path.getsize(filespec)
-        self.filetype = self.fileinfo["type"] = "xml" # fileinfo["type"]
-        self.build_date = self.fileinfo["build_date"] = time.time() # current time
-        self.create_time = datetime.datetime.fromtimestamp(os.path.getctime(self.filespec)).strftime(opasConfig.TIME_FORMAT_STR)
-        # modified date
-        mod_date = self.fileinfo["fileSize"] = os.path.getmtime(filespec)
-        self.timestamp_str = self.fileinfo["LastModified"] = datetime.datetime.utcfromtimestamp(mod_date).strftime(opasConfig.TIME_FORMAT_STR)
-        self.timestamp = self.fileinfo["timestamp"] = datetime.datetime.strptime(self.timestamp_str, opasConfig.TIME_FORMAT_STR)
-        self.date_modified = self.fileinfo["date"] = self.timestamp.date()
-        # self.date_modified_str = str(self.date_modified)
-        self.etag = self.fileinfo["Etag"] = None
+    def mapLocalFS(self, filespec: str):
+        ret_val = True
+        try:
+            self.fileinfo = {}
+            self.filespec = filespec
+            self.basename = self.fileinfo["base_filename"] = os.path.basename(self.filespec)
+            self.filesize = self.fileinfo["Size"] = os.path.getsize(filespec)
+            self.filetype = self.fileinfo["type"] = "xml" # fileinfo["type"]
+            self.build_date = self.fileinfo["build_date"] = time.time() # current time
+            self.create_time = datetime.datetime.fromtimestamp(os.path.getctime(self.filespec)).strftime(opasConfig.TIME_FORMAT_STR)
+            # modified date
+            mod_date = self.fileinfo["fileSize"] = os.path.getmtime(filespec)
+            self.timestamp_str = self.fileinfo["LastModified"] = datetime.datetime.utcfromtimestamp(mod_date).strftime(opasConfig.TIME_FORMAT_STR)
+            self.timestamp = self.fileinfo["timestamp"] = datetime.datetime.strptime(self.timestamp_str, opasConfig.TIME_FORMAT_STR)
+            self.date_modified = self.fileinfo["date"] = self.timestamp.date()
+            # self.date_modified_str = str(self.date_modified)
+            self.etag = self.fileinfo["Etag"] = None
+        except FileNotFoundError:
+            ret_val = False
+        except Exception as e:
+            logger.error(f"mapLocalFS: {e}")
+            ret_val = False
+            
+        return ret_val
+
+    def mapFS(self, filespec, path=None):
+        ret_val = False
+        if self.fs_s3type:
+            fileinfo = self.fs.fileinfo(filespec, path=path)
+            if fileinfo is not None:
+                ret_val = self.mapS3(fileinfo.fileinfo)
+                ret_val = True
+        else:
+            ret_val = self.mapLocalFS(filespec)        
         
+        return ret_val # false if it doesn't exist
 
 class FlexFileSystem(object):
     """
@@ -197,32 +228,31 @@ class FlexFileSystem(object):
                 try:
                     fileinfo_dict = self.fs.info(filespec)
                     ret_obj.mapS3(fileinfo_dict)
-                    #ret_obj.basename = fileinfo_dict["base_filename"] = os.path.basename(filespec)
-                    #ret_obj.filesize = fileinfo_dict["fileSize"] = fileinfo["Size"]
-                    #ret_obj.filetype = fileinfo_dict["type"] = fileinfo["type"]
-                    ## get rid of times, we only want dates
-                    #ret_obj.timestamp_str = fileinfo_dict["timestamp_str"] = datetime.datetime.strftime(fileinfo["LastModified"], opasConfig.TIME_FORMAT_STR)
-                    #ret_obj.timestamp = fileinfo_dict["timestamp"] = datetime.datetime.strptime(fileinfo_dict["timestamp_str"], opasConfig.TIME_FORMAT_STR)
-                    #ret_obj.date = fileinfo_dict["date_obj"] = fileinfo_dict["timestamp"].date()
-                    #ret_obj.date_str = fileinfo_dict["date_str"] = str(fileinfo_dict["date"])
-                    #ret_obj.etag = fileinfo_dict["etag"] = fileinfo.get("Etag", None)
-                    #ret_obj.build_date = fileinfo_dict["buildDate"] = time.time()
-                    #ret_val = self.fs.info(filespec)
+                except FileNotFoundError:
+                    ret_obj = None
                 except Exception as e:
                     logger.error(f"FlexFileSystemError: File access error: {e}")
+                    ret_obj = None
+                else:
+                    ret_obj.fileinfo = fileinfo_dict
+                    
             else: # local FS
                 filespec = self.fullfilespec(filespec=filespec, path=path) # "pep-graphics/embedded-graphics"
-                #stat = os.stat(filespec)
-                ret_obj.basename = fileinfo_dict["base_filename"] = os.path.basename(filespec)
-                ret_obj.filesize = fileinfo_dict["fileSize"]  = os.path.getsize(filespec)
-                ret_obj.timestamp_str = fileinfo_dict["timestamp_str"] = datetime.datetime.utcfromtimestamp(os.path.getmtime(filespec)).strftime(opasConfig.TIME_FORMAT_STR)
-                ret_obj.timestamp = fileinfo_dict["timestamp"] = datetime.datetime.strptime(fileinfo_dict["timestamp_str"], opasConfig.TIME_FORMAT_STR)
-                ret_obj.date = fileinfo_dict["date"] = fileinfo_dict["timestamp"].date()
-                ret_obj.date_str = fileinfo_dict["date_str"] = str(fileinfo_dict["date"])
-                #ret_val["type"] = fileinfo["type"]
-                ret_obj.build_date = fileinfo_dict["buildDate"] = time.time()
-                
-            ret_obj.fileinfo = fileinfo_dict
+                # need to check if it exists
+                if self.exists(filespec, path):
+                    #stat = os.stat(filespec)
+                    ret_obj.basename = fileinfo_dict["base_filename"] = os.path.basename(filespec)
+                    ret_obj.filesize = fileinfo_dict["fileSize"]  = os.path.getsize(filespec)
+                    ret_obj.timestamp_str = fileinfo_dict["timestamp_str"] = datetime.datetime.utcfromtimestamp(os.path.getmtime(filespec)).strftime(opasConfig.TIME_FORMAT_STR)
+                    ret_obj.timestamp = fileinfo_dict["timestamp"] = datetime.datetime.strptime(fileinfo_dict["timestamp_str"], opasConfig.TIME_FORMAT_STR)
+                    ret_obj.date = fileinfo_dict["date"] = fileinfo_dict["timestamp"].date()
+                    ret_obj.date_str = fileinfo_dict["date_str"] = str(fileinfo_dict["date"])
+                    #ret_val["type"] = fileinfo["type"]
+                    ret_obj.build_date = fileinfo_dict["buildDate"] = time.time()
+                    ret_obj.filename = fileinfo_dict["name"] = filespec
+                    ret_obj.fileinfo = fileinfo_dict
+                else:
+                    ret_obj = None
 
         except Exception as e:
             logger.error(f"FlexFileSystemError: File access error: ({e})")
@@ -286,19 +316,18 @@ class FlexFileSystem(object):
             else:
                 logger.error(f"FlexFileSystemError: File {filespec} already exists...exiting.")
                 ret_val = False
-        else:
-            try:
-                if self.key is not None:
-                    with self.fs.open(filespec, 'a', encoding=encoding) as out:
-                        out.write(data)
-                else:
-                    with open(filespec, 'a', encoding=encoding) as out:
-                        out.write(data)
-
-            except Exception as e:
-                logger.error(f"FlexFileSystemError: File write/access error: ({e})")
+        try:
+            if self.key is not None:
+                with self.fs.open(filespec, 'a', encoding=encoding) as out:
+                    out.write(data)
             else:
-                ret_val = True
+                with open(filespec, 'a', encoding=encoding) as out:
+                    out.write(data)
+
+        except Exception as e:
+            logger.error(f"FlexFileSystemError: File write/access error: ({e})")
+        else:
+            ret_val = True
         
         return ret_val        
 
@@ -535,6 +564,9 @@ class FlexFileSystem(object):
         ret_val = None
         if not self.exists(filespec, path):
             filespec = self.find(filespec, path_root=path)
+
+        fileinfoout = FileInfo()
+        fileinfoout.mapFS(filespec, path)
             
         filespec = self.fullfilespec(filespec)
         if filespec is not None:
@@ -556,7 +588,7 @@ class FlexFileSystem(object):
         else:
             logger.error("GetFileError: File %s not found", filespec)
       
-        return ret_val
+        return ret_val, fileinfoout
     
     def get_matching_filelist(self, path=None, filespec_regex=None, revised_after_date=None, max_items=None):
         """
