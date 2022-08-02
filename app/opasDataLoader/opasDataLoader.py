@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.0801/v2.0.006"   # semver versioning after date.
+__version__     = "2022.0802/v2.0.007"   # semver versioning after date.
 __status__      = "Development"
 
 programNameShort = "opasDataLoader"
@@ -497,8 +497,6 @@ def main():
         pass   # XXX Later - check for missing files and delete them from the core, since we didn't empty the core above
 
     # Go through a set of XML files
-    bib_total_reference_count = 0 # zero this here, it's checked at the end whether references are processed or not
-
     # ########################################################################
     # Get list of files to process    
     # ########################################################################
@@ -567,6 +565,7 @@ def main():
         stop_after = 0
         cumulative_file_time_start = time.time()
         issue_updates = {}
+        total_reference_count = 0
         if files_found > 0:
             if options.halfway:
                 stop_after = round(files_found / 2) + 5 # go a bit further
@@ -770,15 +769,15 @@ def main():
                 # Add to the references table
                 if 1: # options.biblio_update:
                     if artInfo.ref_count > 0:
+                        art_reference_count = artInfo.ref_count
+                        total_reference_count += artInfo.ref_count
                         bibReferences = parsed_xml.xpath("/pepkbd3//be")  # this is the second time we do this (also in artinfo, but not sure or which is better per space vs time considerations)
                         if options.display_verbose:
                             print(("\t...Loading %s references to the references database." % (artInfo.ref_count)))
     
                         #processedFilesCount += 1
-                        bib_total_reference_count = 0
                         ocd.open_connection(caller_name="processBibliographies")
                         for ref in bibReferences:
-                            bib_total_reference_count += 1
                             bib_entry = opasSolrLoadSupport.BiblioEntry(artInfo, ref)
                             opasSolrLoadSupport.add_reference_to_biblioxml_table(ocd, artInfo, bib_entry)
     
@@ -889,8 +888,8 @@ def main():
         if 1: # (options.biblio_update or options.fulltext_core_update) == True:
             elapsed_seconds = timeEnd-cumulative_file_time_start # actual processing time going through files
             elapsed_minutes = elapsed_seconds / 60
-            if bib_total_reference_count > 0:
-                msg = f"Finished! {post_action_verb} {processed_files_count} documents and {bib_total_reference_count} references. Total file inspection/load time: {elapsed_seconds:.2f} secs ({elapsed_minutes:.2f} minutes.) "
+            if art_reference_count > 0:
+                msg = f"Finished! {post_action_verb} {processed_files_count} documents and {total_reference_count} references. Total file inspection/load time: {elapsed_seconds:.2f} secs ({elapsed_minutes:.2f} minutes.) "
                 logger.info(msg)
                 print (msg)
             else:
