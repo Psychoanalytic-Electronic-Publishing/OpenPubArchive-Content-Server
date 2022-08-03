@@ -299,6 +299,7 @@ class DocumentListItem(BaseModel):
     relatedrx: str = Field(None, title="Closely Related Documents (documentID)", description="Document idref (documentID) associating all closely related documents to this one, e.g., this is a commentary on...")
     PEPCode: str = Field(None, title="Source Acronym", description="Acronym-type code assigned to the document source e.g., CPS, IJP, ANIJP-EL, ZBK. (The first part of the document ID.)")
     sourceTitle: str = Field(None, title="Source Title", description="The name of the document's source (title) in abbreviated, bibliographic format")
+    sourceTitleAbbr: str = Field(None, title="Source Title Abbrev", description="The name of the document's source (title) in abbreviated, bibliographic format")
     sourceType:  str = Field(None, title="Source Type", description="Journal, Book, Videostream")
     kwicList: list = Field(None, title="Key Words in Context", description="The matched terms in the matched document context, set by server config DEFAULT_KWIC_CONTENT_LENGTH ") # a real list, seems better long term
     kwic: str = Field(None, title="Key Words in Context", description="KWIC as text, concatenated, not a list -- the way in v1 (May be deprecated later") # 

@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.0802/v2.0.007"   # semver versioning after date.
+__version__     = "2022.0803/v2.0.008"   # semver versioning after date.
 __status__      = "Development"
 
 programNameShort = "opasDataLoader"
@@ -152,7 +152,6 @@ else:
 import opasXMLProcessor
 
 # Module Globals
-bib_total_reference_count = 0
 fs_flex = None
 
 def get_defaults(options, default_build_pattern, default_build):
@@ -277,7 +276,7 @@ def file_is_same_or_newer_in_solr_by_artid(solrcore, art_id, timestamp_str, file
 
             except Exception as e:
                 print (e)
-                ret_val = True # no need to rebuild
+                ret_val = True # no need to recompile
         else:
             result = opasSolrLoadSupport.get_file_dates_solr(solrcore, art_id=art_id)
             if result[0]["file_last_modified"] >= timestamp_str:
@@ -345,7 +344,11 @@ def main():
 
     # scriptSourcePath = os.path.dirname(os.path.realpath(__file__))
 
+    art_reference_count = 0
+    total_reference_count = 0
     processed_files_count = 0
+    rebuild_count = 0
+    reload_count = 0
     ocd =  opasCentralDBLib.opasCentralDB()
     fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root=localsecrets.FILESYSTEM_ROOT)
 
@@ -378,11 +381,22 @@ def main():
             print("Input data Root: ", start_folder)
             print("Input data Subfolder: ", options.subFolder)
 
-            if options.loadprecompiled:
+            if options.forceRebuildAllFiles == True:
+                msg = "Forced Rebuild - All files recompiled from source XML to precompiled XML and added."
+                logger.info(msg)
+                print (msg)
+                
+            if options.forceReloadAllFiles == True:
+                options.smartload = True
+                msg = "Forced Reload - All precompiled files reloaded, even if they are the same as in Solr. Smartload recompile is inferred--if the source XML is updated, they will be recompiled and added. "
+                logger.info(msg)
+                print (msg)
+
+            if options.loadprecompiled and not options.smartload:
                 input_build_pattern, selected_input_build = get_defaults(options,
                                                                          default_build_pattern=loaderConfig.default_precompiled_input_build_pattern,
                                                                          default_build=loaderConfig.default_precompiled_input_build)
-                print(f"Precompiled XML of build {selected_input_build} will be loaded to the databases without further compiling/processing: ")
+                print(f"Precompiled XML of build {selected_input_build} will be loaded to the databases if newer tan Solr, without examining source and compiling.")
                 pre_action_verb = "Load"
                 post_action_verb = "Loaded"
                 
@@ -400,15 +414,6 @@ def main():
                 #selected_input_build = options.input_build
                 
             print("Reset Core Data: ", options.resetCoreData)
-            if options.forceRebuildAllFiles == True:
-                msg = "Forced Rebuild - All files rebuilt from input and added, regardless of whether they are the same as in Solr."
-                logger.info(msg)
-                print (msg)
-                
-            if options.forceReloadAllFiles == True:
-                msg = "Forced Rebuild - All files rebuilt from input and added, regardless of whether they are the same as in Solr."
-                logger.info(msg)
-                print (msg)
 
             print(80*"*")
             print(f"Database will be updated. Location: {localsecrets.DBHOST}")
@@ -603,6 +608,8 @@ def main():
                         if not options.forceReloadAllFiles:
                             skipped_files += 1
                             continue
+                        else:
+                            reload_count += 1
                     else:
                         file_was_updated = True
                 
@@ -665,6 +672,7 @@ def main():
                     msg = f"\t...Exporting! Writing precompiled XML file to {fname}"
                     success = fs.create_text_file(fname, data=file_text)
                     if success:
+                        rebuild_count += 1
                         if options.display_verbose:
                             print (msg)
                     else:
@@ -679,7 +687,7 @@ def main():
                 fileXMLContents, final_fileinfo = fs.get_file_contents(final_xml_filename)
                 if options.display_verbose:
                     if separated_input_output and options.smartload and not smart_file_rebuild:
-                        print (f"SmartLoad: File not modified. No need to rebuild.")
+                        print (f"SmartLoad: File not modified. No need to recompile.")
                         
                 msg = f"\t...Opening precompiled XML file {final_fileinfo.basename} ({final_fileinfo.filesize} bytes) to load databases."
                 logger.info(msg)
@@ -888,6 +896,26 @@ def main():
         if 1: # (options.biblio_update or options.fulltext_core_update) == True:
             elapsed_seconds = timeEnd-cumulative_file_time_start # actual processing time going through files
             elapsed_minutes = elapsed_seconds / 60
+            print (80 * "-")
+            if options.smartload and not options.forceRebuildAllFiles:
+                msg = f"Option --smartload re/compiled {rebuild_count} documents from input source and reloaded to Solr."
+                logger.info(msg)
+                print (msg)
+            
+            if options.forceReloadAllFiles:
+                msg = f"Option --reload loaded {reload_count} of the total documents to Solr (although the same)."
+                logger.info(msg)
+                print (msg)
+            else:
+                msg = f"Of the precompiled files, {skipped_files} files did not need loading."
+                logger.info(msg)
+                print (msg)
+                
+            if options.forceRebuildAllFiles:
+                msg = f"Option --rebuild loaded recompiled and loaded {rebuild_count} of the total documents to Solr."
+                logger.info(msg)
+                print (msg)
+                
             if art_reference_count > 0:
                 msg = f"Finished! {post_action_verb} {processed_files_count} documents and {total_reference_count} references. Total file inspection/load time: {elapsed_seconds:.2f} secs ({elapsed_minutes:.2f} minutes.) "
                 logger.info(msg)
@@ -896,6 +924,8 @@ def main():
                 msg = f"Finished! {post_action_verb} {processed_files_count} documents {options.output_build}. Total file load time: {elapsed_seconds:.2f} secs ({elapsed_minutes:.2f} minutes.)"
                 logger.info(msg) 
                 print (msg)
+                
+
             if processed_files_count > 0:
                 msg = f"...Files per Min: {processed_files_count/elapsed_minutes:.4f}"
                 logger.info(msg)
@@ -920,6 +950,7 @@ def main():
         msg = f"Elapsed min: {elapsed_minutes:.4f}"
         logger.info(msg)
         print (msg)
+        print (80 * "-")
 
 # -------------------------------------------------------------------------------------------------------
 # run it!

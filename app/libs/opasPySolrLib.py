@@ -2028,6 +2028,8 @@ def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
                 art_embargo,
                 art_embargotype,
                 title,
+                art_sourcetitlefull,
+                art_sourcetitleabbr,
                 art_authors,
                 art_authors_mast,
                 art_citeas_xml,
@@ -2064,6 +2066,9 @@ def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
                 
             pgRg = result.get("art_pgrg", None)
             pgCount = result.get("art_pgcount", None)
+            source_title = result.get("art_sourcetitlefull")
+            source_title_abbr = result.get("art_sourcetitleabbr")
+            
             if pgRg is not None:
                 pgStart, pgEnd = opasgenlib.pgrg_splitter(pgRg)
             else:
@@ -2120,6 +2125,8 @@ def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
         try:
             item = models.DocumentListItem(PEPCode = pep_code, 
                                            year = result.get("art_year", None),
+                                           sourceTitle = source_title, 
+                                           sourceTitleAbbr = source_title_abbr, 
                                            vol = vol,
                                            issue = issue,
                                            issueTitle = issue_title,

@@ -2096,6 +2096,7 @@ def get_base_article_info_from_search_result(result: dict, documentListItem: mod
             if result.get("art_origrx", None): documentListItem.origrx = result.get("art_origrx", None)
             if result.get(opasConfig.RELATED_RX_FIELDNAME, None): documentListItem.relatedrx= result.get(opasConfig.RELATED_RX_FIELDNAME, None)
             documentListItem.sourceTitle = result.get("art_sourcetitlefull", None)
+            documentListItem.sourceTitleAbbr = result.get("art_sourcetitleabbr", None)
             documentListItem.sourceType = result.get("art_sourcetype", None)
             author_ids = result.get("art_authors", None)
             if author_ids is None:
