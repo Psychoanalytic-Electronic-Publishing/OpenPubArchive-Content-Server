@@ -1542,7 +1542,9 @@ class PEPJournalData:
     #print jrnlPEPPatterns.get("ANRP"   )
     #rgxSEPat = re.compile(jrnlPEPPatterns.get("SE"), re.VERBOSE | re.IGNORECASE)
     rgxSEPat = re.compile(jrnlPEPPatterns.get("SE"), re.VERBOSE | re.IGNORECASE)
-    SEPat2 = r"\b(SE|S\.\s*E\.)\b" # Keep sep so not so many false positives.  Use only on XML areas
+    SEPat2 = r"\bSE\b|S\.\s?E\." # Keep sep so not so many false positives.  Use only on XML areas
+    GWPat2 = r"\bGW\b|G\.\s?W\." # Keep sep so not so many false positives.  Use only on XML areas
+    
     SEVolPrefix = "("+jrnlPEPPatterns.get("SE")+"|"+SEPat2+")"
     SEVolNumPre = """,?\s*(<v>)?(vol\.?)?\s*"""
     SEVolNumPreVolReq = """,?\s*(<v>)?(vol\.?)\s+"""
@@ -1570,6 +1572,7 @@ class PEPJournalData:
     SEPgs = r"""(?P<extra>(\D*?London:?\s+Hogarth\s+Press)?\D*?\s*,?\s*(p{0,2}\.?,?\s*))?:?\s*(?P<bpgs>[1-9][0-9]{0,2}){0,1}\b"""
 
     rgxSEPat2 = re.compile(SEPat2)
+    rgxGWPat2 = re.compile(GWPat2)
 
     rgxSEFalsePositives = re.compile("Jelliffe", re.VERBOSE | re.IGNORECASE)
 
