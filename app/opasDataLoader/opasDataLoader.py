@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.0803/v2.0.008"   # semver versioning after date.
+__version__     = "2022.0829/v2.0.009"   # semver versioning after date.
 __status__      = "Development"
 
 programNameShort = "opasDataLoader"
@@ -837,8 +837,10 @@ def main():
                     art_vol_str = artInfoSolr.documents.responseSet[0].vol
                     art_issue = artInfoSolr.documents.responseSet[0].issue
                     issue_id_str = f"<issue_id><src>{src_code}</src><yr>{art_year}</yr><vol>{art_vol_str}</vol><iss>{art_issue}</iss></issue_id>"
-                except:
-                    logger.error(f"Error: can't find article info for: {art_id} ")
+                except IndexError:
+                    logger.error(f"Error: can't find article info for: {art_id}")
+                except Exception as e:
+                    logger.error(f"Error: can't find article info for: {art_id} {e}")
                 else:   
                     if src_code not in loaderConfig.DATA_UPDATE_PREPUBLICATION_CODES_TO_IGNORE:
                         art = f"<article id='{art_id}'>{art_citeas_xml}</article>"
