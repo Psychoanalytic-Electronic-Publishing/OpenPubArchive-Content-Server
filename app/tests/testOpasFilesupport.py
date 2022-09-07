@@ -75,7 +75,7 @@ class TestOpasFileSupport(unittest.TestCase):
             # >>> fs.fullfilespec(filespec="pep.css", path="embedded-graphics")
             'pep-graphics/embedded-graphics/pep.css'
             ret = fs.fullfilespec(filespec="IJAPS.016.0181A.FIG002.jpg", path=localsecrets.IMAGE_SOURCE_PATH)
-            assert(ret =='X:\\_PEPA1\\g\\IJAPS.016.0181A.FIG002.jpg')
+            assert(ret == 'X:\\AWS_S3\\AWS PEP-Web-Live-Data\\graphics\\IJAPS.016.0181A.FIG002.jpg')
    
     def test_2_exists(self):
         fs = opasFileSupport.FlexFileSystem(root=localsecrets.IMAGE_SOURCE_PATH)

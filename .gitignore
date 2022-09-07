@@ -24,6 +24,7 @@
 *epubExamination*
 *examples*
 *secret*
+untitled*.*
 .idea
 .vscode/
 .~*.*
@@ -56,3 +57,7 @@ app/libs/styles/jats-archive-oasis-article1-mathml3flat-edited.dtd
 *.xpr
 app/libs/opasSplitPgxHelper.py
 app/libs/XMLArticle.py
+requirements-update.txt
+requirements.in
+pydantic_model_test.py
+*abandoned*

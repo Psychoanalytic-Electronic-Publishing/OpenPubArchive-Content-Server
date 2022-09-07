@@ -437,7 +437,7 @@ class LocalID:
                     except Exception as e:
                         #raise log_error("****Nonstandard Local ID failed coercion: %s (%s)" % (parts[1], e))
                         retVal = idString
-                        logger.severe("****Nonstandard Local ID failed coercion: %s (%s)" % (parts[1], e))
+                        logger.error("****Nonstandard Local ID failed coercion: %s (%s)" % (parts[1], e))
 
         return retVal
 

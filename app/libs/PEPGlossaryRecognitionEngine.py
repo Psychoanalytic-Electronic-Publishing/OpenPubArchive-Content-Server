@@ -21,7 +21,6 @@ import opasXMLHelper as opasxmllib
 
 default_ancestor_list = "abbr|artinfo|be|h[1-9]|cgrp|figx|frac|impx|ln|pgx|url|a|bx|bxe|webx"
 ocd = opasCentralDBLib.opasCentralDB()
-# from PEPGlobals import gConst, gDefaultDTD, gPEPdbName, gDefaultPreface
 
 gDbg1 = 0 # general info
 gDbg2 = 0 # high level

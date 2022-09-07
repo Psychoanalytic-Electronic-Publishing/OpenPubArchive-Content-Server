@@ -30,7 +30,6 @@ from opasConfig import gBookCodes, gSplitBooks, REFBOOK, REFBOOKSERIES, REFBOOKS
 import PEPJournalData
 import PEPSplitBookData
 
-# Was importing this from PEPGlobals, but does not work in test situation when called from PEPJournalData (symbol generates an import error)  Try this.
 global gJrnlData
 try:  # see if it's been defined.
     a = gJrnlData
@@ -1067,7 +1066,7 @@ class Locator:
         """
         Determine what type of source/reference this is in PEP.
 
-        Return the string constant, defined in PEPGlobals.py for SOURCETYPE.  For example:
+        Return the string constant.  For example:
 
         	REFBOOK 			 = 	"RefBook"
         	REFBOOKSERIES 		 = 	"RefBookSeries"

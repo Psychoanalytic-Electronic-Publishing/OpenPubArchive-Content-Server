@@ -521,8 +521,8 @@ def metadata_get_source_info(src_type=None, # opasConfig.VALS_PRODUCT_TYPES
                 base_code = source.get("basecode")
                 documentID = source.get("documentID", source.get("articleID"))
                 title = source.get("title")
-
-                publisher = source.get("bib_abbrev", source.get("bibabbrev")) # videos and books
+                publisher_name = source.get("publisher", "Psychoanalytic Electronic Publishing")
+                biblio_abbrev = source.get("bib_abbrev", source.get("bibabbrev")) # videos and books
 
                 # for books (from productbase)
                 authors = source.get("author")
@@ -562,10 +562,11 @@ def metadata_get_source_info(src_type=None, # opasConfig.VALS_PRODUCT_TYPES
                             %                   (authors,
                                                  pub_year,
                                                  title,
-                                                 publisher
+                                                 biblio_abbrev
                                                  )
                 elif src_type == "videos":
                     art_citeas = source.get("art_citeas")
+                    base_code = source.get("src_code")
                 else:
                     art_citeas = title # journals just should show display title
     
@@ -583,6 +584,7 @@ def metadata_get_source_info(src_type=None, # opasConfig.VALS_PRODUCT_TYPES
                                                       bookCode = book_code,
                                                       abbrev = source.get("bibabbrev"),
                                                       bannerURL = f"{localsecrets.APIURL}/{opasConfig.IMAGES}/banner{source.get('basecode')}Logo.gif",
+                                                      publisher = publisher_name, 
                                                       language = source.get("language"),
                                                       ISSN = source.get("ISSN"),
                                                       ISBN10 = source.get("ISBN-10"),

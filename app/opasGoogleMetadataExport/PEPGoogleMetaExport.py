@@ -1,7 +1,6 @@
 # -*- coding: UTF-8 -*-
 #
 #  This file is used to export Google Metadata.
-#   It should probably be renamed to something more mnemonic.
 #
 #		Copyright N. Shapiro, Scilab Inc.
 #
@@ -342,25 +341,34 @@ class PEPLibExport:
 
         # queries to be used
         selArt = r"""select art_id,
-                            arttype,
-                            hdgtitle,
-                            srctitleseries,
-                            publisher,
-                            jrnlcode,
-                            year,
-                            vol,
-                            issue,
-                            pgrg,
-                            pgstart,
-                            pgend,
+                            art_type,
+                            art_title,
+                            src_title_abbr,
+                            bk_publisher,
+                            bk_title,
+                            bk_info_xml,
+                            src_code,
+                            art_year,
+                            art_vol,
+                            art_vol_suffix,
+                            art_issue,
+                            art_pgrg,
+                            art_pgstart,
+                            art_pgend,
                             filename,
-                            mainTOCID
+                            main_toc_id
                             from api_articles
                             %s
-                            order by articleID
+                            order by art_id
             """ % jrnlCodeWhereClause
 
-        selAuth = r"""select a.authorID as authorid, a.last as nlast, a.first as nfirst, a.middle as nmid, arta.authorder as norder, arta.authrole as role, a.suffix as nsufx
+        selAuth = r"""select a.authorID as authorid,
+                             a.last as nlast,
+                             a.first as nfirst,
+                             a.middle as nmid,
+                             arta.authorder as norder,
+                             arta.authrole as role,
+                             a.suffix as nsufx
                       from artauthorindex arta, authors a
                       where arta.articleID = '%s'
                       and arta.authorid = a.authorid
@@ -828,7 +836,7 @@ if __name__ == "__main__":
             for vol, year in restrictedYears:
                 if type(vol) == type([]):
                     for volsub in vol:
-                        jrnlWhereClause = "where jrnlcode='%s' and vol='%s'" % (jrnl, volsub)
+                        jrnlWhereClause = "where src_code='%s' and art_vol='%s'" % (jrnl, volsub)
                         filenameBase = r"\%s.%s.xml" % (jrnl, year)
                         print("Processing %s: %s/%s to %s" % (jrnl, volsub, year, filenameBase))
                         count, errs = doMetaDataExport(pepExport, rootdir, filenameBase, jrnlWhereClause)
@@ -837,7 +845,7 @@ if __name__ == "__main__":
                         if errs!=[]: totalErrors.append((filenameBase, errs))
 
                 else:
-                    jrnlWhereClause = "where jrnlcode='%s' and vol='%s'" % (jrnl, vol)
+                    jrnlWhereClause = "where src_code='%s' and art_vol='%s'" % (jrnl, vol)
                     filenameBase = r"\%s.%s.xml" % (jrnl, year)
                     print("Processing %s: %s/%s to %s" % (jrnl, vol, year, filenameBase))
                     count, errs = doMetaDataExport(pepExport, rootdir, filenameBase, jrnlWhereClause)

@@ -788,6 +788,7 @@ class SourceInfoListItem(BaseModel):
     bookCode: str = Field(None, title="Like PEPCode (srcCode) but specialized for books where many books fall under the same src_code")
     documentID: str = Field(None, title="OPAS ID for this document")
     bannerURL: str = Field(None, title="Graphical banner/logo for this source (URL)")
+    publisher: str = Field(None, title="Publisher name")
     displayTitle: str = Field(None, title="Reference format for this source")
     srcTitle: str = Field(None, title="Title of this source (from V1. Deprecated)")
     title: str = Field(None, title="Title of this source")
