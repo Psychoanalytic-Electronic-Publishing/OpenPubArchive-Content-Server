@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.0829/v2.0.009"   # semver versioning after date.
+__version__     = "2022.0923/v2.0.010"   # semver versioning after date.
 __status__      = "Development"
 
 programNameShort = "opasDataLoader"
@@ -670,7 +670,7 @@ def main():
                     file_text = file_prefix + file_text
                     # this is required if running on S3
                     msg = f"\t...Exporting! Writing precompiled XML file to {fname}"
-                    success = fs.create_text_file(fname, data=file_text)
+                    success = fs.create_text_file(fname, data=file_text, delete_existing=False)
                     if success:
                         rebuild_count += 1
                         if options.display_verbose:
