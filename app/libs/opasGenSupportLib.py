@@ -764,8 +764,11 @@ def default(val, defVal):
 
 #-----------------------------------------------------------------------------
 def is_empty(arg):
+    if arg is None:
+        return True
+    
     if not isinstance(arg, numbers.Number):
-        if arg is None or len(arg) == 0:
+        if len(arg) == 0:
             return True
         else:
             return False

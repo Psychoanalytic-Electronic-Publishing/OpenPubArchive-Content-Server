@@ -25,27 +25,29 @@ gDbg2 = False # processing details
 
 import logging
 logger = logging.getLogger(programNameShort)
+
 from loggingDebugStream import log_everywhere_if    # log as usual, but if first arg is true, also put to stdout for watching what's happening
-import re
 
 # import lxml
 import sys
+import re
+
 if sys.version_info[0] < 3:
     raise Exception("Must be using Python 3")
 
 import opasXMLHelper as opasxmllib
 
 #from opasFileSupport import FileInfo
-import PEPAuthorID
+import opasXMLPEPAuthorID
 import models
 import opasLocator
 from opasLocator import Locator
 import opasGenSupportLib as opasgenlib
 import opasSolrLoadSupport
 import PEPBookInfo
-import PEPAuthorID 
+import opasXMLPEPAuthorID 
 import PEPGlossaryRecognitionEngine
-import PEPSplitBookData  # Module not done and may not be needed.
+import opasXMLSplitBookSupport  # Module not done and may not be needed.
 import opasLocalID
 import opasPySolrLib
 
@@ -55,6 +57,7 @@ import PEPJournalData
 
 glossEngine = PEPGlossaryRecognitionEngine.GlossaryRecognitionEngine(gather=False)
 max_display_len_cf_articles = 90
+PEPSplitBookData = opasXMLSplitBookSupport.SplitBookData()
 
 #----------------------------------------------------------------------------------------------------------------
 def normalize_local_ids(pepxml, verbose=False):
@@ -104,6 +107,7 @@ def pgnbr_add_next_attrib(pepxml):
 
     return count
 
+#------------------------------------------------------------------------------------------------------
 def find_related_articles(ref, art_or_source_title, query_target="art_title_xml", max_words=opasConfig.MAX_WORDS, min_words=opasConfig.MIN_WORDS, word_len=opasConfig.MIN_WORD_LEN, max_cf_list=opasConfig.MAX_CF_LIST): 
     # title is either bib_entry.art_title_xml or bib_entry.source_title
     ret_val = rxcf = []
@@ -142,6 +146,46 @@ def find_related_articles(ref, art_or_source_title, query_target="art_title_xml"
     return ret_val
     
 #------------------------------------------------------------------------------------------------------
+def add_article_to_split_pages_table(ocd, pepxml, artInfo, remove_old=False, verbose=None):
+    """
+    WORK in PROGRESS - Converting from the OLD PEPXML
+    
+    Update the split pages table with this article instance from a split book
+    
+    """
+    pep_split_book_data = PEPSplitBookData(ocd)
+    article_locator = Locator(artInfo.art_id)
+
+    # Clear previous info about pages so we can refresh during parse/scan
+    if remove_old:
+        print ("Removing split book page records from prior run for this instance: %s" % str(aLoc))
+        pep_split_book_data.delSplitBookPages(artInfo.art_id)
+
+    # see if instance has a biblio
+    #nodes = PYXTree.getElements(ALL, E("bib"))
+    nodes = pepxml.xpath("/pepkbd3//bib")  
+    if len(nodes)>0:
+        has_biblio = 1
+    else:
+        has_biblio = 0
+
+    if aLoc.isMainTOC:
+        has_toc = 1
+    else:
+        has_toc = 0
+
+    nodes = pepxml.xpath("//n")  
+    # now add new ones
+    for node in nodes:
+        pg_number = node.text
+        if pg_number != "":
+            pg_number = opasDocuments.PageNumber(pg_number)
+            #print "Split Book PageNumber/Instance Recorded: ", pgN, self.fullFilename
+            pep_split_book_data.add_splitbook_page_record(artInfo.art_id, pg_number.pageID(), has_biblio=has_biblio, has_toc=has_toc, full_filename=artInfo.filename)
+        else:
+            print ("Warning!  Blank Page Number")
+
+#------------------------------------------------------------------------------------------------------
 def pgxPreProcessing(pepxml, ocd, artInfo, split_book_data=None, verbose=False):
     """
     WORK in PROGRESS - Converting from the OLD PEPXML
@@ -173,7 +217,7 @@ def pgxPreProcessing(pepxml, ocd, artInfo, split_book_data=None, verbose=False):
     #     rx = Full locator to page, if supplied, overrides any computed or implied ref
 
     # Walk through pgx elements, and fix locators
-    split_book_data = PEPSplitBookData.SplitBookData(ocd)
+    split_book_data = opasXMLSplitBookSupport.SplitBookData(database_connection=ocd)
     pgx_links = pepxml.xpath("/pepkbd3//pgx")
     if verbose:
         print(f"\t...Processing page links. {len(pgx_links)} pgx links found.")
@@ -202,7 +246,7 @@ def pgxPreProcessing(pepxml, ocd, artInfo, split_book_data=None, verbose=False):
             fulltext_cleaned = opasgenlib.removeAllPunct(fulltext_cleaned)
             fulltext_cleaned = opasDocuments.PageNumber(fulltext_cleaned)
             fulltext_cleaned = fulltext_cleaned.format(keyword=fulltext_cleaned.LOCALID)
-            split_inst_from_fulltext = split_book_data.getSplitBookInstance(jrnlCode=jrnlCode, vol=vol, pageID=fulltext_cleaned)
+            split_inst_from_fulltext = split_book_data.get_splitbook_page_instance(jrnlCode=jrnlCode, vol=vol, pageID=fulltext_cleaned)
             if split_inst_from_fulltext is None:
                 splitLoc = opasLocator.Locator(jrnlCode=jrnlCode, jrnlVol=vol, pgStart="1", art_info=artInfo, ocd=ocd)
                 local = splitLoc.localID(fulltext_cleaned).upper()
@@ -463,7 +507,7 @@ def xml_update(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
     for aut in xml_artauth_aut:
         # print(aut)
         if aut.attrib.get("authindexid", None) is None:
-            author_id = PEPAuthorID.getStandardAuthorID(nfirst=aut.findtext("nfirst"), nmid=aut.findtext("nmid"), nlast=aut.findtext("nlast"))
+            author_id = opasXMLPEPAuthorID.getStandardAuthorID(nfirst=aut.findtext("nfirst"), nmid=aut.findtext("nmid"), nlast=aut.findtext("nlast"))
             aut.set("authindexid", author_id)
             # set default attributes if not seet
             aut.set("listed", aut.get("listed", "true"))
@@ -638,6 +682,17 @@ def xml_update(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
     # xml_artauth = pepxml.findall("artinfo/artauth/aut")
     parsed_xml, ret_status = glossEngine.doGlossaryMarkup(parsed_xml, pretty_print=pretty_print)
     ret_val = parsed_xml
+    
+    # record split pages
+    
+    # if SE/GW
+    # This section adds related IDs for GW and SE.
+    if 1: # to turn on or off the feature.
+        import opasXMLParaLanguageConcordance
+        paraGWSEConcordance = opasXMLParaLanguageConcordance.PEPGWSEParaConcordance(ocd=ocd)
+        if artInfo.src_code in ["GW", "SE"]:
+            paraGWSEConcordance.addRelatedIDs(parsed_xml=parsed_xml, artInfo=artInfo) # pass in database instance
+    
 
     return ret_val, ret_status
 

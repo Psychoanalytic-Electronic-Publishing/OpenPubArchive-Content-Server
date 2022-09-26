@@ -28,7 +28,7 @@ import string, re
 from opasConfig import gBookCodes, gSplitBooks, REFBOOK, REFBOOKSERIES, REFBOOKSERIESARTICLE, REFBOOKARTICLE, REFJOURNALARTICLE
 
 import PEPJournalData
-import PEPSplitBookData
+import opasXMLSplitBookSupport
 
 global gJrnlData
 try:  # see if it's been defined.
@@ -1006,7 +1006,7 @@ class Locator:
         if ocd is None:
             ocd = self.ocd
 
-        split_book_data = PEPSplitBookData.SplitBookData(ocd)
+        split_book_data = opasXMLSplitBookSupport.SplitBookData(ocd)
 
         if localIDRef != None:
             # parameter Specified.
@@ -1042,14 +1042,14 @@ class Locator:
                     if self.isSplitBook():
                         # lookup where this page is found!
                         newLoc = Locator(self.forceArticleID(forcePgStart=localIDRef.localIDVal), art_info=self.art_info)
-                        splitArticleID = split_book_data.getSplitBookInstance(jrnlCode=newLoc.jrnlCode, vol=str(newLoc.jrnlVol), pageID=retValSuffix[1:])
+                        splitArticleID = split_book_data.get_splitbook_page_instance(book_code=newLoc.jrnlCode, vol=str(newLoc.jrnlVol), page_id=retValSuffix[1:])
                         #splitArticleID = checkSplitInThisBiblioDB.splitPageData.getSplitBookInstance(newLoc.jrnlCode, newLoc.jrnlVol, retValSuffix[1:])
                         if splitArticleID != None:
                             retVal = Locator(splitArticleID).articleID() + retValSep + str(retValSuffix)
                         else:
                             #see if the page # is an exception!
                             newLoc = Locator(self.forceArticleID(forcePgStart=localIDRef.localIDVal))
-                            splitArticleID = split_book_data.getSplitBookInstance(newLoc.jrnlCode, newLoc.jrnlVol, retValSuffix[1:])
+                            splitArticleID = split_book_data.get_splitbook_page_instance(newLoc.jrnlCode, newLoc.jrnlVol, retValSuffix[1:])
                             logger.warning("The page lookup for %s.%s didn't find any instances" % (newLoc.baseCode(), retValSuffix))
                     #else:
                     #	print "Not split book"

@@ -24,7 +24,7 @@ import re
 import opasGenSupportLib as opasgenlib
 import opasLocator
 
-import PEPAuthorID
+import opasXMLPEPAuthorID
 from opasDocuments import PageNumber, PageRange
 
 gDbg1 = 0
@@ -521,7 +521,7 @@ def isLocalID(idString):
         idString = str(idString)
 
     #print "IDString: ", idString
-    if not PEPAuthorID.isAuthorIDString(idString):
+    if not opasXMLPEPAuthorID.isAuthorIDString(idString):
         if isShortIDRef(idString):
             #if 1: print "Short ID!"
             retVal = True

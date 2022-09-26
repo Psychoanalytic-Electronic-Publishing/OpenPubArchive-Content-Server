@@ -1258,6 +1258,22 @@ def xml_elem_or_str_to_text(elem_or_xmlstr, default_return=""):
         
     return ret_val
 
+def xml_node_has_ancestors(element_node, ancestor_tag="*"):
+    """
+    Return a count of matching ancestor elements
+    """
+    ret_val = len(xml_node_list_ancestors(element_node, ancestor_tag))
+       
+    return ret_val
+
+def xml_node_list_ancestors(element_node, ancestor_tag="*"):
+    """
+    Return a list of matching ancestor elements
+    """
+    ret_val = [n for n in element_node.iterancestors(ancestor_tag)]
+       
+    return ret_val
+
 def xml_xpath_return_textlist(element_node, xpath, default_return=list()):
     """
     Return text of element specified by xpath (with Node() as final part of path)

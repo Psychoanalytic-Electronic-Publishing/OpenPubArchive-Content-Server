@@ -670,7 +670,7 @@ def main():
                     file_text = file_prefix + file_text
                     # this is required if running on S3
                     msg = f"\t...Exporting! Writing precompiled XML file to {fname}"
-                    success = fs.create_text_file(fname, data=file_text, delete_existing=False)
+                    success = fs.create_text_file(fname, data=file_text, delete_existing=True)
                     if success:
                         rebuild_count += 1
                         if options.display_verbose:

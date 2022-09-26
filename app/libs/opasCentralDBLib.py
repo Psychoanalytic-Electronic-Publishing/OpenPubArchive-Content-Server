@@ -2196,7 +2196,7 @@ class opasCentralDB(object):
     def do_action_query(self, querytxt, queryparams, contextStr=None):
     
         fname = "do_action_query"
-        ret_val = None
+        ret_val = False
         localDisconnectNeeded = False
         if self.connected != True:
             self.open_connection(caller_name=fname) # make sure connection is open
@@ -2204,10 +2204,9 @@ class opasCentralDB(object):
             
         with closing(self.db.cursor(buffered=True, dictionary=True)) as dbc:
             try:
-                ret_val = dbc.execute(querytxt, queryparams)
+                dbc.execute(querytxt, queryparams)
             except mysql.connector.DataError as e:
                 logger.error(f"DBError: Art: {contextStr}. DB Data Error {e} ({querytxt})")
-                ret_val = None
                 # raise self.db.DataError(e)
             except mysql.connector.OperationalError as e:
                 logger.error(f"DBError: Art: {contextStr}. DB Operation Error {e} ({querytxt})")
@@ -2229,6 +2228,7 @@ class opasCentralDB(object):
                 raise Exception(e)
             else:
                 self.db.commit()
+                ret_val = True
         
         if localDisconnectNeeded == True:
             # if so, commit any changesand close.  Otherwise, it's up to caller.
