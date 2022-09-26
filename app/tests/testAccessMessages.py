@@ -213,11 +213,12 @@ class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
         print(f'Description: {response_set["accessLimitedDescription"]}\n')
        
     def test_013A_get_ijpopen_only_permission_manually_proof_messages(self):
-        usertype = "IJPOpen Only subscriber"
+        #usertype = "IJPOpen Only subscriber"
+        #message_collection[usertype] = {}
+        usertype = "IJPOpen only"
         message_collection[usertype] = {}
         userid = localsecrets.PADS_TEST_IJPOPENONLY
         userpw = localsecrets.PADS_TEST_IJPOPENONLY_PW
-        usertype = "IJPOpen only"
         print (f"Login PADS_TEST_IJPOPENONLY! {userid} - {usertype}")
         sessID, headers, session_info = test_login(username=userid, password=userpw)
         # Try to return IJPOPEN, should be ok
@@ -235,7 +236,11 @@ class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
         print(f'Description: {response_set["accessLimitedDescription"]}\n')
         assert (response_set["accessLimited"] == True)
         assert (response_set["accessClassification"] == 'current')
-        message_collection[usertype][response_set["accessClassification"]] = f'Reason:\n   {response_set["accessLimitedReason"]}\n'
+        access_class = response_set["accessClassification"]
+        print (f"Access Classification: {access_class}")
+        print (f"Message_Collection Dict: {message_collection[usertype]}")
+        message_collection[usertype][response_set["accessClassification"]] = \
+            f'Reason:\n   {response_set["accessLimitedReason"]}\n'
 
         # peparchive document
         full_URL = base_plus_endpoint_encoded(f"/v2/Documents/Document/AJP.024.0017A/?return_format=XML")
@@ -250,7 +255,8 @@ class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
         #print(f'Description: {response_set["accessLimitedDescription"]}\n')
         assert (response_set["accessLimited"] == True)
         assert (response_set["accessClassification"] == 'archive')
-        message_collection[usertype][response_set["accessClassification"]] = f'Reason:\n   {response_set["accessLimitedReason"]}\n'
+        message_collection[usertype][response_set["accessClassification"]] = \
+            f'Reason:\n   {response_set["accessLimitedReason"]}\n'
 
         # ijpopen document
         full_URL = base_plus_endpoint_encoded(f"/v2/Documents/Document/IJPOPEN.004.0008A/?return_format=XML")
@@ -263,7 +269,8 @@ class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
         #print(f'Description: {response_set["accessLimitedDescription"]}\n')
         assert (response_set["accessLimited"] == False)
         assert (response_set["accessClassification"] == 'special')
-        message_collection[usertype][response_set["accessClassification"]] = f'Reason:\n   {response_set["accessLimitedReason"]}\n'
+        message_collection[usertype][response_set["accessClassification"]] = \
+            f'Reason:\n   {response_set["accessLimitedReason"]}\n'
 
         # free document
         full_URL = base_plus_endpoint_encoded(f"/v2/Documents/Document/PEPGRANTVS.001.0007A/?return_format=XML")
@@ -278,11 +285,12 @@ class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
         print(f'Description: {response_set["accessLimitedDescription"]}\n')
         assert (response_set["accessLimited"] == False)
         assert (response_set["accessClassification"] == 'free')
-        message_collection[usertype][response_set["accessClassification"]] = f'Reason:\n   {response_set["accessLimitedReason"]}\n'      
+        message_collection[usertype][response_set["accessClassification"]] = \
+            f'Reason:\n   {response_set["accessLimitedReason"]}\n'      
 
     def test_014A_get_archive_subscriber_only_permission_manually_proof_messages(self):
-        message_collection[usertype] = {}
         usertype = "archive subscriber"
+        message_collection[usertype] = {}
         userid = localsecrets.PADS_TEST_ARCHIVEONLY
         userpw = localsecrets.PADS_TEST_ARCHIVEONLY_PW
         print (f"Login PADS_TEST_ARCHIVEONLY! {userid} - {usertype}")
@@ -302,7 +310,8 @@ class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
         #print(f'Description: {response_set["accessLimitedDescription"]}\n')
         assert (response_set["accessLimited"] == True)
         assert (response_set["accessClassification"] == 'current')
-        message_collection[usertype][response_set["accessClassification"]] = f'Reason:\n   {response_set["accessLimitedReason"]}\n'
+        message_collection[usertype][response_set["accessClassification"]] = \
+            f'Reason:\n   {response_set["accessLimitedReason"]}\n'
 
         # peparchive document
         full_URL = base_plus_endpoint_encoded(f"/v2/Documents/Document/AJP.024.0017A/?return_format=XML")
@@ -317,7 +326,8 @@ class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
         #print(f'Description: {response_set["accessLimitedDescription"]}\n')
         assert (response_set["accessLimited"] == False)
         assert (response_set["accessClassification"] == 'archive')
-        message_collection[usertype][response_set["accessClassification"]] = f'Reason:\n   {response_set["accessLimitedReason"]}\n'
+        message_collection[usertype][response_set["accessClassification"]] = \
+            f'Reason:\n   {response_set["accessLimitedReason"]}\n'
 
         # free document
         full_URL = base_plus_endpoint_encoded(f"/v2/Documents/Document/PEPGRANTVS.001.0007A/?return_format=XML")
@@ -332,7 +342,8 @@ class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
         #print(f'Description: {response_set["accessLimitedDescription"]}\n')
         assert (response_set["accessLimited"] == False)
         assert (response_set["accessClassification"] == 'free')
-        message_collection[usertype][response_set["accessClassification"]] = f'Reason:\n   {response_set["accessLimitedReason"]}\n'
+        message_collection[usertype][response_set["accessClassification"]] = \
+            f'Reason:\n   {response_set["accessLimitedReason"]}\n'
         
         ## ijpopen document
         #full_URL = base_plus_endpoint_encoded(f"/v2/Documents/Document/IJPOPEN.004.0008A/?return_format=XML")
@@ -345,7 +356,8 @@ class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
         #print(f'Description: {response_set["accessLimitedDescription"]}\n')
         #assert (response_set["accessLimited"] == False)
         #assert (response_set["accessClassification"] == 'special')
-        #message_collection[usertype][response_set["accessClassification"]] = f'Reason:\n   {response_set["accessLimitedReason"]}\n'
+        #message_collection[usertype][response_set["accessClassification"]] = \
+        # f'Reason:\n   {response_set["accessLimitedReason"]}\n'
 
     def test_015A_get_pepall_permission_manually_proof_messages(self):
         usertype = "All Access user"
@@ -369,7 +381,8 @@ class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
         #print(f'Classification: {response_set["accessClassification"]}\n')
         #print(f'Reason:\n   {response_set["accessLimitedReason"]}\n')
         #print(f'Description: {response_set["accessLimitedDescription"]}\n')
-        message_collection[usertype][response_set["accessClassification"]] = f'Reason:\n   {response_set["accessLimitedReason"]}\n'
+        message_collection[usertype][response_set["accessClassification"]] = \
+            f'Reason:\n   {response_set["accessLimitedReason"]}\n'
 
         # peparchive document
         full_URL = base_plus_endpoint_encoded(f"/v2/Documents/Document/AJP.024.0017A/?return_format=XML")
@@ -385,7 +398,8 @@ class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
         #print(f'Description: {response_set["accessLimitedDescription"]}\n')
         assert (response_set["accessLimited"] == False)
         assert (response_set["accessClassification"] == 'archive')
-        message_collection[usertype][response_set["accessClassification"]] = f'Reason:\n   {response_set["accessLimitedReason"]}\n'
+        message_collection[usertype][response_set["accessClassification"]] = \
+            f'Reason:\n   {response_set["accessLimitedReason"]}\n'
 
         # free document
         full_URL = base_plus_endpoint_encoded(f"/v2/Documents/Document/PEPGRANTVS.001.0007A/?return_format=XML")
@@ -401,7 +415,8 @@ class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
         #print(f'Description: {response_set["accessLimitedDescription"]}\n')
         assert (response_set["accessLimited"] == False)
         assert (response_set["accessClassification"] == 'free')
-        message_collection[usertype][response_set["accessClassification"]] = f'Reason:\n   {response_set["accessLimitedReason"]}\n'
+        message_collection[usertype][response_set["accessClassification"]] = \
+            f'Reason:\n   {response_set["accessLimitedReason"]}\n'
 
         # Try to return IJPOPEN, should be ok
         # ijpopen document
@@ -416,14 +431,15 @@ class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
         #print(f'Description: {response_set["accessLimitedDescription"]}\n')
         #assert (response_set["accessLimited"] == False)
         #assert (response_set["accessClassification"] == 'special')
-        #message_collection[usertype][response_set["accessClassification"]] = f'Reason:\n   {response_set["accessLimitedReason"]}\n'
+        #message_collection[usertype][response_set["accessClassification"]] = \
+        # f'Reason:\n   {response_set["accessLimitedReason"]}\n'
 
     def test_016A_get_registered_user_permission_manually_proof_messages(self):
         # global message_collection
+        usertype = "Registered user"
         message_collection[usertype] = {}
         userid = localsecrets.PADS_TEST_REGISTEREDUSER
         userpw = localsecrets.PADS_TEST_REGISTEREDUSER_PW
-        usertype = "Registered user"
         print (f"Login PADS_TEST_REGISTEREDUSER! {userid} - {usertype}")
         sessID, headers, session_info = test_login(username=userid, password=userpw)
         # Try to return IJPOPEN
@@ -438,7 +454,8 @@ class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
         #print(f'Classification: {response_set["accessClassification"]}')
         #print(f'Reason:\n   {response_set["accessLimitedReason"]}\n')
         #print(f'Description: {response_set["accessLimitedDescription"]}\n')
-        message_collection[usertype][response_set["accessClassification"]] = f'Reason:\n   {response_set["accessLimitedReason"]}\n'
+        message_collection[usertype][response_set["accessClassification"]] = \
+            f'Reason:\n   {response_set["accessLimitedReason"]}\n'
 
         # pepcurrent document
         full_URL = base_plus_endpoint_encoded(f"/v2/Documents/Document/AJP.080.0001A/?return_format=XML")
@@ -453,7 +470,8 @@ class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
         #print(f'Classification: {response_set["accessClassification"]}\n')
         #print(f'Reason:\n   {response_set["accessLimitedReason"]}\n')
         #print(f'Description: {response_set["accessLimitedDescription"]}\n')
-        message_collection[usertype][response_set["accessClassification"]] = f'Reason:\n   {response_set["accessLimitedReason"]}\n'
+        message_collection[usertype][response_set["accessClassification"]] = \
+            f'Reason:\n   {response_set["accessLimitedReason"]}\n'
 
         # peparchive document
         full_URL = base_plus_endpoint_encoded(f"/v2/Documents/Document/AJP.024.0017A/?return_format=XML")
@@ -468,7 +486,8 @@ class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
         #print(f'Classification: {response_set["accessClassification"]}\n')
         #print(f'Reason:\n   {response_set["accessLimitedReason"]}\n')
         #print(f'Description: {response_set["accessLimitedDescription"]}\n')
-        message_collection[usertype][response_set["accessClassification"]] = f'Reason:\n   {response_set["accessLimitedReason"]}\n'
+        message_collection[usertype][response_set["accessClassification"]] = \
+            f'Reason:\n   {response_set["accessLimitedReason"]}\n'
 
         # free document
         full_URL = base_plus_endpoint_encoded(f"/v2/Documents/Document/PEPGRANTVS.001.0007A/?return_format=XML")
@@ -483,7 +502,8 @@ class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
         #print(f'Classification: {response_set["accessClassification"]}\n')
         #print(f'Reason:\n   {response_set["accessLimitedReason"]}\n')
         #print(f'Description: {response_set["accessLimitedDescription"]}\n')
-        message_collection[usertype][response_set["accessClassification"]] = f'Reason:\n   {response_set["accessLimitedReason"]}\n'
+        message_collection[usertype][response_set["accessClassification"]] = \
+            f'Reason:\n   {response_set["accessLimitedReason"]}\n'
 
     def test_017A_non_logged_in_user_manually_proof_messages(self):
         usertype = "Non-Logged-in-user"
@@ -503,7 +523,8 @@ class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
             #print(f'Classification: {response_set["accessClassification"]}')
             #print(f'Reason:\n   {response_set["accessLimitedReason"]}\n')
             #print(f'Description: {response_set["accessLimitedDescription"]}\n')
-            message_collection[usertype][response_set["accessClassification"]] = f'Reason:\n   {response_set["accessLimitedReason"]}\n'
+            message_collection[usertype][response_set["accessClassification"]] = \
+                f'Reason:\n   {response_set["accessLimitedReason"]}\n'
     
             # pepcurrent document
             full_URL = base_plus_endpoint_encoded(f"/v2/Documents/Document/AJP.080.0001A/?return_format=XML")
@@ -518,7 +539,8 @@ class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
             #print(f'Classification: {response_set["accessClassification"]}\n')
             #print(f'Reason:\n   {response_set["accessLimitedReason"]}\n')
             #print(f'Description: {response_set["accessLimitedDescription"]}\n')
-            message_collection[usertype][response_set["accessClassification"]] = f'Reason:\n   {response_set["accessLimitedReason"]}\n'
+            message_collection[usertype][response_set["accessClassification"]] = \
+                f'Reason:\n   {response_set["accessLimitedReason"]}\n'
     
             # peparchive document
             full_URL = base_plus_endpoint_encoded(f"/v2/Documents/Document/AJP.024.0017A/?return_format=XML")
@@ -533,7 +555,8 @@ class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
             #print(f'Classification: {response_set["accessClassification"]}\n')
             #print(f'Reason:\n   {response_set["accessLimitedReason"]}\n')
             #print(f'Description: {response_set["accessLimitedDescription"]}\n')
-            message_collection[usertype][response_set["accessClassification"]] = f'Reason:\n   {response_set["accessLimitedReason"]}\n'
+            message_collection[usertype][response_set["accessClassification"]] = \
+                f'Reason:\n   {response_set["accessLimitedReason"]}\n'
     
             # free document
             full_URL = base_plus_endpoint_encoded(f"/v2/Documents/Document/PEPGRANTVS.001.0007A/?return_format=XML")
@@ -548,7 +571,8 @@ class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
             #print(f'Classification: {response_set["accessClassification"]}\n')
             #print(f'Reason:\n   {response_set["accessLimitedReason"]}\n')
             #print(f'Description: {response_set["accessLimitedDescription"]}\n')
-            message_collection[usertype][response_set["accessClassification"]] = f'Reason:\n   {response_set["accessLimitedReason"]}\n'
+            message_collection[usertype][response_set["accessClassification"]] = \
+                f'Reason:\n   {response_set["accessLimitedReason"]}\n'
             print ("Message Collection by user type and classification:")
             pp.pprint(message_collection)
     

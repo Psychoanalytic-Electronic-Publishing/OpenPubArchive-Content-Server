@@ -156,7 +156,13 @@ def find_or_emptystr(elem, find_target: str, default=""):
     return ret_val
 
 
-def pep_endnote_generator(path=None, source_type="journal", fs=None, size=None, max_records=None, clear_sitemap=None, path_is_root_bucket=False):
+def pep_endnote_generator(path=None, source_type="journal", source_code=None, fs=None,
+                          size=None, max_records=None, clear_sitemap=None,
+                          path_is_root_bucket=False):
+    """
+    Generate the EndNote file for the source type (journal, videos, or books).
+    Optionally (mainly for testing) restrict to a specific source code.
+    """
     journal_info = opasAPISupportLib.metadata_get_source_info(src_type=source_type)
     #journal_codes = [doc.PEPCode for doc in journal_info.sourceInfo.responseSet]
     jinfo = [(doc.PEPCode, doc) for doc in journal_info.sourceInfo.responseSet]
@@ -193,7 +199,6 @@ def pep_endnote_generator(path=None, source_type="journal", fs=None, size=None, 
                         auts = artinfo.artauth
                         publisher = journal_info_dict[journal_code].publisher
                         issn = journal_info_dict[journal_code].ISSN
-                        contribs = ""
                         aut_count = 0
                         art_sourcetype = ""
                         art_pgrg = f"{doclistitem.pgStart} - {doclistitem.pgEnd}"
@@ -237,14 +242,12 @@ def pep_endnote_generator(path=None, source_type="journal", fs=None, size=None, 
                     except Exception as e:
                         try:
                             logger.error (f"Error: {e} for {doclistitem.documentID}")
-                            #enf.write(article_meta)
                             endnote_text += article_entry
                         except:
                             pass # ok, skip article
                     else:
-                        # print (article_meta)
-                        #enf.write(article_meta)
                         endnote_text += article_entry
+
                     # article info end
                     
             except Exception as e:

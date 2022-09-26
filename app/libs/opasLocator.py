@@ -1006,7 +1006,7 @@ class Locator:
         if ocd is None:
             ocd = self.ocd
 
-        split_book_data = opasXMLSplitBookSupport.SplitBookData(ocd)
+        split_book_data = opasXMLSplitBookSupport.SplitBookData(database_connection=ocd)
 
         if localIDRef != None:
             # parameter Specified.

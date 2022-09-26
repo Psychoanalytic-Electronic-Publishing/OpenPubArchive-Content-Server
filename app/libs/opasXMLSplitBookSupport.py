@@ -17,7 +17,7 @@ DBGSTDOUT = True
 SPLIT_BOOK_TABLE = "vw_opasloader_splitbookpages"
 
 #----------------------------------------------------------------------------------------
-# CLASS DEF: PEPSplitBookData
+# CLASS DEF: SplitBookData
 #----------------------------------------------------------------------------------------
 class SplitBookData:
     """
@@ -246,9 +246,10 @@ if __name__ == "__main__":
     import doctest
     doctest.testmod()
     sys.exit()
+    import opasCentralDBLib
 
-    #pSplitDB = PEPSplitBookData(host="192.168.1.158", port=3306, user="neil")
-    splitbook = SplitBookData()
+    ocd = opasCentralDBLib.opasCentralDB()
+    splitbook = SplitBookData(database_connection=ocd)
 
     if 1:
         splitbook.garbage_collect()

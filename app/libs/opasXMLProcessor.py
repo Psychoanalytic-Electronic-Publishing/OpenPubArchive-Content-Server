@@ -14,7 +14,7 @@ Can optionally
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.0826/v.1.0.100"  # recorded in xml processed pepkbd3 procby
+__version__     = "2022.0926/v.1.0.101"  # recorded in xml processed pepkbd3 procby
 __status__      = "Development"
 
 programNameShort = "opasXMLProcessor"
@@ -57,7 +57,6 @@ import PEPJournalData
 
 glossEngine = PEPGlossaryRecognitionEngine.GlossaryRecognitionEngine(gather=False)
 max_display_len_cf_articles = 90
-PEPSplitBookData = opasXMLSplitBookSupport.SplitBookData()
 
 #----------------------------------------------------------------------------------------------------------------
 def normalize_local_ids(pepxml, verbose=False):
@@ -153,13 +152,14 @@ def add_article_to_split_pages_table(ocd, pepxml, artInfo, remove_old=False, ver
     Update the split pages table with this article instance from a split book
     
     """
-    pep_split_book_data = PEPSplitBookData(ocd)
-    article_locator = Locator(artInfo.art_id)
+    pep_split_book_data = opasXMLSplitBookSupport.SplitBookData(database_connection=ocd)
+    art_id = artInfo.art_id
+    article_locator = Locator(art_id )
 
     # Clear previous info about pages so we can refresh during parse/scan
     if remove_old:
-        print ("Removing split book page records from prior run for this instance: %s" % str(aLoc))
-        pep_split_book_data.delSplitBookPages(artInfo.art_id)
+        print (f"Removing split book page records from prior run for this instance: {art_id }")
+        pep_split_book_data.delete_splitbook_page_records(art_id)
 
     # see if instance has a biblio
     #nodes = PYXTree.getElements(ALL, E("bib"))
@@ -169,7 +169,7 @@ def add_article_to_split_pages_table(ocd, pepxml, artInfo, remove_old=False, ver
     else:
         has_biblio = 0
 
-    if aLoc.isMainTOC:
+    if article_locator.isMainTOC:
         has_toc = 1
     else:
         has_toc = 0
@@ -181,7 +181,11 @@ def add_article_to_split_pages_table(ocd, pepxml, artInfo, remove_old=False, ver
         if pg_number != "":
             pg_number = opasDocuments.PageNumber(pg_number)
             #print "Split Book PageNumber/Instance Recorded: ", pgN, self.fullFilename
-            pep_split_book_data.add_splitbook_page_record(artInfo.art_id, pg_number.pageID(), has_biblio=has_biblio, has_toc=has_toc, full_filename=artInfo.filename)
+            pep_split_book_data.add_splitbook_page_record(artInfo.art_id,
+                                                          pg_number.pageID(),
+                                                          has_biblio=has_biblio,
+                                                          has_toc=has_toc,
+                                                          full_filename=artInfo.filename)
         else:
             print ("Warning!  Blank Page Number")
 
@@ -402,6 +406,7 @@ def pgxPreProcessing(pepxml, ocd, artInfo, split_book_data=None, verbose=False):
                         msg = "\t\t\t...This may not be needed and thus is still in development.  Skipping link"
                         log_everywhere_if(gDbg2, level="error", msg=msg)
                         pgLink = None
+                        # need update to use:
                         #pgLink = PEPSplitBookData.getBibEntryPageLink(bibRef, pageNumber=pgStart)
                     elif not opasgenlib.is_empty(pgRefRX):
                         # use this full reference, or if its already a page link, go with that.
@@ -420,6 +425,7 @@ def pgxPreProcessing(pepxml, ocd, artInfo, split_book_data=None, verbose=False):
                         msg = "\t\t\t...pgRefRE empty - watch this.  This may not be needed and thus is still in development.  Skipping link"
                         log_everywhere_if(gDbg2, level="error", msg=msg)
                         pgLink = None
+                        # need update to use:
                         #pgLink = PEPSplitBookData.getBibEntryPageLink(bibRef, pageNumber=pgStart) # may not be needed or appropritate
     
                     #else: # we shouldn't be here, so not test needed.
@@ -662,7 +668,7 @@ def xml_update(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
     #          so for books not included, I'll need to run the old PEPXML and copy the table over,
     #          or else new split TOCS will need to have direct links to the proper instance manually added.
 
-    split_book_data = PEPSplitBookData.SplitBookData(ocd)
+    split_book_data = opasXMLSplitBookSupport.SplitBookData(database_connection=ocd)
     #pgx_links = parsed_xml.xpath("/pepkbd3//pgx") 
     #logger.info("\t...Processing page links.")
     #for pgx in pgx_links:
