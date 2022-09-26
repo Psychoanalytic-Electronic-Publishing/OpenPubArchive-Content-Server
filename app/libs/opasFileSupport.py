@@ -324,10 +324,10 @@ class FlexFileSystem(object):
                 #ret_val = False
         try:
             if self.key is not None:
-                with self.fs.open(fullfilespec, 'a', encoding=encoding) as out:
+                with self.fs.open(fullfilespec, 'w', encoding=encoding) as out:
                     out.write(data)
             else:
-                with open(fullfilespec, 'a', encoding=encoding) as out:
+                with open(fullfilespec, 'w', encoding=encoding) as out:
                     out.write(data)
 
         except Exception as e:

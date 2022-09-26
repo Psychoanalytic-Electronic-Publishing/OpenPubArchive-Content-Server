@@ -733,7 +733,8 @@ class ArticleInfo(object):
             if self.src_code == "SE":
                 self.bk_seriestoc = "SE.000.0000A"
             if self.src_code == "GW":
-                self.bk_seriestoc = "GW.000.0000A"
+                self.bk_seriestoc = "GW.000.0000A"               
+                
 #------------------------------------------------------------------------------------------------------
 def get_file_dates_solr(solrcore, art_id=None, filename=None):
     """
@@ -1570,7 +1571,7 @@ def add_article_to_api_articles_table(ocd, artInfo, verbose=None):
         ret_val = False
     
     return ret_val  # return True for success
-
+    
 #------------------------------------------------------------------------------------------------------
 def add_to_tracker_table(ocd, art_id, verbose=None):
     """

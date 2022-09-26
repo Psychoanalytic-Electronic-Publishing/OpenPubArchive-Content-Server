@@ -36,17 +36,17 @@ import codecs
 import time
 import logging
 
-from lxml import etree, objectify
+from lxml import objectify
 
 sys.path.append('../libs')
 sys.path.append('../config')
 sys.path.append('../libs/configLib')
-sys.path.append('./configGoogleMeta')
 import localsecrets
 import opasFileSupport
 import opasAPISupportLib
 import opasPySolrLib
-import googleMetadataConfig
+from configGoogleMeta import googleMetadataConfig
+
 # import inspect
 # from inspect import cleandoc
 
