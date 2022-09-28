@@ -1274,6 +1274,28 @@ def xml_node_list_ancestors(element_node, ancestor_tag="*"):
        
     return ret_val
 
+def xml_node_list_ancestor_names(element_node, ancestor_tag="*"):
+    """
+    Return a list of matching ancestor elements
+    """
+    ret_val = [n.tag for n in element_node.iterancestors(ancestor_tag)]
+       
+    return ret_val
+
+def xml_node_regx_ancestors(element_node, ancestor_tag="*", regx=".*"):
+    """
+    Return True if an ancestor matches against the regx 
+    """
+    ret_val = False
+    lst = [n.tag for n in element_node.iterancestors(ancestor_tag)]
+    for n in lst:
+        ret_val = re.match(regx, n)
+        if ret_val != None:
+            ret_val = True
+            break
+
+    return ret_val
+
 def xml_xpath_return_textlist(element_node, xpath, default_return=list()):
     """
     Return text of element specified by xpath (with Node() as final part of path)

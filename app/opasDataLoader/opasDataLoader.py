@@ -193,7 +193,7 @@ def file_was_created_before(before_date, fileinfo):
             ret_val = True
         else:
             ret_val = False
-    except Exception as e:
+    except Exception:
         ret_val = False # not found or error, return False
         
     return ret_val
@@ -207,7 +207,7 @@ def file_was_created_after(after_date, fileinfo):
             ret_val = True
         else:
             ret_val = False
-    except Exception as e:
+    except Exception:
         ret_val = False # not found or error, return False
         
     return ret_val
@@ -220,7 +220,7 @@ def file_was_loaded_before(solrcore, before_date, filename):
             ret_val = True
         else:
             ret_val = False
-    except Exception as e:
+    except Exception:
         ret_val = True # not found or error, return true
         
     return ret_val
@@ -234,7 +234,7 @@ def file_was_loaded_after(solrcore, after_date, filename):
             ret_val = True
         else:
             ret_val = False
-    except Exception as e:
+    except Exception:
         ret_val = True # not found or error, return true
         
     return ret_val
@@ -293,7 +293,7 @@ def file_is_same_or_newer_in_solr_by_artid(solrcore, art_id, timestamp_str, file
             else:
                 ret_val = False
     
-            if options.display_verbose:
+            if options.display_verbose: # To refresh or not to refresh
                 try:
                     filetime = datetime.strptime(timestamp_str, "%Y-%m-%dT%H:%M:%SZ")
                     filetime = filetime.strftime("%Y-%m-%d %H:%M:%S")
@@ -306,7 +306,9 @@ def file_is_same_or_newer_in_solr_by_artid(solrcore, art_id, timestamp_str, file
                         print (f"Refresh needed File {filename}: {filetime} vs Solr: {solrtime}")
     
                 except Exception as e:
-                    print (f"Can't get file info {filename}")
+                    msg =f"Can't get file info {filename}"
+                    logger.error(msg)
+                    print (msg)
     
                 
         except KeyError as e:
@@ -505,8 +507,6 @@ def main():
     # ########################################################################
     # Get list of files to process    
     # ########################################################################
-    new_files = 0
-    total_files = 0
     
     if options.subFolder is not None:
         start_folder = start_folder / pathlib.Path(options.subFolder)
@@ -540,10 +540,7 @@ def main():
             pat = fr"(.*?)\({selected_input_build}\)\.(xml|XML)$"
             filenames = []
         
-        if filenames != []:
-            total_files = len(filenames)
-            new_files = len(filenames)
-        else:
+        if filenames == []:
             # get a list of all the XML files that are new
             if options.forceRebuildAllFiles or options.forceReloadAllFiles:
                 # get a complete list of filenames for start_folder tree
@@ -594,10 +591,10 @@ def main():
                 artID = artID.upper()
                 
                 if not options.forceRebuildAllFiles:  # always force processed for single file                  
-                    if not options.display_verbose and processed_files_count % 100 == 0 and processed_files_count != 0:
+                    if not options.display_verbose and processed_files_count % 100 == 0 and processed_files_count != 0: # precompiled xml files loaded progress indicator
                         print (f"Precompiled XML Files ...loaded {processed_files_count} out of {files_found} possible.")
     
-                    if not options.display_verbose and skipped_files % 100 == 0 and skipped_files != 0:
+                    if not options.display_verbose and skipped_files % 100 == 0 and skipped_files != 0: # xml files loaded progress indicator
                         print (f"Skipped {skipped_files} so far...loaded {processed_files_count} out of {files_found} possible." )
                     
                     if file_is_same_or_newer_in_solr_by_artid(solr_docs2, art_id=artID, timestamp_str=n.timestamp_str,
@@ -628,14 +625,13 @@ def main():
                 
                 msg = "Examining file #%s of %s: %s (%s bytes)." % (processed_files_count, files_found, n.basename, n.filesize)
                 logger.info(msg)
-                if options.display_verbose:
+                if options.display_verbose: # start of progress indicator, show current number and file count
                     print (80 * "-")
                     print (msg)
 
                 final_xml_filename = derive_output_filename(n.filespec, 
                                                             input_build=selected_input_build, 
                                                             output_build=options.output_build)
-                
                 separated_input_output = final_xml_filename != n.filespec
 
                 if smart_file_rebuild:
@@ -645,7 +641,7 @@ def main():
                     parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True)
                     parsed_xml = etree.fromstring(opasxmllib.remove_encoding_string(fileXMLContents), parser)
                     # save common document (article) field values into artInfo instance for both databases
-                    artInfo = opasSolrLoadSupport.ArticleInfo(sourceDB.sourceData, parsed_xml, artID, logger)
+                    artInfo = opasSolrLoadSupport.ArticleInfo(sourceDB.sourceData, parsed_xml=parsed_xml, art_id=artID, logger=logger)
                     artInfo.filedatetime = input_fileinfo.timestamp_str
                     artInfo.filename = base
                     artInfo.file_size = input_fileinfo.filesize
@@ -673,11 +669,11 @@ def main():
                     success = fs.create_text_file(fname, data=file_text, delete_existing=True)
                     if success:
                         rebuild_count += 1
-                        if options.display_verbose:
-                            print (msg)
+                        if options.display_verbose: print (msg) # Exporting! Writing precompiled XML file
                     else:
-                        print (f"\t...There was a problem writing {fname}.")
-                
+                        msg = f"\t...There was a problem writing {fname}."
+                        logger.error(msg)
+                        print (msg)
 
                 # make sure the file we read is the processed file.  Should be the output/processed build.
                 # note: if input build is same as processed (output build), then this won't change and the input file/build
@@ -685,14 +681,18 @@ def main():
                 
                 # Read processed file format (sometimes it's the input file, sometimes it's the output file)
                 fileXMLContents, final_fileinfo = fs.get_file_contents(final_xml_filename)
-                if options.display_verbose:
+                if fileXMLContents is None:
+                    # skip
+                    logger.error(f"Cannot find/or/read {final_xml_filename}...skipping! (Make sure options are correct, is --smartload missing?)")
+                    continue
+                
+                if options.display_verbose: # SmartLoad: File not modified. No need to recompile
                     if separated_input_output and options.smartload and not smart_file_rebuild:
                         print (f"SmartLoad: File not modified. No need to recompile.")
                         
                 msg = f"\t...Opening precompiled XML file {final_fileinfo.basename} ({final_fileinfo.filesize} bytes) to load databases."
                 logger.info(msg)
-                if 1: # options.display_verbose:
-                    print (msg)
+                print (msg) # Opening precompiled XML file
                     
                 # import into lxml
                 parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True)
@@ -701,7 +701,7 @@ def main():
                 #root = pepxml.getroottree()
         
                 # save common document (article) field values into artInfo instance for both databases
-                artInfo = opasSolrLoadSupport.ArticleInfo(sourceDB.sourceData, parsed_xml, artID, logger)
+                artInfo = opasSolrLoadSupport.ArticleInfo(sourceDB.sourceData, parsed_xml=parsed_xml, art_id=artID, logger=logger)
                 artInfo.filedatetime = final_fileinfo.timestamp_str
                 artInfo.filename = base
                 artInfo.file_size = final_fileinfo.filesize
@@ -755,19 +755,14 @@ def main():
                         # print (f"\t\t...NewSec Workaround: Clearing newsecnm for {artInfo.art_id}")
                         artInfo.start_sectname = None # clear it so it's not written to solr, this is not the first article
                     else:
-                        if options.display_verbose:
-                            print (f"\t\t...NewSec {artInfo.start_sectname} found in {artInfo.art_id}")
+                        if options.display_verbose: print (f"\t\t...NewSec {artInfo.start_sectname} found in {artInfo.art_id}")
                     # -----
 
                     # load the docs (pepwebdocs) core
-                    if options.display_verbose:
-                        print("\t...Loading article for document and author core.")
+                    if options.display_verbose: print("\t...Loading article for document and author core.")
                     opasSolrLoadSupport.process_article_for_doc_core(parsed_xml, artInfo, solr_docs2, fileXMLContents, include_paras=options.include_paras, verbose=options.display_verbose)
                     # load the authors (pepwebauthors) core.
                     opasSolrLoadSupport.process_info_for_author_core(parsed_xml, artInfo, solr_authors2, verbose=options.display_verbose)
-                    # load the database (Moved to above new section name workaround)
-                    #opasSolrLoadSupport.add_article_to_api_articles_table(ocd, artInfo, verbose=options.display_verbose)
-                    #opasSolrLoadSupport.add_to_artstat_table(ocd, artInfo, verbose=options.display_verbose)
                     
                     if precommit_file_count > configLib.opasCoreConfig.COMMITLIMIT:
                         precommit_file_count = 0
@@ -780,8 +775,7 @@ def main():
                         art_reference_count = artInfo.ref_count
                         total_reference_count += artInfo.ref_count
                         bibReferences = parsed_xml.xpath("/pepkbd3//be")  # this is the second time we do this (also in artinfo, but not sure or which is better per space vs time considerations)
-                        if options.display_verbose:
-                            print(("\t...Loading %s references to the references database." % (artInfo.ref_count)))
+                        if options.display_verbose: print("\t...Loading %s references to the references database." % (artInfo.ref_count))
     
                         #processedFilesCount += 1
                         ocd.open_connection(caller_name="processBibliographies")
@@ -797,8 +791,7 @@ def main():
                         ocd.close_connection(caller_name="processBibliographies")
     
                 # close the file, and do the next
-                if options.display_verbose:
-                    print(("\t...Time: %s seconds." % (time.time() - fileTimeStart)))
+                if options.display_verbose: print(("\t...Time: %s seconds." % (time.time() - fileTimeStart)))
         
             print (f"{pre_action_verb} process complete ({time.ctime()} ). Time: {time.time() - fileTimeStart} seconds.")
             if processed_files_count > 0:

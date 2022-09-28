@@ -16,12 +16,11 @@ __status__      = "Development"
 
 programNameShort = "opasLocalID" # SubLibrary to build and decompile locators (articleIDs/document ids)
 
-import sys, os.path
+import sys
 import logging
 logger = logging.getLogger(programNameShort)
 
 import re
-import opasGenSupportLib as opasgenlib
 import opasLocator
 
 import opasXMLPEPAuthorID
@@ -343,7 +342,7 @@ class LocalID:
                 idLen = 5
             elif self.localIDType == "N":  # change 20071024 from 3 to 5, TB keyed it this way.
                 if self.localIDVal[0] == "B":
-                    idlen = 4
+                    idLen = 4
                 else:
                     idLen = 5
 

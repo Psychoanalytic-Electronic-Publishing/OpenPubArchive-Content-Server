@@ -19,7 +19,7 @@ import opasCentralDBLib
 import lxml
 import opasXMLHelper as opasxmllib
 
-default_ancestor_list = "abbr|artinfo|be|h[1-9]|cgrp|figx|frac|impx|ln|pgx|url|a|bx|bxe|webx"
+default_ancestor_list = r"\b(abbr|abs|artinfo|bkpubandloc|be|h[1-9]|cgrp|figx|frac|impx|ln|pgx|url|a|bx|bxe|webx)\b"
 ocd = opasCentralDBLib.opasCentralDB()
 
 gDbg1 = 0 # general info
@@ -365,8 +365,11 @@ class GlossaryRecognitionEngine(UserDict):
         #return retVal
 
     #--------------------------------------------------------------------------------
-    def doGlossaryMarkup(self, parsed_xml, skipIfHasAncestor=default_ancestor_list, preface=None, theGroupName=None, pretty_print=False):
+    def doGlossaryMarkupTextMethod_Now_Deprecated(self, parsed_xml, skipIfHasAncestor=default_ancestor_list, preface=None, theGroupName=None, pretty_print=False):
         """
+        ------
+        Function is deprecated by a better method -- below
+        ------
         Markup any glossary entries in paragraphs (only).
 
         If theGroupName is supplied, it means we are marking up the glossary itself, and any impxs that match
@@ -413,7 +416,7 @@ class GlossaryRecognitionEngine(UserDict):
         #       we are combining patterns.
         
         changes = False # reset
-        sep2 = 'u22E1'
+        # sep2 = 'u22E1'
         idx = -1
         for rcrow in self.matchList: # mark terms
             idx += 1
@@ -524,275 +527,125 @@ class GlossaryRecognitionEngine(UserDict):
         
         return ret_val, ret_status # return new reparsed_xml if ret_status is true, orig parsed_xml if not.
 
-    ##--------------------------------------------------------------------------------
-    #def doGlossaryMarkupOld(self, tree, skipIfHasAncestor=default_ancestor_list, preface=None, theGroupName=None):
-        #"""
-        #Markup any glossary entries in paragraphs (only).
-
-        #If theGroupName is supplied, it means we are marking up the glossary itself, and any impxs that match
-        #theGroupName will be removed (as self referential)
-
-        #Returns the number of changed terms.
-
-        #>>> glossEngine = GlossaryRecognitionEngine(gather=False)
-        #Gathering regex patterns is off.
-        #1481 input patterns loaded into 1480 regex patterns.
-        #>>> testXML= u'<body><p>My belief is that, διαφέρει although Freud was a revolutionary, most of his followers were more conventional. As is true of most institutions, as psychoanalysis aged, a conservatism overtook it. Foreground analytic theory incorporated the background cultural pathologizing of nonheterosexuality. Thus, the few articles written about lesbians rigidly followed narrow reductionistic explanations. Initially, these explanations followed classical theory, and then as psychoanalysis expanded into ego psychology and object relations, lesbian pathologizing was fit into these theories <bx r="B006">(Deutsch, 1995)</bx>.</p><p>For example, Adrienne Applegarth&apos;s 1984 American Psychoanalytic panel on homosexual women, used ego psychology to explain lesbianism. Applegarth viewed it (according to <bx r="B020">Wolfson, 1984</bx>), as a complicated structure of gratification and defense (p. <pgx r="B020">166</pgx>). She felt that if the steps in the usual positive and negative oedipal phases or if a girls wish for a baby arising out of penis envy become distorted, a range of outcomes, including homosexuality, could occur (Wolfson, <bx r="B020">1984</bx>, p. <pgx r="B020">166</pgx>).</p></body>'
-        #>>> parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True)
-        #>>> pepxml = etree.fromstring(testXML, parser)
-        #>>> root = pepxml.getroottree()
-
-        #>>> glossEngine.doGlossaryMarkup(root)
-        #0 impx elements in non-allowed locations removed.
-        #15
-
-        #>>> testXML= '<body><p> forces. Brenner has suggested that the familiar  of the id, ego, and superego as agencies of <b id="10">the</b> mind.</p></body>'
-        #>>> parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True)
-        #>>> pepxml = etree.fromstring(testXML, parser)
-        #>>> root = pepxml.getroottree()
-        #>>> print (glossEngine.doGlossaryMarkup(root))
-        #0 impx elements in non-allowed locations removed.
-        #3
-
-        #"""
-
-        #print ("***** Do Glossary Markup *****")
-        #retVal = 0
-        #count = 0
-        ##preface="""<?xml version='1.0' encoding='UTF-8' ?><!DOCTYPE %s SYSTEM '%s'>""" % ("p", gDefaultDTD) + "\n"
-        #preface = """<?xml version='1.0' encoding='UTF-8' ?>""" # TRY THIS TEST CODE 2017-04-02, without named entities, we should not need a DTD loaded (much quicker)
-
-        #if gDbg2:
-            #startTime = time.time()
-
-        ## replacement pattern...if we need to add an ID, it probably needs to be done in a second pass (because
-        ##       we are combining patterns.
-        #subStrCxt = """<impx type="TERM2">\g<whole></impx>"""
-        ## strText = ""
-
-        ## Replace altdata so it doesn't match - Better still, just delete it
-        ## BUT NOTE: the altdata attribute in L&P is actually "alternate terms"! (not a display, altdata thing...).  That's why it matches sometimes.
-        ##count = tree.replaceAttrText("altdata", "(.*)", "XXX\0", ALL, E("impx", {"type":"TERM1"}))
-        ## tree.deleteAttributes(ALL, elemSpec=E("impx", {"type":"TERM1"}), attrNamePtn="altdata")
-        #countInDoc = 0
-        #countParas = 0
-        ## get all paragraphs
-        #allParas = tree.xpath(".//p|.//p2")
-        #count = 0
-        #for para in allParas:
-            #nodeText = tree.tostring(para, pretty_print=True, encoding="utf8").decode("utf-8")
-            #changes = False # reset
-            #for rcrow in self.matchList:
-                ## Match at the start, at the end, the whole, and in the middle, delineated
-                #rc = rcrow[0]
-                #try:
-                    #nodeTextHold = nodeText # temp
-                    #nodeText2 = rc.sub(subStrCxt, nodeText)
-                #except Exception as e:
-                    #print (e)
-
-                #if nodeText2 != nodeText:
-                    ## if the markup is within quotes, don't keep it.
-                    #if re.search("\".*?<impx.*</impx>.*?\"", nodeText2, flags=re.IGNORECASE):
-                        #if gDbg1: print ("Error: impx in quoted passage detected. Skipping markup")
-                        #continue
-                    ##  or if nested impx, don't keep it
-                    #elif re.search("<impx type=\"TERM2\"><impx", nodeText2, flags=re.IGNORECASE):
-                        #if gDbg1: print ("Error: Double nested impx detected. Skipping markup")
-                        #continue
-                    #else:
-                        ## sciSupport.trace("%s%sMarked Abbr %s in %s: " % (60*"-","\n", rc.pattern, nodeText2), outlineLevel=1, debugVar=gDbg7)
-                        #changes = True
-                        #count += 1
-                        #countInDoc += 1
-                        #nodeText = nodeText2
-
-            ## now reparse datanode
-            #if changes:
-                #try:
-                    #if gDbg7:
-                        #print ("Old:", nodeTextHold)
-                        #print ("New:", nodeText)
-                    #newTree = hlString2xTree (nodeText, preface=preface, resolveEntities=False)
-                #except Exception as e:
-                    #logger.error("WARNING!!!!!  GlossaryRecognition.  Glossary Replacement makes this section unparseable.  Skipped: ")
-                    #logger.error("Nodetext:$%s$ " % nodeText.encode("utf-8"))
-                #else:
-                    #countParas += 1
-                    #try:
-                        #tree.replaceCurrNode(newTree.RootNode)
-                        ##if countParas == 20:
-                            ##continue
-                        ## print "Paracount: ", countParas
-                    #except Exception as e:
-                        #print ("Glossary Replace Exception: %s" % e)
-
-
-        #retVal = count
-        #print ("%s glossary terms recognized." % countInDoc)
-        ## reset the tree position to the top
-        #tree.Home()
-
-        ## change impx's of TERM1 to TERM2 -- should be in L&P only
-        ##count = tree.unwrapElements(ALL, elemSpec=E("impx", {"type":"TERM1"}))
-        #count2 = tree.replaceAttrText("type", "TERM1", "TERM2", ALL, E("impx"))
-        #if count2 > 0:
-            #print ("*********************************************************************")
-            #print ("***** Implied Links to L&P redirected to the PEP Glossary")
-            #print ("*********************************************************************")
-
-
-        ## ok, now add the IDs
-        #self.addImpxIDs(tree)
-        ##print "Final XML Text: ", tree.tree2Str()
-        #tree.Home()
-
-        ## return count of changed paragraphs
-        #if gDbg2:
-            #endTime = time.time()
-            #timeDiff = endTime - startTime
-            #print (80*"-")
-            #print ("%d paragraphs marked with glossary terms in %s secs" % (countParas, timeDiff))
-
-        #self.checkImpxs(tree)
-        #if theGroupName != None:
-            #self.removeSelfReferencesInGlossaries(tree, theGroupName)
-
-        #return retVal
-
     #--------------------------------------------------------------------------------
-    #def doGlossaryMarkupMethod2(self, tree, skipIfHasAncestor=E("abbr|artinfo|be|h[1-9]|cgrp|figx|frac|impx|ln|pgx|url|a|bx|bxe"), folioOutput=False, preface=None, theGroupName=None):
-        #"""
-        #Markup any glossary entries in paragraphs (only).
+    def doGlossaryMarkup(self, parsed_xml, skipIfHasAncestorRegx=default_ancestor_list, preface=None, theGroupName=None, pretty_print=False, diagnostics=False):
+        """
+        Markup any glossary entries in paragraphs (only).
 
-        #If theGroupName is supplied, it means we are marking up the glossary itself, and any impxs that match
-        #theGroupName will be removed (as self referential)
+        If theGroupName is supplied, it means we are marking up the glossary itself, and any impxs that match
+        theGroupName will be removed (as self referential)
 
-        #Returns the number of changed terms.
+        Returns the number of changed terms.
 
-        #>>> glossEngine = GlossaryRecognitionEngine(gather=False)
-        #Gathering regex patterns is off.
-        #1481 input patterns loaded into 1480 regex patterns.
-        #>>> testXML= u'<body><p>My belief is that, διαφέρει although Freud was a revolutionary, most of his followers were more conventional. As is true of most institutions, as psychoanalysis aged, a conservatism overtook it. Foreground analytic theory incorporated the background cultural pathologizing of nonheterosexuality. Thus, the few articles written about lesbians rigidly followed narrow reductionistic explanations. Initially, these explanations followed classical theory, and then as psychoanalysis expanded into ego psychology and object relations, lesbian pathologizing was fit into these theories <bx r="B006">(Deutsch, 1995)</bx>.</p><p>For example, Adrienne Applegarth&apos;s 1984 American Psychoanalytic panel on homosexual women, used ego psychology to explain lesbianism. Applegarth viewed it (according to <bx r="B020">Wolfson, 1984</bx>), as a complicated structure of gratification and defense (p. <pgx r="B020">166</pgx>). She felt that if the steps in the usual positive and negative oedipal phases or if a girls wish for a baby arising out of penis envy become distorted, a range of outcomes, including homosexuality, could occur (Wolfson, <bx r="B020">1984</bx>, p. <pgx r="B020">166</pgx>).</p></body>'
-        #>>> myt = hlString2xTree (testXML)
-        #>>> glossEngine.doGlossaryMarkup(myt)
-        #0 impx elements in non-allowed locations removed.
-        #15
-        #>>> testXML= '<body><p> forces. Brenner has suggested that the familiar  of the id, ego, and superego as agencies of <b id="10">the</b> mind.</p></body>'
-        #>>> myt = hlString2xTree (testXML)
-        #>>> print (glossEngine.doGlossaryMarkup(myt))
-        #0 impx elements in non-allowed locations removed.
-        #3
+        >>> glossEngine = GlossaryRecognitionEngine(gather=False)
+        Gathering regex patterns is off.
+        1481 input patterns loaded into 1480 regex patterns.
+        >>> testXML= u'<body><p>My belief is that, διαφέρει although Freud was a revolutionary, most of his followers were more conventional. As is true of most institutions, as psychoanalysis aged, a conservatism overtook it. Foreground analytic theory incorporated the background cultural pathologizing of nonheterosexuality. Thus, the few articles written about lesbians rigidly followed narrow reductionistic explanations. Initially, these explanations followed classical theory, and then as psychoanalysis expanded into ego psychology and object relations, lesbian pathologizing was fit into these theories <bx r="B006">(Deutsch, 1995)</bx>.</p><p>For example, Adrienne Applegarth&apos;s 1984 American Psychoanalytic panel on homosexual women, used ego psychology to explain lesbianism. Applegarth viewed it (according to <bx r="B020">Wolfson, 1984</bx>), as a complicated structure of gratification and defense (p. <pgx r="B020">166</pgx>). She felt that if the steps in the usual positive and negative oedipal phases or if a girls wish for a baby arising out of penis envy become distorted, a range of outcomes, including homosexuality, could occur (Wolfson, <bx r="B020">1984</bx>, p. <pgx r="B020">166</pgx>).</p></body>'
+        >>> parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True)
+        >>> pepxml = etree.fromstring(testXML, parser)
+        >>> root = pepxml.getroottree()
 
-        #"""
+        >>> glossEngine.doGlossaryMarkup(root)
+        0 impx elements in non-allowed locations removed.
+        15
 
-        #global gDbg4  # for some reason, if this isn't three, it thinks gDbg4 is a local variable; but it's fine with gDbg2 (or 1)!
-        #retVal = 0
-        #count = 0
-        ##preface="""<?xml version='1.0' encoding='UTF-8' ?><!DOCTYPE %s SYSTEM '%s'>""" % ("p", gDefaultDTD) + "\n"
-        #preface = """<?xml version='1.0' encoding='UTF-8' ?>""" # TRY THIS TEST CODE 2017-04-02, without named entities, we should not need a DTD loaded (much quicker)
+        >>> testXML= '<body><p> forces. Brenner has suggested that the familiar  of the id, ego, and superego as agencies of <b id="10">the</b> mind.</p></body>'
+        >>> parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True)
+        >>> pepxml = etree.fromstring(testXML, parser)
+        >>> root = pepxml.getroottree()
+        >>> print (glossEngine.doGlossaryMarkup(root))
+        0 impx elements in non-allowed locations removed.
+        3
 
-        #if gDbg2:
-            #startTime = time.time()
+        """
 
-        ## replacement pattern...if we need to add an ID, it probably needs to be done in a second pass (because
-        ##       we are combining patterns.
-        ## subStrCxt = """<impx type="TERM2">\g<whole></impx>"""
-        ##leftMarker = u"⩥"
-        ##rightMarker = u"⩤"
-        #subStrCxt = """ %s\g<whole>%s""" % (self.leftMarker, self.rightMarker)
-        ## strText = ""
+        ret_status = True
+        if gDbg1: print ("***** Do Glossary Markup *****")
+        count = 0
+        #preface="""<?xml version='1.0' encoding='UTF-8' ?><!DOCTYPE %s SYSTEM '%s'>""" % ("p", gDefaultDTD) + "\n"
+        preface = """<?xml version='1.0' encoding='UTF-8' ?>""" # TRY THIS TEST CODE 2017-04-02, without named entities, we should not need a DTD loaded (much quicker)
 
-        ## Replace altdata so it doesn't match - Better still, just delete it
-        ## BUT NOTE: the altdata attribute in L&P is actually "alternate terms"! (not a display, altdata thing...).  That's why it matches sometimes.
-        ##count = tree.replaceAttrText("altdata", "(.*)", "XXX\0", ALL, E("impx", {"type":"TERM1"}))
-        #tree.deleteAttributes(ALL, elemSpec=E("impx", {"type":"TERM1"}), attrNamePtn="altdata")
-        #countInDoc = 0
-        #countParas = 0
-        ## get all paragraphs
-        #allParas = tree.getElements(ALL, elemSpec=E("p\Z|p2"), ancestorSpec=skipIfHasAncestor, notAncestor=True)
-        #for para in allParas:
-            #tree.Seek(para)
-            #count = 0
-            #if tree.CurPos.getchildren() == []:
-                #nodeText = tree.CurPos.text
-                #if tree.CurPos.text is not None:
-                    #for rcrow in self.matchList:
-                        ## Match at the start, at the end, the whole, and in the middle, delineated
-                        #rc = rcrow[0]
-                        #nodeText2 = rc.sub(subStrCxt, tree.CurPos.text)
-                        #if nodeText2 != tree.CurPos.text:
-                            ##if 1:
-                                ##sciSupport.trace("%s%sMarked Abbr %s in %s: " % (60*"-","\n", rc.pattern, nodeText2), outlineLevel=1, debugVar=gDbg7)
-                            #count += 1
-                            #countInDoc += 1
-                            #tree.CurPos.text = nodeText2
-            #else:
-                #for node in tree.CurPos.iter():
-                    #for rcrow in self.matchList:
-                        ## Match at the start, at the end, the whole, and in the middle, delineated
-                        #rc = rcrow[0]
-                        #if node.text is not None:
-                            #nodeText = rc.sub(subStrCxt, node.text)
-                            #if nodeText != node.text:
-                                ##if 1:
-                                    ##sciSupport.trace("%s%sMarked Abbr %s in %s: " % (60*"-","\n", rc.pattern, nodeText), outlineLevel=1, debugVar=gDbg7)
-                                #count += 1
-                                #countInDoc += 1
-                                #node.text = nodeText
-                                ## print (nodeText)
+        startTime = time.time()
 
-                        #if node.tail is not None:
-                            #nodeTail = rc.sub(subStrCxt, node.tail)
-                            #if nodeTail != node.tail:
-                                ##if 1:
-                                    ##sciSupport.trace("%s%sMarked Abbr %s in %s: " % (60*"-","\n", rc.pattern, nodeTail), outlineLevel=1, debugVar=gDbg7)
-                                #count += 1
-                                #countInDoc += 1
-                                #node.tail = nodeTail
-                                ## print (nodeTail)
-            #if count > 0:
-                #countParas += 1
-                #paraTree = etree.tostring(para)
-                #paraTree = re.sub('(&#10853;)+(?P<term>.*?)(&#10852;)+', ' <impx type="TERM2">\g<term></impx>', paraTree)
-                #paraTree = re.sub("(&#10853;)|(&#10852;)", "", paraTree)
-                ##paraTree = re.sub('(&#10853;)+', ' <impx type="TERM2">', paraTree)
-                ##paraTree = re.sub('(&#10852;)+', '</impx>', paraTree)
-                #tree.insertXMLStrReplaceNode(paraTree)
+        # strText = ""
 
-        #retVal = count
-        #print ("%s glossary terms recognized." % countInDoc)
+        # Replace altdata so it doesn't match - Better still, just delete it
+        # BUT NOTE: the altdata attribute in L&P is actually "alternate terms"! (not a display, altdata thing...).  That's why it matches sometimes.
+        #count = tree.replaceAttrText("altdata", "(.*)", "XXX\0", ALL, E("impx", {"type":"TERM1"}))
+        # tree.deleteAttributes(ALL, elemSpec=E("impx", {"type":"TERM1"}), attrNamePtn="altdata")
+        countInDoc = 0
+        # get all paragraphs
+        allParas = parsed_xml.xpath(".//p|.//p2")
+        para_count = 0
+        for para_working in allParas:
+            #para_working = para
+            # skip if has skipped ancestor:
+            # ancestors = opasxmllib.xml_node_list_ancestor_names(para_working)
+            ancestor_match = opasxmllib.xml_node_regx_ancestors(para_working, regx=skipIfHasAncestorRegx)
+            if ancestor_match:
+                if diagnostics: print (f"Skipped para {para_count} (due to ancestor)")
+                continue
 
-        ## reset the tree position to the top
-        #tree.Home()
+            para_count += 1
+            # unicode opt returns string inst of bytes, which is for compat w py2 (http://makble.com/python-why-lxml-etree-tostring-method-returns-bytes)
+            node_text = lxml.etree.tostring(para_working, encoding="unicode")
+            len_node_text = len(node_text)
+            if gDbg7: print (node_text)
+            changes = False # reset
+            for rcrow in self.matchList:
+                # replacement pattern...if we need to add an ID, it probably needs to be done in a second pass (because
+                #       we are combining patterns.
+                term_data = rcrow[1]
+                grpnm = term_data[2]
+                rx = term_data[3]
+                if theGroupName == grpnm:
+                    continue # skip per parameter def [TBD: Needs to be checked for glossary build]
+                
+                subStrCxt = f'<impx type="TERM2" rx="{rx}" grpname="{grpnm}">\g<whole></impx>'
+                # Match at the start, at the end, the whole, and in the middle, delineated
+                rc = rcrow[0]
+                try:
+                    node_text2 = rc.sub(subStrCxt, node_text)
+                except Exception as e:
+                    print (e)
 
-        ## change impx's of TERM1 to TERM2 -- should be in L&P only
-        ##count = tree.unwrapElements(ALL, elemSpec=E("impx", {"type":"TERM1"}))
-        #count2 = tree.replaceAttrText("type", "TERM1", "TERM2", ALL, E("impx"))
-        #if count2 > 0:
-            #print ("*********************************************************************")
-            #print ("***** Implied Links to L&P redirected to the PEP Glossary")
-            #print ("*********************************************************************")
+                len_node_text2 = len(node_text2)
+                if len_node_text2 != len_node_text:
+                    # if the markup is within quotes, don't keep it.
+                    if re.search("\".*?<impx.*</impx>.*?\"", node_text2, flags=re.IGNORECASE):
+                        if gDbg1: print ("\t..Error: impx in quoted passage detected. Skipping markup")
+                        continue
+                    #  or if nested impx, don't keep it
+                    elif re.search("<impx type=\"TERM2\"><impx", node_text2, flags=re.IGNORECASE):
+                        print ("\t..Error: Double nested impx detected. Skipping markup")
+                        continue
+                    else:
+                        # sciSupport.trace("%s%sMarked Abbr %s in %s: " % (60*"-","\n", rc.pattern, nodeText2), outlineLevel=1, debugVar=gDbg7)
+                        if diagnostics: print (f"\t..Marked Glossary Term: {grpnm} ID: {rx}")
+                        changes = True
+                        count += 1
+                        countInDoc += 1
+                        node_text = node_text2
+                        len_node_text = len_node_text2 # for the next compare
 
+            if changes:
+                new_node = lxml.etree.XML(node_text)
+                parent_node = para_working.getparent()
+                parent_node.replace(para_working, new_node)
+                if diagnostics:
+                    print (f"Final markup: {node_text}")
+                    print ("%s glossary terms recognized." % countInDoc)
 
-        ## ok, now add the IDs
-        #self.addImpxIDs(tree)
-        ##print "Final XML Text: ", tree.tree2Str()
-        #tree.Home()
+        if gDbg2 or diagnostics:
+            endTime = time.time()
+            timeDiff = endTime - startTime
+            print (80*"-")
+            print ("%d paragraphs marked with glossary terms in %s secs" % (countInDoc, timeDiff))
 
-        ## return count of changed paragraphs
-        #if gDbg2:
-            #endTime = time.time()
-            #timeDiff = endTime - startTime
-            #print (80*"-")
-            #print ("%d paragraphs marked with glossary terms in %s secs" % (countParas, timeDiff))
-
-        #self.checkImpxs(tree)
-        #if theGroupName != None:
-            #self.removeSelfReferencesInGlossaries(tree, theGroupName)
-
-        #return retVal
-
+        # option: should we return count of changed paragraphs?
+        ret_status = count
+        
+        return parsed_xml, ret_status
 
 
 #==================================================================================================

@@ -204,7 +204,11 @@ class FlexFileSystem(object):
                 root = ""
             else:
                 root = self.root
-
+            
+            if filespec is None:
+                info = f"No filespec supplied! {filespec} root: {root}, path:{path} "
+                raise FileNotFoundError(info)
+            
             ret_val = os.path.join(root, path, filespec)
 
         if localsecrets.PATH_SEPARATOR == "/":
@@ -568,31 +572,34 @@ class FlexFileSystem(object):
        
         """
         ret_val = None
+        fileinfoout = FileInfo()
         if not self.exists(filespec, path):
             filespec = self.find(filespec, path_root=path)
 
-        fileinfoout = FileInfo()
-        fileinfoout.mapFS(filespec, path)
-            
-        fullfilespec = self.fullfilespec(filespec, path=path, path_is_root_bucket=path_is_root_bucket)
-        if fullfilespec is not None:
-            try:
-                if self.fs is not None:
-                    f = self.fs.open(fullfilespec, "r", encoding="utf-8")
-                else:
-                    f = open(fullfilespec, "r", encoding="utf-8")
-            except Exception as e:
-                logger.error("GetFileError: Open: %s", e)
-                
-            try:
-                ret_val = f.read()
-                f.close()    
-            except OSError as e:
-                logger.error("GetFileError: Read: %s", e)
-            except Exception as e:
-                logger.error("GetFileError: Exception: %s", e)
+        if filespec is None:
+            logger.error(f"GetFileError: File {filespec} not found on Path {path}")
         else:
-            logger.error("GetFileError: File %s not found", fullfilespec)
+            fileinfoout.mapFS(filespec, path)
+                
+            fullfilespec = self.fullfilespec(filespec=filespec, path=path, path_is_root_bucket=path_is_root_bucket)
+            if fullfilespec is not None:
+                try:
+                    if self.fs is not None:
+                        f = self.fs.open(fullfilespec, "r", encoding="utf-8")
+                    else:
+                        f = open(fullfilespec, "r", encoding="utf-8")
+                except Exception as e:
+                    logger.error("GetFileError: Open: %s", e)
+                    
+                try:
+                    ret_val = f.read()
+                    f.close()    
+                except OSError as e:
+                    logger.error("GetFileError: Read: %s", e)
+                except Exception as e:
+                    logger.error("GetFileError: Exception: %s", e)
+            else:
+                logger.error("GetFileError: File %s not found", fullfilespec)
       
         return ret_val, fileinfoout
     

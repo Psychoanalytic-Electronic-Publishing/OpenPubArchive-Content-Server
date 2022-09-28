@@ -23,7 +23,7 @@ global gDbg1
 gDbg1 = False
 
 import copy
-import string, re
+import re
 
 from opasConfig import gBookCodes, gSplitBooks, REFBOOK, REFBOOKSERIES, REFBOOKSERIESARTICLE, REFBOOKARTICLE, REFJOURNALARTICLE
 
@@ -198,7 +198,7 @@ class Locator:
         self.__reset()
         self.filename = filename
         self.ocd = ocd
-        self_copy = copy.copy(self)
+        # self_copy = copy.copy(self)
         
         self.art_info = art_info # provide full information about the xml of the article we're dealing with
 
@@ -1049,7 +1049,7 @@ class Locator:
                         else:
                             #see if the page # is an exception!
                             newLoc = Locator(self.forceArticleID(forcePgStart=localIDRef.localIDVal))
-                            splitArticleID = split_book_data.get_splitbook_page_instance(newLoc.jrnlCode, newLoc.jrnlVol, retValSuffix[1:])
+                            splitArticleID = split_book_data.get_splitbook_page_instance(book_code=newLoc.jrnlCode, vol=newLoc.jrnlVol, page_id=retValSuffix[1:])
                             logger.warning("The page lookup for %s.%s didn't find any instances" % (newLoc.baseCode(), retValSuffix))
                     #else:
                     #	print "Not split book"
@@ -1134,7 +1134,7 @@ class Locator:
         # note, while we could just rebuild this from components, this allows
         # the locator format to be build only in the articleID routine, making
         # for easier maintenance, if not a small performance penalty.
-        listItems = string.split(self.articleID(), ".")
+        listItems = self.articleID().split(".")
         retVal = listItems[0] + "." + listItems[1]
         return retVal
 
@@ -1317,7 +1317,7 @@ def getTOJJumpTuple(idString):
 def isFullLocator(locatorStr):
     try:
         jrnlCode, jrnlVol, pgStart = locatorStr.split(".")
-    except Exception as e:
+    except Exception:
         return False
     else:
         return True

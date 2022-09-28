@@ -59,9 +59,36 @@ glossEngine = PEPGlossaryRecognitionEngine.GlossaryRecognitionEngine(gather=Fals
 max_display_len_cf_articles = 90
 
 #----------------------------------------------------------------------------------------------------------------
-def normalize_local_ids(pepxml, verbose=False):
+def add_page_number_markup(parsed_xml):
+    """
+    Walk through page number "n" elements, and record page number sequence.  Add the next page number to
+       the nextpgnum attribute of the n element.
+    """
+
+    nodes = parsed_xml.xpath("//n")
+    ret_val = len(nodes)
+
+    if gDbg2: print("\t...Adding Page Number Attributes")
+
+    lastPage = None
     
-    nodes = pepxml.xpath("//be | //binc | //note | //ftn")
+    # Walk through page number "n" elements in reverse, and record page number sequencing
+    for node in reversed(nodes):
+        n = node.text
+        pg_number = opasDocuments.PageNumber(n)
+        # record the new pagenumber for the next node
+        if lastPage is not None:
+            node.attrib["nextpgnum"] = lastPage
+
+        lastPage = pg_number.format()
+
+    return ret_val
+
+
+#----------------------------------------------------------------------------------------------------------------
+def normalize_local_ids(parsed_xml, verbose=False):
+    
+    nodes = parsed_xml.xpath("//be | //binc | //note | //ftn")
     ret_val = len(nodes)
 
     global gDbg1, gDbg2
@@ -83,14 +110,14 @@ def normalize_local_ids(pepxml, verbose=False):
     return ret_val
 
 #----------------------------------------------------------------------------------------------------------------
-def pgnbr_add_next_attrib(pepxml):
+def pgnbr_add_next_attrib(parsed_xml):
     """
     Walk through page number "n" elements, and record page number sequence.  Add the next page number to
        the nextpgnum attribute of the n element.
     """
 
     # Walk through page number "n" elements, and record page number sequence
-    n_nodes = pepxml.findall("**/n")
+    n_nodes = parsed_xml.findall("**/n")
     lastPage = None
     count = 0
     # walk through the nodes backwards.
@@ -107,7 +134,11 @@ def pgnbr_add_next_attrib(pepxml):
     return count
 
 #------------------------------------------------------------------------------------------------------
-def find_related_articles(ref, art_or_source_title, query_target="art_title_xml", max_words=opasConfig.MAX_WORDS, min_words=opasConfig.MIN_WORDS, word_len=opasConfig.MIN_WORD_LEN, max_cf_list=opasConfig.MAX_CF_LIST): 
+def find_related_articles(ref, art_or_source_title, query_target="art_title_xml", max_words=opasConfig.MAX_WORDS, min_words=opasConfig.MIN_WORDS, word_len=opasConfig.MIN_WORD_LEN, max_cf_list=opasConfig.MAX_CF_LIST):
+    """
+    Search for related articles and add to rxcf of reference
+    
+    """
     # title is either bib_entry.art_title_xml or bib_entry.source_title
     ret_val = rxcf = []
     prev_rxcf = None
@@ -116,16 +147,18 @@ def find_related_articles(ref, art_or_source_title, query_target="art_title_xml"
         safe_title_words = " AND ".join(title_words)
         result = opasPySolrLib.search_text(query=f"{query_target}:({safe_title_words})", limit=10, offset=0, full_text_requested=False)
         if result[1][0] == 200:
+            
             if gDbg2:
                 title_list = [item.title for item in result[0].documentList.responseSet[0:max_cf_list]]
                 if title_list != []:
                     print (f"\t\t\t...Article title first {len(title_words)} words of len {word_len} for search: {safe_title_words} from title:{art_or_source_title}")
                     for n in title_list:
                         print (f"\t\t\t\t...cf Article Title: {n[:max_display_len_cf_articles]}")
+                        
             rxcf = [item.documentID for item in result[0].documentList.responseSet[0:max_cf_list]]
             try:
                 prev_rxcf = ref.attrib["rxcf"]
-            except Exception as e:
+            except Exception:
                 pass
 
             if len(rxcf) > 0 and prev_rxcf is None:
@@ -145,7 +178,7 @@ def find_related_articles(ref, art_or_source_title, query_target="art_title_xml"
     return ret_val
     
 #------------------------------------------------------------------------------------------------------
-def add_article_to_split_pages_table(ocd, pepxml, artInfo, remove_old=False, verbose=None):
+def add_article_to_split_pages_table(ocd, parsed_xml, artInfo, remove_old=False, verbose=None):
     """
     WORK in PROGRESS - Converting from the OLD PEPXML
     
@@ -163,7 +196,7 @@ def add_article_to_split_pages_table(ocd, pepxml, artInfo, remove_old=False, ver
 
     # see if instance has a biblio
     #nodes = PYXTree.getElements(ALL, E("bib"))
-    nodes = pepxml.xpath("/pepkbd3//bib")  
+    nodes = parsed_xml.xpath("/pepkbd3//bib")  
     if len(nodes)>0:
         has_biblio = 1
     else:
@@ -174,7 +207,7 @@ def add_article_to_split_pages_table(ocd, pepxml, artInfo, remove_old=False, ver
     else:
         has_toc = 0
 
-    nodes = pepxml.xpath("//n")  
+    nodes = parsed_xml.xpath("//n")  
     # now add new ones
     for node in nodes:
         pg_number = node.text
@@ -190,7 +223,7 @@ def add_article_to_split_pages_table(ocd, pepxml, artInfo, remove_old=False, ver
             print ("Warning!  Blank Page Number")
 
 #------------------------------------------------------------------------------------------------------
-def pgxPreProcessing(pepxml, ocd, artInfo, split_book_data=None, verbose=False):
+def pgxPreProcessing(parsed_xml, ocd, artInfo, split_book_data=None, verbose=False):
     """
     WORK in PROGRESS - Converting from the OLD PEPXML
     
@@ -222,7 +255,7 @@ def pgxPreProcessing(pepxml, ocd, artInfo, split_book_data=None, verbose=False):
 
     # Walk through pgx elements, and fix locators
     split_book_data = opasXMLSplitBookSupport.SplitBookData(database_connection=ocd)
-    pgx_links = pepxml.xpath("/pepkbd3//pgx")
+    pgx_links = parsed_xml.xpath("/pepkbd3//pgx")
     if verbose:
         print(f"\t...Processing page links. {len(pgx_links)} pgx links found.")
         
@@ -250,7 +283,7 @@ def pgxPreProcessing(pepxml, ocd, artInfo, split_book_data=None, verbose=False):
             fulltext_cleaned = opasgenlib.removeAllPunct(fulltext_cleaned)
             fulltext_cleaned = opasDocuments.PageNumber(fulltext_cleaned)
             fulltext_cleaned = fulltext_cleaned.format(keyword=fulltext_cleaned.LOCALID)
-            split_inst_from_fulltext = split_book_data.get_splitbook_page_instance(jrnlCode=jrnlCode, vol=vol, pageID=fulltext_cleaned)
+            split_inst_from_fulltext = split_book_data.get_splitbook_page_instance(book_code=jrnlCode, vol=vol, page_id=fulltext_cleaned)
             if split_inst_from_fulltext is None:
                 splitLoc = opasLocator.Locator(jrnlCode=jrnlCode, jrnlVol=vol, pgStart="1", art_info=artInfo, ocd=ocd)
                 local = splitLoc.localID(fulltext_cleaned).upper()
@@ -267,7 +300,7 @@ def pgxPreProcessing(pepxml, ocd, artInfo, split_book_data=None, verbose=False):
         else:
             log_everywhere_if(gDbg2, level="info", msg=f"\t\t\t...Rx link for pgx already set: {current_rx_link}")
  
-    nodes = pepxml.xpath("/pepkbd3//bxe")
+    nodes = parsed_xml.xpath("/pepkbd3//bxe")
     for node in nodes:
         if node.tag == "bxe":
             fulltext = opasxmllib.xml_elem_or_str_to_text(node) # x.find("pgx")
@@ -290,7 +323,7 @@ def pgxPreProcessing(pepxml, ocd, artInfo, split_book_data=None, verbose=False):
     #should not need to do pgx links here at all.      
     #nodes = pepxml.xpath("/pepkbd3//pgx|bx|bxe")
     if 0: # I don't think we need to do any of this anymore.  Delete in late July
-        nodes = pepxml.xpath("/pepkbd3//bx|bxe")
+        nodes = parsed_xml.xpath("/pepkbd3//bx|bxe")
         for node in nodes:
             if node.tag == "bx":
                 bxRefR = node.get("r")
@@ -320,9 +353,8 @@ def pgxPreProcessing(pepxml, ocd, artInfo, split_book_data=None, verbose=False):
                 if pgxtype in ["BIBJUMP"]:
                     # don't link these
                     continue
-                    
-                elif pgxtype in ["INTERNAL", "EXTERNAL"]:
-                    linktype = pgxtype
+                #elif pgxtype in ["INTERNAL", "EXTERNAL"]:
+                    #linktype = pgxtype
     
                 pgTextRaw = node.text
                 if opasgenlib.isRoman(pgTextRaw):
@@ -447,14 +479,15 @@ def pgxPreProcessing(pepxml, ocd, artInfo, split_book_data=None, verbose=False):
 def xml_update(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
     
     ret_val = None
-    ret_status = False
+    ret_status = True
 
     global gDbg1, gDbg2
-    print ("\t...Preprocessing/converting keyboarded XML.")
     if not verbose:
         gDbg1 = False
         gDbg2 = False
-
+    else:
+        print ("\t...Preprocessing/converting keyboarded XML.")
+        
     # write issn and id to artinfo
     
     parsed_xml.attrib["procby"] = f"{programNameShort}.{__version__}"
@@ -536,8 +569,7 @@ def xml_update(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
     # add links to biblio entries, rx to be
     if artInfo.ref_count > 0:
         bibReferences = parsed_xml.xpath("/pepkbd3//be")  # this is the second time we do this (also in artinfo, but not sure or which is better per space vs time considerations)
-        logger.info(("\t...Examining %s references for links." % (artInfo.ref_count)))
-
+        if verbose: print("\t...Examining %s references for links (rx) and related titles (rxcf)." % (artInfo.ref_count))
         #processedFilesCount += 1
         bib_total_reference_count = 0
         #db_ok = ocd.open_connection(caller_name="processBibliographies")
@@ -545,7 +577,7 @@ def xml_update(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
             # bib_entry_text = ''.join(ref.itertext())
             bib_pgstart = None
             bib_pgend = None
-            compare_to = ""
+            # compare_to = ""
             ref_id = ref.attrib["id"]
             # see if it's already in table
             bib_saved_entry_tuple = ocd.get_references_from_biblioxml_table(article_id=artInfo.art_id, ref_local_id=ref_id)
@@ -571,8 +603,15 @@ def xml_update(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
             if bib_entry.source_type != "book": # journal or other
                 if opasgenlib.is_empty(bib_entry.sourcecode):
                     if bib_entry.ref_title:
-                        rxcf = find_related_articles(ref, art_or_source_title=bib_entry.ref_title, query_target="art_title_xml", max_words=opasConfig.MAX_WORDS, min_words=opasConfig.MIN_WORDS, word_len=opasConfig.MIN_WORD_LEN, max_cf_list=opasConfig.MAX_CF_LIST)
-
+                        # find and store rxcf for related articles (side effect of function)
+                        if gDbg2 and verbose: print (f"\t...Finding related articles for bibliography based on ref_title")
+                        rxcf = find_related_articles(ref,
+                                                     art_or_source_title=bib_entry.ref_title,
+                                                     query_target="art_title_xml",
+                                                     max_words=opasConfig.MAX_WORDS,
+                                                     min_words=opasConfig.MIN_WORDS,
+                                                     word_len=opasConfig.MIN_WORD_LEN,
+                                                     max_cf_list=opasConfig.MAX_CF_LIST)
                     else:
                         locator = None
                         msg = f"\t\t\t...Skipped: {bib_saved_entry}"
@@ -624,7 +663,14 @@ def xml_update(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
                         bib_entry.sourcecode = "GW"
                     elif bib_entry.source_title:
                         # find_related_articles assigns to ref attrib rxcf (hence no need to use return val)
-                        rxcf = find_related_articles(ref, art_or_source_title=bib_entry.source_title, query_target="art_title_xml", max_words=opasConfig.MAX_WORDS, min_words=opasConfig.MIN_WORDS, word_len=opasConfig.MIN_WORD_LEN, max_cf_list=opasConfig.MAX_CF_LIST)
+                        if gDbg2 and verbose: print (f"\t...Finding related articles for bibliography based on source_title")
+                        rxcf = find_related_articles(ref,
+                                                     art_or_source_title=bib_entry.source_title,
+                                                     query_target="art_title_xml",
+                                                     max_words=opasConfig.MAX_WORDS,
+                                                     min_words=opasConfig.MIN_WORDS,
+                                                     word_len=opasConfig.MIN_WORD_LEN,
+                                                     max_cf_list=opasConfig.MAX_CF_LIST)
     
                     if pep_ref:
                         locator = Locator(strLocator=None,
@@ -667,16 +713,45 @@ def xml_update(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
     #          and quite embedded in the old XML libraries.  For now at least, it's left as a later exercise,
     #          so for books not included, I'll need to run the old PEPXML and copy the table over,
     #          or else new split TOCS will need to have direct links to the proper instance manually added.
-
+    # if this is a split book, add pg numbers to split book table
     split_book_data = opasXMLSplitBookSupport.SplitBookData(database_connection=ocd)
-    #pgx_links = parsed_xml.xpath("/pepkbd3//pgx") 
-    #logger.info("\t...Processing page links.")
-    #for pgx in pgx_links:
-        #inst = split_book_data.getSplitBookInstance(jrnlCode=artInfo.src_code, vol=artInfo.art_vol_str, pageID=pgx.text)
-        ##print (pgx.text, pgx.attrib, inst)
-        #if inst is not None and pgx.attrib.get("rx", None) is None:
-            #print (f"Setting TOC page link: {pgx.text}, {pgx.attrib}, {inst}")
-            #pgx.attrib["rx"] = inst
+    if artInfo.is_splitbook:
+        pagebreaks = [pbk.text for pbk in parsed_xml.xpath("//n")]
+        nodes = parsed_xml.xpath("//bib")
+        if len(nodes)>0:
+            has_biblio = 1
+        else:
+            has_biblio = 0
+
+        if artInfo.is_maintoc:
+            has_toc = 1
+        else:
+            has_toc = len(parsed_xml.xpath('//grp[@name="TOC"]'))
+        
+        for pgnum in pagebreaks:
+            page_id = opasDocuments.PageNumber(pgNum=pgnum).pageID()
+            split_book_data.add_splitbook_page_record(artInfo.art_id,
+                                                      page_id=page_id, 
+                                                      has_biblio=has_biblio, 
+                                                      has_toc=has_toc, 
+                                                      full_filename=artInfo.filename
+                                                      )
+            
+
+    # Add page number markup
+    add_page_number_markup(parsed_xml)
+
+    pgx_links = parsed_xml.xpath("/pepkbd3//pgx") 
+    logger.info("\t...Processing page links.")
+    for pgx in pgx_links:
+        inst = split_book_data.get_splitbook_page_instance(book_code=artInfo.src_code, vol=artInfo.art_vol_str, page_id=pgx.text)
+        if gDbg2:
+            print (f"Split book info: {pgx.text}, {pgx.attrib}, {inst}")
+            
+        if inst is not None and pgx.attrib.get("rx", None) is None:
+            if gDbg2: print (f"Setting TOC page link: {pgx.text}, {pgx.attrib}, {inst}")
+            loc = Locator(inst)
+            pgx.attrib["rx"] = str(loc) + ".P" + opasDocuments.PageNumber(pgx.text).pageID()
         
     pgxPreProcessing(parsed_xml, ocd, artInfo=artInfo, split_book_data=split_book_data, verbose=verbose)
 
@@ -686,10 +761,15 @@ def xml_update(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
     #for ref in bibReferences:
 
     # xml_artauth = pepxml.findall("artinfo/artauth/aut")
-    parsed_xml, ret_status = glossEngine.doGlossaryMarkup(parsed_xml, pretty_print=pretty_print)
-    ret_val = parsed_xml
-    
-    # record split pages
+    # parsed_xml, ret_status = glossEngine.doGlossaryMarkup(parsed_xml, pretty_print=pretty_print)
+    glossEngine.doGlossaryMarkup(parsed_xml, pretty_print=pretty_print)
+
+    web_links = parsed_xml.xpath("/pepkbd3//autaff//url") 
+    logger.info("\t...Processing url links.")
+    for url in web_links:
+        urltext = "mailto:" + url.text
+        url.tag = "webx"
+        url.attrib["url"] = urltext
     
     # if SE/GW
     # This section adds related IDs for GW and SE.
@@ -699,6 +779,7 @@ def xml_update(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
         if artInfo.src_code in ["GW", "SE"]:
             paraGWSEConcordance.addRelatedIDs(parsed_xml=parsed_xml, artInfo=artInfo) # pass in database instance
     
+    ret_val = parsed_xml
 
     return ret_val, ret_status
 

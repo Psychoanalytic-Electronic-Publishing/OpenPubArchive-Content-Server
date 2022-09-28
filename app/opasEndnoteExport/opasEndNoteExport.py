@@ -259,7 +259,7 @@ def pep_endnote_generator(path=None, source_type="journal", source_code=None, fs
     if fs is not None:
         success = fs.create_text_file(outputFileName, data=endnote_text, path=path, path_is_root_bucket=path_is_root_bucket)
         if success:
-            if options.display_verbose:
+            if options.display_verbose: # Writing endnote file
                 print (msg)
         else:
             print (f"\t...There was a problem writing {outputFileName}.")

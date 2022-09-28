@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.0926/v2.1.175"   # semver versioning after date.
+__version__     = "2022.0928/v2.1.176"   # semver versioning after date.
 __status__      = "Development/Libs/Loader"  
 
 """
@@ -1349,8 +1349,6 @@ async def client_get_configuration(response: Response,
 
     # maybe no session id when they get this, so don't check here
     # opasDocPermissions.verify_header(request, "ClientGetConfig") # for debugging client call
-    log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
-
     ocd, session_info = opasDocPermissions.get_session_info(request, response, session_id=client_session, client_id=client_id, caller_name=caller_name)
 
     # for now, just use API_KEY as the requirement.  Later admin?  
@@ -1367,6 +1365,8 @@ async def client_get_configuration(response: Response,
     else:
         status_code = httpCodes.HTTP_200_OK
 
+    log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
+    logger.debug(f"Client/Config Endpoint (not recorded): Status Code: {status_code}")
     #ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DATABASE_CLIENT_CONFIGURATION,
                                 #api_endpoint_method=opasCentralDBLib.API_ENDPOINT_METHOD_GET, 
                                 #session_info=session_info, 
@@ -1633,7 +1633,7 @@ def session_logout_user(response: Response,
     
             #if direct_login:
             response.delete_cookie(key=OPASSESSIONID,path="/", domain=localsecrets.COOKIE_DOMAIN)
-            ret_val = opasDocPermissions.authserver_logout(session_id, request=request, response=response)
+            opasDocPermissions.authserver_logout(session_id, request=request, response=response)
 
         # logged out
         session_info = models.SessionInfo(session_id=session_id)
@@ -2020,7 +2020,8 @@ async def database_advanced_search(response: Response,
     log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
 
     ocd, session_info = opasDocPermissions.get_session_info(request, response, session_id=client_session, client_id=client_id, caller_name=caller_name)
-    session_id = session_info.session_id
+    # session_id = session_info.session_id
+    
     try:
         apimode = apimode.lower()
     except:
@@ -2685,6 +2686,7 @@ async def database_search(response: Response,
         try:
             detail = ERR_MSG_BAD_SEARCH_REQUEST + f" {ret_status[1].reason}:{ret_status[1].body}"
         except Exception as e:
+            logger.warning(e)
             detail = ERR_MSG_BAD_SEARCH_REQUEST # "Bad Search Request"
             
         raise HTTPException(
@@ -3837,7 +3839,7 @@ async def database_term_counts(response: Response,
                     )
             else:
                 try:
-                    a = results[nfield]
+                    #a = results[nfield]
                     # exists, if we get here, so add it to the existing dict
                     for key, value in result.items():
                         results[nfield][key] = value
@@ -4195,7 +4197,7 @@ def metadata_articleid(response: Response,
 
     """
     caller_name = "[v2/Metadata/ArticleID]"
-    #if opasConfig.DEBUG_TRACE: print(caller_name)
+    if opasConfig.DEBUG_TRACE: print(caller_name)
     
     # api_id = opasCentralDBLib.API_METADATA_ARTICLEID
     
@@ -4248,7 +4250,6 @@ def metadata_books(response: Response,
     """
     caller_name = "[v2/Metadata/Books]"
     if opasConfig.DEBUG_TRACE:
-        ts = time.time()
         print(f"{datetime.now().time().isoformat()}: {caller_name} {client_session}: ")
 
     ret_val = metadata_by_sourcetype_sourcecode(response,

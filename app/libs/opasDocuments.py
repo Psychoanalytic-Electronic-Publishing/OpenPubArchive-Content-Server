@@ -455,6 +455,8 @@ class PageNumber:
 
     LOCALID = LOCALID		# format keyword option (defined as a module constant because
                             #  it's used as the default for a argument.
+    
+    NUMERICSTRING = "NUMERICSTRING"   # Formatted Numeric string, No P Prefix
 
     FORCEINT = "ForceInt"	# Use this to force the page number to an integer, EVEN if it's
                             # roman.  Roman page numbers will be changed to negatives.
@@ -641,7 +643,7 @@ class PageNumber:
         """
         Format the page number as a localID (default) per the formatStr argument.
         Args:
-        	keyword = Only working value is LOCALID
+        	keyword = Only working value is LOCALID -- anything else means don't prefix with P, but format as string
         	formatStr = Regular python format string, can be used to change significant digits.
 
         >>> pgNum = PageNumber("iv")
@@ -650,6 +652,9 @@ class PageNumber:
 
         >>> print (pgNum.format())
         PR0004
+
+        >>> print (pgNum.format(keyword=""))
+        R0004
 
         >>> pgNum = PageNumber("2")
         >>> print (pgNum.format(formatStr="%03d"))
@@ -665,8 +670,7 @@ class PageNumber:
         if keyword == LOCALID:
             #print "Formatting Page Ref: %s" % self.pgNumber, self.pgPrefix
             retVal = "P" + self.pgPrefix + (formatStr % int(self.pgNumber))
-
-        else:
+        else: # anything else means no "P"
             retVal = self.pgPrefix + (formatStr % int(self.pgNumber))
 
         #print "Returning: %s (prefix: %s, pgnum: %s)" % (retVal, self.pgPrefix, self.pgNumber)

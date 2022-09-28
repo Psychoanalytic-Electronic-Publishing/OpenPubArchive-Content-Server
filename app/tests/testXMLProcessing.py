@@ -5,8 +5,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import os
+# import os
 import unittest
+import re
 #from unitTestConfig import base_api, base_plus_endpoint_encoded, headers
 #import opasAPISupportLib
 #import opasConfig
@@ -16,6 +17,7 @@ import opasCentralDBLib
 #import models
 #import opasPySolrLib
 #from opasPySolrLib import search_text
+import opasXMLHelper as opasxmllib
 
 import PEPGlossaryRecognitionEngine
 import lxml
@@ -23,6 +25,42 @@ from lxml import etree
 from pathlib import Path
 
 ocd = opasCentralDBLib.opasCentralDB()
+test_data = """
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE pepkbd3 SYSTEM "http://peparchive.org/pepa1dtd/pepkbd3.dtd">
+<pepkbd3 lang="en">
+<artinfo arttype="ART" j="PAQ" newsecnm="Original Articles" doi="10.1080/00332828.2019.1556036" ISSN="0033-2828">
+    <artyear>2019</artyear>
+    <artvol>88</artvol>
+    <artiss>1</artiss>
+    <artpgrg style="arabic">1-24</artpgrg>
+    <arttitle>The Genesis of Interpretation Between Subjectivity and Objectivity: Theoretical-clinical Considerations</arttitle>
+    <artauth hidden="false"><none/></artauth>
+    <artkwds><impx type="KEYWORD">Interpretation</impx><impx type="KEYWORD">transformation</impx><impx type="KEYWORD">analyst’s subjectivity</impx><impx type="KEYWORD">objectivity</impx><impx type="KEYWORD">clinical fact</impx><impx type="KEYWORD">transference-countertransference</impx></artkwds>
+</artinfo>
+<abs>
+    <p>The patient “employs” and “enlists” the analyst in his various transference forms, not so much by attributing a role to him, but by inducing subtle and deep changes in his person. What the patient makes us experience transforms our potential interpretation into words that arise from the emotional “turbulence” established between the patient and the analyst, prompted by the patient's suffering, made “real” by the analyst’s temporary suffering. Interpretation can become alive, meaningful, usable by the patient, only if the analyst allows that turbolence to temporarily become his own, not just to understand the patient, but to transform him through a partial transformation of the analyst himself. To realize this, we have to maintain an ongoing dialogue between our objectivity and our temperate and floating subjectivity.</p>
+</abs>
+<pb><n>1</n></pb>
+<body>
+    <h1>THE ANALYST’S MIND AND CLINICAL FACTS</h1>
+    <p>We perceive (and organize) observations through the conscious, preconscious, and unconscious, not to mention the superego and the ego ideal that always lurk nearby and are ready to orient our thoughts and our feelings. That is, we use our psyche-soma, employing our normal splitting, repressing those facts that we believe would hamper our understanding of the patient. We use our own “private theories” about <pb><n>2</n></pb>ourselves and the world that surrounds us. We use our internal objects, the connections between them, our relationship with our body and our fantasies about it. We turn to our psychoanalytic theories.</p>
+    <p>The image according to which the observations we collect strongly depend on the type of “net” we cast–with the unstated hope that these nets will also be modified by the nature of the observations collected, as well as by what we discover we are unable to catch—can be a useful image to try to start representing the complex relationship between clinical practice, theory, and technique presiding over the genesis of interpretation. From the collection of observations to the construction of facts, we strive to revise, update, and modify the latter, in a combinatory game of description and imagination (Gardner <bx type="bibr" r="B0029">1994</bx>). However, what assume clinical relevance among our observations? Selected on the basis of the perception of the exchanges between analyst and patient, of the object relations and emotional states that occur between them, some observations—and not others—will be given relevance by the analyst's personal modes of experiencing what happens in the session. This selection takes place according to the analyst’s capacities and limitations in seeing what happens in the session through theory and through his knowledge of the patient. In this context, observation and intuition are the elements that enable the emergence of a clinical fact; elements that have a theoretical background but do not derive directly from theory (Ahumada <bx type="bibr" r="B0001">1994</bx>).</p>
+    <bib>
+        <be id="B0001" reftype="journal" class="mixed-citation"><a class="western"><l>Ahumada</l>, J</a>. (<y>1994</y>). <t class="article-title">What is a clinical fact? Clinical psychoanalysis as inductive method</t>. <j> Int. J. of Psychoan</j>., <pp> 949 - 962</pp></be>
+        <be id="B0015" reftype="book" class="mixed-citation"><a class="western"><l>Botella</l>, C.</a>, &amp; <a class="western"> <l>Botella</l>, S</a>. (<y>2001</y>). Propositions sur une notion de symetrie représentation-perception et ses vicissitudes dans la régression de la cure analytique. Paper given at Colloquio Italo-Francese, Bologna.</be>
+        <be id="B0024" reftype="journal" class="mixed-citation"><a class="western"><l>Fliess</l>, R</a>. (<y>1942</y>). <t class="article-title">The metapsychology of the analyst</t>. <j> Psychoanal. Q</j>., pp. <pp> 211 - 227</pp></be>
+        <be id="B0046" reftype="book" class="mixed-citation"><a class="western"><l>Heimann</l>, P</a>. (<y>1977</y>). <t class="chapter-title">Further observations on the analyst’s cognitive process</t>. In <bst> About Children and Children-No-Longer</bst>, cit., pp. <pp> 226 - 237</pp></be>
+        <be id="B0056" reftype="book" class="mixed-citation"><a class="western"><l>Kohut</l>, H</a>. (<y>1984</y>). <t class="chapter-title">The role of empathy in psychoanalytic cure</t>. In <bst> How Does Analysis Cure</bst>? Chicago: <bp class="publisher-name"> The Univ. of Chicago Press</bp>, pp. <pp>172 - 191</pp></be>
+        <be id="B0069" reftype="journal" class="mixed-citation"><a class="western"><l>Nissim Momigliano</l>, L</a>. (<y>1974</y>). <t class="article-title">Come si originano le interpretazioni nello psicoanalista</t>. <j> Riv. di Psicoanalisi</j>, <v> 20</v>: <pp>144 - 165</pp></be>
+        <be id="B0071" reftype="journal" class="mixed-citation"><a class="western"><l>O’Shaughnessy</l>, E</a>. (<y>1994</y>). <t class="article-title">What is a clinical fact?</t> <j> Int. J. of Psychoanal</j>., <pp> 939 - 948</pp></be>
+        <be id="B0074" reftype="journal" class="mixed-citation"><a class="western"><l>Ornstein</l>, P. H.</a>, &amp; <a class="western"> <l>Ornstein</l>, A</a>. (<y>1994</y>). <t class="article-title">On the conceptualisation of clinical facts in psychoanalysis</t>. <j> Int. J. of Psychoanal</j>., <pp> 977 - 994</pp></be>
+        <be id="B0080" reftype="journal" class="mixed-citation"><a class="western"><l>Sandler</l>, J.</a>, &amp; <a class="western"> <l>Sandler</l>, A. M</a>. (<y>1994</y>). <t class="article-title">Comments on the conceptualisation of clinical facts in psychoanalysis</t>. <j> Int. J. of Psychoanal</j>., <pp> 995 - 1010</pp></be>
+        
+    </bib>
+</body> 
+</pepkbd3>
+"""
 
 class TestXMLProcessing(unittest.TestCase):
     """
@@ -48,234 +86,29 @@ class TestXMLProcessing(unittest.TestCase):
             local_id = n[1]
             result = ocd.get_references_from_biblioxml_table(document_id, local_id)
             assert result[0].art_id == document_id
-            print(result[0])
+            print(result[0].art_id, result[0].bib_sourcetitle)
 
-    def test_1_glossary_word_markup(self):
+    def test_2_glossary_word_markup(self):
         """
         """
-        import difflib
-        d = difflib.Differ()
-        
-        testXML= u'<body><p>My penis envy belief is that, διαφέρει although Freud was a revolutionary, most of his penis envy followers were more conventional. As is true of most institutions, as psychoanalysis aged, a conservatism overtook it. Foreground analytic theory incorporated the background cultural pathologizing of nonheterosexuality. Thus, the few articles written about lesbians rigidly followed narrow reductionistic explanations. Initially, these explanations followed classical theory, and then as psychoanalysis expanded into ego psychology and object relations, lesbian pathologizing was fit into these theories <bx r="B006">(Deutsch, 1995)</bx>.</p><p>For example, Adrienne Applegarth&apos;s 1984 American Psychoanalytic panel on homosexual women, used ego psychology to explain lesbianism. Applegarth viewed it (according to <bx r="B020">Wolfson, 1984</bx>), as a complicated structure of gratification and defense (p. <pgx r="B020">166</pgx>). She felt that if the steps in the usual positive and negative oedipal phases or if a girls wish for a baby arising out of penis envy become distorted, a range of outcomes, including homosexuality, could occur (Wolfson, <bx r="B020">1984</bx>, p. <pgx r="B020">166</pgx>).</p></body>'
+        # testXML= u'<body><p>My penis envy belief is that, διαφέρει although Freud was a revolutionary, most of his penis envy followers were more conventional. As is true of most institutions, as psychoanalysis aged, a conservatism overtook it. Foreground analytic theory incorporated the background cultural pathologizing of nonheterosexuality. Thus, the few articles written about lesbians rigidly followed narrow reductionistic explanations. Initially, these explanations followed classical theory, and then as psychoanalysis expanded into ego psychology and object relations, lesbian pathologizing was fit into these theories <bx r="B006">(Deutsch, 1995)</bx>.</p><p>For example, Adrienne Applegarth&apos;s 1984 American Psychoanalytic panel on homosexual women, used ego psychology to explain lesbianism. Applegarth viewed it (according to <bx r="B020">Wolfson, 1984</bx>), as a complicated structure of gratification and defense (p. <pgx r="B020">166</pgx>). She felt that if the steps in the usual positive and negative oedipal phases or if a girls wish for a baby arising out of penis envy become distorted, a range of outcomes, including homosexuality, could occur (Wolfson, <bx r="B020">1984</bx>, p. <pgx r="B020">166</pgx>).</p></body>'
         glossEngine = PEPGlossaryRecognitionEngine.GlossaryRecognitionEngine(gather=False)
         parser = etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True)
-        pepxml = etree.fromstring(testXML, parser)
+        pepxml = etree.fromstring(test_data, parser)
         root = pepxml.getroottree()
-        result_tree, markup_status = glossEngine.doGlossaryMarkup(root, pretty_print=False)
-        node_text = lxml.etree.tostring(result_tree, pretty_print=False, encoding="utf8").decode("utf-8")
+        p1a = opasxmllib.xml_elem_or_str_to_xmlstring(pepxml.xpath("//body/p")[0])
+        p2a = opasxmllib.xml_elem_or_str_to_xmlstring(pepxml.xpath("//body/p")[1])
+        result_tree, markup_status = glossEngine.doGlossaryMarkup(pepxml, pretty_print=False, diagnostics=True)
+        p1b = opasxmllib.xml_elem_or_str_to_xmlstring(pepxml.xpath("//body/p")[0])
+        p2b = opasxmllib.xml_elem_or_str_to_xmlstring(pepxml.xpath("//body/p")[1])
+        print(p1a)
+        print(p1b)
+        print(p2a)
+        print(p2b)
+       
+        assert re.search("<impx", p1b) is not None
+        assert re.search("<impx", p2b) is not None
         
-        a = testXML[0:29]
-        b = node_text[0:118]
-        output_list = [li for li in difflib.ndiff([a], [b]) if li[0] != ' ']
-        print (output_list[0])
-        print (output_list[1])
-        assert output_list[1] == """+ <body><p>My <impx type="TERM2" rx="YN0012799450720" grpname="Penis Envy; Masculinity Complex">penis envy</impx> belief"""
-        
-        
-        testXML= '<body><p> forces. Brenner has suggested that the familiar  of the id, ego, and superego as agencies of <b id="10">the</b> mind.</p></body>'
-        parser = etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True)
-        pepxml = etree.fromstring(testXML, parser)
-        root = pepxml.getroottree()
-        result_tree, markup_status = glossEngine.doGlossaryMarkup(root, pretty_print=False)
-        node_text = lxml.etree.tostring(result_tree, pretty_print=False, encoding="utf8").decode("utf-8")
-        a = testXML[60:70]
-        b = node_text[60:129]
-        output_list = [li for li in difflib.ndiff([a], [b]) if li[0] != ' ']
-        print (output_list[0])
-        print (output_list[1])
-        assert output_list[1] == """+ f the <impx type="TERM2" rx="YP0001423271790" grpname="ID">id</impx>,"""
-        
-    def test_3_bld_from_kbd3(self):
-        """
-        Tests:
-        
-        1) load dbs from EXP_ARCH1 files (as per previous funct.)
-
-           opasloader -d X:\_PEPA1\_PEPa1v\_PEPCurrent --sub ANIJP-TR
-           
-           same as 
-
-           opasloader -d X:\_PEPA1\_PEPa1v\_PEPCurrent --sub ANIJP-TR --inputbuild=bEXP_ARCH1
-           
-           Messaging verbose:  False
-           
-           Output (on PC):
-              ...
-              Input data Root:  X:\_PEPA1\_PEPa1v\_PEPCurrent
-              Input data Subfolder:  ANIJP-TR
-              Precompiled XML of build (bEXP_ARCH1) will be loaded to the databases without further compiling/processing:
-              Reset Core Data:  False
-              ********************************************************************************
-              Database will be updated. Location: development.org
-              Solr Full-Text Core will be updated:  http://development.org:8983/solr/pepwebdocs
-              Solr Authors Core will be updated:  http://development.org:8983/solr/pepwebauthors
-              Solr Glossary Core will be updated:  http://development.org:8983/solr/pepwebglossary
-              ********************************************************************************
-              Paragraphs only stored for sources indicated in loaderConfig.
-              ********************************************************************************
-              Locating files for processing at X:\_PEPA1\_PEPa1v\_PEPCurrent\ANIJP-TR with build pattern (bEXP_ARCH1). Started at (Tue Jul 19 11:15:25 2022).
-              --------------------------------------------------------------------------------
-              Ready to Load 25 files *if modified* at path: X:\_PEPA1\_PEPa1v\_PEPCurrent\ANIJP-TR
-              Processing started at (Tue Jul 19 11:15:25 2022).
-              --------------------------------------------------------------------------------
-              Load started (Tue Jul 19 11:15:25 2022).  Examining files.
-              Load process complete (Tue Jul 19 11:15:26 2022 ). Time: 0.03997325897216797 seconds.
-              Cleaned up artstat: removed article statistics for any article ids not in article table.
-              Finished! Loaded 0 documents (bEXP_ARCH1). Total file load time: 1.32 secs (0.02 minutes.)
-              Note: File load time is not total elapsed time. Total elapsed time is: 1.32 secs (0.02 minutes.)
-
-           
-        2) force reload dbs from EXP_ARCH1 files (as per previous funct.)
-
-           opasloader -d X:\_PEPA1\_PEPa1v\_PEPCurrent --sub ANIJP-TR --reload
-           
-              Output on PC:
-              
-                 Messaging verbose:  False
-                 Input data Root:  X:\_PEPA1\_PEPa1v\_PEPCurrent
-                 Input data Subfolder:  ANIJP-TR
-                 Precompiled XML of build (bEXP_ARCH1) will be loaded to the databases without further compiling/processing:
-                 Reset Core Data:  False
-                 Forced Rebuild - All files added, regardless of whether they are the same as in Solr.
-                 ********************************************************************************
-                 Database will be updated. Location: development.org
-                 Solr Full-Text Core will be updated:  http://development.org:8983/solr/pepwebdocs
-                 Solr Authors Core will be updated:  http://development.org:8983/solr/pepwebauthors
-                 Solr Glossary Core will be updated:  http://development.org:8983/solr/pepwebglossary
-                 ********************************************************************************
-                 Paragraphs only stored for sources indicated in loaderConfig.
-                 ********************************************************************************
-                 Locating files for processing at X:\_PEPA1\_PEPa1v\_PEPCurrent\ANIJP-TR with build pattern (bEXP_ARCH1). Started at (Tue Jul 19 11:15:37 2022).
-                 --------------------------------------------------------------------------------
-                 Ready to Load records from 25 files at path X:\_PEPA1\_PEPa1v\_PEPCurrent\ANIJP-TR
-                 Processing started at (Tue Jul 19 11:15:37 2022).
-                 --------------------------------------------------------------------------------
-                 Load started (Tue Jul 19 11:15:37 2022).  Examining files.
-                 Load process complete (Tue Jul 19 11:15:47 2022 ). Time: 0.22304987907409668 seconds.
-                 Performing final commit.
-                 Cleaned up artstat: removed article statistics for any article ids not in article table.
-                 Finished! Loaded 25 documents and 5 references. Total file inspection/load time: 10.99 secs (0.18 minutes.)
-                 ...Files per Min: 136.4688
-                 ...Files evaluated per Min (includes skipped files): 136.4688
-                 Note: File load time is not total elapsed time. Total elapsed time is: 10.99 secs (0.18 minutes.)
-                 Files per elapsed min: 136.4565
-          
-
-        3) load dbs from EXP_ARCH1 files, but process KBD3 to EXP_ARCH1 if KBD3 file has been modified or there's no EXP_ARCH1
-
-           opasloader -d X:\_PEPA1\_PEPa1v\_PEPCurrent --sub ANIJP-TR --smartload
-
-              Output on PC:
-                 Messaging verbose:  False
-                 Input data Root:  X:\_PEPA1\_PEPa1v\_PEPCurrent
-                 Input data Subfolder:  ANIJP-TR
-                 Input form of XML of build (bKBD3|bSeriesTOC) will be compiled, saved, and loaded to the database unless already compiled version
-                 Reset Core Data:  False
-                 ********************************************************************************
-                 Database will be updated. Location: development.org
-                 Solr Full-Text Core will be updated:  http://development.org:8983/solr/pepwebdocs
-                 Solr Authors Core will be updated:  http://development.org:8983/solr/pepwebauthors
-                 Solr Glossary Core will be updated:  http://development.org:8983/solr/pepwebglossary
-                 ********************************************************************************
-                 Paragraphs only stored for sources indicated in loaderConfig.
-                 ********************************************************************************
-                 Locating files for processing at X:\_PEPA1\_PEPa1v\_PEPCurrent\ANIJP-TR with build pattern (bKBD3). Started at (Tue Jul 19 11:22:21 2022).
-                 --------------------------------------------------------------------------------
-                 Ready to Smart compile, save and load 25 files *if modified* at path: X:\_PEPA1\_PEPa1v\_PEPCurrent\ANIJP-TR
-                 Processing started at (Tue Jul 19 11:22:21 2022).
-                 --------------------------------------------------------------------------------
-                 Smart compile, save and load started (Tue Jul 19 11:22:21 2022).  Examining files.
-                 Smart compile, save and load process complete (Tue Jul 19 11:22:22 2022 ). Time: 0.032021522521972656 seconds.
-                 Cleaned up artstat: removed article statistics for any article ids not in article table.
-                 Finished! Smart compiled, saved and loaded 0 documents (bEXP_ARCH1). Total file load time: 1.08 secs (0.02 minutes.)
-                 Note: File load time is not total elapsed time. Total elapsed time is: 1.08 secs (0.02 minutes.)
-              
-           
-        
-        3) only build EXP_ARCH1 files from KBD3
-
-           opasloader --verbose --sub _PEPCurrent/ANIJP-TR 
-        
-        4) load dbs from KBD3 files and write EXP_ARCH1's for quicker reprocessing later or QA
-        
-           opasloader --only "X:\_PEPA1\_PEPa1v\_PEPCurrent\CFP\012.2022\CFP.012.0022A(bKBD3).xml" --nocheck --processxml --writeprocessed --outputbuild=bEXP_TEST
-           
-        
-        """
-        import shlex, subprocess
-        import sys
-        import glob
-        pycmd = Path(sys.executable)
-        curr_folder = Path(os.getcwd())
-        load_prog = Path("../opasDataLoader/opasDataLoader.py")
-        pycmd = f"{pycmd} {load_prog}"
-        
-        
-        data_file1 = r"--key CFP.012.0022A"
-        data_folder = curr_folder / "testxml"
-        delete_exp_arch1_files = curr_folder / "testxml/*ARCH1*.xml"
-        data_file3 = fr"--dataroot {data_folder}"
-        data_file2 = curr_folder / "testxml/PEPGRANTVS.001.0017A(bKBD3).xml"
-        data_file2 = f"--only {data_file2}"
-        print (f"Data file3 folder: {data_file3}")
-               
-        command_lines = [
-            # Force build via REBUILD option (or RELOAD) forces the build
-            ("Finished!", "Loaded 10 documents", fr"{pycmd} {data_file3} --nocheck --nohelp --rebuild --inputbuild=bKBD3 --outputbuild=bEXP_TEST1"),
-            # The parens () around builds now optional, they will be added if missing
-            ("Finished!", "loaded 0 documents (bEXP_TEST1)", fr"{pycmd} {data_file3} --nocheck --nohelp --verbose --smartload --inputbuild=bKBD3 --outputbuild=bEXP_TEST1"),
-            ("Finished!", "Finished! Loaded 10 documents (bEXP_ARCH1)", fr"{pycmd} {data_file3} --nocheck --nohelp --verbose --rebuild --inputbuild=(bKBD3) --outputbuild=(bEXP_ARCH1)"),
-            # bEXP_ARCH1 files deleted automatically after above command
-            # bEXP_TEST1 files still in place
-            ("Finished!", "loaded 0 documents (bEXP_TEST1)", fr"{pycmd} {data_file3} --nocheck --nohelp --verbose --smartload --outputbuild=(bEXP_TEST1)"), # should not reprocess if not changed
-            ("Finished!", "Loaded 10 documents (bEXP_TEST1)", fr"{pycmd} {data_file3} --nocheck --nohelp --reload --verbose --inputbuild=(bEXP_TEST1) --outputbuild=(bEXP_TEST1)"), # force rebuild, implied bKBD3 input
-            
-            ("Finished!", "56 references", fr"{pycmd} {data_file1} --nocheck --nohelp --verbose --smartload --outputbuild=(bEXP_TEST1)"),
-            #  note it always builds when there's only one file specified.
-            ("Exporting!", "Writing precompiled XML file", fr"{pycmd} {data_file1} --nocheck --nohelp --verbose --smartload --outputbuild=(bEXP_TEST1)"),
-            ("Processing file", "bEXP_ARCH1", fr"{pycmd} {data_file1} --nocheck --nohelp --load --verbose"),
-            # Already built, should not load any
-            ("Finished!", "loaded 10 documents (bEXP_ARCH1)", fr"{pycmd} {data_file3} --nocheck --nohelp --verbose --smartload"),
-            ("Finished!", "loaded 0 documents (bEXP_TEST1)", fr"{pycmd} {data_file3} --nocheck --nohelp --verbose --smartload --inputbuild=(bKBD3) --outputbuild=(bEXP_TEST1)"),
-        ]
-        
-        test_counter = 0
-        for command_line_tuple in command_lines:
-            test_counter += 1
-            #print (command_line)
-            test_line = command_line_tuple[0]
-            test_text = command_line_tuple[1]
-            command_line = command_line_tuple[2]
-            args = shlex.split(command_line, posix=False)
-            print(f"Test {test_counter}. RUN: opasDataLoader {args[2:]}")
-            p = subprocess.Popen(args, stdout=subprocess.PIPE, shell=True) # Success!
-            out, err = p.communicate()
-            try:
-                out_str = str(out, 'utf-8')
-            except Exception as e:
-                out_str = str(out)
-            
-            result = out_str.split('\r\n')
-            
-            for lin in result:
-                if "Processing file" in lin or "Writing file" in lin or "Finished!" in lin or "Exporting!" or "Loaded" in lin:
-                    print(lin)
-           
-                if test_line in lin:
-                    assert test_text in lin
-                    print (f"Test {test_counter} passed.")
-                    if "bEXP_ARCH1" in lin:
-                        print (f"Deleting temporary test files: {delete_exp_arch1_files}")
-                        file_list = glob.glob(str(f"{delete_exp_arch1_files}"))
-                        count = 0
-                        for file_path in file_list:
-                            try:
-                                os.remove(file_path)
-                                count += 1
-                            except:
-                                print("Error while deleting file : ", file_path)                        
-                        print (f"Deleted {count} temporary test files.")
-
 if __name__ == '__main__':
     unittest.main()
     print ("Tests Complete.")

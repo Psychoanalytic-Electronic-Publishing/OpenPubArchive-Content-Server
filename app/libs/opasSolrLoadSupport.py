@@ -216,7 +216,7 @@ class ArticleInfo(object):
        client searches.
 
     """
-    def __init__(self, sourceinfodb_data, pepxml, art_id, logger, verbose=None):
+    def __init__(self, sourceinfodb_data, parsed_xml, art_id, logger, verbose=None):
         # let's just double check artid!
         self.art_id = None
         self.art_id_from_filename = art_id # file name will always already be uppercase (from caller)
@@ -234,7 +234,7 @@ class ArticleInfo(object):
         # now, the rest of the variables we can set from the data
         self.processed_datetime = datetime.utcfromtimestamp(time.time()).strftime(opasConfig.TIME_FORMAT_STR)
         try:
-            self.art_id = opasxmllib.xml_xpath_return_textsingleton(pepxml, "//artinfo/@id", None)
+            self.art_id = opasxmllib.xml_xpath_return_textsingleton(parsed_xml, "//artinfo/@id", None)
             if self.art_id is None:
                 self.art_id = self.art_id_from_filename
             else:
@@ -253,12 +253,12 @@ class ArticleInfo(object):
         #<!-- Common fields -->
         #<!-- Article front matter fields -->
         #---------------------------------------------
-        artinfo_xml = pepxml.xpath("//artinfo")[0] # grab full artinfo node, so it can be returned in XML easily.
+        artinfo_xml = parsed_xml.xpath("//artinfo")[0] # grab full artinfo node, so it can be returned in XML easily.
         self.artinfo_xml = etree.tostring(artinfo_xml).decode("utf8")
-        self.src_code = pepxml.xpath("//artinfo/@j")[0]
+        self.src_code = parsed_xml.xpath("//artinfo/@j")[0]
         self.src_code = self.src_code.upper()  # 20191115 - To make sure this is always uppercase
-        self.embargo = pepxml.xpath("//artinfo/@embargo")
-        self.embargotype = opasxmllib.xml_xpath_return_textsingleton(pepxml, "//artinfo/@embargotype", default_return=None)
+        self.embargo = parsed_xml.xpath("//artinfo/@embargo")
+        self.embargotype = opasxmllib.xml_xpath_return_textsingleton(parsed_xml, "//artinfo/@embargotype", default_return=None)
         if self.embargotype is not None:
             self.embargotype = self.embargotype.upper()
             if opasConfig.TEMP_IJPOPEN_VER_COMPAT_FIX:
@@ -266,8 +266,8 @@ class ArticleInfo(object):
                     self.embargotype = "IJPOPEN_REMOVED" 
         
         if 1: # vol info (just if'd for folding purposes)
-            vol_actual = opasxmllib.xml_xpath_return_textsingleton(pepxml, '//artinfo/artvol/@actual', default_return=None)
-            self.art_vol_str = opasxmllib.xml_xpath_return_textsingleton(pepxml, '//artinfo/artvol/node()', default_return=None)
+            vol_actual = opasxmllib.xml_xpath_return_textsingleton(parsed_xml, '//artinfo/artvol/@actual', default_return=None)
+            self.art_vol_str = opasxmllib.xml_xpath_return_textsingleton(parsed_xml, '//artinfo/artvol/node()', default_return=None)
             m = re.match("(\d+)([A-Z]*)", self.art_vol_str)
             if m is None:
                 logger.error(f"ArticleInfoError: Bad Vol # in element content: {self.art_vol_str}")
@@ -338,11 +338,11 @@ class ArticleInfo(object):
             #processingErrorCount += 1
             return
             
-        self.art_issue = opasxmllib.xml_xpath_return_textsingleton(pepxml, '//artinfo/artiss/node()', default_return=None)
-        self.art_issue_title = opasxmllib.xml_xpath_return_textsingleton(pepxml, '//artinfo/artissinfo/isstitle/node()', default_return=None)
+        self.art_issue = opasxmllib.xml_xpath_return_textsingleton(parsed_xml, '//artinfo/artiss/node()', default_return=None)
+        self.art_issue_title = opasxmllib.xml_xpath_return_textsingleton(parsed_xml, '//artinfo/artissinfo/isstitle/node()', default_return=None)
         if self.art_issue_title is None:
             try:
-                self.art_issue_title = pepxml.xpath("//artinfo/@issuetitle")[0]
+                self.art_issue_title = parsed_xml.xpath("//artinfo/@issuetitle")[0]
             except:
                 pass
         if self.art_issue is None:
@@ -351,9 +351,9 @@ class ArticleInfo(object):
                 self.art_issue = issue_num
                 
         # special sequential numbering for issues used by journals like fa (we code it simply as artnbr in xml)
-        self.art_issue_seqnbr = opasxmllib.xml_xpath_return_textsingleton(pepxml, '//artinfo/artnbr/node()', default_return=None)
+        self.art_issue_seqnbr = opasxmllib.xml_xpath_return_textsingleton(parsed_xml, '//artinfo/artnbr/node()', default_return=None)
         
-        self.art_year_str = opasxmllib.xml_xpath_return_textsingleton(pepxml, '//artinfo/artyear/node()', default_return=None)
+        self.art_year_str = opasxmllib.xml_xpath_return_textsingleton(parsed_xml, '//artinfo/artyear/node()', default_return=None)
         m = re.match("(?P<yearint>[0-9]{4,4})(?P<yearsuffix>[a-zA-Z])?(\s*\-\s*)?((?P<year2int>[0-9]{4,4})(?P<year2suffix>[a-zA-Z])?)?", self.art_year_str)
         if m is not None:
             self.art_year = m.group("yearint")
@@ -367,9 +367,14 @@ class ArticleInfo(object):
                 self.art_year_int = 0
 
 
-        artInfoNode = pepxml.xpath('//artinfo')[0]
+        artInfoNode = parsed_xml.xpath('//artinfo')[0]
         self.art_type = opasxmllib.xml_get_element_attr(artInfoNode, "arttype", default_return=None)
-        self.art_vol_title = opasxmllib.xml_xpath_return_textsingleton(pepxml, '//artinfo/artvolinfo/voltitle/node()', default_return=None)
+        if self.art_type is not None and self.art_type.upper() == "TOC":
+            self.is_maintoc = True
+        else:
+            self.is_maintoc = False
+            
+        self.art_vol_title = opasxmllib.xml_xpath_return_textsingleton(parsed_xml, '//artinfo/artvolinfo/voltitle/node()', default_return=None)
         if self.art_vol_title is None:
             # try attribute for value (lower priority than element above)
             self.art_vol_title = opasxmllib.xml_get_element_attr(artInfoNode, "voltitle", default_return=None)
@@ -396,7 +401,7 @@ class ArticleInfo(object):
         self.start_sectname = opasxmllib.xml_get_element_attr(artInfoNode, "newsecnm", default_return=None)
         if self.start_sectname is None:
             #  look in newer, tagged, data
-            self.start_sectname = opasxmllib.xml_xpath_return_textsingleton(pepxml, '//artinfo/artsectinfo/secttitle/node()', default_return=None)
+            self.start_sectname = opasxmllib.xml_xpath_return_textsingleton(parsed_xml, '//artinfo/artsectinfo/secttitle/node()', default_return=None)
         
         if self.start_sectname is not None:
             self.start_sectname = opasgenlib.trimPunctAndSpaces(self.start_sectname)
@@ -405,15 +410,15 @@ class ArticleInfo(object):
         self.art_pgstart, self.art_pgend = opasgenlib.pgrg_splitter(self.art_pgrg)
 
         try:
-            self.art_pgcount = int(pepxml.xpath("count(//pb)")) # 20200506
+            self.art_pgcount = int(parsed_xml.xpath("count(//pb)")) # 20200506
         except Exception as e:
             self.art_pgcount = 0
             
-        self.art_kwds = opasxmllib.xml_xpath_return_textsingleton(pepxml, "//artinfo/artkwds/node()", None)
+        self.art_kwds = opasxmllib.xml_xpath_return_textsingleton(parsed_xml, "//artinfo/artkwds/node()", None)
         
         # art_pgrx_count
         try:
-            self.art_pgrx_count = int(pepxml.xpath("count(//pgx)")) # 20220320
+            self.art_pgrx_count = int(parsed_xml.xpath("count(//pgx)")) # 20220320
         except Exception as e:
             self.art_pgrx_count = 0
 
@@ -429,91 +434,91 @@ class ArticleInfo(object):
 
         # art_abs_count
         try:
-            self.art_abs_count = int(pepxml.xpath("count(//abs)"))
+            self.art_abs_count = int(parsed_xml.xpath("count(//abs)"))
         except Exception as e:
             self.art_abs_count  = 0
 
         # art_ftns_count_count 
         try:
-            self.art_ftns_count = int(pepxml.xpath("count(//ftn)")) # 20210413
+            self.art_ftns_count = int(parsed_xml.xpath("count(//ftn)")) # 20210413
         except Exception as e:
             self.art_ftns_count = 0
 
         # art_paras_count
         try:
-            self.art_paras_count = int(pepxml.xpath("count(//p)")) # 20210413
+            self.art_paras_count = int(parsed_xml.xpath("count(//p)")) # 20210413
         except Exception as e:
             self.art_paras_count = 0
 
         # art_headings_count
         try:
-            self.art_headings_count = int(pepxml.xpath("count(//*[self::h1 or self::h2 or self::h3 or self::h4 or self::h5 or self::h6])")) # 20210413
+            self.art_headings_count = int(parsed_xml.xpath("count(//*[self::h1 or self::h2 or self::h3 or self::h4 or self::h5 or self::h6])")) # 20210413
         except Exception as e:
             self.art_headings_count = 0
 
         # art_terms_count
         try:
-            self.art_terms_count = int(pepxml.xpath('count(//impx[@type="TERM2"])')) # 20210413
+            self.art_terms_count = int(parsed_xml.xpath('count(//impx[@type="TERM2"])')) # 20210413
         except Exception as e:
             self.art_terms_count = 0
 
         # art_dreams_count
         try:
-            self.art_dreams_count = int(pepxml.xpath("count(//dream)")) # 20210413
+            self.art_dreams_count = int(parsed_xml.xpath("count(//dream)")) # 20210413
         except Exception as e:
             self.art_dreams_count = 0
 
         # art_dialogs_count
         try:
-            self.art_dialogs_count = int(pepxml.xpath("count(//dialog)")) # 20210413
+            self.art_dialogs_count = int(parsed_xml.xpath("count(//dialog)")) # 20210413
         except Exception as e:
             self.art_dialogs_count = 0
 
         # art_notes_count
         try:
-            self.art_notes_count = int(pepxml.xpath("count(//note)")) # 20210413
+            self.art_notes_count = int(parsed_xml.xpath("count(//note)")) # 20210413
         except Exception as e:
             self.art_notes_count = 0
 
         # art_poems_count
         try:
-            self.art_poems_count = int(pepxml.xpath("count(//poem)")) # 20210413
+            self.art_poems_count = int(parsed_xml.xpath("count(//poem)")) # 20210413
         except Exception as e:
             self.art_poems_count = 0
             
         # art_citations_count
         try:
-            self.art_citations_count = int(pepxml.xpath("count(//bx)")) # 20210413
+            self.art_citations_count = int(parsed_xml.xpath("count(//bx)")) # 20210413
         except Exception as e:
             self.art_citations_count = 0
         
         # art_quotes_count
         try:
-            self.art_quotes_count = int(pepxml.xpath("count(//quote)")) # 20210413
+            self.art_quotes_count = int(parsed_xml.xpath("count(//quote)")) # 20210413
         except Exception as e:
             self.art_quotes_count = 0
 
         try:
-            self.art_tblcount = int(pepxml.xpath("count(//tbl)")) # 20200922
+            self.art_tblcount = int(parsed_xml.xpath("count(//tbl)")) # 20200922
         except Exception as e:
             self.art_tblcount = 0
 
         try:
-            self.art_figcount = int(pepxml.xpath("count(//figure)")) # 20200922
+            self.art_figcount = int(parsed_xml.xpath("count(//figure)")) # 20200922
         except Exception as e:
             self.art_figcount = 0
             
         # art_chars_count
         try:
-            self.art_chars_count = int(pepxml.xpath("string-length(normalize-space(//node()))"))
-            self.art_chars_meta_count = int(pepxml.xpath("string-length(normalize-space(//meta))"))
+            self.art_chars_count = int(parsed_xml.xpath("string-length(normalize-space(//node()))"))
+            self.art_chars_meta_count = int(parsed_xml.xpath("string-length(normalize-space(//meta))"))
             self.art_chars_count -= self.art_chars_meta_count 
         except Exception as e:
             self.art_chars_count  = 0
 
         try:
-            self.art_chars_no_spaces_count = int(pepxml.xpath("string-length(translate(normalize-space(//node()),' ',''))"))
-            self.art_chars_no_spaces_meta_count = int(pepxml.xpath("string-length(translate(normalize-space(//meta),' ',''))"))
+            self.art_chars_no_spaces_count = int(parsed_xml.xpath("string-length(translate(normalize-space(//node()),' ',''))"))
+            self.art_chars_no_spaces_meta_count = int(parsed_xml.xpath("string-length(translate(normalize-space(//meta),' ',''))"))
             self.art_chars_no_spaces_count -= self.art_chars_no_spaces_meta_count
         except Exception as e:
             self.art_chars_no_spaces_count  = 0
@@ -525,7 +530,7 @@ class ArticleInfo(object):
 
         # ************* end of counts! 20210413 *******************************************
 
-        self.art_graphic_list = pepxml.xpath('//graphic//@source')
+        self.art_graphic_list = parsed_xml.xpath('//graphic//@source')
         #if self.art_graphic_list != []:
             #print (f"Graphics found: {self.art_graphic_list}")
         
@@ -557,7 +562,7 @@ class ArticleInfo(object):
                 self.art_title = self.art_subtitle
                 self.art_subtitle = ""
                 
-        self.art_lang = pepxml.xpath('//pepkbd3/@lang')
+        self.art_lang = parsed_xml.xpath('//pepkbd3/@lang')
         
         if self.art_lang == []:
             self.art_lang = [opasConfig.DEFAULT_DATA_LANGUAGE_ENCODING]
@@ -568,15 +573,15 @@ class ArticleInfo(object):
             logger.warning(f"art_lang value error: {self.art_lang}")
             self.art_lang = opasConfig.DEFAULT_DATA_LANGUAGE_ENCODING
         
-        self.author_xml_list = pepxml.xpath('//artinfo/artauth/aut')
-        self.author_xml = opasxmllib.xml_xpath_return_xmlsingleton(pepxml, '//artinfo/artauth')
+        self.author_xml_list = parsed_xml.xpath('//artinfo/artauth/aut')
+        self.author_xml = opasxmllib.xml_xpath_return_xmlsingleton(parsed_xml, '//artinfo/artauth')
         self.authors_bibliographic, self.author_list, self.authors_bibliographic_list = opasxmllib.authors_citation_from_xmlstr(self.author_xml, listed="All") #listed=True)
         self.art_auth_citation = self.authors_bibliographic
         self.art_auth_citation_list = self.authors_bibliographic_list
         # ToDo: I think I should add an author ID to bib aut too.  But that will have
         #  to wait until later.
         # TODO: fix PEP2XML--in cases like AJRPP.004.0273A it put Anonymous in the authindexid.
-        self.art_author_id_list = opasxmllib.xml_xpath_return_textlist(pepxml, '//artinfo/artauth/aut[@listed="true"]/@authindexid')
+        self.art_author_id_list = opasxmllib.xml_xpath_return_textlist(parsed_xml, '//artinfo/artauth/aut[@listed="true"]/@authindexid')
         self.art_authors_count = len(self.author_list)
         if self.art_author_id_list == []: # no authindexid
             logger.warning("This document %s does not have an author list; may be missing authindexids" % art_id)
@@ -586,7 +591,7 @@ class ArticleInfo(object):
         self.art_auth_mast, self.art_auth_mast_list = opasxmllib.author_mast_from_xmlstr(self.author_xml, listed=True)
         self.art_auth_mast_unlisted_str, self.art_auth_mast_unlisted_list = opasxmllib.author_mast_from_xmlstr(self.author_xml, listed=False)
         self.art_auth_count = len(self.author_xml_list)
-        self.art_author_lastnames = opasxmllib.xml_xpath_return_textlist(pepxml, '//artinfo/artauth/aut[@listed="true"]/nlast')
+        self.art_author_lastnames = opasxmllib.xml_xpath_return_textlist(parsed_xml, '//artinfo/artauth/aut[@listed="true"]/nlast')
         
         self.art_all_authors = self.art_auth_mast + " (" + self.art_auth_mast_unlisted_str + ")"
 
@@ -635,11 +640,11 @@ class ArticleInfo(object):
                                 )
         
         self.art_citeas_text = opasxmllib.xml_elem_or_str_to_text(self.art_citeas_xml)
-        art_qual_node = pepxml.xpath("//artinfo/artqual")
+        art_qual_node = parsed_xml.xpath("//artinfo/artqual")
         if art_qual_node != []:
             self.art_qual = opasxmllib.xml_get_element_attr(art_qual_node[0], "rx", default_return=None)
         else:
-            self.art_qual = pepxml.xpath("//artbkinfo/@extract")
+            self.art_qual = parsed_xml.xpath("//artbkinfo/@extract")
             if self.art_qual == []:
                 self.art_qual = None
             else:
@@ -649,8 +654,8 @@ class ArticleInfo(object):
                 #except Exception as e:
                     #print (e)
 
-        self.artinfo_bkinfo_next = pepxml.xpath("//artbkinfo/@next")
-        self.artinfo_bkinfo_prev = pepxml.xpath("//artbkinfo/@prev")
+        self.artinfo_bkinfo_next = parsed_xml.xpath("//artbkinfo/@next")
+        self.artinfo_bkinfo_prev = parsed_xml.xpath("//artbkinfo/@prev")
         if self.artinfo_bkinfo_next != []:
             self.artinfo_bkinfo_next = str(opasLocator.Locator(self.artinfo_bkinfo_next[0]))
         if self.artinfo_bkinfo_prev != []:
@@ -669,7 +674,7 @@ class ArticleInfo(object):
         else:
             self.bk_subdoc = False           
 
-        refs = pepxml.xpath("/pepkbd3//be")
+        refs = parsed_xml.xpath("/pepkbd3//be")
         self.bib_authors = []
         self.bib_rx = []
         self.bib_title = []
@@ -713,17 +718,17 @@ class ArticleInfo(object):
         # clear it, we aren't saving it.
         refs  = None
         
-        self.bk_info_xml = opasxmllib.xml_xpath_return_xmlsingleton(pepxml, "/pepkbd3//artbkinfo") # all book info in instance
+        self.bk_info_xml = opasxmllib.xml_xpath_return_xmlsingleton(parsed_xml, "/pepkbd3//artbkinfo") # all book info in instance
         # break it down a bit for the database
-        self.main_toc_id = opasxmllib.xml_xpath_return_textsingleton(pepxml, "/pepkbd3//artbkinfo/@extract", None)
+        self.main_toc_id = opasxmllib.xml_xpath_return_textsingleton(parsed_xml, "/pepkbd3//artbkinfo/@extract", None)
         if self.main_toc_id is not None:
             self.main_toc_id = str(self.main_toc_id)
             #self.main_toc_id = str(opasLocator.Locator(self.main_toc_id))
             
-        self.bk_title = opasxmllib.xml_xpath_return_textsingleton(pepxml, "/pepkbd3//bktitle", None)
-        self.bk_publisher = opasxmllib.xml_xpath_return_textsingleton(pepxml, "/pepkbd3//bkpubandloc", None)
-        self.bk_seriestoc = opasxmllib.xml_xpath_return_textsingleton(pepxml, "/pepkbd3//artbkinfo/@seriestoc", None)
-        self.bk_next_id = opasxmllib.xml_xpath_return_textsingleton(pepxml, "//artbkinfo/@next", None)
+        self.bk_title = opasxmllib.xml_xpath_return_textsingleton(parsed_xml, "/pepkbd3//bktitle", None)
+        self.bk_publisher = opasxmllib.xml_xpath_return_textsingleton(parsed_xml, "/pepkbd3//bkpubandloc", None)
+        self.bk_seriestoc = opasxmllib.xml_xpath_return_textsingleton(parsed_xml, "/pepkbd3//artbkinfo/@seriestoc", None)
+        self.bk_next_id = opasxmllib.xml_xpath_return_textsingleton(parsed_xml, "//artbkinfo/@next", None)
         #if self.bk_next_id is not None:
             #self.bk_next_id = opasLocator.Locator(self.bk_next_id)
         
@@ -734,6 +739,20 @@ class ArticleInfo(object):
                 self.bk_seriestoc = "SE.000.0000A"
             if self.src_code == "GW":
                 self.bk_seriestoc = "GW.000.0000A"               
+
+        # check art_id's against the standard, old system of locators.
+        try:
+            self.art_locator = opasLocator.Locator(self.art_id)
+                                                   
+            if self.art_id != self.art_locator.articleID():
+                logger.warning(f"art_id: {self.art_id} is not the same as the computed locator: {self.art_locator} ")
+                
+            # Take advantage of Locator object for conversion data required.
+            self.is_splitbook = self.art_locator.thisIsSplitBook
+        except Exception as e:
+            logger.error(f"Problem converting {self.art_id} to locator")
+            
+
                 
 #------------------------------------------------------------------------------------------------------
 def get_file_dates_solr(solrcore, art_id=None, filename=None):

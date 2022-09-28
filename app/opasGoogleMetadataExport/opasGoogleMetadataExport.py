@@ -20,7 +20,9 @@ print(
     f""" 
     {programNameShort} - Open Publications-Archive Server (OPAS) - Google Metadata Exporter
     
-        Create Google Metadata from the opas Database
+        Create Google Metadata from the OPAS Database
+        
+        TBD: Still need to add book processing!
         
         Example Invocation:
                 $ python {programNameShort}.py --recordsperfile=8000 --maxrecords=200000 --bucket pep-web-google
@@ -382,7 +384,7 @@ def writePublisherFile(path=None, fs=None, online_link_location="http://peparchi
     if fs is not None:
         success = fs.create_text_file(path=path, filespec=publisher_file_name, data=tplPublisher, path_is_root_bucket=True)
         if success:
-            if options.display_verbose:
+            if options.display_verbose: # Exporting! Writing publisher XML file
                 print (msg)
         else:
             print (f"\t...There was a problem writing {publisher_file_name}.")
@@ -559,20 +561,21 @@ def google_metadata_generator(path=None, source_type="journal", fs=None, size=No
                 
             # vol is done...write output file for journal vol
             outputFileName = f"{journal_code}.{volume[0]}.xml"
-            msg = f"\t...Writing volume XML file to {outputFileName}"
             if fs is not None:
                 success = fs.create_text_file(outputFileName, data=vol_metadata_text, path=path, path_is_root_bucket=path_is_root_bucket)
                 if success:
-                    if options.display_verbose:
+                    if options.display_verbose: # vol is done...write output file for journal vol
+                        msg = f"\t...Writing volume XML file to {outputFileName}"
+                        logger.info(msg)
                         print (msg)
                 else:
-                    print (f"\t...There was a problem writing {outputFileName}.")
+                    msg =f"\t...There was a problem writing {outputFileName}."
+                    logger.error(msg)
+                    print (msg)
             else:
-                print (f"\t...There was a problem writing {outputFileName}. Filesystem not supplied")
-        
-
-            
-            #enf.close()
+                msg = f"\t...There was a problem writing {outputFileName}. Filesystem not supplied")
+                logger.error(msg)
+                print (msg)
             
 # -------------------------------------------------------------------------------------------------------
 if __name__ == "__main__":
@@ -612,6 +615,9 @@ if __name__ == "__main__":
                            )
         ret_val = google_metadata_generator(path=options.bucket, fs=fs, source_type="video", path_is_root_bucket=path_is_root_bucket) # path=options.bucket, size=options.recordsperfile, max_records=options.maxrecords, clear_sitemap=options.clearsitemap)
         ret_val = google_metadata_generator(path=options.bucket, fs=fs, source_type="journal", path_is_root_bucket=path_is_root_bucket) # path=options.bucket, size=options.recordsperfile, max_records=options.maxrecords, clear_sitemap=options.clearsitemap)
+        print ("============================================")
+        print ("  TBD: Still need to add book processing!")
+        print ("============================================")
         print ("Finished!")
 
     sys.exit()

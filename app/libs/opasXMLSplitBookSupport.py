@@ -6,13 +6,15 @@ programNameShort = "SplitBookSuport" # Library to find correct locator for pages
 import logging
 logger = logging.getLogger(programNameShort)
 
+import localsecrets
 import opasGenSupportLib as opasgenlib
 import opasLocator
 import opasDocuments
 import opasFileSupport
 import loggingDebugStream
+import opasCentralDBLib
 
-DBGSTDOUT = True
+DBGSTDOUT = False
 
 SPLIT_BOOK_TABLE = "vw_opasloader_splitbookpages"
 
@@ -49,8 +51,9 @@ class SplitBookData:
         """
         Return the instance locator containing the pageID for the journalCode and volume.
 
-        >>> splitbook = SplitBookData()
-        >>> splitbook.get_splitbook_instance("ZBK", "27", "0169")
+        >>> ocd = opasCentralDBLib.opasCentralDB()
+        >>> splitbook = SplitBookData(ocd)
+        >>> splitbook.get_splitbook_page_instance("ZBK", "27", "0169")
         'ZBK.027.0168A'
         """
         ret_val = None
@@ -85,7 +88,7 @@ class SplitBookData:
         else:
             toc_query =  ""
 
-        loggingDebugStream.log_everywhere_if(DBGSTDOUT, level="debug", msg=f"GetSplitBookInstance: {art_base} {page_id_str}")
+        # loggingDebugStream.log_everywhere_if(DBGSTDOUT, level="debug", msg=f"GetSplitBookInstance: {art_base} {page_id_str}")
 
         page_qry = fr"""select articleID,
                         bibliopage,
@@ -122,11 +125,13 @@ class SplitBookData:
         Go through the splitbook table and eliminate files which no longer exist per the file
                 column
 
-        >>> splitbook = SplitBookData()
+        >>> ocd = opasCentralDBLib.opasCentralDB()
+        >>> splitbook = SplitBookData(ocd)
         >>> splitbook.garbage_collect(art_id_pattern="ZBK.999.0000")
+        True
 
         """
-        import localsecrets
+        count = 0
         fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root=localsecrets.IMAGE_SOURCE_PATH)
         loggingDebugStream.log_everywhere_if(DBGSTDOUT, level="debug", msg=f"Garbage Collect. Deleting records {SPLIT_BOOK_TABLE} where the XML file no longer exists.")
         
@@ -167,9 +172,12 @@ class SplitBookData:
         """
         Remove all records for a given locator from the split book table splitbookpages
 
-        >>> splitbook = SplitBookData()
+        >>> ocd = opasCentralDBLib.opasCentralDB()
+        >>> splitbook = SplitBookData(ocd)
         >>> splitbook.add_splitbook_page_record("ZBK.999.0100", "R0021")
+        True
         >>> splitbook.delete_splitbook_page_records("ZBK.999.0100")
+        True
 
         """
         
@@ -197,41 +205,47 @@ class SplitBookData:
         return ret_val
 
     #--------------------------------------------------------------------------------
-    def add_splitbook_page_record(self, artLocator, pageID, has_biblio=0, hasTOC=0, full_filename=None):
+    def add_splitbook_page_record(self, art_locator, page_id, has_biblio=0, has_toc=0, full_filename=None):
         """
         Add a record to the split book table splitbookpages to record the page Id and article locator
 
-        >>> splitbook = SplitBookData()
-        >>> splitbook.add_splitbook_page_record("ZBK.999.0000", "0021")
-        >>> splitbook.add_splitbook_page_record("ZBK.999.0000")
+        >>> ocd = opasCentralDBLib.opasCentralDB()
+        >>> splitbook = SplitBookData(ocd)
+        >>> splitbook.add_splitbook_page_record("ZBK.999.0000", page_id="0021")
+        True
+        >>> splitbook.add_splitbook_page_record("ZBK.999.0000", page_id="33")
+        True
 
         """
 
         ret_val = None
         insert_splitbook_qry = fr'replace into {SPLIT_BOOK_TABLE} values ("%s"' + (5*', "%s"') + ")"
 
-        if isinstance(artLocator, str):  
-            art_id = opasLocator.Locator(artLocator, noStartingPageException=True)
+        if isinstance(art_locator, str):  
+            art_id = opasLocator.Locator(art_locator, noStartingPageException=True)
             art_id_base = art_id.baseCode()
         else:
-            art_id = artLocator
-            art_id_base = artLocator.baseCode()
+            art_id = art_locator
+            art_id_base = art_locator.baseCode()
 
         safeFilename = opasgenlib.do_escapes(full_filename)
+        
+        pn = opasDocuments.PageNumber(page_id)
+        page_num = pn.format(keyword=pn.NUMERICSTRING)
 
         # set up authorName insert
         querytxt = insert_splitbook_qry % (art_id_base,
                                            art_id,
-                                           pageID,
+                                           page_num, 
                                            has_biblio,
-                                           hasTOC,
+                                           has_toc,
                                            safeFilename
                                            )
         
         # now add the row
         ret_val = self.ocd.do_action_query(querytxt,
                                            queryparams=None,
-                                           contextStr="(SPLITBOOKS %s/%s)" % (art_id_base, pageID))
+                                           contextStr="(SPLITBOOKS %s/%s)" % (art_id_base, page_id))
         return ret_val
 
 #==================================================================================================
@@ -243,10 +257,11 @@ if __name__ == "__main__":
 	Run Tests of module routines
 	"""
 
+    import opasCentralDBLib
     import doctest
     doctest.testmod()
+    print ("All Tests complete.")
     sys.exit()
-    import opasCentralDBLib
 
     ocd = opasCentralDBLib.opasCentralDB()
     splitbook = SplitBookData(database_connection=ocd)

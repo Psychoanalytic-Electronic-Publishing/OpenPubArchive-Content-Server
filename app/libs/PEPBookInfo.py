@@ -27,9 +27,7 @@ import re
 #import html.parser
 # import xml.sax.saxutils
 
-import opasConfig
 from opasConfig import gClassicBookTOCList, gSEIndex, gGWIndex
-from opasLocator import Locator
 
 import opasGenSupportLib as opasgenlib
 #import opasDocuments
