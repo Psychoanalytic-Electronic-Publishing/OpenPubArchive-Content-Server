@@ -492,7 +492,7 @@ def xml_update(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
     
     parsed_xml.attrib["procby"] = f"{programNameShort}.{__version__}"
     xml_artinfo = parsed_xml.find("artinfo")
-    source_row = ocd.get_sources(src_code=artInfo.src_code)
+    source_row = ocd.get_sources(src_code=artInfo.src_prodkey)
     known_books = PEPBookInfo.PEPBookInfo()
 
     try:
@@ -505,13 +505,16 @@ def xml_update(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
                 if artInfo.art_issn is not None:
                     xml_artinfo.attrib["ISSN"] = artInfo.art_issn
                 else:
-                    if source_info["ISBN-13"] is not None:
+                    # logic changed 2022-09-30 to prioritize existing isbn, and then isbn-10 from 
+                    # the productbase (like the local process I ran)
+                    if artInfo.art_isbn is not None:
+                        xml_artinfo.attrib["ISBN"] = artInfo.art_isbn
+                    elif source_info["ISBN-10"] is not None:
+                        xml_artinfo.attrib["ISBN"] = source_info["ISBN-10"]
+                    elif source_info["ISBN-13"] is not None:
                         xml_artinfo.attrib["ISBN"] = source_info["ISBN-13"]
                     else:
-                        if artInfo.art_isbn is not None:
-                            xml_artinfo.attrib["ISBN"] = artInfo.art_isbn
-                        else:
-                            logger.warning(f"Source Code: {artInfo.src_code} but no ISSN or ISBN")
+                        logger.warning(f"Source Code: {artInfo.src_code} but no ISSN or ISBN")
 
     except Exception as e:
         print (e)
