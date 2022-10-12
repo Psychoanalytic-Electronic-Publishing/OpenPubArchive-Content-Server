@@ -22,8 +22,6 @@ sys.path.append('../config')
 sys.path.append('../libs/configLib')
 
 import re
-import os
-import os.path
 import time
 import difflib
 
@@ -33,8 +31,6 @@ import logging
 logger = logging.getLogger(programNameShort)
 logger.setLevel(logging.DEBUG)
 import mysql.connector
-
-from optparse import OptionParser
 
 import localsecrets
 # import opasCentralDBLib
@@ -51,7 +47,7 @@ def is_date_time(date_text):
         if isinstance(date_text, datetime1):
             ret_val = True
         else:
-            val = datetime1.strptime(date_text, '%Y-%m-%d')
+            ret_val = datetime1.strptime(date_text, '%Y-%m-%d')
             
     except ValueError:
         ret_val = False
@@ -332,6 +328,7 @@ def compare_critical_column_lists(table_name, key_col_name, value_col_name_list,
                     if not isinstance(value_col_val, str):
                         print (f"Difference in {value_col_name}: {(value_col_val, target_dict[key_col_val])}")
                     else:
+                        print (f"Difference in {value_col_name}:{key_col_val}")
                         show_comparison(value_col_val, target_dict[key_col_val], sidebyside=True, width=60, compact=False)
                     #else: # enumerate diffs
                         #for i,s in enumerate(difflib.ndiff(value_col_val, target_dict[key_col_val])):
@@ -509,7 +506,6 @@ def main():
     logger.info('Started at %s', datetime1.today().strftime('%Y-%m-%d %H:%M:%S"'))
     logger.setLevel(logging.WARN)
 
-    timeStart = time.time()
     print (f"Processing started at ({time.ctime()}).")
     print((80*"-"))
 

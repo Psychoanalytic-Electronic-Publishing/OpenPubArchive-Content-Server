@@ -11,6 +11,8 @@ import sys
 import urllib
 import requests
 import opasDocPermissions
+import logging
+logger = logging.getLogger()
 
 folder = os.path.basename(os.path.dirname(os.path.abspath(__file__)))
 if folder == "tests": # testing from within WingIDE, default folder is tests
@@ -88,6 +90,8 @@ def test_login(username=localsecrets.PADS_TEST_ID, password=localsecrets.PADS_TE
                localsecrets.API_KEY_NAME: localsecrets.API_KEY}
     if session_info.is_valid_login == True:
         headers[localsecrets.AUTH_KEY_NAME] = "true"
+    else:
+        logger.error(f"Login user {username} was not successful {session_info.pads_session_info.ReasonStr}.")
     
     return sessID, headers, session_info
 

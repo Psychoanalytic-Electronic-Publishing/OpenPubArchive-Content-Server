@@ -68,7 +68,7 @@ class TestOpasFileSupport(unittest.TestCase):
                                                 secret=localsecrets.S3_SECRET,
                                                 root=localsecrets.IMAGE_SOURCE_PATH)
             ret = fs.fullfilespec(filespec="IJAPS.016.0181A.FIG002.jpg", path=localsecrets.IMAGE_SOURCE_PATH)
-            assert(ret =='pep-web-files/doc/g/IJAPS.016.0181A.FIG002.jpg')
+            assert(ret ==f'{localsecrets.IMAGE_SOURCE_PATH}/IJAPS.016.0181A.FIG002.jpg')
         else:
             print ("Local FS tests")
             fs = opasFileSupport.FlexFileSystem(root=localsecrets.XML_ORIGINALS_PATH)

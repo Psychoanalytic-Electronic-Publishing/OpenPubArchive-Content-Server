@@ -28,7 +28,7 @@ class TestDatabaseSearchSynonyms(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         count1 = response_info["fullCount"]
-        assert(count1 >= 6000 and count1 <= 6966), f"Count: {count1}" 
+        assert(count1 >= 6000 and count1 <= 7500), f"Count: {count1}" 
 
     def test_search_fulltext_syn_2(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?title=("Freudian Metapsychology")&synonyms=false')
@@ -136,7 +136,7 @@ class TestDatabaseSearchSynonyms(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         count1 = response_info["fullCount"]
-        assert(count1 >= 8450 and count1 <= 8980), f"Count: {count1}" 
+        assert(count1 >= 8450 and count1 <= 9500), f"Count: {count1}" 
 
     def test_search_fulltext_syn_8(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?fulltext1=text:(externalization)&synonyms=false')

@@ -13,6 +13,10 @@ from contextlib import closing
 import opasCentralDBLib
 
 class SourceInfoDB(object):
+    """
+    Read in product data from database, and create dictionary with pepsrccode as key
+    
+    """
     def __init__(self):
         self.sourceData = {}
         ocd = opasCentralDBLib.opasCentralDB()

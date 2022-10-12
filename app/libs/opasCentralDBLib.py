@@ -199,27 +199,6 @@ def get_password_hash(password):
     """
     return pwd_context.hash(password)
 
-class ErrorMessageDB(object):
-    def __init__(self):
-        self.message_data = {}
-        ocd = opasCentralDB()
-        recs = ocd.get_user_errormsg_data()
-        for n in recs:
-            try:
-                self.message_data[n["pepsrccode"]] = n
-            except KeyError:
-                logger.error("Missing Source Code Value in %s" % n)
-
-    def lookupSourceCode(self, sourceCode):
-        """
-        Returns the dictionary entry for the source code or None
-          if it doesn't exist.
-        """
-        dbEntry = self.sourceData.get(sourceCode, None)
-        retVal = dbEntry
-        return retVal
-    
-
 class opasCentralDB(object):
     """
     This object should be used and then discarded on an endpoint by endpoint basis in any

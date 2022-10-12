@@ -67,11 +67,14 @@ class TestSQLStructure(unittest.TestCase):
             try:
                 curs.execute(sql)
                 row_count = curs.rowcount
-                print (f"Found {row_count} rows (limit was 10)")
+                val_str = f"Found {row_count} rows (limit was 10)"
+                print (val_str)
                 sourceData = curs.fetchall()
                 assert (len(sourceData) >= 1)
-            except:
-                print (f"Exception: can't query table {table}")
+            except AssertionError as e:
+                print (f"Assertion error for table/view: {table}: {val_str}")
+            except Exception as e:
+                print (f"Exception: can't query table/view {table} ({e}")
                 assert (False)
 
         ocd.close_connection(caller_name="test_views") # make sure connection is closed
