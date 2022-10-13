@@ -20,8 +20,8 @@ class testDatabaseSearchSmartTextWordSearch(unittest.TestCase):
         response_set = r["documentList"]["responseSet"] 
         print (f'Smarttext: {response_info["description"]}')
         full_count = response_info["fullCount"]
-        assert(response_info["fullCount"] >= 1)
-        print (response_set)
+        assert(response_info["fullCount"] >= 1), full_count
+        #print (response_set)
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=Interpret* symbol')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
@@ -31,8 +31,8 @@ class testDatabaseSearchSmartTextWordSearch(unittest.TestCase):
         response_set = r["documentList"]["responseSet"] 
         print (f'Smarttext: {response_info["description"]}')
         full_count2 = response_info["fullCount"]
-        assert(full_count == full_count2)
-        print (response_set)
+        assert(full_count == full_count2), (full_count, full_count2)
+        # print (response_set)
     
     def test_1a_literal_search_with_wildcards(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext="Car? Gr?nt"~25')
@@ -44,7 +44,7 @@ class testDatabaseSearchSmartTextWordSearch(unittest.TestCase):
         response_set = r["documentList"]["responseSet"] 
         print (f'Smarttext: {response_info["description"]}')
         assert(response_info["fullCount"] >= 45)
-        print (response_set)
+        #print (response_set)
     
     def test_1a_boolean_word_search(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=love AND hate AND (joy OR sorrow) ')
@@ -56,7 +56,7 @@ class testDatabaseSearchSmartTextWordSearch(unittest.TestCase):
         response_set = r["documentList"]["responseSet"] 
         print (f'Smarttext: {response_info["description"]}')
         assert(response_info["fullCount"] >= 1500)
-        print (response_set)
+        #print (response_set)
 
     def test_1a_one_word_search(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=regretable') # misspelled, so only a few
@@ -68,7 +68,7 @@ class testDatabaseSearchSmartTextWordSearch(unittest.TestCase):
         response_set = r["documentList"]["responseSet"] 
         print (f'Smarttext: {response_info["description"]}')
         assert(response_info["fullCount"] >= 5)
-        print (response_set)
+        #print (response_set)
 
     def test_1a_one_word_search_wildcard(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=regre?table') # should take care of spelling error
@@ -80,7 +80,7 @@ class testDatabaseSearchSmartTextWordSearch(unittest.TestCase):
         response_set = r["documentList"]["responseSet"] 
         print (f'Smarttext: {response_info["description"]}')
         assert(response_info["fullCount"] >= 5)
-        print (response_set)
+        #print (response_set)
 
     def test_1a_one_word_search_with_wildcard(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=regretabl*') # misspelled, so only a few
@@ -92,7 +92,7 @@ class testDatabaseSearchSmartTextWordSearch(unittest.TestCase):
         response_set = r["documentList"]["responseSet"] 
         print (f'Smarttext: {response_info["description"]}')
         assert(response_info["fullCount"] >= 12)
-        print (response_set)
+        #print (response_set)
 
     def test_1a_boolean_ignored_phrase_search(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext="love OR hate"')
@@ -104,7 +104,30 @@ class testDatabaseSearchSmartTextWordSearch(unittest.TestCase):
         response_set = r["documentList"]["responseSet"] 
         print (f'Smarttext: {response_info["description"]}')
         assert(response_info["fullCount"] >= 15)
-        print (response_set)
+        #print (response_set)
+
+    def test_1a_boolean_phrase_search_with_smartquotes(self):
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext="Farmer’s Daughter"~25')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        r = response.json()
+        #print (r)
+        response_info = r["documentList"]["responseInfo"]
+        response_set = r["documentList"]["responseSet"] 
+        first_count = response_info["fullCount"]
+        print (f'Smarttext: {response_info["description"]}.  Count: {first_count}')
+        assert(first_count >= 25)
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext="Farmer\'s Daughter"~25')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        r = response.json()
+        #print (r)
+        response_info = r["documentList"]["responseInfo"]
+        response_set = r["documentList"]["responseSet"] 
+        second_count = response_info["fullCount"]
+        print (f'Smarttext: {response_info["description"]}.  Count: {second_count}.  Counts Match: {first_count == second_count}')
+        assert(first_count == second_count)
+        #print (response_set)
 
     def test_1a_boolean_word_search2(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=love AND sex')
@@ -133,7 +156,7 @@ class testDatabaseSearchSmartTextWordSearch(unittest.TestCase):
         count2 = response_info["fullCount"]
         print (f'Smarttext: {response_info["description"]} Count: {count2}')
         assert(count2 == 0)
-        print (response_set)
+        #print (response_set)
 
     def test_1b_3_word_search(self):
         """

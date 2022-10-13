@@ -2,7 +2,7 @@
 <!-- ============================================================= -->
 <!--  MODULE:    HTML Preview of PEP-Web KBD3 instances            -->
 <!--  BASED-ON:  HTML Preview of NISO JATS Publishing 1.0 XML      -->
-<!--  DATE:      2021-06-06                                        -->
+<!--  DATE:      2022-05-10                                        -->
 <!--  Revisions:                                                   
         
         TODO:
@@ -10,6 +10,12 @@
           - Decide if the data-pagehelper attributes are helpful 
             for page return
 
+        2022-05-10  - Changed ftn p's to span with class 'para' since It caused the text following the
+                      footer to be "outside" of the para resulting in incorrect
+                      formatting
+        2022-01-24  - Fixed display of titles that are sub binc references.
+                      Seems to cover all titles test, but needs many more samples
+                      except it's too slow a process to test many.  
         2021-09-27  - Fixing Figure caption spacing between nbr and caption
         2021-06-06  - enabled first tbl production by eliminating body// prefix.
                       this seems to work to solve the tbl attributes to be
@@ -70,9 +76,9 @@
   <xsl:strip-space elements="*"/>
     
   <!--<xsl:param name="transform" select="'pepkbd3-html.xsl'"/>-->
-  <!--<xsl:param name="css" select="'./pep-html-preview.css'"/>-->
-  <!--<xsl:param name="css2" select="'pep.css'"/>-->
-  <xsl:param name="css3" select="'pepepub.css'"/>
+
+  <xsl:param name="css2" select="'https://pep-web-includes.s3.amazonaws.com/pep-pdf-epub.css'"/>
+  <xsl:param name="css3" select="'https://pep-web-includes.s3.amazonaws.com/pep-pdf-epub.css'"/>  
   <xsl:param name="report-warnings" select="'no'"/>
 
   <xsl:variable name="verbose" select="$report-warnings = 'yes'"/>
@@ -110,11 +116,17 @@
         </xsl:variable>
         <xsl:value-of select="normalize-space(string($authors))"/>
         <xsl:if test="normalize-space(string($authors))">: </xsl:if>
-        <xsl:value-of select="pepkbd3/artinfo/arttitle"/>
+        <xsl:value-of select="pepkbd3/artinfo/arttitle|pepkbd3/artinfo/arttitle/binc"/>
       </title>
-      <!-- <link rel="stylesheet" type="text/css" href="{$css}"></link>-->
-      <!--<link rel="stylesheet" type="text/css" href="{$css2}"></link>-->
-      <link rel="stylesheet" type="text/css" href="{$css3}"></link>
+	  <link rel="preconnect" href="https://fonts.googleapis.com"></link>
+	  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous"></link>
+	  <!--<link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,400;0,500;0,700;1,400;1,500;1,700&amp;display=swap" rel="stylesheet"></link>-->
+	  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&amp;family=Noto+Serif&amp;display=swap" rel="stylesheet"></link>
+	  <!--<link href="https://fonts.googleapis.com/css2?family=Tangerine&amp;display=swap" rel="stylesheet"></link>-->
+      <link rel="stylesheet" type="text/css" href="{$css2}"></link>
+	  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fork-awesome@1.2.0/css/fork-awesome.min.css" integrity="sha256-XoaMnoYC5TH6/+ihMEnospgm0J1PM/nioxbOUdnM8HY=" crossorigin="anonymous"></link>
+      <!--<link rel="stylesheet" type="text/css" href="{$css}"></link>-->
+      <!--<link rel="stylesheet" type="text/css" href="{$css3}"></link>-->
       
       <!-- When importing jats-oasis-html.xsl, we can call a template to insert CSS for our tables. -->
       <!--<xsl:call-template name="p:table-css" xmlns:p="http://www.wendellpiez.com/oasis-tables/util"/>-->
@@ -203,7 +215,7 @@
       <xsl:apply-templates select="front | front-stub" mode="metadata"/>
       <p class="banner">
         <a class="anchor" name="{$document-id}" id="{$document-id}"/>
-        <a class="toc-link" href="/#/ArticleList/?journal={$journal-code}">
+        <a class="toc-link" href="https://pep-web.org/browse/{$journal-code}/volumes?openNotificationModal=False">
            <!--<img src="./images/banner{$journal-code}Logo.gif" alt=""/>-->
           <img>
             <xsl:attribute name="src">
@@ -385,6 +397,30 @@
     </xsl:call-template>
   </xsl:template>
 
+  <!-- Added 2022-01-24 to fix issue 
+    https://github.com/Psychoanalytic-Electronic-Publishing/OpenPubArchive-Content-Server/issues/128 -->
+  <xsl:template match="arttitle" mode="metadata">
+    <p class="title">
+      <a href="https://pep-web.org/browse/{$journal-code}/volumes/{$artvol}?openNotificationModal=False" id="{./binc/@id}">
+          <span>
+            <xsl:apply-templates/>
+          </span>
+          <xsl:if test="@rx"> <!--matched reference id-->
+            <a class="bibx" >
+              <xsl:attribute name="href">
+                <xsl:value-of select="concat('#', '/Document/',@rx)"/>
+              </xsl:attribute>
+              <!--              <xsl:text> [→]</xsl:text>-->
+              <i class="fas fa-arrow-circle-right"></i>
+            </a>
+          </xsl:if>
+      </a>
+      <xsl:apply-templates select="ftnx"/>
+    </p>
+  </xsl:template>
+
+  <!-- Replaced 2022-01-24 by above to fix issue #128 
+       XSLT Seems to still handle other titles ok
   <xsl:template match="arttitle" mode="metadata">
     <p class="title">
       <a href="/#/ArticleList/?journal={$journal-code}&amp;vol={$artvol}&amp;page={$artstartpg}">
@@ -394,7 +430,8 @@
       <xsl:apply-templates select="ftnx"/>
     </p>
   </xsl:template>
-
+-->
+  
   <xsl:template match="artsub" mode="metadata">
     <p class="artsub">
       <xsl:value-of select="."/>
@@ -427,7 +464,7 @@
             <xsl:when test="position() = last()">
               <xsl:text> </xsl:text>
               <span class="peppopup newauthortip">
-                <i class="fas fa-info-circle"></i>  
+                <i class="fa fa-info-circle"></i>  
                 <br></br>
                 <xsl:text>&#xa;</xsl:text>
                 <div class="peppopuptext" id="autaffinfo" hidden="True">
@@ -580,6 +617,17 @@
     </sup>
   </xsl:template>
 
+  <xsl:template match="notex">
+    <sup>
+      <a class="notex" data-type="{@type}" data-r="{@r}">
+		<xsl:attribute name="href">
+		  <xsl:value-of select="concat('#', @r)"/>
+		</xsl:attribute>
+        <xsl:value-of select="."/>
+      </a>
+    </sup>
+  </xsl:template>
+
   <xsl:template match="ftr">
     <xsl:text>&#13;</xsl:text>
     <span class="footer ftr above-border" data-class="ftr">
@@ -588,7 +636,7 @@
   </xsl:template>  
   
   <xsl:template match="ftn">
-        <p class="ftn" data-class="ftn_group">
+        <span class="ftn" data-class="ftn_group">
           <xsl:attribute name="id">
             <xsl:value-of select="@id"/>
           </xsl:attribute>
@@ -597,9 +645,8 @@
               <xsl:value-of select="@label"/>
             </sup>
           </span>
-          <xsl:value-of select="."/>
-<!--          <xsl:apply-templates/>-->
-        </p>  
+          <xsl:apply-templates select="." mode="ftn_text"/>
+        </span>  
 
   </xsl:template>
   
@@ -641,7 +688,7 @@
           </xsl:when>
           <xsl:when test="position() = last()">
             <span class="peppopup hauthortip">
-            <i class="fas fa-info-circle"></i>  
+            <i class="fa fa-info-circle"></i>  
             <xsl:text></xsl:text>
               <br></br>
               <div class="peppopuptext" id="hautaffinfo" hidden="True">
@@ -989,11 +1036,13 @@
   </xsl:template>
   
   <xsl:template match="pb">
+    <xsl:text>&#xa;</xsl:text>
     <span class="pagebreak" data-class="pb">
       <xsl:call-template name="named-anchor"/>
       <xsl:apply-templates select="@content-type"/>
       <xsl:apply-templates/>
     </span>
+    <xsl:text>&#xa;</xsl:text>
   </xsl:template>
 
 
@@ -1064,12 +1113,47 @@
     </p>
   </xsl:template>
   
+  <xsl:template match="p" mode="ftn_text">
+    <span class="para">
+      <xsl:call-template name="assign-id"/>
+      <xsl:apply-templates select="@content-type"/>
+      <xsl:call-template name="assign-lang"/>
+      <xsl:call-template name="data-pagehelper"/>
+      <xsl:if test="@name">
+        <xsl:attribute name="data-name">
+          <xsl:value-of select="@name"/>
+        </xsl:attribute>
+      </xsl:if>
+      <xsl:if test="@lgrid">
+        <xsl:attribute name="data-lgrid">
+          <xsl:value-of select="@lgrid"/>
+        </xsl:attribute>
+      </xsl:if>
+      <xsl:if test="@lgrx">
+        <xsl:attribute name="data-lgrx">
+          <xsl:value-of select="@lgrx"/>
+        </xsl:attribute>
+      </xsl:if>
+      <xsl:if test="@lgrtype">
+        <xsl:attribute name="data-lgrtype">
+          <xsl:value-of select="@lgrtype"/>
+        </xsl:attribute>
+      </xsl:if>
+      <xsl:apply-templates/>
+    </span>
+  </xsl:template>
+  
   <xsl:template match="p">
     <p class="para">
       <xsl:call-template name="assign-id"/>
       <xsl:apply-templates select="@content-type"/>
       <xsl:call-template name="assign-lang"/>
       <xsl:call-template name="data-pagehelper"/>
+      <xsl:if test="@name">
+		<xsl:attribute name="data-name">
+			<xsl:value-of select="@name"/>
+		</xsl:attribute>
+      </xsl:if>
       <xsl:if test="@lgrid">
         <xsl:attribute name="data-lgrid">
           <xsl:value-of select="@lgrid"/>
@@ -1185,7 +1269,7 @@
                 <xsl:value-of select="concat('#', '/Document/',@rx)"/>
               </xsl:attribute>
               <!--              <xsl:text> [→]</xsl:text>-->
-              <i class="fas fa-arrow-circle-right"></i>
+              <xsl:text>&#x2003;&#x2003;</xsl:text><i class="fas fa-arrow-circle-right"></i>
             </a>
           </xsl:if>
         </p>
@@ -1710,6 +1794,10 @@
         <xsl:apply-templates select="@fn-type"/>
       </xsl:with-param>
     </xsl:call-template>
+  </xsl:template>
+
+  <xsl:template match="tab">
+    <xsl:text>&#x00A0;</xsl:text>
   </xsl:template>
 
   <xsl:template match="fn/@fn-type[. = 'abbr']" priority="2">

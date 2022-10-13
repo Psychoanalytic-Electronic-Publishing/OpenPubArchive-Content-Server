@@ -119,6 +119,7 @@ USER2SOLRFIELDNAME_MAP = {
     "src_code": "art_sourcecode",
     "journal_code": "art_sourcecode",
     "src_title": "art_sourcetitlefull",
+    "source_title": "art_sourcetitlefull",
     "journal": "art_sourcetitlefull",
     "bibliography": "references",
     "page_count" : "art_pgcount",
@@ -142,6 +143,7 @@ USER2SOLRFIELDNAME_MAP = {
     "author_count" : "art_authors_count", 
     "reference_count" : "art_reference_count",
     "newsecnm" : "art_newsecnm",
+    "section" : "art_newsecnm",
     "section_name" : "art_newsecnm",
     "section_title": "art_newsecnm",
     "issn" : "art_issn",
@@ -149,7 +151,9 @@ USER2SOLRFIELDNAME_MAP = {
     "volume" : "art_vol",
     "vol" : "art_vol",
     "doi" : "art_doi",
-    "lang": "language",   
+    "lang": "language",
+    "graphic":"art_graphic_list",
+    "corrections": "meta_marked_corrections",  # collects cgrp type=era2 where we've fixed errors in the original
 }
 
 FIELD2USER_MAP = {
@@ -158,6 +162,11 @@ FIELD2USER_MAP = {
     "art_year" : "year",
     "art_pepsource" : "source",
     "art_sourcecode" : "source",
+    "art_newsecnm": "section",
+    "newsecnm": "section",
+    "art_vol": "volume",
+    "art_doi": "doi",
+    "language": "lang",
     "text_xml" : "text",
     "art_cited_5" : "cited, cited in the last 5 years",
     "art_cited_10" : "cited, cited in the last 10 years",

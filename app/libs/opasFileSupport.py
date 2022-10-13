@@ -41,7 +41,11 @@ def file_exists(document_id, year, ext, path=localsecrets.PDF_ORIGINALS_PATH):
     return ret_val
 
 class FileInfo(object):
-    def __init__(self): 
+    def __init__(self, path=None):
+        self.fs = FlexFileSystem(key=localsecrets.S3_KEY,
+                                 secret=localsecrets.S3_SECRET,
+                                 root=path) 
+        self.fs_s3type = localsecrets.S3_KEY is not None
         self.build_date = time.time()
         self.filespec:str = None
         self.basename:str = None
@@ -55,34 +59,64 @@ class FileInfo(object):
         self.fileinfo:dict = {}       
         
     def mapS3(self, fileinfo: dict):
-        self.fileinfo = fileinfo
-        self.filespec = fileinfo["Key"]
-        self.basename = os.path.basename(self.filespec)
-        self.filesize = fileinfo["Size"]
-        self.filetype = fileinfo["type"]
-        self.build_date = time.time() # current time
-        # modified date
-        self.timestamp_str = datetime.datetime.strftime(fileinfo["LastModified"], opasConfig.TIME_FORMAT_STR)
-        self.timestamp = datetime.datetime.strptime(self.timestamp_str, opasConfig.TIME_FORMAT_STR)
-        self.date_modified = self.timestamp.date()
-        # self.date_modified_str = str(self.date_modified)
-        self.etag = fileinfo.get("Etag", None)
+        ret_val = True
+        try:
+            self.fileinfo = fileinfo
+            self.filespec = fileinfo["Key"]
+            self.basename = os.path.basename(self.filespec)
+            self.filesize = fileinfo["Size"]
+            self.filetype = fileinfo["type"]
+            self.build_date = time.time() # current time
+            # there's no create time on S3, so use LastModified.
+            self.create_time = datetime.datetime.strftime(fileinfo["LastModified"], opasConfig.TIME_FORMAT_STR)
+            # modified date
+            self.timestamp_str = datetime.datetime.strftime(fileinfo["LastModified"], opasConfig.TIME_FORMAT_STR)
+            self.timestamp = datetime.datetime.strptime(self.timestamp_str, opasConfig.TIME_FORMAT_STR)
+            self.date_modified = self.timestamp.date()
+            # self.date_modified_str = str(self.date_modified)
+            self.etag = fileinfo.get("Etag", None)
+        except Exception as e:
+            logger.error(f"mapS3 exception: {e}")
+            ret_val = False
+            
+        return ret_val
     
-    def mapLocalFS(self, filespec):
-        self.fileinfo = {}
-        self.filespec = filespec
-        self.basename = self.fileinfo["base_filename"] = os.path.basename(self.filespec)
-        self.filesize = self.fileinfo["Size"] = os.path.getsize(filespec)
-        self.filetype = self.fileinfo["type"] = "xml" # fileinfo["type"]
-        self.build_date = self.fileinfo["build_date"] = time.time() # current time
-        # modified date
-        mod_date = self.fileinfo["fileSize"] = os.path.getmtime(filespec)
-        self.timestamp_str = self.fileinfo["LastModified"] = datetime.datetime.utcfromtimestamp(mod_date).strftime(opasConfig.TIME_FORMAT_STR)
-        self.timestamp = self.fileinfo["timestamp"] = datetime.datetime.strptime(self.timestamp_str, opasConfig.TIME_FORMAT_STR)
-        self.date_modified = self.fileinfo["date"] = self.timestamp.date()
-        # self.date_modified_str = str(self.date_modified)
-        self.etag = self.fileinfo["Etag"] = None
+    def mapLocalFS(self, filespec: str):
+        ret_val = True
+        try:
+            self.fileinfo = {}
+            self.filespec = filespec
+            self.basename = self.fileinfo["base_filename"] = os.path.basename(self.filespec)
+            self.filesize = self.fileinfo["Size"] = os.path.getsize(filespec)
+            self.filetype = self.fileinfo["type"] = "xml" # fileinfo["type"]
+            self.build_date = self.fileinfo["build_date"] = time.time() # current time
+            self.create_time = datetime.datetime.fromtimestamp(os.path.getctime(self.filespec)).strftime(opasConfig.TIME_FORMAT_STR)
+            # modified date
+            mod_date = self.fileinfo["fileSize"] = os.path.getmtime(filespec)
+            self.timestamp_str = self.fileinfo["LastModified"] = datetime.datetime.utcfromtimestamp(mod_date).strftime(opasConfig.TIME_FORMAT_STR)
+            self.timestamp = self.fileinfo["timestamp"] = datetime.datetime.strptime(self.timestamp_str, opasConfig.TIME_FORMAT_STR)
+            self.date_modified = self.fileinfo["date"] = self.timestamp.date()
+            # self.date_modified_str = str(self.date_modified)
+            self.etag = self.fileinfo["Etag"] = None
+        except FileNotFoundError:
+            ret_val = False
+        except Exception as e:
+            logger.error(f"mapLocalFS: {e}")
+            ret_val = False
+            
+        return ret_val
+
+    def mapFS(self, filespec, path=None):
+        ret_val = False
+        if self.fs_s3type:
+            fileinfo = self.fs.fileinfo(filespec, path=path)
+            if fileinfo is not None:
+                ret_val = self.mapS3(fileinfo.fileinfo)
+                ret_val = True
+        else:
+            ret_val = self.mapLocalFS(filespec)        
         
+        return ret_val # false if it doesn't exist
 
 class FlexFileSystem(object):
     """
@@ -130,6 +164,7 @@ class FlexFileSystem(object):
         """
         Search for file; return None if not found, filename/path if found.
         """
+        ret_val = None
         if path_root is None:
             path_root = self.root
            
@@ -147,7 +182,7 @@ class FlexFileSystem(object):
 
         return ret_val
        
-    def fullfilespec(self, filespec, path=None):
+    def fullfilespec(self, filespec, path=None, path_is_root_bucket=False):
         """
          Get the full file spec
          
@@ -156,11 +191,12 @@ class FlexFileSystem(object):
         if self.key is not None:
             if path is not None:
                 ret_val = localsecrets.PATH_SEPARATOR.join((path, ret_val)) 
-    
-            if self.root is not None:
-                m = re.match(self.root+".*", ret_val, flags=re.IGNORECASE)
-                if m is None:
-                    ret_val = localsecrets.PATH_SEPARATOR.join((self.root, ret_val)) # "pep-graphics/embedded-graphics"
+
+            if not path_is_root_bucket:
+                if self.root is not None:
+                    m = re.match(self.root+".*", ret_val, flags=re.IGNORECASE)
+                    if m is None:
+                        ret_val = localsecrets.PATH_SEPARATOR.join((self.root, ret_val)) # "pep-graphics/embedded-graphics"
         else:
             if path is None:
                 path = ""
@@ -168,7 +204,11 @@ class FlexFileSystem(object):
                 root = ""
             else:
                 root = self.root
-
+            
+            if filespec is None:
+                info = f"No filespec supplied! {filespec} root: {root}, path:{path} "
+                raise FileNotFoundError(info)
+            
             ret_val = os.path.join(root, path, filespec)
 
         if localsecrets.PATH_SEPARATOR == "/":
@@ -176,9 +216,9 @@ class FlexFileSystem(object):
         else: # change forward slash to backslash
             ret_val = ret_val.replace("/", localsecrets.PATH_SEPARATOR)
 
-        return ret_val     
+        return ret_val # full file spec    
     #-----------------------------------------------------------------------------
-    def fileinfo(self, filespec, path=None):
+    def fileinfo(self, filespec, path=None, path_is_root_bucket=False):
         """
          Get the file info if it exists, otherwise return None
          if the instance variable key was set at init, checks s3 otherwise, local file system
@@ -188,70 +228,74 @@ class FlexFileSystem(object):
         ret_obj = FileInfo()
         try:
             if self.key is not None:
-                filespec = self.fullfilespec(filespec=filespec, path=path) # "pep-graphics/embedded-graphics"
-                ret_obj.filespec = fileinfo_dict["filename"] = filespec
+                fullfilespec = self.fullfilespec(filespec=filespec, path=path, path_is_root_bucket=path_is_root_bucket) # "pep-graphics/embedded-graphics"
+                ret_obj.filespec = fileinfo_dict["filename"] = fullfilespec
                 try:
-                    fileinfo_dict = self.fs.info(filespec)
+                    fileinfo_dict = self.fs.info(fullfilespec)
                     ret_obj.mapS3(fileinfo_dict)
-                    #ret_obj.basename = fileinfo_dict["base_filename"] = os.path.basename(filespec)
-                    #ret_obj.filesize = fileinfo_dict["fileSize"] = fileinfo["Size"]
-                    #ret_obj.filetype = fileinfo_dict["type"] = fileinfo["type"]
-                    ## get rid of times, we only want dates
-                    #ret_obj.timestamp_str = fileinfo_dict["timestamp_str"] = datetime.datetime.strftime(fileinfo["LastModified"], opasConfig.TIME_FORMAT_STR)
-                    #ret_obj.timestamp = fileinfo_dict["timestamp"] = datetime.datetime.strptime(fileinfo_dict["timestamp_str"], opasConfig.TIME_FORMAT_STR)
-                    #ret_obj.date = fileinfo_dict["date_obj"] = fileinfo_dict["timestamp"].date()
-                    #ret_obj.date_str = fileinfo_dict["date_str"] = str(fileinfo_dict["date"])
-                    #ret_obj.etag = fileinfo_dict["etag"] = fileinfo.get("Etag", None)
-                    #ret_obj.build_date = fileinfo_dict["buildDate"] = time.time()
-                    #ret_val = self.fs.info(filespec)
+                except FileNotFoundError:
+                    logger.error(f"FlexFileSystemError: File not found: {fullfilespec}")
+                    ret_obj = None
                 except Exception as e:
                     logger.error(f"FlexFileSystemError: File access error: {e}")
+                    ret_obj = None
+                else:
+                    ret_obj.fileinfo = fileinfo_dict
+                    
             else: # local FS
-                filespec = self.fullfilespec(filespec=filespec, path=path) # "pep-graphics/embedded-graphics"
-                #stat = os.stat(filespec)
-                ret_obj.basename = fileinfo_dict["base_filename"] = os.path.basename(filespec)
-                ret_obj.filesize = fileinfo_dict["fileSize"]  = os.path.getsize(filespec)
-                ret_obj.timestamp_str = fileinfo_dict["timestamp_str"] = datetime.datetime.utcfromtimestamp(os.path.getmtime(filespec)).strftime(opasConfig.TIME_FORMAT_STR)
-                ret_obj.timestamp = fileinfo_dict["timestamp"] = datetime.datetime.strptime(fileinfo_dict["timestamp_str"], opasConfig.TIME_FORMAT_STR)
-                ret_obj.date = fileinfo_dict["date"] = fileinfo_dict["timestamp"].date()
-                ret_obj.date_str = fileinfo_dict["date_str"] = str(fileinfo_dict["date"])
-                #ret_val["type"] = fileinfo["type"]
-                ret_obj.build_date = fileinfo_dict["buildDate"] = time.time()
-                
-            ret_obj.fileinfo = fileinfo_dict
+                fullfilespec = self.fullfilespec(filespec=filespec, path=path, path_is_root_bucket=path_is_root_bucket) # "pep-graphics/embedded-graphics"
+                # need to check if it exists
+                if self.exists(fullfilespec, path):
+                    #stat = os.stat(filespec)
+                    ret_obj.basename = fileinfo_dict["base_filename"] = os.path.basename(fullfilespec)
+                    ret_obj.filesize = fileinfo_dict["fileSize"]  = os.path.getsize(fullfilespec)
+                    ret_obj.timestamp_str = fileinfo_dict["timestamp_str"] = datetime.datetime.utcfromtimestamp(os.path.getmtime(fullfilespec)).strftime(opasConfig.TIME_FORMAT_STR)
+                    ret_obj.timestamp = fileinfo_dict["timestamp"] = datetime.datetime.strptime(fileinfo_dict["timestamp_str"], opasConfig.TIME_FORMAT_STR)
+                    ret_obj.date = fileinfo_dict["date"] = fileinfo_dict["timestamp"].date()
+                    ret_obj.date_str = fileinfo_dict["date_str"] = str(fileinfo_dict["date"])
+                    #ret_val["type"] = fileinfo["type"]
+                    ret_obj.build_date = fileinfo_dict["buildDate"] = time.time()
+                    ret_obj.filename = fileinfo_dict["name"] = fullfilespec
+                    ret_obj.fileinfo = fileinfo_dict
+                else:
+                    ret_obj = None
 
         except Exception as e:
             logger.error(f"FlexFileSystemError: File access error: ({e})")
         
         return ret_obj
     #-----------------------------------------------------------------------------
-    def exists(self, filespec, path=None):
+    def exists(self, filespec, path=None, path_is_root_bucket=False):
         """
         Find if the filespec exists, otherwise return None
         if the instance variable key was set at init, checks s3 otherwise, local file system
         """
         #  see if the file exists
         ret_val = None
-        filespec = self.fullfilespec(path=path, filespec=filespec) # "pep-graphics/embedded-graphics"
+        if path is not None:
+            fullfilespec = self.fullfilespec(path=path, filespec=filespec, path_is_root_bucket=path_is_root_bucket) # "pep-graphics/embedded-graphics"
+        else: # already a filespec
+            fullfilespec = filespec
+            
         try:
             if self.key is not None:
-                ret_val = self.fs.exists(filespec)
+                ret_val = self.fs.exists(fullfilespec)
             else:
-                ret_val = os.path.exists(filespec)
+                ret_val = os.path.exists(fullfilespec)
         except Exception as e:
             logger.error(f"FlexFileSystemError: File access error: ({e})")
         
         return ret_val        
 
     #-----------------------------------------------------------------------------
-    def get_full_name_if_exists(self, filespec, path=None):
+    def get_full_name_if_exists(self, filespec, path=None, path_is_root_bucket=False):
         """
         Find if the filespec exists, return it, otherwise return None
         if the instance variable key was set at init, checks s3 otherwise, local file system
         """
         #  see if the file exists
         ret_val = None
-        filespec = self.fullfilespec(path=path, filespec=filespec) # "pep-graphics/embedded-graphics"
+        filespec = self.fullfilespec(path=path, filespec=filespec, path_is_root_bucket=path_is_root_bucket) # "pep-graphics/embedded-graphics"
         try:
             if self.key is not None:
                 if self.fs.exists(filespec):
@@ -266,7 +310,7 @@ class FlexFileSystem(object):
         return ret_val        
 
     #-----------------------------------------------------------------------------
-    def create_text_file(self, filespec, path=None, data=" "):
+    def create_text_file(self, filespec, path=None, data=" ", encoding="utf-8", delete_existing=True, path_is_root_bucket=False):
         """
          >>> fs = FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root=localsecrets.XML_ORIGINALS_PATH)
          >>> res = fs.delete(filespec="test-delete.txt", path=localsecrets.XML_ORIGINALS_PATH)
@@ -275,28 +319,30 @@ class FlexFileSystem(object):
         """
         #  see if the file exists
         ret_val = False
-        filespec = self.fullfilespec(path=path, filespec=filespec) 
-        if self.exists(filespec, path):
-            logger.error(f"FlexFileSystemError: File {filespec} already exists...exiting.")
-            ret_val = False
-        else:
-            try:
-                if self.key is not None:
-                    with self.fs.open(filespec, 'a') as out:
-                        out.write(data)
-                else:
-                    with open(filespec, 'a') as out:
-                        out.write(data)
-
-            except Exception as e:
-                logger.error(f"FlexFileSystemError: File write/access error: ({e})")
+        fullfilespec = self.fullfilespec(filespec=filespec, path=path, path_is_root_bucket=path_is_root_bucket) 
+        if self.exists(fullfilespec, path=None, path_is_root_bucket=path_is_root_bucket):
+            if delete_existing:
+                self.delete(filespec=fullfilespec, path=None, path_is_root_bucket=path_is_root_bucket)
+            #else:
+                #logger.error(f"FlexFileSystemError: File {fullfilespec} already exists...exiting.")
+                #ret_val = False
+        try:
+            if self.key is not None:
+                with self.fs.open(fullfilespec, 'w', encoding=encoding) as out:
+                    out.write(data)
             else:
-                ret_val = True
+                with open(fullfilespec, 'w', encoding=encoding) as out:
+                    out.write(data)
+
+        except Exception as e:
+            logger.error(f"FlexFileSystemError: File write/access error: ({e})")
+        else:
+            ret_val = True
         
         return ret_val        
 
     #-----------------------------------------------------------------------------
-    def delete(self, filespec, path=None):
+    def delete(self, filespec, path=None, path_is_root_bucket=False):
         """
         Find if the filespec exists, otherwise return None
         if the instance variable key was set at init, checks s3 otherwise, local file system
@@ -307,21 +353,21 @@ class FlexFileSystem(object):
         """
         #  see if the file exists
         ret_val = False
-        filespec = self.fullfilespec(path=path, filespec=filespec) 
+        fullfilespec = self.fullfilespec(filespec=filespec, path=path, path_is_root_bucket=path_is_root_bucket) 
         try:
             if self.key is not None:
-                ret_val = self.fs.exists(filespec)
+                ret_val = self.fs.exists(fullfilespec)
             else:
-                ret_val = os.path.exists(filespec)
+                ret_val = os.path.exists(fullfilespec)
         except Exception as e:
             logger.error(f"FlexFileSystemError: File access error: ({e})")
         
         if ret_val:
             try:
                 if self.key is not None:
-                    self.fs.rm(filespec)
+                    self.fs.rm(fullfilespec)
                 else:
-                    os.remove(filespec)
+                    os.remove(fullfilespec)
             except Exception as e:
                 logger.error(f"FlexFileSystemError: Can't remove file: ({e})")
                 ret_val = False
@@ -331,7 +377,7 @@ class FlexFileSystem(object):
         return ret_val
     
     #-----------------------------------------------------------------------------
-    def rename(self, filespec1, filespec2, path=None):
+    def rename(self, filespec1, filespec2, path=None, path_is_root_bucket=False):
         """
 
          >>> fs = FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root=localsecrets.XML_ORIGINALS_PATH)
@@ -342,8 +388,8 @@ class FlexFileSystem(object):
         """
         #  see if the file exists
         ret_val = False
-        filespec1full = self.fullfilespec(path=path, filespec=filespec1) 
-        filespec2full = self.fullfilespec(path=path, filespec=filespec2) 
+        filespec1full = self.fullfilespec(filespec=filespec1, path=path, path_is_root_bucket=path_is_root_bucket) 
+        filespec2full = self.fullfilespec(filespec=filespec2, path=path, path_is_root_bucket=path_is_root_bucket) 
         try:
             if self.key is not None:
                 self.fs.rename(filespec1full, filespec2full)
@@ -357,7 +403,7 @@ class FlexFileSystem(object):
         return ret_val        
 
     #-----------------------------------------------------------------------------
-    def get_download_filename(self, filespec, path="", year=None, ext=None):
+    def get_download_filename(self, filespec, path="", year=None, ext=None, path_is_root_bucket=False):
         """
         Return the file name given the filespec, if it exists
       
@@ -370,12 +416,13 @@ class FlexFileSystem(object):
             # remove any suffix for vol, so we don't need to separate the folders
             vol_clean = ''.join(i for i in vol if i.isdigit())
         except Exception as e:
-            logger.error(f"Could not split filespec into path: {filespec}. ({e})")
+            # changed to log as debug rather than error.  Sometimes this is ok.
+            logger.debug(f"Could not split filespec into path: {filespec}. ({e})")
             subpath = ""
         else:
             subpath = f"/{jrnlcode}/{vol_clean}" #  pad volume to 3 digits with 0
 
-        ret_val = self.fullfilespec(path=path + subpath, filespec=filespec) # "pep-graphics/embedded-graphics"
+        ret_val = self.fullfilespec(filespec=filespec, path=path + subpath, path_is_root_bucket=path_is_root_bucket) # "pep-graphics/embedded-graphics"
         if ext is not None:
             ret_val = ret_val + ext  
             
@@ -444,14 +491,14 @@ class FlexFileSystem(object):
         return ret_val
 
     #-----------------------------------------------------------------------------
-    def get_image_filename(self, filespec, path=None, insensitive=True):
+    def get_image_filename(self, filespec, path=None, insensitive=True, log_errors=True, path_is_root_bucket=False):
         """
         Return the file name given the image id, if it exists
         
         """
     
         # check if local storage or secure storage is enabled
-        ret_val = self.fullfilespec(path=path, filespec=filespec) # "pep-graphics/embedded-graphics"
+        ret_val = self.fullfilespec(filespec=filespec, path=path, path_is_root_bucket=path_is_root_bucket) # "pep-graphics/embedded-graphics"
 
         # look to see if the file type has been specified via extension
         #ext = os.path.splitext(ret_val)[-1].lower()
@@ -467,7 +514,7 @@ class FlexFileSystem(object):
         #else:
         #watch for case sensitive extensions on S3 and other systems
         ret_val = self.get_imagename_if_exists(namestr=ret_val, extensions=(".jpg", ".gif", ".tif"), insensitive=insensitive)
-        if ret_val is None:
+        if ret_val is None and log_errors:
             logger.error(f"File {filespec} not found")
     
         return ret_val   
@@ -513,7 +560,7 @@ class FlexFileSystem(object):
       
         return ret_val
     #-----------------------------------------------------------------------------
-    def get_file_contents(self, filespec, path=None):
+    def get_file_contents(self, filespec, path=None, path_is_root_bucket=False):
         """
         Return the contents of a non-binary file
 
@@ -525,30 +572,36 @@ class FlexFileSystem(object):
        
         """
         ret_val = None
+        fileinfoout = FileInfo()
         if not self.exists(filespec, path):
             filespec = self.find(filespec, path_root=path)
-            
-        filespec = self.fullfilespec(filespec)
-        if filespec is not None:
-            try:
-                if self.fs is not None:
-                    f = self.fs.open(filespec, "r", encoding="utf-8")
-                else:
-                    f = open(filespec, "r", encoding="utf-8")
-            except Exception as e:
-                logger.error("GetFileError: Open: %s", e)
-                
-            try:
-                ret_val = f.read()
-                f.close()    
-            except OSError as e:
-                logger.error("GetFileError: Read: %s", e)
-            except Exception as e:
-                logger.error("GetFileError: Exception: %s", e)
+
+        if filespec is None:
+            logger.error(f"GetFileError: File {filespec} not found on Path {path}")
         else:
-            logger.error("GetFileError: File %s not found", filespec)
+            fileinfoout.mapFS(filespec, path)
+                
+            fullfilespec = self.fullfilespec(filespec=filespec, path=path, path_is_root_bucket=path_is_root_bucket)
+            if fullfilespec is not None:
+                try:
+                    if self.fs is not None:
+                        f = self.fs.open(fullfilespec, "r", encoding="utf-8")
+                    else:
+                        f = open(fullfilespec, "r", encoding="utf-8")
+                except Exception as e:
+                    logger.error("GetFileError: Open: %s", e)
+                    
+                try:
+                    ret_val = f.read()
+                    f.close()    
+                except OSError as e:
+                    logger.error("GetFileError: Read: %s", e)
+                except Exception as e:
+                    logger.error("GetFileError: Exception: %s", e)
+            else:
+                logger.error("GetFileError: File %s not found", fullfilespec)
       
-        return ret_val
+        return ret_val, fileinfoout
     
     def get_matching_filelist(self, path=None, filespec_regex=None, revised_after_date=None, max_items=None):
         """

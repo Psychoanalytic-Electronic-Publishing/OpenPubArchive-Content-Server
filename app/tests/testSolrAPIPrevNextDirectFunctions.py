@@ -54,6 +54,10 @@ class TestSolrAPIPrevNextDirectFunctions(unittest.TestCase):
         opasPySolrLib.document_get_info('PEPGRANTVS.001.0009A', fields='art_year, art_id, file_classification')
         {'art_year': '2015', 'art_id': 'PEPGRANTVS.001.0009A', 'file_classification': 'free'}
         
+    def test_1I_get_next_and_prev_vol_100(self):
+        prev_vol, match_vol, next_vol = opasPySolrLib.metadata_get_next_and_prev_vols(source_code="IJP", source_vol="100")
+        assert (prev_vol, match_vol, next_vol) == ({'value': '99', 'count': 132}, {'value': '100', 'count': 144}, {'value': '101', 'count': 130})
+        
 if __name__ == '__main__':
     unittest.main()
     print ("Tests Complete.")

@@ -10,7 +10,8 @@ from opasConfig import normalize_val, VALS_YEAROPTIONS, CACHEURL, \
                        DEFAULT_LIMIT_FOR_CACHE, DEBUG_TRACE, CACHE_EXPIRES_DAYS, \
                        CACHE_EXPIRES_HOURS, CACHE_EXPIRES_MINUTES
 #import models
-import opasPySolrLib
+#import opasPySolrLib
+from opasPySolrSearch import search_text_qs
 import opasQueryHelper
 
 def nested_dict(n, type):
@@ -55,12 +56,12 @@ def load_most_cited(cited_in_period: str='5',
                                                         )
         
         
-        ret_val, ret_status = opasPySolrLib.search_text_qs(solr_query_spec, 
-                                                           limit=limit,
-                                                           offset=0,
-                                                           req_url = req_url,
-                                                           caller_name=fname
-                                                          )
+        ret_val, ret_status = search_text_qs(solr_query_spec, 
+                                             limit=limit,
+                                             offset=0,
+                                             req_url = req_url,
+                                             caller_name=fname
+                                            )
     except Exception as e:
         logger.error(f"Error {e}")
 

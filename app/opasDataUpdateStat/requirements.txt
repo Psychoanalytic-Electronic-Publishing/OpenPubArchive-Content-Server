@@ -1,13 +1,16 @@
-# Updated 2021-06-10 more Dependabot alerts, urllib3, Pillow, and FastAPI
+# Updated 2021-06-10 Dependabot alerts, urllib3, Pillow, and FastAPI
+# Updated 2022-04-06 Dependabot alerts, Paramiko to 2.10.1 (from 2.7.1)
+# Updated 2022-07-15 Pydantic
+
 bcrypt==3.2.0
 certifi==2020.6.20
 cffi==1.14.2
 chardet==3.0.4
 cryptography==3.3.2
 idna==2.10
-paramiko==2.7.1
+paramiko==2.10.1
 pycparser==2.20
-pydantic==1.6.2
+pydantic==1.9.1
 PyMySQL==0.10.0
 PyNaCl==1.4.0
 pysolr==3.9.0

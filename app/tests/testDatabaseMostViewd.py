@@ -38,6 +38,51 @@ class TestMost(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
 
+    def test_0_mostviewed_argument_robustness(self):
+        print (f"Running: {sys._getframe(  ).f_code.co_name} at {datetime.now()}")
+        full_URL = base_plus_endpoint_encoded('/v2/Database/MostViewed/?pubperiod=0')
+        response = requests.get(full_URL, headers=headers)
+        # Try it with variations of the sourcetype to test new robust argument values
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+
+        full_URL = base_plus_endpoint_encoded('/v2/Database/MostViewed/?pubperiod=30&sourcetype=v')
+        response = requests.get(full_URL, headers=headers)
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+
+        full_URL = base_plus_endpoint_encoded('/v2/Database/MostViewed/?pubperiod=30&sourcetype=j')
+        response = requests.get(full_URL, headers=headers)
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+
+        full_URL = base_plus_endpoint_encoded('/v2/Database/MostViewed/?pubperiod=30&sourcetype=b')
+        response = requests.get(full_URL, headers=headers)
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+
+        full_URL = base_plus_endpoint_encoded('/v2/Database/MostViewed/?pubperiod=30&sourcetype=x')
+        print ("Test expecting error from database_mostviewed (bad sourcetype=x): ERROR Error: Most Viewed: sourcetype Error. Allowed values journal, book, or videostream (only 1 char required). ")
+        response = requests.get(full_URL, headers=headers)
+        #  let's fail
+        r = response.json()
+        assert(response.ok == False)
+
+        full_URL = base_plus_endpoint_encoded('/v2/Database/MostViewed/?pubperiod=30&sourcetype=videos&viewperiod=4&limit=5')
+        response = requests.get(full_URL, headers=headers)
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+
+        full_URL = base_plus_endpoint_encoded('/v2/Database/MostViewed/?pubperiod=30&sourcetype=vids&viewperiod=4&limit=5')
+        response = requests.get(full_URL, headers=headers)
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+
+        full_URL = base_plus_endpoint_encoded('/v2/Database/MostViewed/?pubperiod=30&sourcetype=vxds&viewperiod=4&limit=5')
+        response = requests.get(full_URL, headers=headers)
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+
     def test_0_most_downloaded(self):
         print (f"Running: {sys._getframe(  ).f_code.co_name} at {datetime.now()}")
         # request login to the API server
@@ -83,50 +128,6 @@ class TestMost(unittest.TestCase):
         #assert(r["text_server_ok"] == True)
         #assert(r["db_server_ok"] == True)
         # print (r)
-
-    def test_0_mostviewed_argument_robustness(self):
-        print (f"Running: {sys._getframe(  ).f_code.co_name} at {datetime.now()}")
-        full_URL = base_plus_endpoint_encoded('/v2/Database/MostViewed/?pubperiod=0')
-        response = requests.get(full_URL, headers=headers)
-        # Try it with variations of the sourcetype to test new robust argument values
-        # Confirm that the request-response cycle completed successfully.
-        assert(response.ok == True)
-
-        full_URL = base_plus_endpoint_encoded('/v2/Database/MostViewed/?pubperiod=30&sourcetype=v')
-        response = requests.get(full_URL, headers=headers)
-        # Confirm that the request-response cycle completed successfully.
-        assert(response.ok == True)
-
-        full_URL = base_plus_endpoint_encoded('/v2/Database/MostViewed/?pubperiod=30&sourcetype=j')
-        response = requests.get(full_URL, headers=headers)
-        # Confirm that the request-response cycle completed successfully.
-        assert(response.ok == True)
-
-        full_URL = base_plus_endpoint_encoded('/v2/Database/MostViewed/?pubperiod=30&sourcetype=b')
-        response = requests.get(full_URL, headers=headers)
-        # Confirm that the request-response cycle completed successfully.
-        assert(response.ok == True)
-
-        full_URL = base_plus_endpoint_encoded('/v2/Database/MostViewed/?pubperiod=30&sourcetype=x')
-        response = requests.get(full_URL, headers=headers)
-        #  let's fail
-        r = response.json()
-        assert(response.ok == False)
-
-        full_URL = base_plus_endpoint_encoded('/v2/Database/MostViewed/?pubperiod=30&sourcetype=videos&viewperiod=4&limit=5')
-        response = requests.get(full_URL, headers=headers)
-        # Confirm that the request-response cycle completed successfully.
-        assert(response.ok == True)
-
-        full_URL = base_plus_endpoint_encoded('/v2/Database/MostViewed/?pubperiod=30&sourcetype=vids&viewperiod=4&limit=5')
-        response = requests.get(full_URL, headers=headers)
-        # Confirm that the request-response cycle completed successfully.
-        assert(response.ok == True)
-
-        full_URL = base_plus_endpoint_encoded('/v2/Database/MostViewed/?pubperiod=30&sourcetype=vxds&viewperiod=4&limit=5')
-        response = requests.get(full_URL, headers=headers)
-        # Confirm that the request-response cycle completed successfully.
-        assert(response.ok == True)
 
     def test_0_mostviewed_videos(self):
         """

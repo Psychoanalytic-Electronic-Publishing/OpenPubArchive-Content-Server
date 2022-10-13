@@ -54,5 +54,10 @@ class TestPadsEndpoints(unittest.TestCase):
             assert(resp.HasCurrentAccess == False)
             #assert(r['documentList']['responseSet'][0].get("accessLimited", None) == False)
 
+    def test_1_session_info(self):
+        session_info = opasDocPermissions.get_base_session_info()
+        print (session_info)
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -23,12 +23,12 @@ class TestDocumentsAbstracts(unittest.TestCase):
         response_set = r["documents"]["responseSet"] 
         assert(response_info["count"] == 1)
         abstract = response_set[0]["abstract"]
-        print (abstract)
+        print (f"Abstract Length: {len(abstract)}")
        
     def test_1a_get_abstract_logged_in(self):
         # login
-        from localsecrets import PADS_TEST_ID, PADS_TEST_PW
-        full_URL = base_plus_endpoint_encoded(f'/v2/Session/Login/?grant_type=password&username={"test1"}&password={PADS_TEST_PW}')
+        from localsecrets import PADS_TEST_ARCHIVEONLY, PADS_TEST_ARCHIVEONLY_PW
+        full_URL = base_plus_endpoint_encoded(f'/v2/Session/Login/?grant_type=password&username={PADS_TEST_ARCHIVEONLY}&password={PADS_TEST_ARCHIVEONLY_PW}')
         response = requests.get(full_URL, headers=headers)
         r = response.json()
         headers["client-session"] = r["session_id"]
@@ -40,7 +40,8 @@ class TestDocumentsAbstracts(unittest.TestCase):
         assert(response_info["count"] == 1)
         abstract = response_set[0]["abstract"]
         assert(response_set[0]["pdfOriginalAvailable"] == True)
-        print (abstract)
+        print (f"Abstract Length: {len(abstract)}")
+        #print (abstract)
 
     def test_1a_get_abstract_html_not_logged_in(self):
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Abstracts/IFP.017.0240A?similarcount=4')
@@ -50,7 +51,8 @@ class TestDocumentsAbstracts(unittest.TestCase):
         response_set = r["documents"]["responseSet"] 
         assert(response_info["count"] == 1)
         abstract = response_set[0]["abstract"]
-        print (abstract)
+        print (f"Abstract Length: {len(abstract)}")
+        #print (abstract)
        
     def test_1a_get_abstract_xml(self):
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Abstracts/IFP.017.0240A?similarcount=4&return_format=XML')
@@ -60,7 +62,8 @@ class TestDocumentsAbstracts(unittest.TestCase):
         response_set = r["documents"]["responseSet"] 
         assert(response_info["count"] == 1)
         abstract = response_set[0]["abstract"]
-        print (abstract)
+        print (f"Abstract Length: {len(abstract)}")
+        #print (abstract)
        
     def test_1a_get_abstract_textonly(self):
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Abstracts/IFP.017.0240A?similarcount=4&return_format=TEXTONLY')
@@ -70,7 +73,8 @@ class TestDocumentsAbstracts(unittest.TestCase):
         response_set = r["documents"]["responseSet"] 
         assert(response_info["count"] == 1)
         abstract = response_set[0]["abstract"]
-        print (abstract)
+        print (f"Abstract Length: {len(abstract)}")
+        #print (abstract)
        
     def test_2a_get_multiple_abstracts(self):
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Abstracts/IFP.017')
@@ -81,9 +85,9 @@ class TestDocumentsAbstracts(unittest.TestCase):
         assert(response_info["fullCount"] == 36)
         
     def test_2a_get_abstract_permissions(self):
-        from localsecrets import PADS_TEST_ID, PADS_TEST_PW,  AUTH_KEY_NAME
+        from localsecrets import PADS_TEST_ARCHIVEONLY, PADS_TEST_ARCHIVEONLY_PW,  AUTH_KEY_NAME
         # login
-        full_URL = base_plus_endpoint_encoded(f'/v2/Session/Login/?grant_type=password&username={"test1"}&password={PADS_TEST_PW}')
+        full_URL = base_plus_endpoint_encoded(f'/v2/Session/Login/?grant_type=password&username={PADS_TEST_ARCHIVEONLY}&password={PADS_TEST_ARCHIVEONLY_PW}')
         response = requests.get(full_URL, headers=headers)
         r = response.json()
         headers["client-session"] = r["session_id"]

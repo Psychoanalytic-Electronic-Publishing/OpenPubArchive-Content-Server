@@ -43,10 +43,10 @@ class TestMetadataContents(unittest.TestCase):
         print(r['documentList']['responseInfo']['fullCount']) 
         # print ("test_metadata_journals complete.")
         # Check this TOC items
-        assert(r['documentList']['responseSet'][6]["documentID"] == "FA.014A.0104A")
-        assert(r['documentList']['responseSet'][6]["issueTitle"] == "No. 64")
-        assert(r['documentList']['responseSet'][6]["issueSeqNbr"] == "64")
-        assert(r['documentList']['responseSet'][6]["pgStart"] == "104")
+        assert(r['documentList']['responseSet'][0]["documentID"] == "FA.014A.0001A")
+        assert(r['documentList']['responseSet'][0]["issueTitle"] == "No. 64")
+        assert(r['documentList']['responseSet'][0]["issueSeqNbr"] == "64")
+        assert(r['documentList']['responseSet'][0]["pgStart"] == "1")
         
     def test_1C_meta_contents_for_source(self):
         full_URL = base_plus_endpoint_encoded('/v2/Metadata/Contents/APA/27S/')
@@ -117,7 +117,35 @@ class TestMetadataContents(unittest.TestCase):
         r = response.json()
         assert(r['sourceInfo']['responseInfo']['count'] == 1)
     
+    def test_9_meta_journal_count(self):
+        """
+        List of names for a specific source
+        /v2/Metadata/Journals/
+        """
+        full_URL = base_plus_endpoint_encoded('/v2/Metadata/Journals/')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        # test return
+        r = response.json()
+        print (f"No. of journals: {r['sourceInfo']['responseInfo']['count']}")
+        assert(r['sourceInfo']['responseInfo']['count'] >= 83)
+
+        full_URL = base_plus_endpoint_encoded('/v2/Metadata/Videos/')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        # test return
+        r = response.json()
+        print (f"No. of video journals: {r['sourceInfo']['responseInfo']['count']}")
+        assert(r['sourceInfo']['responseInfo']['count'] >= 12)
         
+        full_URL = base_plus_endpoint_encoded('/v2/Metadata/Books/')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        # test return
+        r = response.json()
+        print (f"No. of books: {r['sourceInfo']['responseInfo']['count']}")
+        assert(r['sourceInfo']['responseInfo']['count'] >= 100)
+
 if __name__ == '__main__':
     unittest.main()
     print ("Tests Complete.")

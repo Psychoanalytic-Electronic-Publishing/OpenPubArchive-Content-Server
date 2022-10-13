@@ -196,13 +196,13 @@ class FirstPageCollector:
                     self.para_count += 1
 
                 if self.para_count > self.para_limit:
-                    msg = f"   ...Paragraph limit {self.para_limit} for excerpt reached. Para Count: {self.para_count}, Char Count: {self.char_count}"
+                    msg = f"\t\t...Paragraph limit {self.para_limit} for excerpt reached. Para Count: {self.para_count}, Char Count: {self.char_count}"
                     logger.debug(msg)
                     if show_dbg_messages: print (msg)
                     self.close_up = True
     
                 if self.char_count > self.char_limit:
-                    msg = f"   ...Character limit {self.char_limit} for excerpt reached or exceeded, at end of para. Para Count: {self.para_count}, Char Count: {self.char_count}."
+                    msg = f"\t\t...Character limit {self.char_limit} for excerpt reached or exceeded, at end of para. Para Count: {self.para_count}, Char Count: {self.char_count}."
                     logger.debug(msg)
                     if show_dbg_messages: print (msg)
                     self.close_up = True
@@ -286,7 +286,7 @@ class XSLT_Transformer(object):
     def __init__(self):
         pass
     
-    def set_transformer(self, transformer_name, xslt_file, style_path=opasConfig.STYLE_PATH):
+    def set_transformer(self, transformer_name, xslt_file, style_path=opasConfig.XSLT_PATH):
         self.transformer_name = transformer_name
         self.transformer_tree = None
         self.file_spec = None
@@ -332,7 +332,7 @@ g_transformer.set_transformer(opasConfig.TRANSFORMER_XMLTOHTML_EXCERPT, opasConf
 g_transformer.set_transformer(opasConfig.XSLT_XMLTOHTML_GLOSSARY_EXCERPT, opasConfig.XSLT_XMLTOHTML_GLOSSARY_EXCERPT)
 #g_transformer.set_transformer("testtransform", "testtransform.xslt")
 
-ENCODER_MATCHER = re.compile("\<\?xml\s+version=[\'\"]1.0[\'\"]\s+encoding=[\'\"](UTF-?8|ISO-?8859-?1?)[\'\"]\s*\?\>\n")  # TODO - Move to module globals to optimize
+ENCODER_MATCHER = re.compile("\<\?xml\s+version=[\'\"]1.0[\'\"]\s+encoding=[\'\"](UTF-?8|ISO-?8859-?1?)[\'\"]\s*\?\>\n", flags=re.IGNORECASE)  # TODO - Move to module globals to optimize
 
 # -------------------------------------------------------------------------------------------------------
 
@@ -502,6 +502,10 @@ def get_html_citeas(authors_bib_style, art_year, art_title, art_pep_sourcetitle_
     ret_val = f"""<p class="citeas"><span class="authors">{authors_bib_style}</span> (<span class="year">{art_year}</span>) <span class="title">{art_title}</span>. <span class="sourcetitle">{art_pep_sourcetitle_full}</span> <span class="vol">{art_vol}</span>:<span class="pgrg">{art_pgrg}</span></p>"""
     return ret_val
 
+def xmlstr_remove_utf8_encoding(xmlstr):
+    ret_val = re.sub("encoding=\'UTF\-8\'", "", xmlstr, flags=re.IGNORECASE)
+    return ret_val # xmlstr without encoding declaration
+    
 def xmlstr_to_etree(xmlstr):
     """
     Convenience function - take an xmlstr, in bytes or string or as etree, and return root of an etree
@@ -514,7 +518,8 @@ def xmlstr_to_etree(xmlstr):
             logger.error(f"Error parsing Bytes xmlstr: {e}")
     elif isinstance(xmlstr, str):
         try:
-            xmlstr = xmlstr.replace("encoding=\'UTF-8\'", "")
+            #xmlstr = xmlstr.replace("encoding=\'UTF-8\'", "")
+            xmlstr = remove_encoding_string(xmlstr)
             root = etree.parse(StringIO(xmlstr))
         except Exception as e:
             logger.error(f"Error parsing xmlstr: {e}")
@@ -805,7 +810,7 @@ def xml_get_pages_html(xmlorhtmlstr, offset=0, limit=1, inside="div[@id='body']"
     >>> realxmlinst = xml_file_to_xmlstr(r"tstfiles/DoNotRedistribute/SE.006.R0007A(bKBD3).xml")
     >>> ret_tuple = xml_get_pages_html(realxmlinst, 1, 1, inside="div[@id='body']", env="html", remove_tags=["div[@id='front']"])
     >>> ret_tuple[0]
-    '<html>\\n<head>\\n<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>\\n<title class="head title">Sigmund Freud: The Psychopathology of Everyday Life</title>\\n<link rel="stylesheet" type="text/css" href="pepepub.css"/>\\n</head>\\n</html>\\n'
+    '<html>\\n<head>\\n<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>\\n<title class="head title">Sigmund Freud: The Psychopathology of Everyday Life</title>\\n<link rel="stylesheet" type="text/css" href="pep-pdf-epub.css"/>\\n</head>\\n</html>\\n'
     >>> ret_tuple[2:]
     ('vii', 'vii')
 
@@ -1200,6 +1205,7 @@ def get_first_page_excerpt_from_doc_root(elem_or_xmlstr, ret_format="HTML"):
     # NOT CURRENTLY USED in OPAS (2020-09-14)
     # Finally Removed 2021-06-03
     #"""
+
     
 def xml_elem_or_str_to_text(elem_or_xmlstr, default_return=""):
     """
@@ -1250,6 +1256,44 @@ def xml_elem_or_str_to_text(elem_or_xmlstr, default_return=""):
     if ret_val == "":
         ret_val = default_return
         
+    return ret_val
+
+def xml_node_has_ancestors(element_node, ancestor_tag="*"):
+    """
+    Return a count of matching ancestor elements
+    """
+    ret_val = len(xml_node_list_ancestors(element_node, ancestor_tag))
+       
+    return ret_val
+
+def xml_node_list_ancestors(element_node, ancestor_tag="*"):
+    """
+    Return a list of matching ancestor elements
+    """
+    ret_val = [n for n in element_node.iterancestors(ancestor_tag)]
+       
+    return ret_val
+
+def xml_node_list_ancestor_names(element_node, ancestor_tag="*"):
+    """
+    Return a list of matching ancestor elements
+    """
+    ret_val = [n.tag for n in element_node.iterancestors(ancestor_tag)]
+       
+    return ret_val
+
+def xml_node_regx_ancestors(element_node, ancestor_tag="*", regx=".*"):
+    """
+    Return True if an ancestor matches against the regx 
+    """
+    ret_val = False
+    lst = [n.tag for n in element_node.iterancestors(ancestor_tag)]
+    for n in lst:
+        ret_val = re.match(regx, n)
+        if ret_val != None:
+            ret_val = True
+            break
+
     return ret_val
 
 def xml_xpath_return_textlist(element_node, xpath, default_return=list()):
@@ -1536,10 +1580,9 @@ def xml_str_to_html(elem_or_xmlstr, transformer_name=opasConfig.TRANSFORMER_XMLT
                         # transform the doc or fragment
                         transformed_data = transformer(sourceFile)
                     except KeyError as e:
-                        if transformer is None:
-                            logger.error(f"Selected Transformer: {transformer_name} not found ({e})")
-                            if stop_on_exceptions:
-                                raise Exception(ret_val)
+                        logger.error(f"Selected Transformer: {transformer_name} not found ({e})")
+                        if stop_on_exceptions:
+                            raise Exception(ret_val)
                     except Exception as e:
                         # return this error, so it will be displayed (for now) instead of the document
                         ret_val = f"<p align='center'>Sorry, due to a transformation error, we cannot display this document right now.</p><p align='center'>Please report this to PEP.</p>  <p align='center'>XSLT Transform Error: {e}</p>"
@@ -1554,7 +1597,7 @@ def xml_str_to_html(elem_or_xmlstr, transformer_name=opasConfig.TRANSFORMER_XMLT
                         # do substitutes
                         ret_val = ret_val.replace("%24OPAS_IMAGE_URL;", APIURL + opasConfig.IMAGE_API_LINK)
                         # only for the updated Gavant xslt
-                        if opasConfig.GAVANTXSLT:
+                        if opasConfig.EXPERIMENTAL:
                             ret_val = ret_val.replace("%24OPAS_JOURNAL_NAME;", "IJP")
                             ret_val = ret_val.replace("%24OPAS_CLIENT_ID;", "2") # need to fix
                             ret_val = ret_val.replace("%24OPAS_SESSION_ID;", "") # need to fix
@@ -1572,7 +1615,7 @@ def html_to_epub(htmlstr,
                  html_title=None,
                  citeas=None,
                  session_info=None,
-                 stylesheet=opasConfig.CSS_STYLESHEET): #  e.g., "./libs/styles/pep-html-preview.css"
+                 stylesheet=opasConfig.CSS_STYLESHEET): 
     """
     uses ebooklib
     
@@ -1628,6 +1671,8 @@ def html_to_epub(htmlstr,
                        lang=lang)
 
     c1.set_content(htmlstr)
+    c1.add_link(href=opasConfig.CSS_STYLESHEET_REFERENCE, rel='stylesheet', type='text/css')
+    c1.add_link(href=opasConfig.FORK_AWESOME_PUBLIC_URL, rel='stylesheet', type='text/css', integrity=opasConfig.FORK_AWESOME_INTEGRITY, crossorigin=opasConfig.FORK_AWESOME_CROSSORIGIN)
     copyright_text = stdMessageLib.COPYRIGHT_PAGE_HTML
     copyright_text = copyright_text.replace("[[username]]", username)
     # copyright_text = copyright_text.replace("<!--UserInfoHere-->", download_info)
@@ -1656,7 +1701,7 @@ def html_to_epub(htmlstr,
     
     
     nav_css = epub.EpubItem(uid="style_nav",
-                            file_name="style/pepkbd3-html.css",
+                            file_name=opasConfig.CSS_STYLESHEET_REFERENCE,
                             media_type="text/css",
                             content=style)
     book.add_item(nav_css)    

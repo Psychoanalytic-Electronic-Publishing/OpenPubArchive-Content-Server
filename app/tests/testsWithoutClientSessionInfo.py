@@ -11,7 +11,8 @@ from unitTestConfig import base_plus_endpoint_encoded, headers, UNIT_TEST_CLIENT
 
 no_session = True
 client_only_headers = {"client-id": UNIT_TEST_CLIENT_ID}
-no_client_headers = {"client-id": ""}
+bad_client_headers = {"client-id": ""}
+no_client_headers = {"client-id": None}
 
 class TestsWithoutClientSession(unittest.TestCase):
     """
@@ -76,7 +77,7 @@ class TestsWithoutClientSession(unittest.TestCase):
         response_info = r["termIndex"]["responseInfo"]
         response_set = r["termIndex"]["responseSet"] 
         assert(response_set[0]["termCount"] >= 3)
-        print (response_set)
+        #print (response_set)
         
     def test_11_get_most_viewed(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/MostViewed/')
@@ -106,7 +107,7 @@ class TestsWithoutClientSession(unittest.TestCase):
         #print (r)
         print (f"Count: {r['documentList']['responseInfo']['count']}")
         print (f"Limit: {r['documentList']['responseInfo']['limit']}")
-        print (f"ReturnedData: {r['documentList']['responseSet'][0]['stat']['art_cited_5']}")
+        print (f"ReturnedData (art_cited_5): {r['documentList']['responseSet'][0]['stat']['art_cited_5']}")
         assert(r['documentList']['responseSet'][0]['stat']['art_cited_5'] >= 15)
 
     def test_13_search_wildcard(self):
@@ -118,6 +119,7 @@ class TestsWithoutClientSession(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         assert(response_info["fullCount"] >= 7)
+        print (f"Fullcount: {response_info['fullCount']}")
         # print (response_set)
         # Confirm that the request-response cycle completed successfully.
 
@@ -128,7 +130,7 @@ class TestsWithoutClientSession(unittest.TestCase):
         response_info = r["documents"]["responseInfo"]
         response_set = r["documents"]["responseSet"] 
         assert(response_info["count"] == 1)
-        print (response_set)
+        print (response_set[0]['abstract'])
 
     def test_15_get_document_with_similarcount(self):
         """
@@ -140,18 +142,11 @@ class TestsWithoutClientSession(unittest.TestCase):
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documents"]["responseInfo"]
         response_set = r["documents"]["responseSet"] 
         assert(response_info["count"] == 1)
-        print (response_set)
-
-    def test_16_get_abstract_bad_client_id(self):
-        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Abstracts/IFP.017.0240A?similarcount=4&client-id="ME"')
-        response = requests.get(full_URL, headers=no_client_headers)
-        r = response.json()
-        print (r)
-        assert(response.status_code == 428)
+        print (response_info)
 
     def test_16B_get_abstract_client_id_param(self):
         # this method of client-id should be ok.
@@ -161,25 +156,29 @@ class TestsWithoutClientSession(unittest.TestCase):
         response_info = r["documents"]["responseInfo"]
         response_set = r["documents"]["responseSet"] 
         assert(response_info["count"] == 1)
-        print (r)
+        # print (r)
+
+    def test_16C_get_abstract_bad_client_id(self):
+        # client-id must be numeric
+        logger.error("Note: Error expected below: The caller has not provided sufficient identification. Sending bad (alpha) client ID.")
+        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Abstracts/IFP.017.0240A?similarcount=4&client-id=BAD_CLIENT_ID_TEST')
+        response = requests.get(full_URL)
+        r = response.json()
+        # print (r)
+        assert(r["detail"] == 'The caller has not provided sufficient identification.')
+        assert(response.status_code == 428)
 
     def test_17_get_abstract_bad_client_id_func(self):
-        print("Test bad client ID...error expected.")
+        logger.error("Note: Error expected below: The caller has not provided sufficient identification. Sending WITHOUT ANY client ID.")
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Abstracts/IFP.017.0240A?similarcount=4')
-        #response = requests.get(full_URL, headers={})
-        #r = response.json()
-        #response_info = r["documents"]["responseInfo"]
-        #response_set = r["documents"]["responseSet"] 
-        #assert(response_info["count"] == 1)
-        #print (response_set)
+        print (f"Headers: {no_client_headers}")
         response = requests.get(full_URL, headers=no_client_headers)
         r = response.json()
-        print (r)
+        # print (r)
         #response_info = r["documents"]["responseInfo"]
         #response_set = r["documents"]["responseSet"] 
+        assert(r["detail"] == 'The caller has not provided sufficient identification.')
         assert(response.status_code == 428)
-        #assert(r["detail"] == 'The caller has not provided sufficient client information and session information.')
-        #print (response_set)
        
 if __name__ == '__main__':
     unittest.main()    

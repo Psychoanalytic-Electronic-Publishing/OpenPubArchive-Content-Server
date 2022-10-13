@@ -11,6 +11,8 @@ import sys
 import urllib
 import requests
 import opasDocPermissions
+import logging
+logger = logging.getLogger()
 
 folder = os.path.basename(os.path.dirname(os.path.abspath(__file__)))
 if folder == "tests": # testing from within WingIDE, default folder is tests
@@ -32,7 +34,7 @@ JOURNALCOUNT = 77
 # this must be set to the exact number of unique books for testing to pass.
 BOOKCOUNT = 100 # 100 book in 2020 on PEP-Web including 96 various ZBK, NLP, IPL books, + 4 special books: L&P, SE, GW, Glossary
 VIDEOSOURCECOUNT = 12 # Number of video sources (video journal codes)
-VIDEOCOUNT = 99
+VIDEOCOUNT = 117 # count as of 2022-03-21
 ARTICLE_COUNT = 135632
 ARTICLE_COUNT_BJP = 2735 # Right.  2738 in everything with query "BJP (bEXP_ARCH1).xml", but 3 dups.
 ARTICLE_COUNT_VOL1_BJP = 49
@@ -88,8 +90,14 @@ def test_login(username=localsecrets.PADS_TEST_ID, password=localsecrets.PADS_TE
                localsecrets.API_KEY_NAME: localsecrets.API_KEY}
     if session_info.is_valid_login == True:
         headers[localsecrets.AUTH_KEY_NAME] = "true"
+    else:
+        logger.error(f"Login user {username} was not successful {session_info.pads_session_info.ReasonStr}.")
     
     return sessID, headers, session_info
+
+def test_logout(session_id):
+    ret_val = opasDocPermissions.authserver_logout(session_id)
+    return ret_val
 
 if 0:
     # session_info, pads_session_info = pads_get_session(client_id=UNIT_TEST_CLIENT_ID)

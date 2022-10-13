@@ -13,37 +13,6 @@ import string
 from schemaMap import PREDEFINED_SORTS
 import localsecrets
 import opasFileSupport
-
-TIME_FORMAT_STR = '%Y-%m-%dT%H:%M:%SZ'
-
-# Various switches for information/debugging
-DEBUG_TRACE = 0
-LOG_CALL_TIMING = True
-LOCAL_TRACE = False                   # turn this on to see the queries easily.
-LOCAL_DBOPEN_TRACE = False            # show open/close db in init/del
-
-# Cache controls
-WHATS_NEW_EXPIRES_DAYS = 0
-WHATS_NEW_EXPIRES_HOURS = 8
-WHATS_NEW_EXPIRES_MINUTES = 0
-
-# Cache controls
-CACHEURL = "Caching"
-CACHE_EXPIRES_DAYS = 0
-CACHE_EXPIRES_HOURS = 8
-CACHE_EXPIRES_MINUTES = 0
-DEFAULT_LIMIT_FOR_CACHE = 15
-DEFAULT_LIMIT_FOR_MOST_VIEWED = 7
-
-DATA_SOURCE = "DBUpdate "
-
-EXPERT_PICKS_DEFAULT_IMAGE = "IJP.100.1465A.F0002"
-
-#import urllib.request
-# from enum import Enum, EnumMeta, IntEnum
-
-# count_anchors = 0 # define here so it can be used globally across modules
-
 # Share httpCodes definition with all OPAS modules that need it.  Starlette provides the symbolic declarations for us.
 import starlette.status as httpCodes # HTTP_ codes, e.g.
                                      # HTTP_200_OK, \
@@ -54,10 +23,53 @@ import starlette.status as httpCodes # HTTP_ codes, e.g.
                                      # HTTP_500_INTERNAL_SERVER_ERROR, \
                                      # HTTP_503_SERVICE_UNAVAILABLE
  
+
+TIME_FORMAT_STR_DB = '%Y-%m-%dT%H:%M:%S'        # solr wants the Z; mysql connector doesn't!
+TIME_FORMAT_STR = '%Y-%m-%dT%H:%M:%SZ'  # solr wants the Z; mysql connector doesn't!
+
+# TEMPORARY COMPATIBILITY SWITCHES
+TEMP_IJPOPEN_VER_COMPAT_FIX = True   # Production server can't be updated yet (June 1) and doesn't understand IJPOPEN_FULLY_REMOVED
+
+DATA_SOURCE = "v2022r1a/"
 # BASELOGFILENAME = "opasAPI"
 # logFilename = BASELOGFILENAME + "_" + datetime.date.today().strftime('%Y-%m-%d') + ".log"
 FORMAT = '%(asctime)s %(name)s/%(funcName)s(%(lineno)d): %(levelname)s %(message)s'
 logging.basicConfig(format=FORMAT, level=logging.WARNING, datefmt='%Y-%m-%d %H:%M:%S')
+
+# Various switches for information/debugging
+DEBUG_TRACE = False
+LOG_CALL_TIMING = True
+LOCAL_TRACE = False                   # turn this on to see the queries easily.
+PADS_INFO_TRACE = False
+
+# Special feature switches
+SMARTQUOTE_EXTENSION = True  # Turn on temporary smartQuote (apos) feature.  Won't be needed if we load only smartquotes.
+
+# Cache controls
+WHATS_NEW_EXPIRES_DAYS = 0
+WHATS_NEW_EXPIRES_HOURS = 8
+WHATS_NEW_EXPIRES_MINUTES = 0
+
+JOURNALNEWFLAG = "*New* "
+NO_OFFSITE_DOCUMENT_ACCESS_CHECKS = True # set to false if the server should check with PaDS for offsite documents
+
+# Cache controls
+CACHEURL = "Caching"
+CACHE_EXPIRES_DAYS = 0
+CACHE_EXPIRES_HOURS = 8
+CACHE_EXPIRES_MINUTES = 0
+DEFAULT_LIMIT_FOR_CACHE = 15
+DEFAULT_LIMIT_FOR_MOST_VIEWED = 7
+
+EXPERT_PICKS_DEFAULT_IMAGE = "IJP.100.1465A.F0002"
+
+# Configuratioon of reference linking
+MAX_CF_LIST = 8  # max = 16 per database cf length 255
+MIN_WORD_LEN = 4 # minimum word length to be considered frmo titles
+MAX_WORDS = 5 # max words from title
+MIN_WORDS = 2 # min words to match in title
+MAX_DISPLAY_LEN_CF_ARTICLES = 90
+
 
 # General books
 BOOKSOURCECODE = "ZBK" #  books are listed under this source code, e.g., to make for an id of ZBK.052.0001
@@ -70,22 +82,43 @@ JOURNAL_CODES = """ADPSA|AFCVS|AIM|AJP|AJRPP|ANIJP-CHI|ANIJP-DE|ANIJP-EL|ANIJP-F
 |JPPF|JPT|LU-AM|MPSA|NLP|NP|NYPSIVS|OEDA|OFFSITE|OPUS|PAH|PAQ|PB|PCAS|PCS|PCT|PCVS|PD|PDPSY|PEPGRANTVS|PEPTOPAUTHVS|PEPVS|PI
 |PPC|PPERSP|PPSY|PPTX|PSABEW|PSAR|PSC|PSP|PSU|PSW|PSYCHE|PY|RBP|REVAPA|RFP|RIP|RPP-CS|RPSA|RRP|SE|SFCPVS|SGS|SPIVS|SPR|TVPA
 |UCLVS|ZBK|ZBPA|ZPSAP"""
+SPECIAL_SUBSCRIPTION_CODES = ["IJPOPEN", ]  # use all uppercase
 
-DOWNLOADS_MAX_PAGE_COUNT = 50
-DOWNLOADS_TYPES_RESTRICTED = ("book", )
-DOWNLOADS_TYPES_OVERRIDDEN = ("book", )
+# ########################################
+# Limits and Configurations
+# ########################################
+
+# Download and print restriction feature
+DOWNLOADS_LIMIT_PAGE_COUNT = 50                # Set to maximum restricted (e.g., book) article page count where download is allowed.
+DOWNLOADS_LIMIT_TYPES_RESTRICTED = ("book", )  # this turns download off for these types, if xml allows it, and page_count is >= DOWNLOADS_LIMIT_PAGE_COUNT
+DOWNLOADS_LIMIT_TYPES_OVERRIDDEN = ("book", )  # this turns download on if xml disallows it, for these types, where the page_count is < DOWNLOADS_LIMIT_PAGE_COUNT
+
 # Note: language symbols to be lower case (will be converted to lowercase if not)
 DEFAULT_DATA_LANGUAGE_ENCODING = "en"
 CLIENT_CONFIGS = ("common", "en-us", "es-es", "fr-fr", "de-de", "it-it")
 EXPERT_PICK_IMAGE_FILENAME_READ_LIMIT = 13000 # lower numbers are faster, but don't read the last n files before making a random selection
 # paths vary because they depend on module location; solrXMLWebLoad needs a different path than the server
 # should do this better...later.
-GAVANTXSLT = False
-STYLE_PATH = r"./libs/styles;../libs/styles"
-if not GAVANTXSLT:
+
+
+# the following symbolic codes are embargo types.  (Perhaps later the IJPOpen embargo types should be made into general embargo types 
+# if we are to withdraw other articles, though that's really not PEP's policy.
+EMBARGO_IJPOPEN_REMOVED = 300       # This article was removed from IJPOpen (abstract, authors, and title available)
+EMBARGO_IJPOPEN_FULLY_REMOVED = 302 # Fully removed, special dispensation cases, per DT request 2022-05-31
+EMBARGO_PUBLISHER_EMBARGOED = 301   # special embargoed article from RFP and perhaps others, no reason specified
+EMBARGO_TYPE_OTHER = 301            # for now, just like publisher embargoed.
+EMBARGO_TOC_TEXT = {
+    'IJPOPEN_REMOVED': "Rmvd",        # Text to appear instead of Page number in TOC
+}
+
+MERGE_AFFIDS = False                # If True, when an author has multiple affids, the institutions will be merged into the first ID affiliation
+                                    #  in the author core (not in the XML in the Docs core)
+EXPERIMENTAL = False
+XSLT_PATH = r"./libs/styles;../libs/styles"
+if not EXPERIMENTAL: # tests with the Gavant XSLT
     XSLT_XMLTOHTML = r"pepkbd3-html.xslt"
 else:
-    XSLT_XMLTOHTML = r"xmlToHtml2021.xslt"                                      # used for dynamic conversion to HTML; trying to update 2021-06-03 
+    XSLT_XMLTOHTML = r"xmlToHtmlExperimental.xslt"                              # used for dynamic conversion to HTML; trying to update 2021-06-03 
                                                                                 # with Gavant improvements, *** but not working here 2021-06-05 yet ****
                                                                                 # but needed the doctype code back in and lots of other fixes including params
     
@@ -94,10 +127,19 @@ XSLT_XMLTOHTML_EXCERPT = r"pepkbd3-abstract-html.xslt"                       # u
 XSLT_XMLTOHTML_GLOSSARY_EXCERPT = r"pepkbd3-glossary-excerpt-html.xslt" 
 TRANSFORMER_XMLTOHTML = "XML_TO_HTML"                                        # used for dynamic conversion to HTML (maps to XSLT_XMLTOHTML)
 TRANSFORMER_XMLTOHTML_EXCERPT = "EXCERPT_HTML"                               # used for TOC instances on load (maps to XSLT_XMLTOHTML_EXCERPT)
-TRANSFORMER_XMLTOTEXT_EXCERPT = "EXCERPT_TEXT"                               # NOT CURRENTLY USED in OPAS (2020-09-14)
+TRANSFORMER_XMLTOTEXT_EXCERPT = "EXCERPT_TEXT"                               
 TRANSFORMER_XMLTOHTML_GLOSSARY_EXCERPT = "EXCERPT_GLOSSARY"                  # NOT CURRENTLY USED in OPAS (2020-09-14)
 
-CSS_STYLESHEET = r"./libs/styles/pep-html-preview.css"
+CSS_STYLESHEET = r"./libs/styles/pep-pdf-epub.css"
+CSS_STYLESHEET_REFERENCE = "style/pep-pdf-epub.css" # this is how it's named in the epub in 'folder' style
+# Fork Awesome is an authorized open source free version of Font Awesome
+FORK_AWESOME_PUBLIC_URL = "https://cdn.jsdelivr.net/npm/fork-awesome@1.2.0/css/fork-awesome.min.css"
+FORK_AWESOME_INTEGRITY="sha256-XoaMnoYC5TH6/+ihMEnospgm0J1PM/nioxbOUdnM8HY="
+FORK_AWESOME_CROSSORIGIN="anonymous"
+
+SUBPATH = 'fonts'                            # sub to app
+STYLEPATH = os.path.join("libs", "styles")
+
 MAX_RECORDS_FOR_ACCESS_INFO_RETURN = 100
 
 # Special xpaths and attributes for data handling in solrXMLPEPWebLoad
@@ -130,6 +172,7 @@ USER_NOT_LOGGED_IN_ID = 0
 USER_NOT_LOGGED_IN_NAME = "NotLoggedIn"
 NO_CLIENT_ID = 666
 NO_SESSION_ID = "NO-SESSION-ID"
+ADMIN_TYPE = "Admin"
     
 COOKIE_MIN_KEEP_TIME = 3600  # 1 hour in seconds
 COOKIE_MAX_KEEP_TIME = 86400 # 24 hours in seconds
@@ -261,6 +304,56 @@ VALS_DOWNLOADFORMAT = {DICTLEN_KEY: 4, 'html': 'HTML', 'pdf': 'PDF', 'pdfo': 'PD
 # cited_in_period values (used for sort selection, and comparison to minimums for search)
 VALS_YEAROPTIONS = {DICTLEN_KEY: 2, '5': '5', '10': '10', '20': '20', 'al': 'all'}
 
+# Messages - Correspond to api_messages table
+ACCESS_ABSTRACT_RESTRICTED_MESSAGE = 1220 #"You must be a registered user to view abstracts (registration is free and easy).  If you are already a registered user, please login."
+ACCESS_CLASS_DESCRIPTION_ARCHIVE = 1202 # "This archive content is available for you to access."
+ACCESS_CLASS_DESCRIPTION_CURRENT_CONTENT = 1203 # This is current content.  It is embargoed per agreement with the publisher.
+ACCESS_CLASS_DESCRIPTION_FREE = 1201 # "This content is currently free to all users."
+ACCESS_CLASS_DESCRIPTION_FUTURE = 1206
+ACCESS_CLASS_DESCRIPTION_OFFSITE = 1200 # "This important document is part of our 'offsite' collection--it's searched by our system, but available only from the publisher or authorized sites. "
+ACCESS_CLASS_DESCRIPTION_SPECIAL = 1204	# This is special content.  Access is determined by source title.	EN
+ACCESS_CLASS_DESCRIPTION_TOC = 1205
+ACCESS_LIMITED_REASON_NOK_ARCHIVE_CONTENT = 1218 # in case user doesn't have access to PEP-Web archive
+ACCESS_LIMITED_REASON_NOK_CURRENT_CONTENT = 1217 # This is a summary excerpt from the full document.  The full-text content of the document is embargoed per an agreement with the publisher. 
+ACCESS_LIMITED_REASON_NOK_EMBARGOED_CONTENT = 1214 # This is a summary excerpt from the full document.  This document has been specifically removed or embargoed by the publisher
+ACCESS_LIMITED_REASON_NOK_FUTURE_CONTENT = 1216 #"This future content is not yet available for you to access."
+ACCESS_LIMITED_REASON_OK_CURRENT_CONTENT = 1210 # "This current content is available for you to access."
+ACCESS_SUMMARY_DESCRIPTION = 1221 # "This is a summary excerpt from the full document. "
+ACCESS_SUMMARY_FORSUBSCRIBERS = 1222 # "The full content of the document is available to subscribers. "
+ACCESS_SUMMARY_PDFORIG_NOT_FOUND = 1231
+ACCESS_SUMMARY_SPECIAL_SUBSCRIPTION =  1232 # This document is part of a separate or special subscription.
+ACCESS_SUMMARY_PERMISSION_DENIED = 1235
+ACCESS_SUMMARY_PUBLISHER_INFO = 1225 # "It may be available on the publisher's website" # Take out space here, put it below.  If no link, a period will be added. 
+ACCESS_SUMMARY_SPECIAL = 1230 # "It may be available, it's a case by case basis 
+# ACCESS_TEXT_PROCESSING_ISSUE = 1240 # error preparing file
+ACCESS_SUMMARY_ONLY_401_UNAUTHORIZED = 401 # "The authorization system returned a 401 error.  Your session may have timed out. Please try and login again."
+ERROR_404_DOCUMENT_NOT_FOUND = 404
+ERROR_422_UNPROCESSABLE_ENTITY = 422 # error preparing file
+ERROR_400_BAD_REQUEST = 400
+ERROR_403_DOWNLOAD_OR_PRINTING_RESTRICTED = 403 # fashioned after 403 (restricted)
+# ACCESS_LIMITD_REASON_NOK_NOT_LOGGED_IN = 1219 # no access check and user is not logged in
+# ACCESS_LIMITED_REASON_NOK_SPECIAL_CONTENT = 1215 
+# ACCESS_OK_ARCHIVE_CONTENT_AVAILABLE = 1205 # "This archive content is available for you to access."
+# ACCESS_SUMMARY_EMBARGOED_YEARS = "The full-text content of the document is embargoed for %s years per an agreement with the publisher. "
+# ACCESS_SUMMARY_FUTURE = 1224 # "This journal is in the process of being added to PEP-Web.  The full-text content of the document is not yet available. "
+# ACCESS_SUMMARY_NOT_AVAILABLE = 1229 # This content is not currently available. 
+# ACCESS_SUMMARY_ONLY_EMBARGOED = 1223 # "The full-text content of the document is embargoed per an agreement with the publisher. "
+#1204	ACCESS_CLASS_DESCRIPTION_SPECIAL
+#1205	ACCESS_CLASS_DESCRIPTION_TOC
+#1208	ACCESS_CLASS_DESCRIPTION_AVAILABLE
+#1210	ACCESS_OK_CURRENT_CONTENT_AVAILABLE
+#1211	ACCESS_OK_ARCHIVE_CONTENT_AVAILABLE
+#1216	ACCESS_NOK_FUTURE_CONTENT_NOT_AVAILABLE
+#1217	ACCESS_NOK_CURRENT_CONTENT_NOT_AVAILABLE
+#1220	ACCESS_ABSTRACT_RESTRICTED_MESSAGE
+#1221	ACCESS_SUMMARY_DESCRIPTION
+#1222	ACCESS_SUMMARY_FORSUBSCRIBERS
+#1223	ACCESS_SUMMARY_ONLY_EMBARGOED
+#1224	ACCESS_SUMMARY_FUTURE
+#1225	ACCESS_SUMMARY_PUBLISHER_INFO
+#1226	ACCESS_SUMMARY_NOT_AVAILABLE
+#1227	ACCESS_SUMMARY_SPECIAL
+#1228	ACCESS_PDF_ORIGINAL_NOT_FOUND
 
 # parameter descriptions for OpenAPI documentation; (Some depend on definitions in help text above)
 DESCRIPTION_ADMINCONFIG = "Global settings by an administrator for the specific client app"
@@ -272,12 +365,12 @@ DESCRIPTION_ADVANCEDSEARCHQUERY = "Advanced Query in Solr syntax (see schema nam
 DESCRIPTION_ADVANCEDSEARCHFILTERQUERY ="Advanced Query in Solr syntax (see schema names)"
 DESCRIPTION_HIGHLIGHT_FIELDS = "Comma separated list of field names for highlight return"
 DESCRIPTION_RETURN_FIELDS = "Comma separated list of field names for data return"
-DESCRIPTION_ARTICLETYPE = "Types of articles: ART(article), ABS(abstract), ANN(announcement), COM(commentary), ERR(errata), PRO(profile), (REP)report, or (REV)review."
+DESCRIPTION_ARTICLETYPE = "Types of articles: ART(article), ABS(abstract), ANN(announcement), COM(commentary), ERR(errata), PRO(profile), (REP)report, or (REV)review"
 DESCRIPTION_AUTHOR = "Author name, use wildcard * for partial entries (e.g., Johan*)"
 DESCRIPTION_AUTHORNAMEORPARTIAL = "The author name or a partial name (regex type wildcards [.*] permitted EXCEPT at the end of the string--the system will try that automatically)"
 DESCRIPTION_AUTHORNAMEORPARTIALNOWILD = "The author name or a author partial name (prefix)"
-DESCRIPTION_CACHED = "Turn on the cache (default=True)"
-DESCRIPTION_CITECOUNT = "Include documents cited this many or more times (or X TO Y times) in past 5 years (or IN {5, 10, 20, or ALL}), e.g., 3 TO 6 IN ALL. Default (implied) period is 5 years."  
+DESCRIPTION_CACHED = "Turn on the cache"
+DESCRIPTION_CITECOUNT = "Include documents cited this many or more times (or X TO Y times) in past 5 years (or IN {5, 10, 20, or ALL}), e.g., 3 TO 6 IN ALL. Default (implied) period is 5 years"  
 DESCRIPTION_CLIENT_ID = "Numeric ID assigned to a client app by Opas Administrator"
 DESCRIPTION_CLIENT_SESSION = "Client session GUID"
 DESCRIPTION_CORE = "The preset name for the specif core to use (e.g., docs, authors, etc.)"
@@ -292,32 +385,33 @@ DESCRIPTION_DOCUMENT_CONCORDANCE_RX = "String with single or list of Paragraph l
 DESCRIPTION_ENDDATE = "Find records on or before this date (input date as 2020-08-10, Date/Time as YYYY-MM-DD HH:MM:SS. Dashes in date optional)"
 DESCRIPTION_ENDPOINTID_LIST = "Filter by this comma separated list of Endpoint IDs (e.g., 31,32,41)"
 DESCRIPTION_ENDYEAR = "Find documents published on or before this year (e.g, 2001)" 
-DESCRIPTION_FACETFIELDS = "List of fields for which to return facet info. Field art_sourcetype, for example, will give results counts by type (journal, book, videostream)."
+DESCRIPTION_FACETFIELDS = "List of fields for which to return facet info. Field art_sourcetype, for example, will give results counts by type (journal, book, videostream)"
 DESCRIPTION_FACETLIMIT = "Maximum number of facet values to return"
 DESCRIPTION_FACETMINCOUNT = "Minimum count to return a facet"
 DESCRIPTION_FACETOFFSET = "Offset that can be used for paging through a facet"
 DESCRIPTION_FIRST_PAGE = "Document's first page"
 DESCRIPTION_LAST_PAGE = "Document's last page"
-DESCRIPTION_FACETQUERY = 'Facet field(s) limiter using Solr query syntax and facet names, e.g. art_sourcetitleabbr:("Int. J. Psychoanal." OR "Int. Rev. Psycho-Anal." OR "Brit. J. Psychother.").'
-DESCRIPTION_FULLTEXT1 = "Find Words (or phrases in quotes) across the document (Boolean search is not paragraph level.) Field specifications--e.g., art_authors:(authorname)--are allowed."
-DESCRIPTION_FULLTEXT1_V1 = "Words or phrases (in quotes) in a paragraph in the document."
+DESCRIPTION_FACETQUERY = 'Facet field(s) limiter using Solr query syntax and facet names, e.g. art_sourcetitleabbr:("Int. J. Psychoanal." OR "Int. Rev. Psycho-Anal." OR "Brit. J. Psychother.")'
+DESCRIPTION_FULLTEXT1 = "Find Words (or phrases in quotes) across the document (Boolean search is not paragraph level.) Field specifications--e.g., art_authors:(authorname)--are allowed"
+DESCRIPTION_FULLTEXT1_V1 = "Words or phrases (in quotes) in a paragraph in the document"
 DESCRIPTION_GETFULLCOUNT = "Return full set size as well as the filtered set size"
-DESCRIPTION_GLOSSARYID = "Specify the Name, Group, or ID of a Glossary item to return the document. Specify which type of identifier using query param termidtype."
+DESCRIPTION_GLOSSARYID = "Specify the Name, Group, or ID of a Glossary item to return the document. Specify which type of identifier using query param termidtype"
 DESCRIPTION_IMAGEID = "A unique identifier for an image"
-DESCRIPTION_INCLUDENONLOGGEDIN = "Include both logged-in and non-logged-in records"
-DESCRIPTION_ISSN = "Standardized 8-digit code used to identify newspapers, journals, magazines and periodicals of all kinds and on all media–print and electronic."
+DESCRIPTION_LOGGEDINRECORDS = "Include logged-in in records only (True) or non-logged-in only (False)"
+DESCRIPTION_ISSN = "Standardized 8-digit code used to identify newspapers, journals, magazines and periodicals of all kinds and on all media–print and electronic"
 DESCRIPTION_EISSN = "Standardized 8-digit code used to identify newspapers, journals, magazines and periodicals as electronic (the same as issn in PEP schema)"
 DESCRIPTION_ISBN = "International Standard Book Number. 10 digits up to the end of 2006, now always consist of 13 digits"
-DESCRIPTION_ISSUE = "The issue number if the source has one (or S, or Supplement for supplements).  If alpha will convert to equivalent number counting from A."
+DESCRIPTION_ISSUE = "The issue number if the source has one (or S, or Supplement for supplements).  If alpha will convert to equivalent number counting from A"
 DESCRIPTION_LIMIT = "Maximum number of items to return."
 DESCRIPTION_MAX_KWIC_COUNT = "Maximum number of hits in context areas to return"
 DESCRIPTION_MOREINFO = "Return statistics on the Archive holdings (and extended version info for admins)"
+DESCRIPTION_MOREINFO_CONTENTS = "1=Provides Range of volumes (infosource: volumes_min_max); 2=Provides Prev and Next Volume info (infosource: volumes_adjacent)"
 DESCRIPTION_MORELIKETHIS = "Find similar documents"
 DESCRIPTION_MOST_CITED_PERIOD = f"Period for minimum count parameter 'citecount'; show articles cited at least this many times during this time period [in full years: 5, 10, 20, al(l)]"
 DESCRIPTION_MOST_VIEWED_PERIOD = f"Period applying to the minimum count parameter 'viewcount' filtering articles viewed during this period (use integer: 1: lastweek,  2: lastmonth, 3: last6months, 4: last12months,  5: lastcalendaryear)"
 DESCRIPTION_OFFSET = "Start return with this item, referencing the sequence number in the return set (for paging results)."
 DESCRIPTION_PAGELIMIT = "Number of pages of a document to return"
-DESCRIPTION_PAGEOFFSET = "Starting page to return for this document as an offset from the first page.)"
+DESCRIPTION_PAGEOFFSET = "Starting page to return for this document as an offset from the first page)"
 DESCRIPTION_PAGEREQUEST = "The page or page range (from the document's numbering) to return (e.g., 215, or 215-217)"
 DESCRIPTION_PARAM_SOURCETYPE = f"Source type (One of: {list_values(VALS_SOURCE_TYPE)})"
 DESCRIPTION_PARASCOPE = "scope: doc, dreams, dialogs, biblios, per the schema (all the p_ prefixed scopes are also recognized without the p_ here)"
@@ -329,31 +423,31 @@ DESCRIPTION_RELATEDTOTHIS = "Enter a document ID to find all related documents p
 DESCRIPTION_REPORT_REQUESTED="One of the predefined report names"
 DESCRIPTION_REPORT_MATCHSTR="Report specific match string (params for session-views/user-searches, e.g., /Documents/Document/AIM.023.0227A/, and type for document-activity, e.g., PDF)"
 DESCRIPTION_REQUEST = "The request object, passed in automatically by FastAPI"
-DESCRIPTION_RETURNFORMATS = "The format of the returned full-text (e.g., abstract or document data).  One of: 'HTML', 'XML', 'TEXTONLY'.  The default is HTML."
+DESCRIPTION_RETURNFORMATS = "The format of the returned full-text (e.g., abstract or document data), one of: 'HTML', 'XML', 'TEXTONLY'"
 DESCRIPTION_RETURN_ABSTRACTS = "Return abstracts in the documentList (Boolean: true or false)"
 DESCRIPTION_SEARCHPARAM = "This is a document request, including search parameters, to show hits"
 DESCRIPTION_SESSION_ID_FILTER = "Filter by this Session ID"
 DESCRIPTION_SITEMAP_PATH = f"Folder or S3 Bucket to put the sitemap"
 DESCRIPTION_SITEMAP_RECORDS_PER_FILE = "Number of records per file"
 DESCRIPTION_SITEMAP_MAX_RECORDS = "Max records exported to sitemap"
-DESCRIPTION_SMARTSEARCH = "Search input parser looks for key information and searches based on that."
-DESCRIPTION_SORT =f"Comma separated list of field names to sort by {tuple(PREDEFINED_SORTS.keys())}."
-DESCRIPTION_SORTORDER = f"Sort order, either DESC or ASC for descending/ascending."
+DESCRIPTION_SMARTSEARCH = "Search input parser looks for key information and searches based on that"
+DESCRIPTION_SORT =f"Comma separated list of field names to sort by {tuple(PREDEFINED_SORTS.keys())}"
+DESCRIPTION_SORTORDER = f"Sort order, either DESC or ASC for descending/ascending"
 DESCRIPTION_SOURCECODE = "The 2-12 character PEP Code (e.g., APA, ANIJP-FR, CPS, PEPTOPAUTHVS), or a Boolean list of codes (e.g., APA OR CPS) or a comma separated list (e.g.: APA, IJP, CPS)"
-DESCRIPTION_SOURCECODE_METADATA_BOOKS = "The 2-3 character PEP Code for the book series (e.g., SE, GW, IPL, NLP, ZBK), or the PEP Code and specific volume number of a book in the series (e.g., GW001, SE006, NLP014, ZBK047 (classic book, specific book assigned number) or * for all."
-DESCRIPTION_SOURCECODE_METADATA_JOURNALS = "The FULL 2-8 character PEP Code of the journal source for matching documents (e.g., APA, ANIJP-FR, CPS, IJP, IJPSP, PSYCHE) or * for all."
-DESCRIPTION_SOURCECODE_METADATA_VIDEOS = "The PEP Code of the video series (e.g., BPSIVS, IPSAVS, PEPVS, PEPGRANTVS, PEPTOPAUTHVS) or * for all."
+DESCRIPTION_SOURCECODE_METADATA_BOOKS = "The 2-3 character PEP Code for the book series (e.g., SE, GW, IPL, NLP, ZBK), or the PEP Code and specific volume number of a book in the series (e.g., GW001, SE006, NLP014, ZBK047 (classic book, specific book assigned number) or * for all.  Can use simple .* wildcards, e.g., IPL.* returns all the IPL books"
+DESCRIPTION_SOURCECODE_METADATA_JOURNALS = "The FULL 2-8 character PEP Code of the journal source for matching documents (e.g., APA, ANIJP-FR, CPS, IJP, IJPSP, PSYCHE) or * for all. Can use simple .* wildcards, e.g., ANIJP-.* returns all the ANIJP journals"
+DESCRIPTION_SOURCECODE_METADATA_VIDEOS = "The PEP Code of the video series (e.g., BPSIVS, IPSAVS, PEPVS, PEPGRANTVS, PEPTOPAUTHVS) or * for all.   Can use simple .* wildcards, e.g., PEP.* returns all the PEP videostreams"
 DESCRIPTION_SOURCELANGCODE = "Language code or comma separated list of codes for matching documents (e.g., EN, ES, DE, ...)"
 DESCRIPTION_SOURCENAME = "Name or partial name of the source (e.g., 'international' or 'psychoanalytic')"
 DESCRIPTION_SPECIALOPTIONS = "Integer mapped to Option flags for special options"
-DESCRIPTION_STATONLY = "Return minimal documentListItems for statistics."
+DESCRIPTION_STATONLY = "Return minimal documentListItems for statistics"
 DESCRIPTION_STARTDATE = "Find records on or after this date (input date as 2020-08-10, Date/Time as YYYY-MM-DD HH:MM:SS. Dashes in date optional)"
-DESCRIPTION_STARTYEAR = "Find documents published on or after this year, or in this range of years (e.g, 1999, Between range: 1999-2010. After: >1999 Before: <1999" 
+DESCRIPTION_STARTYEAR = "Find documents published on or after this year, or in this range of years (e.g, 1999, Between range: 1999-2010, After: >1999, Before: <1999)" 
 DESCRIPTION_SYNONYMS_BOOLEAN = "Expand search to include specially declared synonyms (True/False)"
 DESCRIPTION_SIMILARCOUNT = "Return this many similar documents for each document in the return set (0 = none)" 
 DESCRIPTION_TERMCOUNT_METHOD = '1=Alternate method for termcounts, allows full wildcards (requires solrpy installed). Default (=0) only supports wildcard at end of string "*"' 
-DESCRIPTION_TERMFIELD = "Enter a single field to examine for all terms where a field is not specified in termlist (e.g., text, authors, keywords)."
-DESCRIPTION_TERMLIST = "Comma separated list of terms, you can specify a field before each as field:term or just enter the term and the default field will be checked."
+DESCRIPTION_TERMFIELD = "Enter a single field to examine for all terms where a field is not specified in termlist (e.g., text, authors, keywords)"
+DESCRIPTION_TERMLIST = "Comma separated list of terms, you can specify a field before each as field:term or just enter the term and the default field will be checked"
 DESCRIPTION_QTERMLIST = "SolrQeryTermList model for term by term field, term, and synonynm specification (Post Only)"
 DESCRIPTION_TITLE = "The title of the document (article, book, video)"
 DESCRIPTION_TRANSLATIONS = "Return a list of documents which are translations of this document in field translationSet"
@@ -364,7 +458,7 @@ DESCRIPTION_VIEWCOUNT = "Include documents (not abstracts) viewed this many or m
 DESCRIPTION_VIEWCOUNT_INT = "Include documents (not abstracts) viewed this many or more times. Must be an integer."  
 DESCRIPTION_VIEWPERIOD = "One of a few preset time frames for which to evaluate viewcount; 0=last cal year, 1=last week, 2=last month, 3=last 6 months, 4=last 12 months."
 DESCRIPTION_VOLUMENUMBER = "The volume number if the source has one"
-DESCRIPTION_WORD = "A word prefix to return a limited word index (word-wheel)."
+DESCRIPTION_WORD = "A word prefix to return a limited word index (word-wheel)"
 DESCRIPTION_WORDFIELD = "The field for which to look up the prefix for matching index entries.  It must be a full-text indexed field (text field or derivative)"
 DESCRIPTION_YEAR = "The year for which to return data"
 DESCRIPTION_TERMIDTYPE = f"Source type (One of: ID, Name, Group)"
@@ -401,7 +495,7 @@ TITLE_FULLTEXT1_V1 = "Paragraph based search"
 TITLE_GETFULLCOUNT = "Return full unfiltered set size"
 TITLE_HIGHLIGHT_FIELDS = "Fields to return for highlighted matches"
 TITLE_IMAGEID = "Image ID (unique)"
-TITLE_INCLUDENONLOGGEDIN = "Include logged-in and non-logged-in"
+TITLE_LOGGEDINRECORDS = "Include logged-in in records only (True) or non-logged-in (False)"
 TITLE_ISSUE = "Issue Number"
 TITLE_LIMIT = "Document return limit"
 TITLE_MAX_KWIC_COUNT = "Maximum number of hits in context areas to return"
@@ -409,7 +503,7 @@ TITLE_MOREINFO = "Return extended information"
 TITLE_MORELIKETHIS = "Enter an document ID to find similar documents"
 TITLE_MOST_CITED_PERIOD = f"Show articles cited at least this many times during this time period"
 TITLE_MOST_VIEWED_PERIOD = f"Show articles viewed during this period"
-TITLE_CACHED = "Turn on the cache (default=True)"
+TITLE_CACHED = "Turn on the cache"
 TITLE_UPDATE_CACHE = "Get the latest updates--reload the cache"
 TITLE_OFFSET = "Document return offset"
 TITLE_PAGELIMIT = "Number pages to return"
@@ -433,8 +527,8 @@ TITLE_SESSION_ID_FILTER = "SessionID"
 TITLE_SITEMAP_PATH = "Where to put the sitemap"
 TITLE_SITEMAP_RECORDS_PER_FILE = "Number of records per file"
 TITLE_SITEMAP_MAX_RECORDS = "Max records exported to sitemap"
-TITLE_SORT = f"Field names to sort by {tuple(PREDEFINED_SORTS.keys())}."
-TITLE_SORTORDER = f"Sort order, either DESC or ASC for descending/ascending."
+TITLE_SORT = f"Field names to sort by {tuple(PREDEFINED_SORTS.keys())}"
+TITLE_SORTORDER = f"Sort order, either DESC or ASC for descending/ascending"
 TITLE_SOURCECODE = "Series code"
 TITLE_SOURCELANGCODE = "Source language code"
 TITLE_SOURCENAME = "Series name"
@@ -524,57 +618,6 @@ ENDPOINT_SUMMARY_WORD_WHEEL = "Return matching terms for the prefix in the speci
 # control whether abstracts can be viewed by non-logged-in users
 ACCESS_ABSTRACT_RESTRICTION = False
 
-# Messages - Correspond to api_messages table
-
-# the following symbolic codes are embargo types, so the numeric equivalent is not needed.
-IJPOPEN_REMOVED = 300 # " This article was removed from IJPOpen."
-ACCESS_SUMMARY_ONLY_401_UNAUTHORIZED = 401 # "The authorization system returned a 401 error.  Your session may have timed out. Please try and login again."
-ACCESS_404_DOCUMENT_NOT_FOUND = 404 
-ACCESS_CLASS_DESCRIPTION_OFFSITE = 1200 # "This important document is part of our 'offsite' collection--it's searched by our system, but available only from the publisher or authorized sites. "
-ACCESS_CLASS_DESCRIPTION_FREE = 1201 # "This content is currently free to all users."
-ACCESS_CLASS_DESCRIPTION_ARCHIVE = 1202 # "This archive content is available for you to access."
-ACCESS_CLASS_DESCRIPTION_CURRENT_CONTENT = 1203 # This is current content.  It is embargoed per agreement with the publisher.
-ACCESS_CLASS_DESCRIPTION_SPECIAL = 1204	# This is special content.  Access is determined by source title.	EN
-ACCESS_CLASS_DESCRIPTION_TOC = 1205
-ACCESS_CLASS_DESCRIPTION_FUTURE = 1206
-#1204	ACCESS_CLASS_DESCRIPTION_SPECIAL
-#1205	ACCESS_CLASS_DESCRIPTION_TOC
-#1208	ACCESS_CLASS_DESCRIPTION_AVAILABLE
-#1210	ACCESS_OK_CURRENT_CONTENT_AVAILABLE
-#1211	ACCESS_OK_ARCHIVE_CONTENT_AVAILABLE
-#1216	ACCESS_NOK_FUTURE_CONTENT_NOT_AVAILABLE
-#1217	ACCESS_NOK_CURRENT_CONTENT_NOT_AVAILABLE
-#1220	ACCESS_ABSTRACT_RESTRICTED_MESSAGE
-#1221	ACCESS_SUMMARY_DESCRIPTION
-#1222	ACCESS_SUMMARY_FORSUBSCRIBERS
-#1223	ACCESS_SUMMARY_ONLY_EMBARGOED
-#1224	ACCESS_SUMMARY_FUTURE
-#1225	ACCESS_SUMMARY_PUBLISHER_INFO
-#1226	ACCESS_SUMMARY_NOT_AVAILABLE
-#1227	ACCESS_SUMMARY_SPECIAL
-#1228	ACCESS_PDF_ORIGINAL_NOT_FOUND
-
-ACCESS_LIMITED_REASON_OK_CURRENT_CONTENT = 1204 # "This current content is available for you to access."
-ACCESS_OK_ARCHIVE_CONTENT_AVAILABLE = 1205 # "This archive content is available for you to access."
-ACCESS_LIMITED_REASON_NOK_EMBARGOED_CONTENT = 1214
-ACCESS_LIMITED_REASON_NOK_SPECIAL_CONTENT = 1215
-ACCESS_LIMITED_REASON_NOK_FUTURE_CONTENT = 1216 #"This future content is not yet available for you to access."
-ACCESS_LIMITED_REASON_NOK_CURRENT_CONTENT = 1217 # This is a summary excerpt from the full document.  The full-text content of the document is embargoed per an agreement with the publisher. 
-ACCESS_LIMITED_REASON_NOK_ARCHIVE_CONTENT = 1218 # in case user doesn't have access to PEP-Web archive
-ACCESS_LIMITD_REASON_NOK_NOT_LOGGED_IN = 1219 # no access check and user is not logged in
-ACCESS_ABSTRACT_RESTRICTED_MESSAGE = 1220 #"You must be a registered user to view abstracts (registration is free and easy).  If you are already a registered user, please login."
-ACCESS_SUMMARY_DESCRIPTION = 1221 # "This is a summary excerpt from the full document. "
-ACCESS_SUMMARY_FORSUBSCRIBERS = 1222 # "The full content of the document is available to subscribers. "
-ACCESS_SUMMARY_ONLY_EMBARGOED = 1223 # "The full-text content of the document is embargoed per an agreement with the publisher. "
-ACCESS_SUMMARY_FUTURE = 1224 # "This journal is in the process of being added to PEP-Web.  The full-text content of the document is not yet available. "
-# ACCESS_SUMMARY_EMBARGOED_YEARS = "The full-text content of the document is embargoed for %s years per an agreement with the publisher. "
-ACCESS_SUMMARY_PUBLISHER_INFO = 1225 # "It may be available on the publisher's website" # Take out space here, put it below.  If no link, a period will be added. 
-ACCESS_SUMMARY_NOT_AVAILABLE = 1229 # This content is not currently available. 
-ACCESS_SUMMARY_SPECIAL = 1230 # "It may be available, it's a case by case basis 
-ACCESS_SUMMARY_PDFORIG_NOT_FOUND = 1231
-ACCESS_SUMMARY_PERMISSION_DENIED = 1235
-ACCESS_TEXT_PROCESSING_ISSUE = 1240 # error preparing file
-
 ACCESS_SUMMARY_PUBLISHER_INFO_DOI_LINK = " <a href=\"http://dx.doi.org/%s\" target=\"_blank\">here</a>." # needs the left space now 2021-05-05
 # ACCESS_SUMMARY_PUBLISHER_INFO_LINK_TEXT_ONLY = "%s."
 
@@ -611,6 +654,7 @@ DOCUMENT_ITEM_SUMMARY_FIELDS ="""
  art_authors, 
  art_citeas_xml, 
  art_info_xml, 
+ meta_xml, 
  art_sourcecode, 
  art_sourcetitleabbr, 
  art_sourcetitlefull, 
@@ -636,7 +680,7 @@ DOCUMENT_ITEM_SUMMARY_FIELDS ="""
  art_embargotype,
  art_origrx, 
  art_qual, 
- art_kwds, 
+ art_kwds,
  art_cited_all, 
  art_cited_5, 
  art_cited_10, 
@@ -670,6 +714,7 @@ DOCUMENT_ITEM_CONCORDANCE_FIELDS ="""
  art_authors, 
  art_citeas_xml, 
  art_info_xml, 
+ meta_xml, 
  art_sourcecode, 
  art_sourcetitleabbr, 
  art_sourcetitlefull, 
@@ -703,13 +748,15 @@ DOCUMENT_ITEM_CONCORDANCE_FIELDS ="""
 # try the more squashed approach to listing, see if that shows better in the solr call logs
 DOCUMENT_ITEM_VIDEO_FIELDS = """
 art_id,art_issn, art_sourcecode,art_authors, title, art_subtitle_xml, art_title_xml,
-art_sourcetitlefull,art_sourcetitleabbr,art_info_xml, art_vol,art_vol_title, art_year, art_iss, art_iss_title,
+art_sourcetitlefull,art_sourcetitleabbr,art_info_xml, meta_xml, 
+art_vol,art_vol_title, art_year, art_iss, art_iss_title,
 art_year, art_citeas_xml, art_pgrg, art_pgcount, art_lang, art_origrx, art_qual, art_kwds, file_classification
 """
 
 DOCUMENT_ITEM_TOC_FIELDS = """
  art_id, 
  art_info_xml, 
+ meta_xml, 
  art_title_xml, 
  art_subtitle_xml, 
  art_authors_xml, 
@@ -741,6 +788,7 @@ DOCUMENT_ITEM_TOC_FIELDS = """
 
 DOCUMENT_ITEM_META_FIELDS ="""
  art_id, 
+ art_info_xml, 
  meta_xml, 
  art_citeas_xml, 
  art_title_xml, 
@@ -760,6 +808,8 @@ DOCUMENT_ITEM_META_FIELDS ="""
 
 DOCUMENT_ITEM_STAT_FIELDS = """
  art_id, 
+ art_info_xml, 
+ meta_xml, 
  art_citeas_xml, 
  art_title, 
  art_authors, 
@@ -864,13 +914,84 @@ SS_BROADEN_DICT = {SEARCH_FIELD_RELATED: SS_BROADEN_SEARCH_FIELD_RELATED,
                    SEARCH_FIELD_RELATED_EXPANDED: SS_BROADEN_SEARCH_FIELD_RELATED,
                   }
 
-SUPPLEMENT_ISSUE_SEARCH_STR = "Supplement" # this is what will be searched in "art_iss" for supplements
+#SUPPLEMENT_ISSUE_SEARCH_STR = "Supplement" # this is what will be searched in "art_iss" for supplements
 
-#PEPWEB_ABSTRACT_MSG1 = """
-#This is a summary or excerpt from the full text of the article. PEP-Web provides full-text search of the complete articles for
-#current and archive content, but only the abstracts are displayed for current content, due to contractual obligations with the
-#journal publishers. For details on how to read the full text of 2017 and more current articles see the publishers official website 
-#"""
+# PDF_EXTENDED_FONT_FILE = f"url('{PATHCHECK1}')"
+# PDF_EXTENDED_FONT_ALT = f"url('{PATHCHECK2}')"
+# Make sure font is defined:
+
+def get_file_path(filename, subpath):
+    ret_val = None
+    try:
+        pathmod = Path()
+        path = pathmod.absolute()
+        full_file_path = os.path.join(path, subpath, filename)
+        #if not full_file_path.is_file():
+            #parentpath = path.parent.absolute()
+            #full_file_path = os.path.join(parentpath, subpath, filename)
+            #if not Path(full_file_path).is_file():
+                #logging.error(f"{full_font_path} not found. Current Path: {full_file_path} ")
+
+    except Exception as e:
+        # try current folder relative
+        full_file_path = r"E:/usr3/GitHub/openpubarchive/app/fonts/Roboto-Regular.ttf"
+    
+    else:
+        #ret_val = f"url('{full_font_path}')"
+        ret_val = full_file_path
+        
+    return ret_val
+    
+def fetch_resources(uri, rel):
+    logging.debug(f"Call to Fetch Resources: {uri} / {rel}")
+    path = None
+    if ".ttf" in uri:
+        path = get_file_path(uri, SUBPATH)
+        logging.info(f"Returning Font Location: {path} args=({uri} / {SUBPATH} / {rel})")
+    elif ".css" in uri:
+        path = get_file_path(uri, STYLEPATH)
+        logging.info(f"Returning style Location: {path} args=({uri} / {STYLEPATH} / {rel})")
+    elif "http" in uri:
+        if localsecrets.CONFIG == "Local":
+            a = urlparse(uri)
+            m = re.search(".*/Documents/Image/(.*)[/\"\']?", a.path)
+            try:
+                if m is not None:
+                    #print ("Found <img> and source.")
+                    filename = m.group(1)
+                    filename = os.path.basename(urllib.parse.unquote(filename))
+                else:
+                    filename = os.path.basename(urllib.parse.unquote(a.path))
+            except Exception as e:
+                logging.error(f"Can't get filename from url: {a.path} ({e})")
+            else:
+                #print (f"PDF Image Filename: {filename}")
+                fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root=localsecrets.IMAGE_SOURCE_PATH)
+                path = fs.get_image_filename(filename)
+        else:
+            path = uri
+            #  try a local S3 filename!
+            a = urlparse(uri)
+            m = re.search(".*/Documents/Image/(.*)/[\"\']?", a.path)
+            try:
+                if m is not None:
+                    #print ("Found <img> and source.")
+                    filename = m.group(1)
+                    filename = os.path.basename(urllib.parse.unquote(filename))
+                else:
+                    filename = os.path.basename(urllib.parse.unquote(a.path))
+            except Exception as e:
+                logging.error(f"Can't get filename from url: {a.path} ({e})")
+                path = uri
+            else:
+                #print (f"PDF Image Filename: {filename}")
+                fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root=localsecrets.IMAGE_SOURCE_PATH)
+                path = fs.get_image_filename(filename)
+                logging.info (f"Get HTTP Image Resource Path from S3 flex: {path}")
+
+    # for now, to watch uri's on web.
+    logging.info(f"Fetched Resources for '{uri}': '{path}'")
+    return path
 
 # Note the STSong-Light is a built in font for Pisa
 PDF_CHINESE_STYLE = """
@@ -890,71 +1011,7 @@ PDF_CHINESE_STYLE = """
 </style>
 """
 
-PDF_STYLE_SHEET = "pep-pdf.css"              # "pep-html-preview.css"
-SUBPATH = 'fonts'                            # sub to app
-STYLEPATH = os.path.join("libs", "styles")
-
-# PDF_EXTENDED_FONT_FILE = f"url('{PATHCHECK1}')"
-# PDF_EXTENDED_FONT_ALT = f"url('{PATHCHECK2}')"
-# Make sure font is defined:
-def get_file_path(filename, subpath):
-    ret_val = None
-    try:
-        pathmod = Path()
-        path = pathmod.absolute()
-        full_file_path = os.path.join(path, subpath, filename)
-        if not Path(full_file_path).is_file():
-            parentpath = path.parent.absolute()
-            full_file_path = os.path.join(parentpath, subpath, filename)
-            if not Path(full_file_path).is_file():
-                logging.error(f"{full_font_path} not found. Current Path: {full_file_path} ")
-
-    except Exception as e:
-        # try current folder relative
-        full_file_path = r"E:/usr3/GitHub/openpubarchive/app/fonts/Roboto-Regular.ttf"
-    
-    else:
-        #ret_val = f"url('{full_font_path}')"
-        ret_val = full_file_path
-        
-    return ret_val
-    
-def fetch_resources(uri, rel):
-    path = None
-    if ".ttf" in uri:
-        path = get_file_path(uri, SUBPATH)
-        # print (f"Returning Font Location: {path}")
-    elif ".css" in uri:
-        path = get_file_path(uri, STYLEPATH)
-        # print (f"Returning style Location: {path}")
-    elif "http" in uri:
-        if localsecrets.CONFIG == "Local":
-            a = urlparse(uri)
-            m = re.search("src=.*/Documents/Image/(.*)[\"\']", a.path)
-            try:
-                if m is not None:
-                    #print ("Found <img> and source.")
-                    filename = m.group(1)
-                    filename = os.path.basename(urllib.parse.unquote(filename))
-                else:
-                    filename = os.path.basename(urllib.parse.unquote(a.path))
-            except Exception as e:
-                logging.error(f"Can't get filename from url: {a.path} ({e})")
-            else:
-                #print (f"PDF Image Filename: {filename}")
-                fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root=localsecrets.IMAGE_SOURCE_PATH)
-                path = fs.get_image_filename(filename)
-        else:
-            path = uri
-            #print (f"fetch resources trying path: {uri}")
-    
-    # for now, to watch uri's on web.
-    logging.debug(f"Fetch Resources for '{uri}': '{path}'")
-    return path
-
-FONT_FILENAME = "Roboto-Regular.ttf"
 PDF_OTHER_STYLE = r"""
-<link rel="stylesheet" type="text/css" href="%s"/>
 <style>
     @page {
         size: letter portrait;
@@ -965,371 +1022,345 @@ PDF_OTHER_STYLE = r"""
             height: 692pt;
         }
     }
-    @font-face {font-family: Roboto; src: url('%s');}
-    @font-face {font-family: Roboto; font-style: italic; src: url('%s');}
-    @font-face {font-family: Roboto; font-weight: bold; src: url('%s');}
-    @font-face {font-family: Roboto; font-weight: bold; font-style: italic; src: url('%s');}
-    body, p {   
-                font-family: 'Roboto' }	
+    img { max-width:70%;
+        }                
 </style>
-""" % (fetch_resources(PDF_STYLE_SHEET, None),
-       fetch_resources('Roboto-Regular.ttf', None),
-       fetch_resources('Roboto-Italic.ttf', None),
-       fetch_resources('Roboto-Bold.ttf', None),
-       fetch_resources('Roboto-BoldItalic.ttf', None),
-       )
+"""
 
-#print (f"PDF Style: '{PDF_OTHER_STYLE}'")
+# ----------------------------------------
+# opasDataLoader definitions
+# ----------------------------------------
 
-from pydantic import BaseModel, Field
+# MAXSRATIO is the highest sRatio, since 1 is reserved.
+MAXSRATIO = 0.9999999
 
-def parse_volume_code(vol_code: str, source_code: str=None): 
-    """
-    PEP Volume numbers in IDS can be numbers or suffixed by an issue code--we use them after a volume number when a journal repeats pagination
-    from issue to issue or starts the pagination over in a Supplement.
-    
-    >>> parse_volume_code("34S")
-    ('34', 'S')
-    >>> parse_volume_code("101C")
-    ('101', 'C')
-    >>> parse_volume_code("130")
-    ('130', None)
-    
-    
-    """
-    ret_val = ("*", None)
-    if vol_code is not None:
-        m = re.match("\(*(?P<vol>[0-9]+)(?P<issuecode>[A-z]+)?\)*", vol_code)
-        if m is not None:
-            vol = m.group("vol")
-            vol = vol.lstrip("0")
-            issuecode = m.group("issuecode") 
-            ret_val = vol, issuecode
+gBookCodes = ["CBK", "ZBK", "IPL", "NLP", "WMK", "SE", "GW"]
+gAnnualsThatAreTranslations = ["ANIJP-FR", "ANIJP-IT", "ANIJP-EL", "ANIJP-TR", "ANIJP-DE", "ANRP"]
+# Series Classic books with their own code, to add CBK as well.
+gBookClassicSeries = ["IPL", "NLP", "SE", "ZBK"]                       # 3-13-2008, added missing ZBK here.
+gJrnlNoIssueInfo = ["AOP", "PSC", "PY", "ANIJP-IT", "ANIJP-FR", "ANIJP-TR", "ANIJP-EL"]              # 2008-09-07, added to make sure a no-issues volume isn't given an issue number on the one issue each year.
+gSplitCodesForGetProximateArticle = ["CBK", "ZBK", "IPL", "NLP", "WMK", "SE", "GW"]
+gSplitBooks = {
+    "IPL002" : 0,
+    "IPL022" : 0,
+    "IPL045" : 0,
+    "IPL052" : 0,
+    "IPL055" : 0,
+    "IPL059" : 0,
+    "IPL064" : 0,
+    "IPL073" : 0,
+    "IPL076" : 0,
+    "IPL079" : 0,
+    "IPL084" : 0,
+    "IPL087" : 0,
+    "IPL089" : 0,
+    "IPL094" : 0,
+    "IPL095" : 0,
+    "IPL100" : 0,
+    "IPL104" : 0,
+    "IPL105" : 0,
+    "IPL109" : 0,
+    "IPL118" : 0,
+    "NLP001" : 0,
+    "NLP003" : 0,
+    "NLP005" : 1,
+    "NLP011" : 0,
+    "NLP014" : 0,
+    "GW001"  : 0,
+    "GW002"  : 0,
+    "GW003"  : 0,
+    "GW004"  : 0,
+    "GW005"  : 0,
+    "GW006"  : 0,
+    "GW007"  : 0,
+    "GW008"  : 0,
+    "GW009"  : 0,
+    "GW010"  : 0,
+    "GW011"  : 0,
+    "GW012"  : 0,
+    "GW013"  : 0,
+    "GW014"  : 0,
+    "GW015"  : 0,
+    "GW016"  : 0,
+    "GW017"  : 0,
+    "GW018"  : 0,
+    "GW018S" : 0,
+    "NLP011" : 0,
+    "NLP014" : 0,
+    "SE001"  : 0,
+    "SE002"  : 0,
+    "SE003"  : 0,
+    "SE004"  : 0,
+    "SE005"  : 0,
+    "SE006"  : 0,
+    "SE007"  : 0,
+    "SE008"  : 0,
+    "SE009"  : 0,
+    "SE010"  : 0,
+    "SE011"  : 0,
+    "SE012"  : 0,
+    "SE013"  : 0,
+    "SE014"  : 0,
+    "SE015"  : 0,
+    "SE016"  : 0,
+    "SE017"  : 0,
+    "SE018"  : 0,
+    "SE019"  : 0,
+    "SE020"  : 0,
+    "SE021"  : 0,
+    "SE022"  : 0,
+    "SE023"  : 0,
+    "SE024"  : 0,
+    "ZBK002" : 0, # new 2022-05-02
+    "ZBK003" : 0, # new 2022-05-02
+    "ZBK004" : 0, # new 2022-06-17
+    "ZBK006" : 0, # new 2022-05-02
+    "ZBK007" : 0, # new 2022-05-02
+    "ZBK015" : 0, # new 2022-05-02
+    "ZBK016" : 0, # new 2022-05-02
+    "ZBK017" : 0, # new 2022-05-02
+    "ZBK020" : 0, # new 2022-06-17
+    "ZBK025" : 0,
+    "ZBK026" : 0,
+    "ZBK027" : 0,
+    "ZBK028" : 0,
+    "ZBK029" : 0,
+    "ZBK033" : 0, # new 2022-05-02
+    "ZBK038" : 0,
+    "ZBK041" : 0,
+    "ZBK042" : 0,
+    "ZBK045" : 0,
+    "ZBK046" : 0,
+    "ZBK047" : 0,
+    "ZBK048" : 0,
+    "ZBK050" : 0,
+    "ZBK051" : 0,
+    "ZBK052" : 0,
+    "ZBK054" : 0,
+    "ZBK055" : 0,
+    "ZBK056" : 0,
+    "ZBK061" : 0,
+    "ZBK062" : 0,
+    "ZBK069" : 0,
+    "ZBK070" : 0, # new 2022-05-02
+    "ZBK071" : 0, # new 2022-05-02
+    "ZBK072" : 0, # new 2022-05-02
+    "ZBK073" : 0,
+    "ZBK074" : 0,
+    "ZBK075" : 0,
+    "ZBK076" : 0, # new 2022-05-02
+    "ZBK077" : 0, # new 2022-05-02
+    "ZBK078" : 0,
+    "ZBK079" : 0,
+    "ZBK080" : 0,
+    "ZBK081" : 0,
+    "ZBK131" : 0, # new 2022-05-02
+    "ZBK132" : 0, # new 2022-05-02
+    "ZBK133" : 0,
+    "ZBK134" : 0, # new 2022-05-02
+    "ZBK135" : 0, # new 2022-05-02
+    "ZBK136" : 0, # new 2022-06-17
+    "ZBK137" : 0, # new 2022-05-02
+    "ZBK138" : 0, # new 2022-05-02
+    "ZBK139" : 0, # new 2022-06-17
+    "ZBK140" : 0,
+    "ZBK141" : 0,
+    "ZBK142" : 0, # new 2022-05-02
+    "ZBK143" : 0, # new 2022-05-02
+    "ZBK144" : 0, # new 2022-05-02
+    "ZBK145" : 0,
+    "ZBK146" : 0, # new 2022-05-02
+    "ZBK147" : 0, # new 2022-05-02
+    "ZBK148" : 0, # new 2022-05-02
+    "ZBK149" : 0, # new 2022-05-28
+    "ZBK150" : 0, # new 2022-05-02
+    "ZBK151" : 0, # new 2022-05-02
+    "ZBK152" : 0, # new 2022-05-02
+    "ZBK153" : 0, # new 2022-05-02
+    "ZBK155" : 0, # new 2022-05-02
+    "ZBK156" : 0, # new 2022-05-02
+}
 
-    return ret_val    
+gDgrAbbr = {
+    "PHD" : "Ph.D.",
+    "MD"  : "M.D.",
+    "SJ"  : "S.J.",         # Jesuit priest, I think
+    "DSC" : "D.Sc.",
+    "RN"  : "R.N." ,
+    "DMH" : "DMH",
+    "DDS" : "D.D.S.",
+    "BS"  : "B.S." ,
+    "BA"  : "B.A." ,
+    "MS"  : "M.S." ,
+    "MA"  : "M.A." ,
+    "MB"  : "M.B." ,
+    "EDD" : "ED.D.",
+    "MPSY": "M.PSY.",
+    "MSW" : "M.S.W."
+}
 
-def parse_issue_code(issue_code: str, source_code=None, vol=None): 
-    """
-    Issue codes are PEP unique--we use them after a volume number when a journal repeats pagination
-    from issue to issue or starts the pagination over in a Supplement.
-    
-    Source code and volume can be used to handle sources that are "exceptions" to rules (unfortunately)
-    
-    """
-    ret_val = "*"
-    if issue_code is not None and issue_code.isalpha():
-        issue_code = issue_code.upper()
-        if issue_code[0] != "S" or (source_code == "FA" and vol == 1):
-            ret_val = string.ascii_uppercase.index(issue_code[0]) # A==0, B==1
-            ret_val += 1 # now A==1
-            ret_val = str(ret_val)
-        elif issue_code[0] == 'S':
-            ret_val = SUPPLEMENT_ISSUE_SEARCH_STR # supplement
-        else:
-            ret_val = "*" # not recognized, allow any issue
-            
-    elif issue_code.isdecimal():
-        if type(issue_code) == "int":
-            ret_val = str(issue_code)
-        else:
-            ret_val = issue_code
-    return ret_val    
+# REFTYPES
+REFBOOK                 =  "RefBook"
+REFBOOKSERIES           =  "RefBookSeries"
+REFJOURNALARTICLE       =  "RefJrnlArticle"        # (in journal)
+REFBOOKARTICLE          =  "RefBookArticle"        # (article in book)
+REFBOOKSERIESARTICLE    =  "RefBookSeriesArticle"  # (article in series book)
+REFABSTRACT             =  "RefAbstract"
+REFSECTION              =  "RefSection"            # Format of "section citation"
 
-class ArticleID(BaseModel):
-    """
-    Article IDs (document IDs) are at the core of the system.  In PEP's design, article IDs are meaningful, and can be broken apart to learn about the content metadata.
-      But when designed as such, the structure of the article IDs may be different in different systems, so it needs to be configurable as possible.
-      This routine in opasConfig is a start of allowing that to be defined as part of the customization. 
+# Used to generate the index of classic books (excluding SE and GW,, done separately)
+gClassicBookTOCList = {
+    "IPL.002.0000"  :  "IPL.002.0000",  # A1v7 Ferenczi
+    "IPL.022.0000"  :  "IPL.022.0000",  # A1v4 Start
+    "IPL.045.0000"  :  "IPL.045.0000",  # A1v4 Jones
+    "IPL.052.0000"  :  "IPL.052.0000",
+    "IPL.055.0000"  :  "IPL.055.0000",
+    "IPL.059.0000"  :  "IPL.059.0000",  #A1v7 Meng
+    "IPL.064.0000"  :  "IPL.064.0000",  #A1v6 Winnicott
+    "IPL.073.0000"  :  "IPL.073.0000",  #A1v7 Racker
+    "IPL.076.0000"  :  "IPL.076.0000",  #A1v7 Milner
+    "IPL.079.0000"  :  "IPL.079.0000",  #A1v7 Bowlby
+    "IPL.084.0000"  :  "IPL.084.0000",  #A1v7 EFreud
+    "IPL.087.0000"  :  "IPL.087.0000",
+    "IPL.089.0000"  :  "IPL.089.0000",  # A1v7
+    "IPL.094.0000"  :  "IPL.094.0000",
+    "IPL.095.0000"  :  "IPL.095.0000",
+    "IPL.100.0000"  :  "IPL.100.0000",
+    "IPL.104.0000"  :  "IPL.104.0000",
+    "IPL.105.0000"  :  "IPL.105.0000",
+    "IPL.107.0001"  :  "IPL.107.0001",
+    "IPL.109.0000"  :  "IPL.109.0000",  #A1v7 Bowlby
+    "IPL.115.0001"  :  "IPL.115.0001",
+    "IPL.118.0000"  :  "IPL.118.0000",
+    "NLP.001.0000"  :  "NLP.001.0000",
+    "NLP.003.0000"  :  "NLP.003.0000",
+    "NLP.005.0000"  :  "NLP.005.0000",  # 2022-03-25
+    "NLP.009.0001"  :  "NLP.009.0001",  # A1v7
+    "NLP.011.0000"  :  "NLP.011.0000",  # A1v2200r1
+    "NLP.014.0000"  :  "NLP.014.0000",  # A1v7
+    "ZBK.002.0000"  :  "ZBK.002.0000",  # split 2022-05-02
+    "ZBK.003.0000"  :  "ZBK.003.0000",  # split 2022-05-02
+    "ZBK.004.0000"  :  "ZBK.004.0000",
+    "ZBK.005.0001"  :  "ZBK.005.0001",
+    "ZBK.006.0000"  :  "ZBK.006.0000",  # split 2022-05-02
+    "ZBK.007.0000"  :  "ZBK.007.0000",  # split 2022-05-02
+    "ZBK.015.0000"  :  "ZBK.015.0000",  # split 2022-05-02
+    "ZBK.016.0000"  :  "ZBK.016.0000",  # split 2022-05-02
+    "ZBK.017.0000"  :  "ZBK.017.0000",  # split 2022-05-02
+    "ZBK.020.0000"  :  "ZBK.020.0000",  # A1v4 End
+    "ZBK.025.0000"  :  "ZBK.025.0000",
+    "ZBK.026.0000"  :  "ZBK.026.0000",
+    "ZBK.027.0000"  :  "ZBK.027.0000",
+    "ZBK.028.0000"  :  "ZBK.028.0000",
+    "ZBK.029.0000"  :  "ZBK.029.0000",  # A1v7
+    "ZBK.033.0000"  :  "ZBK.033.0000",  # split 2022-05-02  # A1v7
+    # "ZBK.034.0001"    :  "ZBK.034.0001",  # A1v8
+    "ZBK.038.0000"  :  "ZBK.038.0000",  # A1v7
+    "ZBK.041.0000"  :  "ZBK.041.0000",
+    "ZBK.042.0000"  :  "ZBK.042.0000",
+    "ZBK.045.0000"  :  "ZBK.045.0000",  # A1v7
+    "ZBK.046.0000"  :  "ZBK.046.0000",  # A1v7
+    "ZBK.047.0000"  :  "ZBK.047.0000",  # A1v7
+    "ZBK.048.0000"  :  "ZBK.048.0000",  # A1v12 Money-Kyrle
+    # "ZBK.049.0001"    :  "ZBK.049.0001",  # A1v8
+    "ZBK.050.0000"  :  "ZBK.050.0000",  # A1v7
+    "ZBK.051.0000"  :  "ZBK.051.0000",  # A1v7
+    "ZBK.052.0000"  :  "ZBK.052.0000",
+    "ZBK.054.0000"  :  "ZBK.054.0000",
+    "ZBK.055.0000"  :  "ZBK.055.0000",
+    "ZBK.056.0000"  :  "ZBK.056.0000",
+    "ZBK.061.0000"  :  "ZBK.061.0000",
+    "ZBK.062.0000"  :  "ZBK.062.0000",  # split for A1v2022r1b
+    "ZBK.070.0000"  :  "ZBK.070.0000",  # split 2022-05-02 # A1v11
+    "ZBK.071.0000"  :  "ZBK.071.0000",  # split 2022-05-02
+    "ZBK.072.0000"  :  "ZBK.072.0000",  # split 2022-05-02
+    "ZBK.073.0000"  :  "ZBK.073.0000",
+    "ZBK.074.0000"  :  "ZBK.074.0000",
+    "ZBK.075.0000"  :  "ZBK.075.0000",
+    "ZBK.076.0000"  :  "ZBK.076.0000",  # split 2022-05-02
+    "ZBK.077.0000"  :  "ZBK.077.0000",  # split 2022-05-02
+    "ZBK.078.0000"  :  "ZBK.078.0000",
+    "ZBK.079.0000"  :  "ZBK.079.0000",
+    "ZBK.080.0000"  :  "ZBK.080.0000",
+    "ZBK.081.0000"  :  "ZBK.081.0000",
+    "ZBK.131.0000"  :  "ZBK.131.0000",  # split 2022-05-02
+    "ZBK.132.0000"  :  "ZBK.132.0000",  # split 2022-05-02
+    "ZBK.133.0000"  :  "ZBK.133.0000",
+    "ZBK.134.0000"  :  "ZBK.134.0000",  # split 2022-05-02
+    "ZBK.135.0000"  :  "ZBK.135.0000",  # split 2022-05-02
+    "ZBK.136.0000"  :  "ZBK.136.0000",
+    "ZBK.137.0000"  :  "ZBK.137.0000",  # split 2022-05-02
+    "ZBK.138.0000"  :  "ZBK.138.0000",  # split 2022-05-02
+    "ZBK.139.0000"  :  "ZBK.139.0000",
+    "ZBK.140.0000"  :  "ZBK.140.0000",
+    "ZBK.141.0000"  :  "ZBK.141.0000",
+    "ZBK.142.0000"  :  "ZBK.142.0000",  # split 2022-05-02
+    "ZBK.143.0000"  :  "ZBK.143.0000",  # split 2022-05-02
+    "ZBK.144.0000"  :  "ZBK.144.0000",  # split 2022-05-02
+    "ZBK.145.0000"  :  "ZBK.145.0000",
+    "ZBK.146.0000"  :  "ZBK.146.0000",  # split 2022-05-02
+    "ZBK.147.0000"  :  "ZBK.147.0000",  # split 2022-05-02
+    "ZBK.148.0000"  :  "ZBK.148.0000",  # split 2022-05-02
+    "ZBK.149.0000"  :  "ZBK.149.0000",  # split 2022-05-28
+    "ZBK.150.0000"  :  "ZBK.150.0000",  # split 2022-05-02
+    "ZBK.151.0000"  :  "ZBK.151.0000",  # split 2022-05-02
+    "ZBK.152.0000"  :  "ZBK.152.0000",  # split 2022-05-02
+    "ZBK.153.0000"  :  "ZBK.153.0000",  # split 2022-05-02
+    #    "ZBK.154.0001"  :  "ZBK.154.0001",  # Missing book
+    "ZBK.155.0000"  :  "ZBK.155.0000",  # split 2022-05-02
+    "ZBK.156.0000"  :  "ZBK.156.0000",  # split 2022-05-02
+    "ZBK.160.0001"  :  "ZBK.160.0001",
+}
 
-    >>> a = ArticleID(articleID="AJRPP.004.0007A", allInfo=True)
-    >>> print (a.articleInfo)
-    {'source_code': 'AJRPP', 'vol_str': '004', 'vol_numeric': '004', 'vol_suffix': '', 'vol_wildcard': '', 'issue_nbr': '', 'page': '0007A', 'roman': '', 'page_numeric': '0007', 'page_suffix': 'A', 'page_wildcard': ''}
+gSEIndex =         {
+    "SE.001.0000"   :  "SE.001.0000",
+    "SE.002.0000"   :  "SE.002.0000",
+    "SE.003.0000"   :  "SE.003.0000",
+    "SE.004.0000"   :  "SE.004.0000",
+    "SE.005.0000"   :  "SE.005.0000",
+    "SE.006.0000"   :  "SE.006.0000",
+    "SE.007.0000"   :  "SE.007.0000",
+    "SE.008.0000"   :  "SE.008.0000",
+    "SE.009.0000"   :  "SE.009.0000",
+    "SE.010.0000"   :  "SE.010.0000",
+    "SE.011.0000"   :  "SE.011.0000",
+    "SE.012.0000"   :  "SE.012.0000",
+    "SE.013.0000"   :  "SE.013.0000",
+    "SE.014.0000"   :  "SE.014.0000",
+    "SE.015.0000"   :  "SE.015.0000",
+    "SE.016.0000"   :  "SE.016.0000",
+    "SE.017.0000"   :  "SE.017.0000",
+    "SE.018.0000"   :  "SE.018.0000",
+    "SE.019.0000"   :  "SE.019.0000",
+    "SE.020.0000"   :  "SE.020.0000",
+    "SE.021.0000"   :  "SE.021.0000",
+    "SE.022.0000"   :  "SE.022.0000",
+    "SE.023.0000"   :  "SE.023.0000",
+    "SE.024.0000"   :  "SE.024.0000"
+}
 
-    >>> a = ArticleID(articleID="MPSA.043.0117A")
-    >>> print (a.altStandard)
-    MPSA.043?.0117A
-    
-    >>> a = ArticleID(articleID="AJRPP.004A.0007A")
-    >>> print (a.volumeNbrStr)
-    004
-    >>> a = ArticleID(articleID="AJRPP.004S.R0007A")
-    >>> print (a.issueCode)
-    S
-    >>> a = ArticleID(articleID="AJRPP.004S(1).R0007A")
-    >>> print (a.issueInt)
-    1
-    >>> a.volumeInt
-    4
-    >>> a.romanPrefix
-    'R'
-    >>> a.isRoman
-    True
-    >>> print (a.articleID)
-    AJRPP.004S.R0007A
-    >>> a.isRoman
-    True
-    >>> a.pageInt
-    7
-    >>> a.standardized
-    'AJRPP.004S.R0007A'
-    >>> a = ArticleID(articleID="AJRPP.*.*")
-    >>> a.standardized
-    'AJRPP.*.*'
-    >>> a = ArticleID(articleID="IJP.034.*")
-    >>> a.standardized
-    'IJP.034.*'
-    >>> a = ArticleID(articleID="IJP.*.0001A")
-    >>> a.standardized
-    'IJP.*.*'
-    
-    """
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        regex_article_id =  "(?P<source_code>[A-Z\-]{2,13})\.(?P<vol_str>(((?P<vol_numeric>[0-9]{3,4})(?P<vol_suffix>[A-Z]?))|(?P<vol_wildcard>\*)))(\((?P<issue_nbr>[0-9]{1,3})\))?\.(?P<page>((?P<roman>R?)(((?P<page_numeric>([0-9]{4,4}))(?P<page_suffix>[A-Z]?))|(?P<page_wildcard>\*))))"
-        volumeWildcardOverride = ''
-        m = re.match(regex_article_id, self.articleID, flags=re.IGNORECASE)
-        if m is not None:
-            self.articleInfo = m.groupdict("")
-            self.sourceCode = self.articleInfo.get("source_code")
-            # self.volumeStr = self.articleInfo.get("vol_str")
-            
-            # See if it has issue number numerically in ()
-            self.issueInt = self.articleInfo.get("issue_nbr") # default for groupdict is ''
-            if self.issueInt != '':
-                self.issueInt = int(self.issueInt)
-            else:
-                self.issueInt = 0
+gGWIndex =         {
+    "GW.001.0000"   :  "GW.001.0000",
+    "GW.002.0000"   :  "GW.002.0000", # this is a combined vol 2/3
+    "GW.004.0000"   :  "GW.004.0000",
+    "GW.005.0000"   :  "GW.005.0000",
+    "GW.006.0000"   :  "GW.006.0000",
+    "GW.007.0000"   :  "GW.007.0000",
+    "GW.008.0000"   :  "GW.008.0000",
+    "GW.009.0000"   :  "GW.009.0000",
+    "GW.010.0000"   :  "GW.010.0000",
+    "GW.011.0000"   :  "GW.011.0000",
+    "GW.012.0000"   :  "GW.012.0000",
+    "GW.013.0000"   :  "GW.013.0000",
+    "GW.014.0000"   :  "GW.014.0000",
+    "GW.015.0000"   :  "GW.015.0000",
+    "GW.016.0000"   :  "GW.016.0000",
+    "GW.017.0000"   :  "GW.017.0000",
+    "GW.018.0000"   :  "GW.018.0000",
+    "GW.018S.0000"   :  "GW.018S.0000",
+}
 
-            volumeSuffix = self.articleInfo.get("vol_suffix", "")
-            altVolSuffix = ""
-            if volumeSuffix != "":
-                self.issueCode  = volumeSuffix[0]  # sometimes it says supplement!
-            else:
-                self.issueCode = ""
-                if self.issueInt > 0:
-                    altVolSuffix = string.ascii_uppercase[self.issueInt-1]
-                
-            if not self.isSupplement and self.issueInt == 0 and self.issueCode != "":
-                # an issue code was specified (but not supplement or "S")
-                converted = parse_issue_code(self.issueCode, source_code=self.sourceCode, vol=self.volumeInt)
-                if converted.isdecimal():
-                    self.issueCodeInt = int(converted)
 
-            self.volumeInt = self.articleInfo.get("vol_numeric") 
-            if self.volumeInt != '': # default for groupdict is ''
-                self.volumeInt = int(self.volumeInt)
-                # make sure str is at least 3 places via zero fill
-                self.volumeNbrStr = format(self.volumeInt, '03')
-            else:
-                self.volumeInt = 0
-
-            volumeWildcardOverride = self.articleInfo.get("vol_wildcard")
-            if volumeWildcardOverride != '':
-                self.volumeNbrStr = volumeWildcardOverride
-                
-            self.isSupplement = self.issueCode == "S"
-                    
-            # page info
-            # page = self.articleInfo.get("page")
-            self.pageNbrStr = self.articleInfo.get("page_numeric")
-            self.pageInt = self.pageNbrStr 
-            if self.pageInt != '':
-                self.pageInt = int(self.pageInt)
-                self.pageNbrStr = format(self.pageInt, '04')
-            else:
-                self.pageInt = 0
-                
-            pageWildcard = self.articleInfo.get("page_wildcard")
-            if pageWildcard != '':
-                self.pageNbrStr = pageWildcard
-            
-            roman_prefix = self.articleInfo.get("roman", "")  
-            self.isRoman = roman_prefix.upper() == "R"
-            if self.isRoman:
-                self.romanPrefix = roman_prefix 
-               
-            self.pageSuffix = self.articleInfo.get("page_suffix", "A")
-            self.standardized = f"{self.sourceCode}.{self.volumeNbrStr}{self.issueCode}"
-            self.altStandard = f"{self.sourceCode}.{self.volumeNbrStr}"
-            if self.standardized == self.altStandard:
-                # there's no issue code in the standard one. Try adding one:
-                if altVolSuffix != "":
-                    self.altStandard = f"{self.sourceCode}.{self.volumeNbrStr}{altVolSuffix}"
-                else: # use 1 character wildcard
-                    self.altStandard = f"{self.sourceCode}.{self.volumeNbrStr}?"
-            
-            if volumeWildcardOverride == '':
-                if pageWildcard == '':
-                    self.standardized += f".{self.romanPrefix}{self.pageNbrStr}{self.pageSuffix}"
-                    self.altStandard += f".{self.romanPrefix}{self.pageNbrStr}{self.pageSuffix}"
-                    #self.standardizedPlusIssueCode += f".{self.romanPrefix}{self.pageNbrStr}{self.pageSuffix}"
-                else:
-                    self.standardized += f".*"
-                    self.altStandard += f".*"
-                    #self.standardizedPlusIssueCode += f".*"
-            else:
-                self.standardized += f".*"
-                self.altStandard += f".*"
-                #self.standardizedPlusIssueCode += f".*"
-
-            # always should be uppercase
-            self.standardized = self.standardized.upper()
-            self.isArticleID = True
-            self.articleID = self.standardized
-            if not self.allInfo:
-                self.articleInfo = None
-                # These show anyway so don't waste time with clear
-                #if self.pageInt == 0:
-                    #self.pageNbrStr = None
-                #if self.volumeSuffix == '':
-                    #self.volumeSuffix = None
-                #if self.pageSuffix == '':
-                    #self.pageSuffix = None
-                #if self.volumeWildcardOverride == '':
-                    #self.volumeWildcardOverride = None
-                #if self.issueCode == '':
-                    #self.issueCode = None
-                #if self.page == "*":
-                    #self.page = None
-                #if self.pageWildcard == '':
-                    #self.pageWildcard = None
-        else:
-            self.isArticleID = False
-        
-    articleID: str = Field(None, title="As submitted ID, if it's a valid ID")
-    standardized: str = Field(None, title="Standard form of article (document) ID")
-    altStandard: str = Field(None, title="Standard form of article (document) ID from 2020 (most without volume suffix)")
-    isArticleID: bool = Field(False, title="True if initialized value is an article (document) ID")
-    sourceCode: str = Field(None, title="Source material assigned code (e.g., journal, book, or video source code)")
-    # volumeStr: str = Field(None, title="")
-    volumeSuffix: str = Field(None, title="")
-    # volumeWildcardOverride: str = Field(None, title="")
-    volumeInt: int = Field(0, title="")
-    volumeNbrStr: str = Field(None, title="")
-    issueCode: str = Field(None, title="")
-    isSupplement: bool = Field(False, title="")
-    issueInt: int = Field(0, title="")
-    issueCodeInt: int = Field(0, title="") 
-    # page info
-    # page: str = Field(None, title="")
-    pageNbrStr: str = Field(None, title="")
-    pageInt: int = Field(0, title="")
-    # pageWildcard: str = Field(None, title="")
-    romanPrefix: str = Field("", title="")
-    isRoman: bool = Field(False, title="")
-    pageSuffix: str = Field(None, title="")    
-    articleInfo: dict = Field(None, title="Regex result scanning input articleID")
-    allInfo: bool = Field(False, title="Show all captured information, e.g. for diagnostics")
-
-        
-class JournalVolIssue(BaseModel):
-    """
-    Identify and parse a "loose" spec if a journal code, volume or year, and issue.
-    
-    >>> a = JournalVolIssue(journalSpec="AJRPP.004", allInfo=True)
-    >>> print (a.JournalVolIssue)
-    
-    >>> a = JournalVolIssue(journalSpec="AJRPP 1972")
-    >>> print (f"\'{a.journalSpec}\'", a.sourceCode, a.yearStr)
-    
-    >>> a = JournalVolIssue(journalSpec="ANIJP-DE 42")
-    >>> print (f"\'{a.journalSpec}\'", a.sourceCode, a.volumeNbrStr)
-
-    >>> a = JournalVolIssue(journalSpec="ANIJP-CHI 2021")
-    >>> print (f"\'{a.journalSpec}\'", a.sourceCode, a.yearStr)
-
-    >>> a = JournalVolIssue(journalSpec="IJP.*.0001A")
-    >>> print (f"\'{a.journalSpec}\'", a.standardized)
-    'IJP.*.*'
-    
-    """
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        JOURNAL_VOL_RX = "(?P<source_code>%s)(\s+|\.)?(?P<vol_numeric>[0-9]{1,4})?(?P<issue_letter>[A-z]?)(\s+|\.)?(?P<issue_nbr>[0-9]{1-2})?" % JOURNAL_CODES
-        loose_journal_rxc = re.compile(JOURNAL_VOL_RX)        
-        m = loose_journal_rxc.match(self.journalSpec)
-        if m is not None:
-            self.JournalVolIssue = m.groupdict("")
-            self.sourceCode = self.JournalVolIssue.get("source_code")
-            
-            # See if it has issue number numerically in ()
-            self.issueInt = self.JournalVolIssue.get("issue_nbr") # default for groupdict is ''
-            if self.issueInt != '':
-                self.issueInt = int(self.issueInt)
-            else:
-                self.issueInt = 0
-
-            issue_letter = self.JournalVolIssue.get("vol_suffix", "")
-            altVolSuffix = ""
-            if issue_letter != "":
-                self.issueCode  = issue_letter[0]  
-            else:
-                self.issueCode = ""
-                if self.issueInt > 0:
-                    altVolSuffix = string.ascii_uppercase[self.issueInt-1]
-                
-            if not self.isSupplement and self.issueInt == 0 and self.issueCode != "":
-                # an issue code was specified (but not supplement or "S")
-                converted = parse_issue_code(self.issueCode, source_code=self.sourceCode, vol=self.volumeInt)
-                if converted.isdecimal():
-                    self.issueCodeInt = int(converted)
-
-            self.volumeInt = self.JournalVolIssue.get("vol_numeric") 
-            if self.volumeInt != '': # default for groupdict is ''
-                self.volumeInt = int(self.volumeInt)
-                # make sure str is at least 3 places via zero fill
-                self.volumeNbrStr = format(self.volumeInt, '03')
-            else:
-                self.volumeInt = 0
-
-            if self.volumeInt > 1000:
-                self.yearInt = self.volumeInt
-                self.yearStr = format(self.volumeInt, '04')
-                self.volumeInt = 0
-                self.volumeNbrStr = ""
-
-            self.isSupplement = self.issueCode == "S"
-                
-            self.standardized = f"{self.sourceCode}.{self.volumeNbrStr}{self.issueCode}"
-            self.altStandard = f"{self.sourceCode}.{self.volumeNbrStr}"
-            if self.standardized == self.altStandard:
-                # there's no issue code in the standard one. Try adding one:
-                if altVolSuffix != "":
-                    self.altStandard = f"{self.sourceCode}.{self.volumeNbrStr}{altVolSuffix}"
-                else: # use 1 character wildcard
-                    self.altStandard = f"{self.sourceCode}.{self.volumeNbrStr}?"
-            
-            # always should be uppercase
-            self.standardized = self.standardized.upper()
-            self.isJournalSpec = True
-            self.journalSpec = self.standardized
-            if not self.allInfo:
-                self.JournalVolIssue = None
-        else:
-            self.isArticleID = False
-        
-    journalSpec: str = Field(None, title="As submitted")
-    JournalVolIssue: dict = Field(None, title="Regex result scanning input JournalSpec")
-    solrQuerySpec: dict = Field(None, title="Solr Query spec")
-    standardized: str = Field(None, title="Standard form of article (document) ID")
-    altStandard: str = Field(None, title="Standard form of article (document) ID from 2020 (most without volume suffix)")
-    isArticleID: bool = Field(False, title="True if initialized value is an article (document) ID")
-
-    sourceCode: str = Field(None, title="Source material assigned code (e.g., journal, book, or video source code)")
-    # volumeStr: str = Field(None, title="")
-    volumeSuffix: str = Field(None, title="")
-    # volumeWildcardOverride: str = Field(None, title="")
-    volumeInt: int = Field(0, title="")
-    volumeNbrStr: str = Field(None, title="")
-    yearInt: int = Field(0, title="")
-    yearStr: str = Field(None, title="")
-    issueCode: str = Field(None, title="")
-    isJournalSpec: bool = Field(False, title="True if it correctly specifies a journal")
-    isSupplement: bool = Field(False, title="")
-    issueInt: int = Field(0, title="")
-    issueCodeInt: int = Field(0, title="") 
-    allInfo: bool = Field(False, title="Show all captured information, e.g. for diagnostics")
-            
 # -------------------------------------------------------------------------------------------------------
 # test it!
 
@@ -1340,4 +1371,3 @@ if __name__ == "__main__":
     import doctest
     doctest.testmod()    
     print ("opasConfig Tests Completed")
-            

@@ -22,7 +22,7 @@ class TestDatabaseSearchLoggedIn(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         assert(response_info["count"] == 6)
-        print (response_set)
+        #print (response_set)
 
     def test_search_long_para_alt_seems_to_show_solr_misses_one(self):
         # This produces 0 results on the GVPi server; this result is correct though
@@ -35,7 +35,7 @@ class TestDatabaseSearchLoggedIn(unittest.TestCase):
         response_set = r["documentList"]["responseSet"] 
         assert(response_info["count"] == 2) # should REALLY be 3. I confirmed all three papers above in test_search_long_para...
                                             # not sure why we get 2 here, but set that way for now. TODO
-        print (response_set)
+        #print (response_set)
 
     def test_0a_rank(self): 
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?sourcecode=AOP&fulltext1=cried&sort=rank&limit=15&offset=0')

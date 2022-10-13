@@ -1,0 +1,267 @@
+@page {
+    size: letter portrait;
+    @frame content_frame {
+        left: 50pt;
+        width: 512pt;
+        top: 50pt;
+        height: 692pt;
+    }
+}
+
+@font-face {font-family: Roboto; src: url('%s');}
+@font-face {font-family: Roboto; font-style: italic; src: url('%s');}
+@font-face {font-family: Roboto; font-weight: bold; src: url('%s');}
+@font-face {font-family: Roboto; font-weight: bold; font-style: italic; src: url('%s');}
+
+body, p {   
+            font-family: 'Roboto' }	
+
+body{
+    font-family:helvetica;
+    margin-left: 5%;
+    margin-right: 5%;
+    color: black;
+    font-size:10pt;
+    }
+
+.pubinfotop {
+  font-style: italic;
+  margin-top:-.15in;
+}
+
+a {
+    text-decoration: none !important;
+    color: midnightblue;
+}
+
+a.id {
+  font-weight: bolder;
+}
+
+.title {
+  font-size: xx-large;
+  text-align: center;
+  font-weight: bold;
+  color: midnightblue;
+}
+
+.title_author {
+  font-size: large;
+  text-align: center;
+  font-weight: bold;
+  color: midnightblue;
+}
+
+p.title, binc.title {
+  font-size: large;
+  font-weight: bold;
+  text-align: center;
+  display: block;
+  text-decoration: none;
+}
+
+.autaff {
+  display: block;
+  text-align: center;
+  font-size: large;
+}
+
+p {
+  font-size: medium;
+}
+
+p.pagenumber {
+  font-size: small;
+  text-align: center;
+  color: midnightblue;
+}
+
+p.bibentry {
+  padding-left: 22px ;
+  text-indent: -22px ;
+}
+
+p.figure {
+  text-align: center;
+}
+
+.caption {
+  text-align: center;
+  margin-left: 10px;
+}
+
+.poem, .quote, .quote > p, .dream, .note, .dialog, .panel, .summaries .abstract {
+  text-indent: 22px;
+  color: midnightblue;
+  font-size: medium;
+  font-style: italic;
+  margin-right: +.25in;
+  margin-left: +.25in;
+}
+
+fd, nm {
+  color: navy;
+}
+
+ce {
+  display: table-cell;
+}
+
+ta {
+  display: table;
+}
+
+ro {
+  display: table-row;
+}
+
+.be {
+  margin-top: 12pt;
+  margin-bottom: 12pt;
+}
+
+.bxe {
+  font-weight: bold;
+  font-size: larger;
+}
+
+h1, h2, h3, h4, h5, h6, figx {
+    display: block;
+    margin-top: 2em;
+    margin-bottom: 1em;
+    color: black;
+}
+
+h1 {
+  font-weight: bolder;
+  font-size: large;
+}
+
+h2 {
+  font-weight: bolder;
+  font-size: medium;
+}
+
+h3 {
+  font-weight: bolder;
+  font-size: medium;
+}
+
+h4 {
+  font-weight: bolder;
+  font-size: small;
+}
+
+h5 {
+  font-weight: bold;
+  font-size: small;
+}
+
+h6 {
+  font-weight: bold;
+  font-size: smaller;
+}
+
+
+span.bibauthor {
+  font-weight: bold;    
+  color: midnightblue;
+}
+
+span.bibjournal {
+  font-style: italic;
+  color: midnightblue;
+}
+
+span.bibpages {
+  font-weight: normal;    
+  font-style: italic;
+  color: midnightblue;
+}
+
+span.bibyear {
+    color: midnightblue;
+}
+
+span.footer > p:first-of-type:first-line, span.ftr > p:first-of-type:first-line {
+    text-decoration-line: overline;
+    display: block;
+    /*margin-bottom:-.15in;*/
+}
+
+span.footer > p, span.ftr > p, .ftn {
+    display: block;
+    font-weight:lighter;
+    text-align:left;  
+    font-size: medium;
+    font-style: italic;
+    margin-left: +.25in;
+    text-indent: -.25in;
+    /*vertical-align: super;*/
+    color: #4b4e54;    
+}
+
+.ftn {
+  font-size: medium;
+  font-style: italic;
+  margin-left: +.25in;
+  text-indent: -.25in;
+  font-weight: lighter;
+  /*vertical-align: super;*/
+  color: #4b4e54;    
+}
+
+.peppopuptext {
+  display: none;
+}
+
+.revisions {
+  display: none;
+}
+
+.glosstip {
+  color: midnightblue;    
+}
+
+span.pagebreak {
+  display:block;
+  text-align: center;
+}
+
+.pagenumber {
+  margin-bottom: 12pt;  
+  display: block;
+  text-align: center;
+  font-style: italic;
+}
+
+.fa-external-link:before {
+  content: "&emsp;&emsp;&emsp; "; 
+}
+
+list {
+  list-style-type: decimal;
+}
+
+ul {
+    margin-left: 2em;
+}
+
+ol {
+    margin-left: 2em;
+}
+
+ol ol {
+    margin-left: 2em;
+}
+
+li {
+  display: list-item;
+  list-style-type: decimal;
+  font-style: italic;
+}
+
+li::before {
+  content: attr(label) " ";
+  font-weight: bold;
+}

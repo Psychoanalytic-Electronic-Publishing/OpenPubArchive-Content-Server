@@ -59,7 +59,7 @@ class TestSessionWhoAmI(unittest.TestCase):
         # Confirm that the request-response cycle completed successfully.
         r = response.json()
         print (r)
-        assert(r["username"] == PADS_TEST_ID)
+        assert(r["username"].lower() == PADS_TEST_ID.lower())
        
 if __name__ == '__main__':
     unittest.main()    

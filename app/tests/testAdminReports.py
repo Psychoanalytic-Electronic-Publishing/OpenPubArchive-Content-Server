@@ -27,9 +27,13 @@ class TestReports(unittest.TestCase):
     
     def test01_session_log_report_daterange(self):
         # note api_key is required, but already in headers
+        import datetime
         from datetime import date, timedelta
-        dt1 = date.today() - timedelta(4)
+        dt1 = date.today() - timedelta(2)
         dt2 = date.today()
+        dt3 = datetime.datetime.now() - timedelta(4)
+        dt4 = datetime.datetime.now()
+        print (f"Dates dt1:{dt1} dt2:{dt2} dt3:{dt3} dt4:{dt4}")
         full_URL = base_plus_endpoint_encoded(f'/v2/Admin/Reports/Session-Log?limit=10&startdate={dt1}&enddate={dt2}')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
@@ -38,6 +42,16 @@ class TestReports(unittest.TestCase):
         response_info = r["report"]["responseInfo"]
         response_set = r["report"]["responseSet"]
         assert(response_info["count"] >= 1)
+        # note api_key is required, but already in headers
+        full_URL = base_plus_endpoint_encoded(f'/v2/Admin/Reports/Session-Log?limit=10&startdate={dt3}&enddate={dt4}')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        # these don't get affected by the level.
+        r = response.json()
+        response_info = r["report"]["responseInfo"]
+        response_set = r["report"]["responseSet"]
+        assert(response_info["count"] >= 1)
+        assert(response_set[0]["row"]["return_status_code"] == 200) # to validate content is in record
 
     def test01b_session_log_report_matchstr(self):
         # note api_key is required, but already in headers
@@ -49,6 +63,7 @@ class TestReports(unittest.TestCase):
         response_info = r["report"]["responseInfo"]
         response_set = r["report"]["responseSet"]
         assert(response_info["count"] >= 1)
+        assert(response_set[0]["row"]["return_status_code"] == 200) # to validate content is in record
 
     def test01b_session_log_report_download(self):
         # note api_key is required, but already in headers
@@ -68,6 +83,7 @@ class TestReports(unittest.TestCase):
         response_info = r["report"]["responseInfo"]
         response_set = r["report"]["responseSet"]
         assert(response_info["count"] >= 1)
+        assert(response_set[0]["row"]["type"] == "Document")
 
     def test03_document_view__stat_report(self):
         # note api_key is required, but already in headers
@@ -79,6 +95,7 @@ class TestReports(unittest.TestCase):
         response_info = r["report"]["responseInfo"]
         response_set = r["report"]["responseSet"]
         assert(response_info["count"] >= 1)
+        assert(response_set[0]["row"]["views"] >= 1)  # to validate content is in record
 
     def test04_user_searches_report(self):
         # note api_key is required, but already in headers
@@ -90,6 +107,7 @@ class TestReports(unittest.TestCase):
         response_info = r["report"]["responseInfo"]
         response_set = r["report"]["responseSet"]
         assert(response_info["count"] >= 1)
+        assert(response_set[0]["row"]["return_status_code"] == 200)
 
     def test05_session_log_report_endpointid(self):
         # note api_key is required, but already in headers
@@ -109,10 +127,10 @@ class TestReports(unittest.TestCase):
         print('Current Date :', date.today())
         print('14 days before Current Date :', dt)
         ts = time.time()
-        full_URL = base_plus_endpoint_encoded(f'/v2/Admin/Reports/Session-Log?startdate={dt}&limit=100000&offset=0&download=false&sortorder=asc')
+        full_URL = base_plus_endpoint_encoded(f'/v2/Admin/Reports/Session-Log?startdate={dt}&limit=100000&offset=0&download=false&sortorder=asc&getfullcount=True')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
-        print (f"Watched: Admin Report Query Complete. Time={time.time() - ts}")
+        print (f"Watched: Admin Report Query Complete. Asc Sort.  Time={time.time() - ts}")
         r = response.json()
         response_info = r["report"]["responseInfo"]
         response_set = r["report"]["responseSet"]
@@ -123,6 +141,107 @@ class TestReports(unittest.TestCase):
         else:
             assert(response_info["count"] >= 100)
             
+        #  try descending (these now 2021-01-03 use different views to optimize the query using USE INDEX ( `fk_last_update` ) and built in orderby needed for query optiimization )
+        full_URL = base_plus_endpoint_encoded(f'/v2/Admin/Reports/Session-Log?startdate={dt}&limit=100000&offset=0&download=false&sortorder=desc')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        print (f"Watched: Admin Report Query Complete. Desc Sort. Time={time.time() - ts}")
+        r = response.json()
+        response_info = r["report"]["responseInfo"]
+        response_set = r["report"]["responseSet"]
+        print (f'Count Retrieved: {response_info["count"]}')
+        print (f'Fullcount Retrieved: {response_info["fullCount"]}')
+        if use_server == 5:
+            assert(response_info["count"] >= 50000)
+        else:
+            assert(response_info["count"] >= 100)
+
+    def test07_session_log_report_dateformats(self):
+        # note api_key is required, but already in headers
+        import datetime
+        from datetime import timedelta
+        dt1 = datetime.datetime.now() - timedelta(30)
+        dt2 = datetime.datetime.now() - timedelta(7)
+        df1 = dt1.strftime("%Y-%m-%d")
+        print (df1)
+        df1a = dt1.strftime("%Y%m%d%H%M%S")
+        print (df1a)
+        df1b = dt1.strftime("%Y%m%d")
+        print (df1b)
+        df1c = dt1.strftime("%Y-%m-%d %H:%M:%S")
+        print (df1c)
+        df2 = dt2.strftime("%Y-%m-%d")
+        print (df2)
+        df2b = dt2.strftime("%Y%m%d%H%M%S")
+        print (df2b)
+        df2c = dt2.strftime("%Y-%m-%d %H:%M:%S")
+        print (df2c)
+
+        full_URL = base_plus_endpoint_encoded(f'/v2/Admin/Reports/Session-Log?limit=10&startdate={df1}&enddate={df2}')
+        print (full_URL)
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        # these don't get affected by the level.
+        r = response.json()
+        response_info = r["report"]["responseInfo"]
+        response_set = r["report"]["responseSet"]
+        print (response_info["count"])
+        assert(response_info["count"] >= 1)
+
+        full_URL = base_plus_endpoint_encoded(f'/v2/Admin/Reports/Session-Log?limit=10&startdate={df1a}&enddate={df2b}')
+        print (full_URL)
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        # these don't get affected by the level.
+        r = response.json()
+        response_info = r["report"]["responseInfo"]
+        response_set = r["report"]["responseSet"]
+        if (response_info["count"]) >= 1: # make sure there are hits, then try different formats together
+            full_URL = base_plus_endpoint_encoded(f'/v2/Admin/Reports/Session-Log?limit=10&startdate={df1a}&enddate={df2c}')
+            print (full_URL)
+            response = requests.get(full_URL, headers=headers)
+            assert(response.ok == True)
+            # these don't get affected by the level.
+            r = response.json()
+            response_info = r["report"]["responseInfo"]
+            response_set = r["report"]["responseSet"]
+            print (response_info["count"])
+            assert(response_info["count"] >= 1)
+
+            full_URL = base_plus_endpoint_encoded(f'/v2/Admin/Reports/Session-Log?limit=10&startdate={df1c}&enddate={df2c}')
+            print (full_URL)
+            response = requests.get(full_URL, headers=headers)
+            assert(response.ok == True)
+            # these don't get affected by the level.
+            r = response.json()
+            response_info = r["report"]["responseInfo"]
+            response_set = r["report"]["responseSet"]
+            print (response_info["count"])
+            assert(response_info["count"] >= 1)
+
+    def test08_session_log_report_dateformats_not_logged_in(self):
+        # note api_key is required, but already in headers
+        import datetime
+        from datetime import date, timedelta
+        full_URL = base_plus_endpoint_encoded(f'/v2/Admin/Reports/Session-Log?limit=100&loggedinrecords=False&sort=ASC&getfullcount=True')
+        print (full_URL)
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        # these don't get affected by the level.
+        r = response.json()
+        response_info = r["report"]["responseInfo"]
+        response_set = r["report"]["responseSet"]
+        assert(response_info["count"] >= 1)
+
+        full_URL = base_plus_endpoint_encoded(f'/v2/Admin/Reports/Session-Log?limit=10&loggedinrecords=False&sort=DESC')
+        print (full_URL)
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        # these don't get affected by the level.
+        r = response.json()
+        response_info = r["report"]["responseInfo"]
+        response_set = r["report"]["responseSet"]
+        assert(response_info["count"] >= 1)           
 
 
 if __name__ == '__main__':

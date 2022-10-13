@@ -14,6 +14,10 @@ __license__     = "Apache 2.0"
 __version__     = "2020.1118.1"
 __status__      = "Development"
 
+import sys
+sys.path.append('./solrpy')
+sys.path.append('..')
+
 import re
 import os
 import tempfile
@@ -24,19 +28,20 @@ import copy
 from pydantic import ValidationError
 # from fastapi import HTTPException
 from errorMessages import *
-import datetime as dtime 
+#import datetime as dtime 
 from datetime import datetime
 from collections import OrderedDict
 # import datetime as dtime
 # from operator import itemgetter
 
-import sys
-sys.path.append('./solrpy')
+from config import msgdb
+
 from xml.sax import SAXParseException
 # import lxml
 
 import localsecrets
 from opasConfig import TIME_FORMAT_STR
+from opasArticleIDSupport import ArticleID
 
 # from localsecrets import BASEURL, SOLRURL, SOLRUSER, SOLRPW, DEBUG_DOCUMENTS, SOLR_DEBUG, CONFIG, COOKIE_DOMAIN  
 import starlette.status as httpCodes
@@ -54,7 +59,11 @@ import opasXMLHelper as opasxmllib
 import opasDocPermissions as opasDocPerm
 # import smartsearch
 import opasQueryHelper
-from xhtml2pdf import pisa             # for HTML 2 PDF conversion
+from weasyprint import HTML, CSS
+from weasyprint.text.fonts import FontConfiguration
+from xhtml2pdf import pisa             # alt conversion when weasyprint fails
+loggerw = logging.getLogger('weasyprint')
+loggerw.setLevel('ERROR')
 
 import pysolr
 LOG = logging.getLogger("pysolr")
@@ -64,10 +73,8 @@ LOG.setLevel(logging.WARNING)
 import solrpy as solr
 
 # logging.getLogger('pysolr').setLevel(logging.INFO)
-sourceDB = opasCentralDBLib.SourceInfoDB()
+# sourceDB = opasCentralDBLib.SourceInfoDB()
 ocd = opasCentralDBLib.opasCentralDB()
-
-from config import msgdb
 
 pat_prefix_amps = re.compile("^\s*&& ")
 
@@ -78,9 +85,9 @@ rx_nuisance_words = f"""{opasConfig.HITMARKERSTART}(?P<word>i\.e|e\.g|a|am|an|ar
 
 rcx_remove_nuisance_words = re.compile(rx_nuisance_words, flags=re.IGNORECASE)
 
+#-----------------------------------------------------------------------------
 def pysolrerror_processing(e):
     error = "pySolr.SolrError"
-    error_num = 400
     error_description=f"There's an error in your input (no reason supplied)"
     ret_val = models.ErrorReturn(httpcode=400, error=error, error_description=error_description)
 
@@ -96,7 +103,10 @@ def pysolrerror_processing(e):
                 error = error_set[0]
                 error = error.replace('Solr ', 'Search engine ')
                 ret_val.error = error_set[1]
-                ret_val.error_description = error_description.strip(" []")
+                try:
+                    ret_val.error_description = ret_val.error.strip(" []")
+                except:
+                    ret_val.error_description = error_description
                 m = re.search("HTTP (?P<err>[0-9]{3,3})", error)
                 if m is not None:
                     http_error = m.group("err")
@@ -105,7 +115,7 @@ def pysolrerror_processing(e):
             except Exception as e:
                 logger.error(f"PySolrError: Exception {e} Parsing error {e.args}")
             else:
-                ret_val = models.ErrorReturn(httpcode=http_error_num, error=error, error_description=error_description)
+                ret_val = models.ErrorReturn(httpcode=http_error_num, error=error, error_description=ret_val.error_description)
     except Exception as e2:
         logger.error(f"PySolrError: {e} Processing exception {e2}")
 
@@ -429,6 +439,8 @@ def check_solr_docs_connection():
             results = solr_docs2.search(query, **args)
         except Exception as e:
             logger.error(f"SolrConnectionError: {e}")
+            error_info = pysolrerror_processing(e)
+            logger.error(f"SolrConnectionError(cont): {error_info.httpcode}. Error: {error_info.error_description}")
         else:
             if len(results.docs) > 0:
                 ret_val = True
@@ -437,113 +449,113 @@ def check_solr_docs_connection():
 
         return ret_val
 
-#-----------------------------------------------------------------------------
-def document_get_most_viewed( publication_period: int=5,
-                              author: str=None,
-                              title: str=None,
-                              source_name: str=None,  
-                              source_code: str=None,
-                              source_type: str="journal",
-                              abstract_requested: bool=False, 
-                              view_period: int=4,               # 4=last12months default. 0:lastcalendaryear 1:lastweek 2:lastmonth, 3:last6months, 4:last12months
-                              view_count: str="1",              # up this later
-                              req_url: str=None,
-                              stat:bool=False, 
-                              limit: int=5,                     # Get top 10 from the period
-                              offset=0,
-                              mlt_count:int=None,
-                              sort:str=None,
-                              download=False, 
-                              session_info=None,
-                              request=None
-                            ):
-    """
-    Return the most viewed journal articles (often referred to as most downloaded) duing the prior period years.
+##-----------------------------------------------------------------------------
+#def document_get_most_viewed( publication_period: int=5,
+                              #author: str=None,
+                              #title: str=None,
+                              #source_name: str=None,  
+                              #source_code: str=None,
+                              #source_type: str="journal",
+                              #abstract_requested: bool=False, 
+                              #view_period: int=4,               # 4=last12months default. 0:lastcalendaryear 1:lastweek 2:lastmonth, 3:last6months, 4:last12months
+                              #view_count: str="1",              # up this later
+                              #req_url: str=None,
+                              #stat:bool=False, 
+                              #limit: int=5,                     # Get top 10 from the period
+                              #offset=0,
+                              #mlt_count:int=None,
+                              #sort:str=None,
+                              #download=False, 
+                              #session_info=None,
+                              #request=None
+                            #):
+    #"""
+    #Return the most viewed journal articles (often referred to as most downloaded) duing the prior period years.
 
-    This is used for the statistical summary function and accesses only the relational database, not full-text Solr.
+    #This is used for the statistical summary function and accesses only the relational database, not full-text Solr.
 
-    Args:
-        publication_period (int, optional): Look only at articles this many years back to current.  Defaults to 5.
-        author (str, optional): Filter, include matching author names per string .  Defaults to None (no filter).
-        title (str, optional): Filter, include only titles that match.  Defaults to None (no filter).
-        source_name (str, optional): Filter, include only journals matching this name.  Defaults to None (no filter).
-        source_type (str, optional): journals, books, or videostreams.
-        view_period (int, optional): defaults to last12months
+    #Args:
+        #publication_period (int, optional): Look only at articles this many years back to current.  Defaults to 5.
+        #author (str, optional): Filter, include matching author names per string .  Defaults to None (no filter).
+        #title (str, optional): Filter, include only titles that match.  Defaults to None (no filter).
+        #source_name (str, optional): Filter, include only journals matching this name.  Defaults to None (no filter).
+        #source_type (str, optional): journals, books, or videostreams.
+        #view_period (int, optional): defaults to last12months
 
-            view_period = { 0: "lastcalyear",
-                            1: "lastweek",
-                            2: "last1mos",
-                            3: "last6mos",
-                            4: "last12mos",
-                           }
+            #view_period = { 0: "lastcalyear",
+                            #1: "lastweek",
+                            #2: "last1mos",
+                            #3: "last6mos",
+                            #4: "last12mos",
+                           #}
 
-        limit (int, optional): Paging mechanism, return is limited to this number of items.
-        offset (int, optional): Paging mechanism, start with this item in limited return set, 0 is first item.
+        #limit (int, optional): Paging mechanism, return is limited to this number of items.
+        #offset (int, optional): Paging mechanism, start with this item in limited return set, 0 is first item.
 
-    Returns:
-        models.DocumentList: Pydantic structure (dict) for DocumentList.  See models.py
+    #Returns:
+        #models.DocumentList: Pydantic structure (dict) for DocumentList.  See models.py
 
-    Docstring Tests:
+    #Docstring Tests:
 
-    >>> result, status = document_get_most_viewed()
-    >>> result.documentList.responseSet[0].documentID if result.documentList.responseInfo.count >0 else "No views yet."
-    '...'
+    #>>> result, status = document_get_most_viewed()
+    #>>> result.documentList.responseSet[0].documentID if result.documentList.responseInfo.count >0 else "No views yet."
+    #'...'
 
-    """
-    ret_val = None
-    caller_name = "document_get_most_viewed"
-    ret_status = (200, "OK") # default is like HTTP_200_OK
-    period = opasConfig.VALS_VIEWPERIODDICT_SOLRFIELDS.get(view_period, "last12mos")
+    #"""
+    #ret_val = None
+    #caller_name = "document_get_most_viewed"
+    #ret_status = (200, "OK") # default is like HTTP_200_OK
+    #period = opasConfig.VALS_VIEWPERIODDICT_SOLRFIELDS.get(view_period, "last12mos")
     
-    if sort is None:
-        sort = f"{period} desc"
+    #if sort is None:
+        #sort = f"{period} desc"
 
-    start_year = dtime.date.today().year
-    if publication_period is None:
-        start_year = None
-    else:
-        start_year -= publication_period
-        start_year = f">{start_year}"
+    #start_year = dtime.date.today().year
+    #if publication_period is None:
+        #start_year = None
+    #else:
+        #start_year -= publication_period
+        #start_year = f">{start_year}"
 
-    if stat:
-        field_set = "STAT"
-    else:
-        field_set = None
+    #if stat:
+        #field_set = "STAT"
+    #else:
+        #field_set = None
         
-    solr_query_spec = \
-        opasQueryHelper.parse_search_query_parameters( viewperiod=view_period,      # 0:lastcalendaryear 1:lastweek 2:lastmonth, 3:last6months, 4:last12months
-                                                       viewcount=view_count, 
-                                                       source_name=source_name,
-                                                       source_code=source_code,
-                                                       source_type=source_type,
-                                                       author=author,
-                                                       title=title,
-                                                       startyear=start_year,
-                                                       highlightlimit=0, 
-                                                       abstract_requested=abstract_requested,
-                                                       return_field_set=field_set, 
-                                                       sort = sort,
-                                                       req_url = req_url
-                                                       )
-    if download: # much more limited document list if download==True
-        ret_val, ret_status = search_stats_for_download(solr_query_spec, 
-                                                        session_info=session_info, 
-                                                        request = request
-                                                        )
-    else:
-        try:
-            ret_val, ret_status = search_text_qs(solr_query_spec, 
-                                                 limit=limit,
-                                                 offset=offset,
-                                                 req_url = req_url, 
-                                                 session_info=session_info, 
-                                                 request = request,
-                                                 caller_name=caller_name
-                                                )
-        except Exception as e:
-            logger.error(f"Search error {e}")
+    #solr_query_spec = \
+        #opasQueryHelper.parse_search_query_parameters( viewperiod=view_period,      # 0:lastcalendaryear 1:lastweek 2:lastmonth, 3:last6months, 4:last12months
+                                                       #viewcount=view_count, 
+                                                       #source_name=source_name,
+                                                       #source_code=source_code,
+                                                       #source_type=source_type,
+                                                       #author=author,
+                                                       #title=title,
+                                                       #startyear=start_year,
+                                                       #highlightlimit=0, 
+                                                       #abstract_requested=abstract_requested,
+                                                       #return_field_set=field_set, 
+                                                       #sort = sort,
+                                                       #req_url = req_url
+                                                       #)
+    #if download: # much more limited document list if download==True
+        #ret_val, ret_status = search_stats_for_download(solr_query_spec, 
+                                                        #session_info=session_info, 
+                                                        #request = request
+                                                        #)
+    #else:
+        #try:
+            #ret_val, ret_status = search_text_qs(solr_query_spec, 
+                                                 #limit=limit,
+                                                 #offset=offset,
+                                                 #req_url = req_url, 
+                                                 #session_info=session_info, 
+                                                 #request = request,
+                                                 #caller_name=caller_name
+                                                #)
+        #except Exception as e:
+            #logger.error(f"Search error {e}")
 
-    return ret_val, ret_status   
+    #return ret_val, ret_status   
 
 #-----------------------------------------------------------------------------
 def documents_get_glossary_entry(term_id,
@@ -1064,7 +1076,9 @@ def search_analysis( query_list,
             
         except Exception as e:
             # try to return an error message for now.
-            return models.ErrorReturn(error="Search syntax error", error_description=f"There's an error in your input {e}")
+            error_info = pysolrerror_processing(e)
+            logger.error(f"SolrSearchAnal: {error_info.httpcode}. Error: {error_info.error_description}")
+            return models.ErrorReturn(error=f"Search error {query_item}", error_description=error_info.error_description)
 
         if "!parent" in query_item:
             term = query_item
@@ -1487,37 +1501,40 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
         logger.error(f"SolrAttributeExceptionError: Attribute Error: {e}")
            
     except pysolr.SolrError as e:
+        #error_num = 400
+        #error_description=f"PySolrError: There's an error in your input ({e})"
+        ## {ret_status[1].reason}:{ret_status[1].body}
+        # ret_val = models.ErrorReturn(httpcode=400, error=error, error_description=error_description)
         error = "pySolr.SolrError"
-        error_num = 400
-        error_description=f"PySolrError: There's an error in your input ({e})"
-        # {ret_status[1].reason}:{ret_status[1].body}
-        ret_status = (error_num, {"reason": error, "body": error_description})
-        ret_val = models.ErrorReturn(httpcode=400, error=error, error_description=error_description)
+        ret_val = pysolrerror_processing(e)
+        error_description = ret_val.error_description
+        ret_status = (ret_val.httpcode, {"reason": error, "body": error_description})
+        logger.error(f"Search error for: {query} Code: {ret_val.httpcode}. Error: {error_description}")
 
-        if e is None:
-            pass # take defaults
-        elif e.args is not None:
-            # defaults, before trying to decode error
-            error_description = "PySolrError: Search Error"
-            error = 400
-            http_error_num = 0
-            try:
-                err = e.args
-                error_set = err[0].split(":", 1)
-                error = error_set[0]
-                error = error.replace('Solr ', 'Search engine ')
-                error_description = error_set[1]
-                error_description = error_description.strip(" []")
-                m = re.search("HTTP (?P<err>[0-9]{3,3})", error)
-                if m is not None:
-                    http_error = m.group("err")
-                    http_error_num = int(http_error)
-            except Exception as e:
-                logger.error(f"PySolrError: Error parsing Solr error {e.args} Query: {query}")
-                ret_status = (error_num, e.args)
-            else:
-                ret_val = models.ErrorReturn(httpcode=http_error_num, error=error, error_description=error_description)
-                ret_status = (error_num, {"reason": error, "body": error_description})
+        #if e is None:
+            #pass # take defaults
+        #elif e.args is not None:
+            ## defaults, before trying to decode error
+            #error_description = "PySolrError: Search Error"
+            #error = 400
+            #http_error_num = 0
+            #try:
+                #err = e.args
+                #error_set = err[0].split(":", 1)
+                #error = error_set[0]
+                #error = error.replace('Solr ', 'Search engine ')
+                #error_description = error_set[1]
+                #error_description = error_description.strip(" []")
+                #m = re.search("HTTP (?P<err>[0-9]{3,3})", error)
+                #if m is not None:
+                    #http_error = m.group("err")
+                    #http_error_num = int(http_error)
+            #except Exception as e:
+                #logger.error(f"PySolrError: Error parsing Solr error {e.args} Query: {query}")
+                #ret_status = (error_num, e.args)
+            #else:
+                #ret_val = models.ErrorReturn(httpcode=http_error_num, error=error, error_description=error_description)
+                #ret_status = (error_num, {"reason": error, "body": error_description})
 
         logger.error(f"PySolrError: Syntax: {ret_status}. Query: {query} Params sent: {solr_param_dict}")
         
@@ -1894,7 +1911,7 @@ def metadata_get_videos(src_type=None, pep_code=None, limit=opasConfig.DEFAULT_L
         args = {
                    'fl':opasConfig.DOCUMENT_ITEM_VIDEO_FIELDS,
                    # 'q':'tuck*',
-                   'rows':limit,
+                   'rows': limit,
                    'start': offset,
                    'sort':f"{sort_field} asc",
                    #'sort.order':'asc'
@@ -1903,10 +1920,9 @@ def metadata_get_videos(src_type=None, pep_code=None, limit=opasConfig.DEFAULT_L
         srcList = solr_docs2.search(query, **args)
 
     except Exception as e:
-        #logger.error(f"metadataGetVideosError: {e}")
-        ret_val = models.ErrorReturn(httpcode=e.httpcode, error="Search syntax error", error_description=f"There's an error in your input (no reason supplied)")
-        return_status = (httpCodes.HTTP_400_BAD_REQUEST, e) # e has type <class 'solrpy.core.SolrException'>, with useful elements of httpcode, reason, and body, e.g.,
-        logger.error(f"metadataGetVideosError: {e.httpcode}. Params sent: {solr_param_dict} Body: {e.body}")
+        ret_val = pysolrerror_processing(e)
+        return_status = (httpCodes.HTTP_400_BAD_REQUEST, e) 
+        logger.error(f"metadataGetVideosError: {ret_val.httpcode}. Query: {query} Error: {ret_val.error_description}")
     else:
         # count = len(srcList.results)
         total_count = srcList.raw_response['response']['numFound']
@@ -1962,6 +1978,10 @@ def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
     True
     """
     ret_val = []
+
+    # for debugging type error
+    log_params = (pep_code, year, vol, req_url, extra_info, limit, offset)
+    
     if year == "*" and vol != "*":
         # specified only volume
         field="art_vol"
@@ -2005,7 +2025,11 @@ def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
                 art_newsecnm,
                 art_pgrg,
                 art_pgcount,
+                art_embargo,
+                art_embargotype,
                 title,
+                art_sourcetitlefull,
+                art_sourcetitleabbr,
                 art_authors,
                 art_authors_mast,
                 art_citeas_xml,
@@ -2017,234 +2041,157 @@ def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
                'start': offset,
                'sort':"art_id asc",
            }
-
-    results = solr_docs2.search(query, **args)
-    
+    try:
+        results = solr_docs2.search(query, **args)
+    except Exception as e:
+        #logger.error(f"metadata_get_contents: Solr search error: {e} (query: {query} args: {args}) (log params: {log_params})")
+        err_info = pysolrerror_processing(e)
+        # return_status = (err_info.httpcode, e) 
+        logger.error(f"metadata_get_contents: {err_info.httpcode}. Query: {query} Error: {err_info.error_description}")
+        
     document_item_list = []
+    prev_section_name = None
+    prev_issue = None
     for result in results.docs:
-        # transform authorID list to authorMast
-        author_ids = result.get("art_authors", None)
-        if author_ids is None:
-            # try this, instead of abberrant behavior in alpha of display None!
-            authorMast = result.get("art_authors_mast", "")
-        else:
-            authorMast = opasgenlib.derive_author_mast(author_ids)
-
-        pgRg = result.get("art_pgrg", None)
-        pgCount = result.get("art_pgcount", None)
-        pgStart, pgEnd = opasgenlib.pgrg_splitter(pgRg)
-        citeAs = result.get("art_citeas_xml", None)  
-        citeAs = opasQueryHelper.force_string_return_from_various_return_types(citeAs)
-        vol = result.get("art_vol", None)
-        issue = result.get("art_iss", None)
-        issue_title = result.get("art_iss_title", None)
-        issue_seqnbr = result.get("art_iss_seqnbr", None)
-        if issue is not None:
-            if issue_title is None:
-                if issue_seqnbr is None:
-                    issue_title = f"Issue {issue}"
-                else:
-                    issue_title = f"No. {issue_seqnbr}"
-
-        item = models.DocumentListItem(PEPCode = pep_code, 
-                                       year = result.get("art_year", None),
-                                       vol = vol,
-                                       issue = issue,
-                                       issueTitle = issue_title,
-                                       issueSeqNbr = issue_seqnbr, 
-                                       newSectionName = result.get("art_newsecnm", None),
-                                       pgRg = result.get("art_pgrg", None),
-                                       pgCount=pgCount, 
-                                       pgStart = pgStart,
-                                       pgEnd = pgEnd,
-                                       title = result.get("title", None), 
-                                       authorMast = authorMast,
-                                       documentID = result.get("art_id", None),
-                                       documentRef = opasxmllib.xml_elem_or_str_to_text(citeAs, default_return=""),
-                                       documentRefHTML = citeAs,
-                                       documentInfoXML=result.get("art_info_xml", None), 
-                                       score = result.get("score", None)
-                                       )
-        #logger.debug(item)
-        document_item_list.append(item)
+        try:     # for debugging type error
+            document_id = result.get("art_id", None) # everything should have an ID
+            
+            # transform authorID list to authorMast
+            author_ids = result.get("art_authors", None)
+            if author_ids is None:
+                # try this, instead of abberrant behavior in alpha of display None!
+                authorMast = result.get("art_authors_mast", "")
+            else:
+                authorMast = opasgenlib.derive_author_mast(author_ids)
+                
+            pgRg = result.get("art_pgrg", None)
+            pgCount = result.get("art_pgcount", None)
+            source_title = result.get("art_sourcetitlefull")
+            source_title_abbr = result.get("art_sourcetitleabbr")
+            
+            if pgRg is not None:
+                pgStart, pgEnd = opasgenlib.pgrg_splitter(pgRg)
+            else:
+                pgStart, pgEnd = (0, 0)
+            citeAs = result.get("art_citeas_xml", None)  
+            citeAs = opasQueryHelper.force_string_return_from_various_return_types(citeAs)
+            vol = result.get("art_vol", None)
+            issue = result.get("art_iss", None)
+            issue_title = result.get("art_iss_title", None)
+            issue_seqnbr = result.get("art_iss_seqnbr", None)
+            listed_new_section_name = new_section_name = result.get("art_newsecnm", None)
+            if prev_section_name is not None and new_section_name is None and issue == prev_issue:
+                title_sample = opasgenlib.trimPunctAndSpaces(result["title"]).lower()
+                prev_section_sample = opasgenlib.trimPunctAndSpaces(prev_section_name).lower()
+                if title_sample not in ("correction", "editorial") and prev_section_sample != title_sample:
+                    current_section_name = new_section_name = opasgenlib.trimPunctAndSpaces(prev_section_name)
+            
+            if new_section_name is None:
+                current_section_name = new_section_name = "TopLevel"
+            else:
+                current_section_name = new_section_name = opasgenlib.trimPunctAndSpaces(new_section_name)
+                
+            #if listed_new_section_name == prev_section_name:
+                #new_section_name = None
+            
+            # turned this off 2022-05-25, the PEP Client generates issue numbers/sequence numbers so don't put it in the title
+            #if issue is not None:
+                #if issue_title is None:
+                    #if issue_seqnbr is None:
+                        #issue_title = f"Issue {issue}"
+                    #else:
+                        #issue_title = f"No. {issue_seqnbr}"
+            
+            embargotype = result.get("art_embargotype", None)
+            embargo_toc_addon = opasConfig.EMBARGO_TOC_TEXT.get(embargotype, "")
+            
+            # handle ijopen differently, always a number.
+            if pep_code == "IJPOPEN":
+                toc_pg_start = f"{opasgenlib.DocumentID(document_id).get_page_number(default=pgStart)}"
+                if embargo_toc_addon != "":
+                    # in case the config didn't include a space
+                    toc_pg_start = embargo_toc_addon
+                    embargo_toc_addon = ""
+            else:
+                toc_pg_start = pgStart
+                
+            # record prior info
+            prev_section_name = new_section_name
+            prev_issue = issue
+            
+        except Exception as e:
+            logger.error(f"metadata_get_contents: Value prep error: {e} (query: {query}) (log params: {log_params})")
+           
+        try:
+            item = models.DocumentListItem(PEPCode = pep_code, 
+                                           year = result.get("art_year", None),
+                                           sourceTitle = source_title, 
+                                           sourceTitleAbbr = source_title_abbr, 
+                                           vol = vol,
+                                           issue = issue,
+                                           issueTitle = issue_title,
+                                           issueSeqNbr = issue_seqnbr, 
+                                           newSectionName = new_section_name,
+                                           currSectionName = new_section_name,
+                                           pgRg = result.get("art_pgrg", None),
+                                           pgCount=pgCount, 
+                                           pgStart = toc_pg_start,
+                                           pgEnd = pgEnd,
+                                           title = result.get("title", None) + embargo_toc_addon, 
+                                           authorMast = authorMast,
+                                           documentID = document_id,
+                                           documentRef = opasxmllib.xml_elem_or_str_to_text(citeAs, default_return=""),
+                                           documentRefHTML = citeAs,
+                                           documentInfoXML=result.get("art_info_xml", None), 
+                                           score = result.get("score", None)
+                                           )
+            #logger.debug(item)
+            document_item_list.append(item)
+        except Exception as e:
+            logger.error(f"metadata_get_contents: model assign error: {e} (query: {query}) (log params: {log_params})")
 
     # two options 2020-11-17 for extra info (lets see timing for each...)
-    suppinfo = None
-    if extra_info == 1 and search_val != "*" and pep_code != "*" and len(results.docs) > 0:
-        ocd = opasCentralDBLib.opasCentralDB()
-        suppinfo = ocd.get_min_max_volumes(source_code=pep_code)
-
-    if extra_info == 2 and search_val != "*" and pep_code != "*" and len(results.docs) > 0:
-        prev_vol, match_vol, next_vol = metadata_get_next_and_prev_vols(source_code=pep_code,
-                                                                        source_vol=vol,
-                                                                        req_url=req_url
-                                                                        )
-        suppinfo = {"infosource": "volumes_adjacent",
-                    "prev_vol": prev_vol,
-                    "matched_vol": match_vol,
-                    "next_vol": next_vol}
-
-    num_found = results.hits
-
-    response_info = models.ResponseInfo( count = len(results.docs),
-                                         fullCount = num_found,
-                                         limit = limit,
-                                         offset = offset,
-                                         listType="documentlist",
-                                         fullCountComplete = limit >= num_found,
-                                         supplementalInfo=suppinfo, 
-                                         request=f"{req_url}",
-                                         timeStamp = datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)                     
-                                         )
-
-    document_list_struct = models.DocumentListStruct( responseInfo = response_info, 
-                                                      responseSet=document_item_list
-                                                      )
-
-    document_list = models.DocumentList(documentList = document_list_struct)
+    try:
+        suppinfo = None
+        if extra_info == 1 and search_val != "*" and pep_code != "*" and len(results.docs) > 0:
+            ocd = opasCentralDBLib.opasCentralDB()
+            suppinfo = ocd.get_min_max_volumes(source_code=pep_code)
+    
+        if extra_info == 2 and search_val != "*" and pep_code != "*" and len(results.docs) > 0:
+            prev_vol, match_vol, next_vol = metadata_get_next_and_prev_vols(source_code=pep_code,
+                                                                            source_vol=vol,
+                                                                            req_url=req_url
+                                                                            )
+            suppinfo = {"infosource": "volumes_adjacent",
+                        "prev_vol": prev_vol,
+                        "matched_vol": match_vol,
+                        "next_vol": next_vol}
+    
+        num_found = results.hits
+    
+        response_info = models.ResponseInfo( count = len(results.docs),
+                                             fullCount = num_found,
+                                             limit = limit,
+                                             offset = offset,
+                                             listType="documentlist",
+                                             fullCountComplete = limit >= num_found,
+                                             supplementalInfo=suppinfo, 
+                                             request=f"{req_url}",
+                                             timeStamp = datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)                     
+                                             )
+    
+        document_list_struct = models.DocumentListStruct( responseInfo = response_info, 
+                                                          responseSet=document_item_list
+                                                          )
+    
+        document_list = models.DocumentList(documentList = document_list_struct)
+    except Exception as e:
+        logger.error(f"metadata_get_contents: model assign error: {e} (log params: {log_params})")
+        
 
     ret_val = document_list
 
     return ret_val
-#-----------------------------------------------------------------------------
-
-#-----------------------------------------------------------------------------
-def database_get_whats_new(days_back=14,
-                           limit=opasConfig.DEFAULT_LIMIT_FOR_WHATS_NEW,
-                           req_url:str=None,
-                           source_type="journal",
-                           offset=0,
-                           session_info=None):
-    """
-    Return what JOURNALS have been updated in the last week
-
-    >>> result = database_get_whats_new()
-
-    """    
-    field_list = "art_id, title, art_vol, art_iss, art_year, art_sourcecode, art_sourcetitlefull, art_sourcetitleabbr, file_last_modified, timestamp, art_sourcetype"
-    sort_by = "file_last_modified desc"
-    ret_val = None
-    query = "" # initialized for error, added to logging in exception
-    new_articles = ocd.get_articles_newer_than(days_back)
-
-    # two ways to get date, slightly different meaning: timestamp:[NOW-{days_back}DAYS TO NOW] AND file_last_modified:[NOW-{days_back}DAYS TO NOW]
-    try:
-        query = f"file_last_modified:[NOW-{days_back}DAYS TO NOW] AND art_sourcetype:{source_type}"
-        logger.info(f"Solr Query: q={query}")
-
-        args = {
-            "fl": field_list,
-            "fq": "{!collapse field=art_sourcecode max=art_year_int}",
-            "sort": sort_by,
-            "rows": opasConfig.MAX_WHATSNEW_ARTICLES_TO_CONSIDER,
-            "start": offset
-        }
-
-        results = solr_docs2.search(query, **args)
-
-    except Exception as e:
-        logger.error(f"WhatsNewError: {e} for query: {query}")
-        response_info = models.ResponseInfo( count = 0,
-                                             fullCount = 0,
-                                             limit = limit,
-                                             offset = offset,
-                                             listType="newlist",
-                                             fullCountComplete = False,
-                                             request=f"{req_url}",
-                                             timeStamp = datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)                     
-                                             )
-        response_info.count = 0
-        whats_new_list_items = []
-        
-        whats_new_list_struct = models.WhatsNewListStruct( responseInfo = response_info, 
-                                                           responseSet = whats_new_list_items
-                                                           )
-        ret_val = models.WhatsNewList(whatsNew = whats_new_list_struct)
-    else:
-        num_found = results.raw_response['response']['numFound']
-        whats_new_list_items = []
-        row_count = 0
-        eligible_entry_full_count = 0
-        already_seen = []
-        for result in results.docs:
-            document_id = result.get("art_id", None)
-            updated = result.get("file_last_modified", None)
-            updated = datetime.strptime(updated,'%Y-%m-%dT%H:%M:%SZ').strftime('%Y-%m-%d')
-            if document_id not in new_articles:
-                logger.debug(f"File {document_id} updated {updated}")
-                continue
-            
-            PEPCode = result.get("art_sourcecode", None)
-            #if PEPCode is None or PEPCode in ["SE", "GW", "ZBK", "IPL"]:  # no books
-                #continue
-            src_type = result.get("art_sourcetype", None)
-            if src_type != "journal":
-                continue
-            
-            # see if this is already been in the article tracker
-                
-            volume = result.get("art_vol", None)
-            issue = result.get("art_iss", "")
-            year = result.get("art_year", None)
-            abbrev = result.get("art_sourcetitleabbr", None)
-            src_title = result.get("art_sourcetitlefull", None)
-            
-            if abbrev is None:
-                abbrev = src_title
-            display_title = abbrev + " v%s.%s (%s) " % (volume, issue, year)
-            if display_title in already_seen:
-                continue
-            else:
-                already_seen.append(display_title)
-
-            eligible_entry_full_count += 1
-            volume_url = "/v2/Metadata/Contents/%s/%s/" % (PEPCode, volume)
-    
-            item = models.WhatsNewListItem( documentID = result.get("art_id", None),
-                                            displayTitle = display_title,
-                                            abbrev = abbrev,
-                                            volume = volume,
-                                            issue = issue,
-                                            year = year,
-                                            PEPCode = PEPCode, 
-                                            srcTitle = src_title,
-                                            volumeURL = volume_url,
-                                            updated = updated
-                                            )
-
-            whats_new_list_items.append(item)
-            row_count += 1 # number of rows added
-            if row_count >= limit:
-                break
-    
-        whats_new_list_items = sorted(whats_new_list_items, key=lambda x: x.displayTitle, reverse = False)    
-
-        if limit != None:
-            if offset is None:
-                offset = 0
-            limited_whats_new_list = whats_new_list_items[offset:offset+limit]
-        else:
-            limited_whats_new_list = whats_new_list_items
-        
-        response_info = models.ResponseInfo( count = len(whats_new_list_items),
-                                             fullCount = eligible_entry_full_count,
-                                             limit = limit,
-                                             offset = offset,
-                                             listType="newlist",
-                                             fullCountComplete = limit >= eligible_entry_full_count,
-                                             request=f"{req_url}",
-                                             timeStamp = datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)                     
-                                             )
-
-        response_info.count = len(whats_new_list_items)
-    
-        whats_new_list_struct = models.WhatsNewListStruct( responseInfo = response_info, 
-                                                           responseSet = limited_whats_new_list
-                                                           )
-    
-        ret_val = models.WhatsNewList(whatsNew = whats_new_list_struct)
-
-    return ret_val   # WhatsNewList
 #-----------------------------------------------------------------------------
 
 #-----------------------------------------------------------------------------
@@ -2430,7 +2377,7 @@ def metadata_get_document_statistics(session_info=None):
     # data = metadata_get_volumes(source_code="IJPSP")
     documentList, ret_status = search_text(query=f"art_id:*", 
                                                limit=1,
-                                               facet_fields="art_year,art_pgcount,art_figcount,art_sourcetitleabbr,art_sourcecode", 
+                                               facet_fields="art_year,art_pgcount,art_figcount,art_sourcetitleabbr", 
                                                abstract_requested=False,
                                                full_text_requested=False,
                                                session_info=session_info
@@ -2452,18 +2399,31 @@ def metadata_get_document_statistics(session_info=None):
                                                session_info=session_info
                                                )
 
+    journalList, ret_status = search_text(query=f"art_sourcetype:journal AND art_id:* AND art_sourcecode_active:1", 
+                                               limit=1,
+                                               facet_fields="source", 
+                                               abstract_requested=False,
+                                               full_text_requested=False, 
+                                               session_info=session_info
+                                               )
+
     content.article_count = documentList.documentList.responseInfo.fullCount
+    journal_facet_counts = journalList.documentList.responseInfo.facetCounts
+    journal_facet_fields = journal_facet_counts["facet_fields"]
+    journal_src_counts = journal_facet_fields["source"]
+    journal_src_counts = dict(OrderedDict(sorted(journal_src_counts.items(), key=lambda t: t[0])))
+    
     facet_counts = documentList.documentList.responseInfo.facetCounts
     facet_fields = facet_counts["facet_fields"]
     src_counts = facet_fields["art_sourcetitleabbr"]
-    src_code_counts = facet_fields["art_sourcecode"]
+    # src_code_counts = facet_fields["art_sourcecode"]
     fig_counts = facet_fields["art_figcount"]
     # figure count is how many figures shown in all articles (possible some are in more than one, not likely.  But one article could present a graphic multiple times.)
     #  so not the same as the number of graphics in the g folder. (And a figure could be a chart or table)
     content.figure_count = sum([int(y) * int(x) for x,y in fig_counts.items() if x != '0'])
-    journals_plus_videos = [x for x,y in src_counts.items() if x not in ("ZBK", "IPL", "NLP", "SE", "GW")]
-    journals = [x for x in src_code_counts if re.match(".*VS|OFFSITE|SE|GW|IPL|NLP|ZBK", x) is None]
-    content.journal_count = len(journals)
+    # journals_plus_videos = [x for x,y in src_counts.items() if x not in ("ZBK", "IPL", "NLP", "SE", "GW")]
+    # journals = [x for x,y in src_counts.items() if re.match(".*VS|OFFSITE|SE|GW|IPL|NLP|ZBK", x) is None]
+    content.journal_count = len(journal_src_counts)
     content.video_count = videoList.documentList.responseInfo.fullCount
     book_facet_counts = bookList.documentList.responseInfo.facetCounts
     book_facet_fields = book_facet_counts["facet_fields"]
@@ -2482,36 +2442,27 @@ def metadata_get_document_statistics(session_info=None):
     content.page_count = sum(pages)
     content.page_height_feet = int(((content.page_count * .1) / 25.4) / 12) # page thickness in mm, 25.4 mm per inch, 12 inches per foot
     content.page_weight_tons = int(content.page_count * 4.5 * 0.000001)
-    source_count_html = "<ul>"
+    source_count_html = "<ol>"
     for code, cnt in content.source_count.items():
         source_count_html += f"<li>{code} - {cnt}</li>"
-    source_count_html += "</ul>"
-   
-    content.description_html = f"""
-<p>This release of PEP-Web contains the complete text and illustrations of
-{content.journal_count} premier journals in psychoanalysis,
-{content.book_count} classic psychoanalytic books, and the full text and Editorial notes of the
-24 volumes of the Standard Edition of the Complete Psychological Works of Sigmund Freud as well as the
-19 volume German Freud Standard Edition Gesammelte Werke.  It spans over
-{content.year_count} publication years and contains the full text of articles whose source ranges from
-{content.year_first} through {content.year_last}.</p>
-<p>
-There are over
-{content.article_count} articles and almost
-{content.figure_count} figures and illustrations that originally resided on
-{content.vol_count} volumes with over
-{content.page_count/1000000:.2f} million printed pages. In hard copy, the PEP Archive represents a stack of paper more than
-{content.page_height_feet} feet high and weighing over
-{content.page_weight_tons} tons!
-</p>
-"""
+    source_count_html += "</ol>"
     
-    content.source_count_html = f"""
-<p>
-\nCount of Articles by Source:
-\n{source_count_html}
-</p>
-"""
+    journal_list_html = "<ol>"
+    for j, cnt in journal_src_counts.items():
+        journal_list_html += f"<li>{j} - {cnt}</li>"
+    journal_list_html += "</ol>"
+   
+    content.description_html = f"""<!DOCTYPE html><html><body><p>This release of PEP-Web contains the complete text and illustrations of {content.journal_count} \
+premier journals in psychoanalysis, {content.book_count} classic psychoanalytic books, {content.video_count} videos, and the full text and editorial notes of the \
+24 volumes of the Standard Edition of the Complete Psychological Works of Sigmund Freud as well as the \
+19 volume German Freud Standard Edition Gesammelte Werke.  It spans over \
+{content.year_count} publication years and contains the full text of articles whose source ranges from {content.year_first} through {content.year_last}.</p>\
+<p>There are over {content.article_count} articles and {content.figure_count} figures and illustrations that originally resided on \
+{content.vol_count} volumes with over {content.page_count/1000000:.2f} million printed pages. In hard copy, the PEP Archive represents a stack of paper more than \
+{content.page_height_feet} feet high and weighing over {content.page_weight_tons} tons!</p><p>The journals officially in this release (with article counts) include:{journal_list_html}</p> \
+<p>An exhaustive list of sources, including those being loaded (abbreviations listed here with article counts) include:{source_count_html}</p></body></html>"""
+    
+    content.source_count_html = f"""<p>\nCount of Articles by All sources:\n{source_count_html}</p>"""
         
     ret_val = content
     return ret_val
@@ -2541,7 +2492,7 @@ def metadata_get_next_and_prev_articles(art_id=None,
     # works for journal, videostreams have more than one year per vol.
     # works for books, videostream vol numbers
     
-    article_id = opasConfig.ArticleID(articleID=art_id)
+    article_id = ArticleID(articleID=art_id) # now from opasArticleIDSupport
     
     distinct_return = "art_sourcecode, art_year, art_vol, art_id, art_iss, art_iss_seqnbr"
     next_art = {}
@@ -2575,7 +2526,9 @@ def metadata_get_next_and_prev_articles(art_id=None,
         results = solr_docs2.search(query, **args)
 
     except Exception as e:
-        logger.error(f"MetadataGetArtError: {e}")
+        #logger.error(f"MetadataGetArtError: {e}")
+        err_info = pysolrerror_processing(e)
+        logger.error(f"MetadataGetNextPrevError: {err_info.httpcode}. Query: {query} Error: {err_info.error_description}")
     else:
         # find the doc
         count = 0
@@ -2666,33 +2619,28 @@ def metadata_get_next_and_prev_vols(source_code=None,
                 facet_pivot = results.facets["facet_pivot"][facet_pivot_fields]
 
             except Exception as e:
-                logger.error(f"Exception: {e}")
+                err_info = pysolrerror_processing(e)
+                logger.error(f"MetadataGetNextPrevError: {err_info.httpcode}. Query: {query} Error: {err_info.error_description}")
             else:
                 prev_vol = None
                 match_vol = None
                 next_vol = None
                 if facet_pivot != []:
-                    next_vol_idx = None
-                    prev_vol_idx = None
                     match_vol_idx = None
-                    pivot_len = len(facet_pivot[0]['pivot'])
+                    #pivot_len = len(facet_pivot[0]['pivot'])
                     counter = 0
                     for n in facet_pivot[0]['pivot']:
                         if n['value'] == str(source_vol):
                             match_vol_idx = counter
                             match_vol = n
+                        elif n['value'] == str(int(source_vol) - 1):
+                            prev_vol = n
+                        elif n['value'] == str(int(source_vol) + 1):
+                            next_vol = n
 
                         counter += 1
         
-                    if match_vol_idx is not None:
-                        if match_vol_idx > 0:
-                            prev_vol_idx = match_vol_idx - 1
-                            prev_vol = facet_pivot[0]['pivot'][prev_vol_idx]
-                            
-                        if match_vol_idx < pivot_len - 1:
-                            next_vol_idx = match_vol_idx + 1
-                            next_vol = facet_pivot[0]['pivot'][next_vol_idx]
-                    else:
+                    if match_vol_idx is None:
                         logger.warning(f"No match for source {source_code} volume: {source_vol} ")
                         
                 try:
@@ -2709,6 +2657,7 @@ def metadata_get_next_and_prev_vols(source_code=None,
                     del(next_vol['field'])
                 except:
                     pass
+
     if opasConfig.LOCAL_TRACE:
         print(f"Match Prev {prev_vol}, Curr: {match_vol}, Next: {next_vol}")
         
@@ -2826,7 +2775,9 @@ def metadata_get_volumes(source_code=None,
 
                 
     except Exception as e:
-        logger.error(f"MetadataGetVolsError: {e}")
+        #logger.error(f"MetadataGetVolsError: {e}")
+        err_info = pysolrerror_processing(e)
+        logger.error(f"MetadataGetVolsError: {err_info.httpcode}. Query: {query} Error: {err_info.error_description}")
     else:
         response_info.count = len(volume_item_list)
         response_info.fullCount = len(volume_item_list)
@@ -2868,10 +2819,12 @@ def prep_document_download(document_id,
 
     query = "art_id:%s" % (document_id)
     args = {
-             "fl": """art_id, art_info_xml, art_citeas_xml, text_xml, art_excerpt, art_sourcetype, art_year,
-                      art_sourcetitleabbr, art_vol, art_iss, art_pgrg, art_doi, art_title, art_authors, art_authors_mast, art_lang,
-                      art_embargo, art_embargotype, art_pgcount, 
-                      art_issn, file_classification"""
+             #"fl": """artx_id, artx_info_xml, artx_citeas_xml, text_xml, art_excerpt, artx_sourcetype, artx_year, artx_sourcecode,
+                      #artx_sourcetitleabbr, artx_vol, artx_iss, artx_pgrg, artx_doi, artx_title, artx_authors, art_authors_mast, artx_lang,
+                      #artx_embargo, artx_embargotype, artx_pgcount, 
+                      #artx_issn, artx_isbn, filex_classification"""
+             # use one of the standard field sets to replace above (x's used above to check against opasConfig.DOCUMENT_ITEM_SUMMARY_FIELDS)
+             "fl": opasConfig.DOCUMENT_ITEM_SUMMARY_FIELDS + ", art_excerpt, text_xml, art_authors_mast" # extra fields not covered by opasConfig.DOCUMENT_ITEM_SUMMARY_FIELDS
     }
 
     request_qualifier_text = f" Request: {document_id}. Session {session_info.session_id}."
@@ -2879,7 +2832,13 @@ def prep_document_download(document_id,
     try:
         results = solr_docs2.search(query, **args)
     except Exception as e:
-        logger.error(f"PrepDownloadError: Solr Search Exception: {e}")
+        # logger.error(f"PrepDownloadError: Solr Search Exception: {e}")
+        err_info = pysolrerror_processing(e)
+        err_msg = f"PrepDownloadError: {err_info.httpcode}. Query: {query} Error: {err_info.error_description}"
+        logger.error(err_msg)
+        status = models.ErrorReturn( httpcode=httpCodes.HTTP_404_NOT_FOUND,
+                                     error_description=err_msg
+                                   )
     else:
         try:
             documentListItem = models.DocumentListItem()
@@ -2888,13 +2847,13 @@ def prep_document_download(document_id,
             # set up documentListItem in case the article is embargoed. 
             documentListItem = opasQueryHelper.get_base_article_info_from_search_result(results.docs[0], documentListItem)
         except IndexError as e:
-            err_msg = msgdb.get_user_message(opasConfig.ACCESS_404_DOCUMENT_NOT_FOUND) + request_qualifier_text
+            err_msg = msgdb.get_user_message(opasConfig.ERROR_404_DOCUMENT_NOT_FOUND) + request_qualifier_text
             logger.error(err_msg)
             status = models.ErrorReturn( httpcode=httpCodes.HTTP_404_NOT_FOUND,
                                          error_description=err_msg
                                        )
         except KeyError as e:
-            err_msg = msgdb.get_user_message(opasConfig.ACCESS_404_DOCUMENT_NOT_FOUND) + f" Error: Full-text not content found for {document_id}"
+            err_msg = msgdb.get_user_message(opasConfig.ERROR_404_DOCUMENT_NOT_FOUND) + f" Error: Full-text not content found for {document_id}"
             logger.error(err_msg)
             status = models.ErrorReturn( httpcode=httpCodes.HTTP_404_NOT_FOUND,
                                          error_description=err_msg
@@ -2946,6 +2905,7 @@ def prep_document_download(document_id,
                             html = opasxmllib.remove_encoding_string(doc)
                             filename = opasxmllib.convert_xml_to_html_file(html, output_filename=document_id + ".html")  # returns filename
                             ret_val = filename
+
                         elif ret_format.upper() == "PDFORIG":
                             # setup so can include year in path (folder names) in AWS, helpful.
                             if flex_fs is not None:
@@ -2959,12 +2919,22 @@ def prep_document_download(document_id,
                                                              error_description=err_msg
                                                            )
                                 ret_val = None
+
                         elif ret_format.upper() == "PDF":
-                            html_string = opasxmllib.xml_str_to_html(doc, document_id=document_id)
+                            """
+                            Generated PDF, no page breaks, but page numbering, for reading and printing without wasting pages.
+                            """
+                            html_string = opasxmllib.xml_str_to_html(doc, transformer_name=opasConfig.TRANSFORMER_XMLTOHTML, document_id=document_id) # transformer_name default used explicitly for code readability
                             html_string = re.sub("\[\[RunningHead\]\]", f"{heading}", html_string, count=1)
                             html_string = re.sub("\(\)", f"", html_string, count=1) # in running head, missing issue
                             copyright_page = COPYRIGHT_PAGE_HTML.replace("[[username]]", session_info.username)
                             html_string = re.sub("</html>", f"{copyright_page}</html>", html_string, count=1)
+                            html_string = re.sub("href=\"#/Document",\
+                                                 "href=\"https://pep-web.org/browse/document",html_string)
+                            html_string = re.sub('class="fas fa-arrow-circle-right"',\
+                                                 'class="fa fa-external-link"', html_string)
+                            html_string = re.sub(r"#/Search/\?author", f"https://pep-web.org/search/?q", html_string)
+                            
                             if art_lang == "zh":
                                 # add some spaces in the chinese text to permit wrapping:
                                 html_string = re.sub('\。', '。 ', html_string)
@@ -2978,13 +2948,8 @@ def prep_document_download(document_id,
                             # html_string.encode("UTF-8")
                             filename = document_id + ".PDF" 
                             output_filename = os.path.join(tempfile.gettempdir(), filename)
-                            pisa.showLogging() # debug only
-                            #print (f"In Print Module.  Folder {os.getcwd()}")
-                            #print (f"{opasConfig.PDF_EXTENDED_FONT}")
-                            # doc = opasxmllib.remove_encoding_string(doc)
-                            # open output file for writing (truncated binary)
-                            # temp debugging change to write out intermediate HTML file
                             try:
+                                # temp debugging change to write out intermediate HTML file
                                 if localsecrets.DEVELOPMENT_DEBUGGING:
                                     html_filename = document_id + ".html" 
                                     html_out_filename  = os.path.join(tempfile.gettempdir(), html_filename)
@@ -2992,22 +2957,89 @@ def prep_document_download(document_id,
                                         fo.write(html_string)
                             except:
                                 pass
-                            
-                            result_file = open(output_filename, "w+b")
-                            # Need to fix links for graphics, e.g., see https://xhtml2pdf.readthedocs.io/en/latest/usage.html#using-xhtml2pdf-in-django
-                            pisaStatus = pisa.CreatePDF(src=html_string,            # the HTML to convert
-                                                        dest=result_file,
-                                                        encoding="UTF-8",
-                                                        link_callback=opasConfig.fetch_resources)           # file handle to receive result
-                            # close output file
-                            result_file.close()                 
-                            # return True on success and False on errors
-                            ret_val = output_filename
+
+                            # due to problems with pisa and referenced graphics and banners, weasyprint used now rather than Pisa 2022-04-20
+                            try:
+                                stylesheets = []
+                                #stylesheet_paths = [opasConfig.CSS_STYLESHEET, ]
+                                #try:
+                                    #for stylesheet_path in stylesheet_paths:
+                                        #with open(stylesheet_path) as f:
+                                            #style_data = f.read()
+                                        #stylesheets.append(CSS(string=style_data))
+                                #except Exception as e:
+                                    #print (f"Error reading file: {stylesheet_path}")
+                                font_config = FontConfiguration()
+                                html = HTML(string = html_string)
+                                html.write_pdf(target=output_filename, stylesheets=stylesheets, font_config=font_config)
+
+                            except Exception as e:
+                                logging.error(f"Weasyprint error: {e}")
+                                #status = models.ErrorReturn( httpcode=httpCodes.HTTP_500_INTERNAL_SERVER_ERROR,
+                                                             #error_description="Sorry, due to a conversion error, this article cannot be converted to PDF. Try ePUB format instead."
+                                                             #)
+                                if 1:
+                                    # Since Weasyprint returns nothing useful in this case, use the xml2html Pisa library to generate the PDF
+                                    # It usually works when Weasyprint fails, but doesn't seem to be able to include graphics anymore
+                                    # that was working at least partly at one point.
+                                    pisa_css = r"""
+                                        <link rel="stylesheet" type="text/css" href="%s"/>
+                                        @page {
+                                            size: letter portrait;
+                                            @frame content_frame {
+                                                left: 50pt;
+                                                width: 512pt;
+                                                top: 50pt;
+                                                height: 692pt;
+                                            }
+                                        }
+                                        @font-face {font-family: Roboto; src: url('%s');}
+                                        @font-face {font-family: Roboto; font-style: italic; src: url('%s');}
+                                        @font-face {font-family: Roboto; font-weight: bold; src: url('%s');}
+                                        @font-face {font-family: Roboto; font-weight: bold; font-style: italic; src: url('%s');}
+                                        body, p, p2 {   
+                                                    font-family: 'Noto Sans' }
+                                                
+                                    """ % (opasConfig.CSS_STYLESHEET,
+                                           opasConfig.fetch_resources('Roboto-Regular.ttf', None),
+                                           opasConfig.fetch_resources('Roboto-Italic.ttf', None),
+                                           opasConfig.fetch_resources('Roboto-Bold.ttf', None),
+                                           opasConfig.fetch_resources('Roboto-BoldItalic.ttf', None),
+                                           )
+                                    #pisa_css = pisa_css + style_data 
+
+                                    #pisa.showLogging() # debug only
+                                    #print (f"In Print Module.  Folder {os.getcwd()}")
+                                    #print (f"{opasConfig.PDF_EXTENDED_FONT}")
+                                    # doc = opasxmllib.remove_encoding_string(doc)
+                                    # open output file for writing (truncated binary)
+                                    try:
+                                        result_file = open(output_filename, "w+b")
+                                        # Need to fix links for graphics, e.g., see https://xhtml2pdf.readthedocs.io/en/latest/usage.html#using-xhtml2pdf-in-django
+                                        pisaStatus = pisa.CreatePDF(src=html_string,            # the HTML to convert
+                                                                    dest=result_file,
+                                                                    css_default=pisa_css, 
+                                                                    encoding="UTF-8") #,
+                                                                    # link_callback=opasConfig.fetch_resources)           # file handle to receive result
+                                        # close output file
+                                        result_file.close()
+                                    except Exception as e:
+                                        ret_val = None
+                                    else:
+                                        ret_val = output_filename                                    
+
+                            else:
+                                ret_val = output_filename                               
                                 
                         elif ret_format.upper() == "EPUB":
                             doc = opasxmllib.remove_encoding_string(doc)
-                            html_string = opasxmllib.xml_str_to_html(doc, document_id=document_id)
+                            html_string = opasxmllib.xml_str_to_html(doc, transformer_name=opasConfig.TRANSFORMER_XMLTOHTML, document_id=document_id) # transformer_name default used explicitly for code readability
                             html_string = re.sub("\[\[RunningHead\]\]", f"{heading}", html_string, count=1)
+                            html_string = re.sub("href=\"#/Document",\
+                                                 "href=\"https://pep-web.org/browse/document", html_string)
+                            html_string = re.sub('class="fas fa-arrow-circle-right"',\
+                                                 'class="fa fa-external-link"', html_string)
+                            html_string = re.sub(r"#/Search/\?author", f"https://pep-web.org/search/?q", html_string)
                             html_string = add_epub_elements(html_string)
                             filename = opasxmllib.html_to_epub(htmlstr=html_string,
                                                                output_filename_base=document_id,
@@ -3019,7 +3051,7 @@ def prep_document_download(document_id,
                                                                session_info=session_info)
                             ret_val = filename
                         else:
-                            err_msg = f"Download format {ret_format} not supported"
+                            err_msg = f"Format {ret_format} not supported"
                             #logger.warning(err_msg) # eliminate double log? 2021-06-02
                             ret_val = None
                             status = models.ErrorReturn( httpcode=httpCodes.HTTP_400_BAD_REQUEST,
@@ -3027,21 +3059,25 @@ def prep_document_download(document_id,
                                                        )
         
                     except Exception as e:
-                        err_msg = f"Prep for Download: Can't convert data: {e}"
+                        err_msg = f"Can't convert: {e}"
                         ret_val = None
-                        #raise HTTPException(
-                            #status_code=httpCodes.HTTP_422_UNPROCESSABLE_ENTITY,
-                            #detail=err_msg # or use ERR_MSG_PROBLEM_CONVERTING_TO_PDF
-                        #)
                         status = models.ErrorReturn( httpcode=httpCodes.HTTP_422_UNPROCESSABLE_ENTITY,
                                                      error_description=err_msg
                                                    )
-                else: # access is limited
-                    err_msg = f"From Authorization Server: {access.accessLimitedDebugMsg}"
-                    logger.warning(access.accessLimitedDebugMsg) # log developer info for tracing access issues
-                    status = models.ErrorReturn( httpcode=httpCodes.HTTP_401_UNAUTHORIZED,
-                                                 error_description=err_msg
-                                               )
+                else: # access is limited or download prohibited
+                    if documentListItem.downloads == False: # access.accessChecked == True and access.accessLimited != True and 
+                        #  download is prohibited
+                        err_msg = msgdb.get_user_message(opasConfig.ERROR_403_DOWNLOAD_OR_PRINTING_RESTRICTED) + " " + request_qualifier_text 
+                        logger.warning(err_msg) # log developer info for tracing access issues
+                        status = models.ErrorReturn( httpcode=httpCodes.HTTP_403_FORBIDDEN,
+                                                     error_description=err_msg
+                                                   )
+                    else:
+                        err_msg = access.accessLimitedReason
+                        logger.warning(access.accessLimitedDebugMsg) # log developer info for tracing access issues
+                        status = models.ErrorReturn( httpcode=httpCodes.HTTP_401_UNAUTHORIZED,
+                                                     error_description=err_msg
+                                                   )
                     ret_val = None
     
     return ret_val, status
@@ -3161,7 +3197,8 @@ def get_fulltext_from_search_results(result,
                                                ret_format="HTML"
                                                )
         try:
-            text_xml = opasxmllib.xml_str_to_html(text_xml, document_id=documentListItem.documentID)  #  e.g, r"./libs/styles/pepkbd3-html.xslt"
+            text_xml = opasxmllib.xml_str_to_html(text_xml, transformer_name=opasConfig.TRANSFORMER_XMLTOHTML, document_id=documentListItem.documentID) # transformer_name default used explicitly for code readability
+            
         except Exception as e:
             logger.error(f"GetFulltextError: Could not convert to HTML {e}; returning native format")
             text_xml = re.sub(f"{opasConfig.HITMARKERSTART}|{opasConfig.HITMARKEREND}", numbered_anchors, text_xml)
@@ -3175,7 +3212,7 @@ def get_fulltext_from_search_results(result,
                 logger.error(f"GetFulltextError: Could not do anchor substitution {e}")
 
         if child_xml is not None:
-            child_xml = opasxmllib.xml_str_to_html(child_xml, document_id=documentListItem.documentID)
+            child_xml = opasxmllib.xml_str_to_html(child_xml, transformer_name=opasConfig.TRANSFORMER_XMLTOHTML, document_id=documentListItem.documentID) # transformer_name default used explicitly for code readability
                 
     elif format_requested_ci == "textonly":
         # strip tags
@@ -3221,8 +3258,13 @@ def quick_docmeta_docsearch(q_str,
                'start': offset,
                'sort':"art_id asc",
            }
-    
-    results = solr_docs2.search(q=q_str, **args)
+
+    try:
+        results = solr_docs2.search(q=q_str, **args)
+    except Exception as e:
+        err_info = pysolrerror_processing(e)
+        logger.error(f"DocMetaDocSearch: {err_info.httpcode}. Query: {query} Error: {err_info.error_description}")
+        
     document_item_list = []
     count = len(results)
     try:

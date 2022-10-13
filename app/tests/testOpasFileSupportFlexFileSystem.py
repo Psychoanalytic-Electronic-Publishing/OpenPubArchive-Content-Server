@@ -24,10 +24,10 @@ class TestFSFileSystem(unittest.TestCase):
         fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY,
                                             secret=localsecrets.S3_SECRET,
                                             root=localsecrets.XML_ORIGINALS_PATH)
-        filespec="PEPTOPAUTHVS.001.0021A(bEXP_ARCH1).XML"
+        filespec="PEPTOPAUTHVS.001.0021A(bEXP_ARCH1).xml"
         fileinfo = fs.fileinfo(filespec, path="_PEPFree/PEPTOPAUTHVS")
         assert fileinfo.basename == filespec
-        assert fileinfo.filesize == 16719
+        assert fileinfo.filesize >= 15000
         #  permission problems when trying to open on stage
         fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY,
                                             secret=localsecrets.S3_SECRET,
@@ -39,22 +39,22 @@ class TestFSFileSystem(unittest.TestCase):
        
     def test_03(self):
         filespec = 'test-file.txt'
-        filespec2 = 'test-file.txt'
+        filespec2 = 'test-file2.txt'
         # create text file
         fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root=localsecrets.XML_ORIGINALS_PATH)
         if fs.exists(filespec):
             # delete in case it exists
             res = fs.delete(filespec=filespec, path=localsecrets.XML_ORIGINALS_PATH)
         # now create it
-        fs.create_text_file(filespec=filespec)
-        assert fs.exists(filespec) == True
-        fs.rename(filespec, filespec2)
-        assert fs.exists(filespec2) == True
+        fs.create_text_file(filespec=filespec, delete_existing=False)
+        assert fs.exists(filespec, path=localsecrets.XML_ORIGINALS_PATH) == True
+        fs.rename(filespec, filespec2, path=localsecrets.XML_ORIGINALS_PATH)
+        assert fs.exists(filespec2, path=localsecrets.XML_ORIGINALS_PATH) == True
         fs.delete(filespec=filespec2, path=localsecrets.XML_ORIGINALS_PATH)
         assert fs.exists(filespec2) == False
         
     def test_04(self):
-        filespec="PEPTOPAUTHVS.001.0021A(bEXP_ARCH1).XML"
+        filespec="PEPTOPAUTHVS.001.0021A(bEXP_ARCH1).xml"
         # create text file
         fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY,
                                             secret=localsecrets.S3_SECRET,

@@ -45,7 +45,7 @@ class TestDatabaseWordWheel(unittest.TestCase):
         response_info = r["termIndex"]["responseInfo"]
         response_set = r["termIndex"]["responseSet"] 
         assert(response_set[0]["termCount"] >= 3)
-        print (response_set)
+        #print (response_set)
 
 if __name__ == '__main__':
     unittest.main()

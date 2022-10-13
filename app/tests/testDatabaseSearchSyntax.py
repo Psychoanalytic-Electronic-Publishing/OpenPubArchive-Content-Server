@@ -24,7 +24,7 @@ fulltext1 = [
                ('text:love', 37813),
                ('text:"hate emotions"~25', 553),
                ('text:(love OR "hate emotions"~25)', 37861),
-               ("dreams_xml:(mother AND father) AND text:fight", 39), 
+               ("dreams_xml:(mother AND father) AND text:fight", 36), 
                ("mother AND father", 30000), # was 31294, latest db disagrees, 2021-01-25
                ("mother OR father", 51432), # was 52273, latest db disagrees 2021-01-25
                ("mother AND father OR son", 45487), # was 46389, latest db disagrees 2021-01-25
@@ -32,10 +32,10 @@ fulltext1 = [
                ("mother AND father AND -child", 4207), 
                ("mother AND father", 30000), 
                ("mother AND -father", 15074), # was 15095, latest db disagrees 2021-01-25
-               ("dreams_xml:(mother AND father)", 140), # was 142, latest db disagrees 2021-01-25
+               ("dreams_xml:(mother AND father)", 135), # was 140, latest db disagrees at 139 2022-03-23
                ("dreams_xml:(mother AND -father)", 253), # was 255
                ("dreams_xml:(mother AND (father OR son))", 140), # was 142
-               ("dreams_xml:(mother AND father AND child)", 36), #  was 38
+               ("dreams_xml:(mother AND father AND child)", 35), #  was 36
                ("dreams_xml:(mother AND father AND -child)", 104), 
                ("'adoptive mother' AND father", 810), # was 817
                ("'adoptive mother' OR father", 1142),
@@ -86,7 +86,8 @@ class TestDatabaseSearchSyntax(unittest.TestCase):
             #  if there's a Solr server error in the call, it returns a non-200 ret_status[0]
             assert(ret_status[0] == httpCodes.HTTP_200_OK)
             full_count = ret_val.documentList.responseInfo.fullCount
-            assert expected_count <= full_count, f"Error checking query:{n}; count: {full_count} vs expected: {expected_count}\n"
+            print (f"Checking query:{n}; count: {full_count} vs expected: {expected_count}\n")
+            assert expected_count <= full_count
         
 if __name__ == '__main__':
     unittest.main()

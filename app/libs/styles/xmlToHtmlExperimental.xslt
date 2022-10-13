@@ -63,7 +63,7 @@
               "/>
 
     <xsl:strip-space elements="*"/>
-    <xsl:param name="css3" select="'pepepub.css'"/>
+    <!--<xsl:param name="css3" select="'pep-pdf-epub.css'"/>-->
     <xsl:param name="report-warnings" select="'no'"/>
 <!--    <xsl:param name="imageUrl"/>-->
     <xsl:variable name="domain" select="'$OPAS_SERVER_DOMAIN;'" />
@@ -156,7 +156,8 @@
       </title>
       <!-- <link rel="stylesheet" type="text/css" href="{$css}"></link>-->
       <!--<link rel="stylesheet" type="text/css" href="{$css2}"></link>-->
-      <link rel="stylesheet" type="text/css" href="{$css3}"></link>
+      <!--<link rel="stylesheet" type="text/css" href="{$css3}"></link>-->
+      <!--<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fork-awesome@1.2.0/css/fork-awesome.min.css" integrity="sha256-XoaMnoYC5TH6/+ihMEnospgm0J1PM/nioxbOUdnM8HY=" crossorigin="anonymous"></link>-->
       <!-- When importing jats-oasis-html.xsl, we can call a template to insert CSS for our tables. -->
       <!--<xsl:call-template name="p:table-css" xmlns:p="http://www.wendellpiez.com/oasis-tables/util"/>-->
     </head>

@@ -13,7 +13,6 @@ OPASCENTRAL TABLES (and Views) CURRENTLY USED:
                                    table articles)
 
    vw_stat_docviews_crosstab (depends on api_docviews,
-                                         vw_stat_docviews_lastweek,
                                          vw_stat_docviews_lastmonth,
                                          vw_stat_docviews_lastsixmonths,
                                          vw_stat_docviews_lastcalyear,
@@ -27,9 +26,7 @@ OPASCENTRAL TABLES (and Views) CURRENTLY USED:
                            vw_stat_cited_in_all_years
                            )                                        
     
-    vw_api_productbase (this is the ISSN table from pepa1vdb used during processing)
-    
-    vw_latest_session_activity (list of sessions with date from table api_session_endpoints)
+    vw_api_productbase_instance_counts (this is the ISSN table from pepa1vdb used during processing)
     
     Used in generators:
     
@@ -94,9 +91,7 @@ import xml.etree.ElementTree as ET
 import models
 
 # All opasCentral Database Models here
-import modelsOpasCentralPydantic
-from modelsOpasCentralPydantic import User, UserInDB
-#from models import SessionInfo
+import models
 
 DEFAULTSESSIONLENGTH = 1800 # seconds (timeout)
 API_STATUS_SUCCESS = "Success"
@@ -156,6 +151,22 @@ API_DATABASE_WHOCITEDTHIS = 53               # /Database/WhoCitedThis/
 API_DATABASE_MORELIKETHIS = 54               # /Database/MoreLikeThis/
 API_DATABASE_RELATEDTOTHIS = 55              # /Database/RelatedDocuments/
 
+def date_to_db_date(std_date):
+    ret_val = None
+    if type(std_date) == type("str"):
+        try:
+            ret_val = datetime.strftime(datetime.strptime(std_date, opasConfig.TIME_FORMAT_STR), opasConfig.TIME_FORMAT_STR_DB)
+        except Exception as e:
+            logger.error(e)
+    else:
+        try: # see if it's a regular date object
+            ret_val = datetime.strftime(std_date, opasConfig.TIME_FORMAT_STR_DB)
+        except Exception as e:
+            logger.error(e)
+            
+    return ret_val
+    
+
 #def verifyAccessToken(session_id, username, access_token):
     #return pwd_context.verify(session_id+username, access_token)
     #removed 2021-12-07
@@ -187,47 +198,6 @@ def get_password_hash(password):
     '...'
     """
     return pwd_context.hash(password)
-
-class SourceInfoDB(object):
-    def __init__(self):
-        self.sourceData = {}
-        ocd = opasCentralDB()
-        recs = ocd.get_productbase_data()
-        for n in recs:
-            try:
-                self.sourceData[n["pepsrccode"]] = n
-            except KeyError:
-                logger.error("Missing Source Code Value in %s" % n)
-
-    def lookupSourceCode(self, sourceCode):
-        """
-        Returns the dictionary entry for the source code or None
-          if it doesn't exist.
-        """
-        dbEntry = self.sourceData.get(sourceCode, None)
-        retVal = dbEntry
-        return retVal
-
-class ErrorMessageDB(object):
-    def __init__(self):
-        self.message_data = {}
-        ocd = opasCentralDB()
-        recs = ocd.get_user_errormsg_data()
-        for n in recs:
-            try:
-                self.message_data[n["pepsrccode"]] = n
-            except KeyError:
-                logger.error("Missing Source Code Value in %s" % n)
-
-    def lookupSourceCode(self, sourceCode):
-        """
-        Returns the dictionary entry for the source code or None
-          if it doesn't exist.
-        """
-        dbEntry = self.sourceData.get(sourceCode, None)
-        retVal = dbEntry
-        return retVal
-    
 
 class opasCentralDB(object):
     """
@@ -286,10 +256,11 @@ class opasCentralDB(object):
             opasCentralDB.connection_count += 1
             self.db = mysql.connector.connect(user=self.user, password=self.password, database=self.database, host=self.host)
             self.connected = True
-            logger.debug(f"Opened connection #{opasCentralDB.connection_count}")
+            # logger.debug(f"Opened connection #{opasCentralDB.connection_count}")
 
         except Exception as e:
             self.connected = False
+            opasCentralDB.connection_count -= 1
             logger.error(f"Database connection could not be opened ({caller_name}) ({e}). Opening connection number: {opasCentralDB.connection_count}")
             self.db = None
         
@@ -297,13 +268,14 @@ class opasCentralDB(object):
 
     def close_connection(self, caller_name=""):
         try:
+            opasCentralDB.connection_count -= 1
             self.db.close()
             self.db = None
-            opasCentralDB.connection_count -= 1
-            logger.debug(f"Database closed by ({caller_name})")
+            # logger.debug(f"Database closed by ({caller_name})")
                 
         except Exception as e:
-            logger.error(f"caller: {caller_name} the db is not open ({e}).")
+            opasCentralDB.connection_count = 0
+            logger.info(f"caller: {caller_name} the db is not open ({e}).")
 
         self.connected = False
         return self.connected
@@ -356,7 +328,7 @@ class opasCentralDB(object):
         self.open_connection(caller_name=fname) # make sure connection is open
         if self.db is not None:
             with closing(self.db.cursor(buffered=True, dictionary=True)) as curs:
-                sql = "SELECT * from vw_api_sourceinfodb where active=1;"
+                sql = "SELECT * from vw_api_sourceinfodb where active>0;" # 1=Active 0=Not Active 2=future
                 curs.execute(sql)
                 warnings = curs.fetchwarnings()
                 if warnings:
@@ -367,6 +339,36 @@ class opasCentralDB(object):
                 if row_count:
                     sourceData = curs.fetchall()
                     ret_val = sourceData
+        else:
+            logger.fatal("Connection not available to database.")
+
+        self.close_connection(caller_name=fname) # make sure connection is closed
+        return ret_val
+
+    def get_journal_vols(self, source_code=None):
+        """
+        Load the journal year, vol # Notand doi data
+        """
+        fname = "get_journal_vols"
+        ret_val = {}
+        if source_code is not None:
+            src_code_clause = f" where src_code RLIKE '{source_code}'"
+        else:
+            src_code_clause = ""
+            
+        self.open_connection(caller_name=fname) # make sure connection is open
+        if self.db is not None:
+            with closing(self.db.cursor(buffered=True, dictionary=True)) as curs:
+                sql = f"SELECT * from vw_jrnl_vols {src_code_clause};"
+                curs.execute(sql)
+                warnings = curs.fetchwarnings()
+                if warnings:
+                    for warning in warnings:
+                        logger.warning(warning)
+                        
+                row_count = curs.rowcount
+                if row_count:
+                    ret_val = curs.fetchall()
         else:
             logger.fatal("Connection not available to database.")
 
@@ -549,7 +551,7 @@ class opasCentralDB(object):
 
             if author is not None:
                 author = re.sub("[^\.]\*", ".*", author, flags=re.IGNORECASE)
-                author_clause = f" AND hdgauthor rlike {author}"
+                author_clause = f" AND hdgauthor rlike '{author}'"
             else:
                 author_clause = ""
                 
@@ -568,7 +570,7 @@ class opasCentralDB(object):
             
             # select_clause = "textref, lastweek, lastmonth, last6months, last12months, lastcalyear"
             # Note that WHERE 1 = 1 is used since clauses all start with AND
-            sql = f"""SELECT {select_clause} 
+            sql = f"""SELECT DISTINCT {select_clause} 
                       FROM vw_stat_most_viewed
                       WHERE 1 = 1
                       {doc_type_clause}
@@ -708,7 +710,7 @@ class opasCentralDB(object):
             elif source_type == "books":
                 doc_type_clause = f" AND source_code IN {opasConfig.BOOK_CODES_ALL}"
             elif source_type == "videos":
-                doc_type_clause = f" AND source_code IN {opasConfig.VIDOSTREAM_CODES_ALL}"
+                doc_type_clause = f" AND source_code IN {opasConfig.VIDEOSTREAM_CODES_ALL}"
             else:
                 doc_type_clause = ""  # everything
 
@@ -733,7 +735,7 @@ class opasCentralDB(object):
                 more_than_clause = ""
                 
             # Note that WHERE 1 = 1 is used since clauses all start with AND
-            sql = f"""SELECT {select_clause} 
+            sql = f"""SELECT DISTINCT {select_clause} 
                       FROM vw_stat_cited_crosstab_with_details
                       WHERE 1 = 1
                       {doc_type_clause}
@@ -802,7 +804,7 @@ class opasCentralDB(object):
                ((
                        `r0`.`cited_document_id` IS NOT NULL 
                        ) 
-                   AND ( `r0`.`cited_document_id` <> 'None' ) 
+                   AND ( `r0`.`cited_document_id` != 'None' ) 
                    AND (
                    substr( `r0`.`cited_document_id`, 1, 3 ) NOT IN ( 'ZBK', 'IPL', 'SE.', 'GW.' ))) 
            GROUP BY
@@ -1043,9 +1045,17 @@ class opasCentralDB(object):
         # return session model object
         return ret_val # None or Session Object
         
-    def get_select_as_list_of_models(self, sqlSelect: str, model):
+    #------------------------------------------------------------------------------------------------------
+    def get_select_as_list_of_models(self, sqlSelect: str, model, model_type="Structured"):
         """
         Generic retrieval from database, into dict
+        
+        if model is explicit, i.e., not a generic dict, this works: 
+            ret_val = [model(**row) for row in rows]
+        if model is a dict (generic) this works
+            ret_val = [model(row=row) for row in rows]
+
+        Not sure why!  But only call this with a generic dict based model
         
         >>> ocd = opasCentralDB()
         >>> records = ocd.get_select_as_list_of_models(sqlSelect="SELECT * from vw_reports_session_activity;", model=models.ReportListItem)
@@ -1065,15 +1075,40 @@ class opasCentralDB(object):
             if warnings:
                 for warning in warnings:
                     logger.warning(warning)
-                    
-            ret_val = [model(row=row) for row in curs.fetchall()]
-            #ret_val = [model(row=row) for row in rows]
-            
+            rows = curs.fetchall()
+            if model_type == "Generic":
+                ret_val = [model(row=row) for row in rows]
+            else: # structured
+                ret_val = [model(**row) for row in rows]
+                
         self.close_connection(caller_name=fname) # make sure connection is closed
 
         # return session model object
         return ret_val # None or Session Object
         
+    #------------------------------------------------------------------------------------------------------
+    def get_references_from_biblioxml_table(self, article_id, ref_local_id=None, verbose=None):
+        """
+        Return a list of references from the api_biblioxml table in opascentral
+        """
+        ret_val = None
+
+        if ref_local_id is not None:
+            local_id_clause = f"AND bib_local_id RLIKE '{ref_local_id}'"
+        else:
+            local_id_clause = ""
+            
+        select = f"""SELECT * from api_biblioxml
+                     WHERE art_id = '{article_id}' {local_id_clause}
+                     """
+    
+        results = self.get_select_as_list_of_models(select, model=models.Biblioxml)
+        
+        ret_val = results
+    
+        return ret_val  # return True for success
+
+    #------------------------------------------------------------------------------------------------------
     def get_select_as_list(self, sqlSelect: str):
         """
         Generic retrieval from database
@@ -1121,8 +1156,8 @@ class opasCentralDB(object):
                 with closing(self.db.cursor(buffered=True, dictionary=True)) as cursor:
                     # now insert the session
                     sql = f"SELECT * FROM api_sessions WHERE session_id = '{session_id}'";
-                    res = cursor.execute(sql)
-                    if res == 1:
+                    cursor.execute(sql)
+                    if cursor.rowcount:
                         session = cursor.fetchone()
                         try:
                             if session["username"] is None:
@@ -1267,6 +1302,11 @@ class opasCentralDB(object):
                 setClause += ", "
             setClause += f" user_type = '{usertype}'"
             added += 1
+            if usertype == opasConfig.ADMIN_TYPE and authenticated:
+                if added > 0:
+                    setClause += ", "
+                setClause += f" admin = 1"
+                added += 1
         if hassubscription is not None:
             if added > 0:
                 setClause += ", "
@@ -1315,7 +1355,7 @@ class opasCentralDB(object):
                                  {}
                                  WHERE session_id = %s
                               """.format(setClause)
-                        cursor.execute(sql, (session_id))
+                        cursor.execute(sql, (session_id, )) # was getting error in debug without ',' as routine saw string rather than list/tuple.
                         warnings = cursor.fetchwarnings()
                         if warnings:
                             for warning in warnings:
@@ -1328,7 +1368,11 @@ class opasCentralDB(object):
                         ret_val = False 
                     except mysql.connector.Error as error:
                         logger.error(code, message)
-                        ret_val = False 
+                        ret_val = False
+                    except Exception as e:
+                        message = f"General exception saving to database: {e}"
+                        logger.error(message)
+                        ret_val = False
                     else:
                         self.db.commit()
 
@@ -1390,8 +1434,8 @@ class opasCentralDB(object):
             logger.error(f"No session_info specified")
         else:
             if session_info.session_start is None:
-                session_info.session_start = datetime.utcfromtimestamp(time.time()).strftime(opasConfig.TIME_FORMAT_STR)
-                print (session_info.session_start)
+                session_info.session_start = datetime.utcfromtimestamp(time.time()).strftime(opasConfig.TIME_FORMAT_STR_DB)
+                if opasConfig.DEBUG_TRACE: print (f"{fname} set session Start: {session_info.session_start}")
             if not self.open_connection(caller_name=fname): # make sure connection opens
                 logger.error(f"Could not open database")
             else: # its open
@@ -1590,6 +1634,7 @@ class opasCentralDB(object):
                                                        api_endpoint_method, 
                                                        status_message
                                                       ))
+                        ret_val = cursor.rowcount
                         self.db.commit()
                     except mysql.connector.IntegrityError as e:
                         logger.error(f"Integrity Error {e} logging endpoint {api_endpoint_id} for session {session_id}.")
@@ -1665,7 +1710,11 @@ class opasCentralDB(object):
             
             try:
                 if src_code is not None and src_code != "*":
-                    src_code_clause = f"AND basecode = '{src_code}'"
+                    if "*" in src_code:
+                        src_code_clause = f"AND basecode rlike '^{src_code}$'"
+                    else:
+                        src_code_clause = f"AND basecode = '{src_code}'"
+                        
                 if src_type is not None and src_type != "*":
                     # already normalized, don't do it again
                     # src_type = normalize_val(src_type, opasConfig.VALS_PRODUCT_TYPES)
@@ -1677,7 +1726,7 @@ class opasCentralDB(object):
 
                 # 2020-11-13 - changed ref from vw_api_productbase to vw_api_productbase_instance_counts to include instance counts
                 sqlAll = f"""FROM vw_api_productbase_instance_counts
-                             WHERE active = 1
+                             WHERE active >= 1
                                 AND product_type <> 'bookseriessub'
                                 {src_code_clause}
                                 {prod_type_clause}
@@ -1704,7 +1753,7 @@ class opasCentralDB(object):
                             except:
                                 total_count  = 0
             except Exception as e:
-                msg = f"Error querying vw_api_productbase: {e}"
+                msg = f"Error querying vw_api_productbase_instance_counts: {e}"
                 logger.error(msg)
                 # print (msg)
             
@@ -1945,33 +1994,60 @@ class opasCentralDB(object):
             logger.error(msg)
             ret_val = httpCodes.HTTP_400_BAD_REQUEST
         else:
-            with closing(self.db.cursor(buffered=True, dictionary=True)) as curs:
-                ret_val_list = []
-                for client_config_name in client_config_name_list:
-                    sql = f"""SELECT *
-                              FROM api_client_configs
-                              WHERE client_id = {client_id_int}
-                              AND config_name = '{client_config_name}'"""
-        
-                    curs.execute(sql)
-                    row_count = curs.rowcount
-                    if row_count >= 1:
-                        clientConfig = curs.fetchone()
-                        ret_val = modelsOpasCentralPydantic.ClientConfigs(**clientConfig)
+            if self.db is not None:
+                with closing(self.db.cursor(buffered=True, dictionary=True)) as curs:
+                    ret_val_list = []
+                    for client_config_name in client_config_name_list:
+                        sql = f"""SELECT *
+                                  FROM api_client_configs
+                                  WHERE client_id = {client_id_int}
+                                  AND config_name = '{client_config_name}'"""
+            
+                        try:
+                            curs.execute(sql)
+                            warnings = curs.fetchwarnings()
+                            if warnings:
+                                for warning in warnings:
+                                    logger.warning(warning)
+                            
+                            if curs.rowcount >= 1:
+                                clientConfig = curs.fetchone()
+                                ret_val = models.ClientConfigs(**clientConfig)
+                            else:
+                                ret_val = None
+    
+                            try:
+                                if ret_val is not None:
+                                    ret_val_list.append(models.ClientConfigItem(configName = ret_val.config_name,
+                                                                                configSettings=json.loads(ret_val.config_settings),
+                                                                                api_client_id=ret_val.client_id, 
+                                                                                session_id=ret_val.session_id
+                                                                               )
+                                                       )
+                            except Exception as e:
+                                ret_val = None
+                                logger.error(f"Error converting config from database. Check json syntax in database {e}")
+                                
+                        except Exception as e:
+                            ret_val = None
+                            logger.error(f"Error getting config item from database {e}")
+                            
+                    if ret_val_list is not None:
+                        try:
+                            # convert to final return model, a list of ClientConfigItems
+                            ret_val = models.ClientConfigList(configList = ret_val_list)
+                            logger.debug("Config list returned.")
+                        except Exception as e:
+                            ret_val = None
+                            logger.error(f"Error converting list of config items from database. Check json syntax in database {e}")
+                    elif ret_val is not None:
+                        logger.debug("Config item returned.")
                     else:
-                        ret_val = None
+                        logger.error("No config returned.")
+            else:
+                logger.error(f"self.db connection is not set/missing. Can't get client config.")
                 
-                    if ret_val is not None:
-                        ret_val_list.append(models.ClientConfigItem(configName = ret_val.config_name,
-                                                                    configSettings=json.loads(ret_val.config_settings),
-                                                                    api_client_id=ret_val.client_id, 
-                                                                    session_id=ret_val.session_id
-                                                                   )
-                                           )
-                if ret_val is not None:
-                    # convert to final return model, a list of ClientConfigItems
-                    ret_val = models.ClientConfigList(configList = ret_val_list)
-
+                
             self.close_connection(caller_name=fname) # make sure connection is closed
     
         return ret_val
@@ -2099,7 +2175,7 @@ class opasCentralDB(object):
     def do_action_query(self, querytxt, queryparams, contextStr=None):
     
         fname = "do_action_query"
-        ret_val = None
+        ret_val = False
         localDisconnectNeeded = False
         if self.connected != True:
             self.open_connection(caller_name=fname) # make sure connection is open
@@ -2107,10 +2183,9 @@ class opasCentralDB(object):
             
         with closing(self.db.cursor(buffered=True, dictionary=True)) as dbc:
             try:
-                ret_val = dbc.execute(querytxt, queryparams)
+                dbc.execute(querytxt, queryparams)
             except mysql.connector.DataError as e:
                 logger.error(f"DBError: Art: {contextStr}. DB Data Error {e} ({querytxt})")
-                ret_val = None
                 # raise self.db.DataError(e)
             except mysql.connector.OperationalError as e:
                 logger.error(f"DBError: Art: {contextStr}. DB Operation Error {e} ({querytxt})")
@@ -2121,7 +2196,6 @@ class opasCentralDB(object):
             except mysql.connector.InternalError as e:
                 logger.error(f"DBError: Art: {contextStr}. DB Internal Error {e} ({querytxt})")
                 raise mysql.connector.InternalError(e)
-                # raise RuntimeError, gErrorLog.logSevere("Art: %s.  DB Intr. Error (%s)" % (contextStr, querytxt))
             except mysql.connector.ProgrammingError as e:
                 logger.error(f"DBError: DB Programming Error {e} ({querytxt})")
                 raise mysql.connector.ProgrammingError(e)
@@ -2133,6 +2207,7 @@ class opasCentralDB(object):
                 raise Exception(e)
             else:
                 self.db.commit()
+                ret_val = True
         
         if localDisconnectNeeded == True:
             # if so, commit any changesand close.  Otherwise, it's up to caller.
@@ -2203,8 +2278,6 @@ if __name__ == "__main__":
     logger.addHandler(ch)
     
     ocd = opasCentralDB()
-    sourceDB = SourceInfoDB()
-    code = sourceDB.lookupSourceCode("ANIJP-EL")
     # check this user permissions 
     #ocd.get_dict_of_products()
     #ocd.get_subscription_access("IJP", 421)

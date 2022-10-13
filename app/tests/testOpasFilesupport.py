@@ -24,7 +24,7 @@ class TestOpasFileSupport(unittest.TestCase):
         fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY,
                                             secret=localsecrets.S3_SECRET,
                                             root=localsecrets.XML_ORIGINALS_PATH)
-        filename = "ADPSA.001.0007A(bEXP_ARCH1).XML"
+        filename = "ADPSA.001.0007A(bEXP_ARCH1).xml"
         ret_val = fs.find(filename)
         print (ret_val)
         try:
@@ -40,7 +40,7 @@ class TestOpasFileSupport(unittest.TestCase):
         fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY,
                                             secret=localsecrets.S3_SECRET,
                                             root=localsecrets.XML_ORIGINALS_PATH)
-        filename = "ADPSA.001.0007A(bEXP_ARCH1).XML"
+        filename = "ADPSA.001.0007A(bEXP_ARCH1).xml"
         ret_val = fs.find(filename)
         print (ret_val)
         try:
@@ -55,10 +55,10 @@ class TestOpasFileSupport(unittest.TestCase):
                                             secret=localsecrets.S3_SECRET,
                                             root=localsecrets.XML_ORIGINALS_PATH)
 
-        filename="PEPTOPAUTHVS.001.0021A(bEXP_ARCH1).XML"
+        filename="PEPTOPAUTHVS.001.0021A(bEXP_ARCH1).xml"
         filespec = fs.find(filename)
         ret = fs.fileinfo(filespec=filespec)
-        assert (ret.filesize >= 16719)
+        assert (ret.filesize >= 15000)
 
     def test_0_get_filespec(self):
         # get from s3 if localsecrets set to use it
@@ -68,14 +68,14 @@ class TestOpasFileSupport(unittest.TestCase):
                                                 secret=localsecrets.S3_SECRET,
                                                 root=localsecrets.IMAGE_SOURCE_PATH)
             ret = fs.fullfilespec(filespec="IJAPS.016.0181A.FIG002.jpg", path=localsecrets.IMAGE_SOURCE_PATH)
-            assert(ret =='pep-web-files/doc/g/IJAPS.016.0181A.FIG002.jpg')
+            assert(ret ==f'{localsecrets.IMAGE_SOURCE_PATH}/IJAPS.016.0181A.FIG002.jpg')
         else:
             print ("Local FS tests")
             fs = opasFileSupport.FlexFileSystem(root=localsecrets.XML_ORIGINALS_PATH)
             # >>> fs.fullfilespec(filespec="pep.css", path="embedded-graphics")
             'pep-graphics/embedded-graphics/pep.css'
             ret = fs.fullfilespec(filespec="IJAPS.016.0181A.FIG002.jpg", path=localsecrets.IMAGE_SOURCE_PATH)
-            assert(ret =='X:\\_PEPA1\\g\\IJAPS.016.0181A.FIG002.jpg')
+            assert(ret == 'X:\\AWS_S3\\AWS PEP-Web-Live-Data\\graphics\\IJAPS.016.0181A.FIG002.jpg')
    
     def test_2_exists(self):
         fs = opasFileSupport.FlexFileSystem(root=localsecrets.IMAGE_SOURCE_PATH)
@@ -131,8 +131,8 @@ class TestOpasFileSupport(unittest.TestCase):
         
         """
         fs = opasFileSupport.FlexFileSystem(root=localsecrets.XML_ORIGINALS_PATH) # must be for the image if not the root
-        filespec = "ADPSA.001.0007A(bEXP_ARCH1).XML"
-        content = fs.get_file_contents(filespec=filespec, path=localsecrets.XML_ORIGINALS_PATH)
+        filespec = "ADPSA.001.0007A(bEXP_ARCH1).xml"
+        content, fileinfo = fs.get_file_contents(filespec=filespec, path=localsecrets.XML_ORIGINALS_PATH)
         content_len = len(content)
         print (content_len)
         assert(content_len >= 691)

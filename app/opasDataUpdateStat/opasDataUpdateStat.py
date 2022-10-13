@@ -5,7 +5,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2021.1121/v1.1.6"
+__version__     = "2022.0618/v1.1.8"
 __status__      = "Beta"
 
 programNameShort = "opasDataUpdateStat"
@@ -39,7 +39,9 @@ print(
 )
 
 import sys
+sys.path.append('../libs')
 sys.path.append('../config')
+sys.path.append('../libs/configLib')
 
 UPDATE_AFTER = 2500
 
@@ -49,8 +51,10 @@ import pymysql
 import pysolr
 import localsecrets
 from pydantic import BaseModel
-
 from datetime import datetime
+
+from opasArticleIDSupport import ArticleID
+
 # logFilename = programNameShort + "_" + datetime.today().strftime('%Y-%m-%d') + ".log"
 FORMAT = '%(asctime)s %(name)s %(funcName)s %(lineno)d - %(levelname)s %(message)s'
 logging.basicConfig(format=FORMAT, level=logging.WARNING, datefmt='%Y-%m-%d %H:%M:%S')
@@ -80,7 +84,6 @@ class MostCitedArticles(BaseModel):
     A view with rxCode counts derived from the fullbiblioxml table and the articles table
       for citing sources in one of the date ranges.
       
-    Definition copied to keep this independent, from GitHub\openpubarchive\app\libs\modelsOpasCentralPydantic.py   
     """
     document_id: str = None
     countAll: int = 0
@@ -330,15 +333,25 @@ def update_solr_stat_data(solrcon, all_records:bool=False):
             print (f"...{remaining_count} records to go")
             
         # set only includes those with the desired update value > 0 
-        #   (see RDS vw_stat_to_update_solr_docviews to change criteria)
         doc_id = key
         found = False
         try:
             results = solrcon.search(q = f"art_id:{doc_id}")
             if results.raw_response["response"]["numFound"] > 0:
                 found = True
+            else: # TryAlternateID:
+                parsed_id = ArticleID(articleID=doc_id)
+                results = solrcon.search(q = f"art_id:{parsed_id.altStandard}")
+                if results.raw_response["response"]["numFound"] == 1:  # only accept alternative if there's only one match (otherwise, not known which)
+                    # odds are good this is what was cited.
+                    found = True
+                    logger.info(f"Document ID {doc_id} not in Solr.  The correct ID seems to be {parsed_id.altStandard}. Using that instead!")
+                    doc_id = parsed_id.altStandard
+                else:
+                    logger.warning(f"Document ID {doc_id} not in Solr.  No alternative ID found.")
+                
         except Exception as e:
-            logger.warning(f"Document {doc_id} not in Solr...skipping")
+            logger.error(f"Issue finding Document ID {doc_id} in Solr...Exception: {e}")
             skipped_as_missing += 1
         else:
             if found:
@@ -410,6 +423,12 @@ def update_solr_stat_data(solrcon, all_records:bool=False):
                         logger.error(errStr)
                     else:
                         update_count += 1
+            else:
+                errStr = (f"Document {doc_id} not in Solr...skipping")
+                #print (errStr)
+                logger.warning(errStr)
+                if ".jpg" in errStr:
+                    print (f"Todo: eliminate these jpgs from the table driving the stat {doc_id}")
 
     #  final commit
     try:

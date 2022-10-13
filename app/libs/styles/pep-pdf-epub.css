@@ -1,7 +1,12 @@
+body, p, p2 {   
+              font-family: 'Noto Sans'; 
+            }
+
 body{
-    margin-left: 8%;
-    margin-right: 8%;
+    margin-left: 5%;
+    margin-right: 5%;
     color: black;
+    font-size:10pt;
     }
 
 .pubinfotop {
@@ -18,19 +23,25 @@ a.id {
   font-weight: bolder;
 }
 
-.title_author {
-  font-size: x-large;
+.title {
+  font-size: xx-large;
   text-align: center;
   font-weight: bold;
   color: midnightblue;
 }
 
-p.title {
-  font-size: xx-large;
+.title_author {
+  font-size: large;
+  text-align: center;
+  font-weight: bold;
+  color: midnightblue;
+}
+
+p.title, binc.title {
+  font-size: large;
   font-weight: bold;
   text-align: center;
   display: block;
-  font-weight: bold; 
   text-decoration: none;
 }
 
@@ -41,11 +52,11 @@ p.title {
 }
 
 p {
-  font-size: large;
+  font-size: medium;
 }
 
 p.pagenumber {
-  font-size: medium;
+  font-size: small;
   text-align: center;
   color: midnightblue;
 }
@@ -65,9 +76,9 @@ p.figure {
 }
 
 .poem, .quote, .quote > p, .dream, .note, .dialog, .panel, .summaries .abstract {
-  text-indent: 22px ;
+  text-indent: 22px;
   color: midnightblue;
-  font-size: small;
+  font-size: medium;
   font-style: italic;
   margin-right: +.25in;
   margin-left: +.25in;
@@ -108,42 +119,37 @@ h1, h2, h3, h4, h5, h6, figx {
 
 h1 {
   font-weight: bolder;
-  font-size: xx-large;
+  font-size: large;
 }
 
 h2 {
   font-weight: bolder;
-  font-size: x-large;
+  font-size: medium;
 }
 
 h3 {
   font-weight: bolder;
-  font-size: large;
+  font-size: medium;
 }
 
 h4 {
   font-weight: bolder;
-  font-size: medium;
+  font-size: small;
 }
 
 h5 {
   font-weight: bold;
-  font-size: medium;
+  font-size: small;
 }
 
 h6 {
   font-weight: bold;
-  font-size: small;
+  font-size: smaller;
 }
 
-span.pagebreak {
-  display:block;
-  text-align: center;
-}
 
 span.bibauthor {
   font-weight: bold;    
-  font-style: italic;
   color: midnightblue;
 }
 
@@ -162,33 +168,21 @@ span.bibyear {
     color: midnightblue;
 }
 
-span.bibyear:before {
-    font-style: italic;
-    content: " (";    
-}
-
-span.bibyear:after {
-    font-style: italic;
-    content: ") ";    
-}
-
-span.footer > p:first-child, span.ftr > p:first-child {
-    display: block;
+span.footer > p:first-of-type:first-line, span.ftr > p:first-of-type:first-line {
     text-decoration-line: overline;
-    margin-bottom:-.15in;
+    display: block;
+    /*margin-bottom:-.15in;*/
 }
 
 span.footer > p, span.ftr > p, .ftn {
     display: block;
-    font-weight:lighter;
-    color: black;
+    font-weight:350;
     text-align:left;  
     font-size: medium;
     font-style: italic;
     margin-left: +.25in;
     text-indent: -.25in;
-    font-weight: lighter;
-    vertical-align: super;
+    /*vertical-align: super;*/
     color: #4b4e54;    
 }
 
@@ -197,8 +191,8 @@ span.footer > p, span.ftr > p, .ftn {
   font-style: italic;
   margin-left: +.25in;
   text-indent: -.25in;
-  font-weight: lighter;
-  vertical-align: super;
+  font-weight: 350;
+  /*vertical-align: super;*/
   color: #4b4e54;    
 }
 
@@ -210,3 +204,50 @@ span.footer > p, span.ftr > p, .ftn {
   display: none;
 }
 
+.glosstip {
+  color: midnightblue;    
+}
+
+span.pagebreak {
+  display:block;
+  text-align: center;
+}
+
+.pagenumber {
+  margin-bottom: 12pt;  
+  display: block;
+  text-align: center;
+  font-style: italic;
+}
+
+/*.fa-external-link:before {*/
+  /*font-family: 'ForkAwesome'; */
+  /*content: "\A\2003\f08e"; */
+/*}*/
+
+list {
+  list-style-type: decimal;
+}
+
+ul {
+    margin-left: 2em;
+}
+
+ol {
+    margin-left: 2em;
+}
+
+ol ol {
+    margin-left: 2em;
+}
+
+li {
+  display: list-item;
+  list-style-type: decimal;
+  font-style: italic;
+}
+
+li::before {
+  content: attr(label) " ";
+  font-weight: bold;
+}

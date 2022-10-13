@@ -100,5 +100,18 @@ class TestDocumentImageFetch(unittest.TestCase):
         assert (m is not None)
         # print (m.group())
 
+    def test_4_Made_Up_Image_ID(self):
+        # someone is sending code like this...this test is used to check the logging of client id and session id for those clowns.
+        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Image/SE.019.0074.FIG001/?download=0')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == False)
+        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Image/SE.019.0074.FIG001/?download=1')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == False)
+        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Image/SE.019.0074.FIG001/?download=2')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == False)
+
+
 if __name__ == '__main__':
     unittest.main()    

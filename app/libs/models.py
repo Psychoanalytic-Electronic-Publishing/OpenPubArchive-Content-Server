@@ -24,15 +24,15 @@ __status__      = "Development"
 import sys
 sys.path.append('../libs')
 
-import re
-import os.path
+# import re
+# import os.path
 
 import time
 import datetime
 from datetime import datetime
 from typing import List, Generic, TypeVar, Optional
 import opasConfig
-from pysolr import Results
+# from pysolr import Results
 
 from enum import Enum
 
@@ -43,7 +43,7 @@ class ExtendedEnum(Enum):
     
 from pydantic import BaseModel, Field # removed Field, causing an error on AWS
 # from pydantic.types import EmailStr
-from modelsOpasCentralPydantic import User
+# from modelsOpasCentralPydantic import User
 #from opasCentralDBLib import opasCentralDB
 
 #-------------------------------------------------------
@@ -80,6 +80,7 @@ class ReportTypeEnum(str, Enum):
     userSearches = "User-Searches"
     documentViews = "Document-View-Stat"
     documentViewLog = "Document-View-Log"
+    characterCounts = "Character Count Report"
     #opasLogs = "Opas-Error-Logs"
     
 class TermTypeIDEnum(str, ExtendedEnum):
@@ -104,6 +105,35 @@ class TimePeriod(Enum):
     ten = '10'
     twenty = '20'
     alltime = 'all'
+
+#--------------------------------------------------------------------
+# Biblio records, moved from modelsOpasCentralPydantic
+#--------------------------------------------------------------------
+class BiblioxmlGeneric(BaseModel):
+    row: dict = Field({}, title="Fully flexible content row from Database")
+
+class Biblioxml(BaseModel):
+    art_id: str = Field(None)
+    bib_local_id: str = Field(None)
+    art_year: int = Field(0)
+    bib_rx: str = Field(None)
+    bib_rxcf: str = Field(None)
+    bib_sourcecode: str = None
+    bib_authors: str = Field(None)
+    bib_articletitle: str = Field(None)
+    title: str = Field(None)
+    full_ref_text: str = Field(None)
+    bib_sourcetype: str = Field(None)
+    bib_sourcetitle: str = Field(None)
+    bib_authors_xml: str = Field(None)
+    full_ref_xml: str = Field(None)
+    bib_pgrg: str = Field(None)
+    doi: str = Field(None)
+    bib_year: str = Field(None)
+    bib_year_int: int = Field(0)
+    bib_volume: str = Field(None)
+    bib_publisher: str = Field(None)
+    last_update: datetime = Field(None)
 
 #-------------------------------------------------------
 # Error Return classes (Can also return "No Error", 200 httpcode)
@@ -223,6 +253,15 @@ class AuthorIndexStruct(BaseModel):
 
 class AuthorIndex(BaseModel):
     authorIndex: AuthorIndexStruct
+
+#-------------------------------------------------------
+class ClientConfigs(BaseModel):
+    config_id: int = 0
+    client_id: int = 0
+    config_name: str = None
+    config_settings: str = None
+    session_id: str
+    last_update: datetime = None
     
 #-------------------------------------------------------
 class ClientConfigItem(BaseModel):
@@ -249,6 +288,7 @@ class DocumentListItem(BaseModel):
     docType:  str = Field(None, title="Document Type (Classification)", description="e.g., ART(article), ABS(abstract), ANN(announcement), COM(commentary), ERR(errata), PRO(profile), (REP)report, or (REV)review")
     documentRef: str = Field(None, title="Document Ref (bibliographic)", description="The bibliographic form presentation of the information about the document, as in the 'citeas' area or reference sections (text-only).")
     documentRefHTML: str = Field(None, title="Same as documentRef but in HTML.")
+    documentRefXML: str = Field(None, title="Same as documentRef but in XML.")  # currently same as documentRefHTML but for semantic clarity listed
     documentMetaXML: str = Field(None, title="Metadata content in XML, , e.g., element meta")
     documentInfoXML: str = Field(None, title="The document meta information in XML, e.g., element artinfo")
     title: str = Field(None, title="Document Title")
@@ -259,6 +299,7 @@ class DocumentListItem(BaseModel):
     relatedrx: str = Field(None, title="Closely Related Documents (documentID)", description="Document idref (documentID) associating all closely related documents to this one, e.g., this is a commentary on...")
     PEPCode: str = Field(None, title="Source Acronym", description="Acronym-type code assigned to the document source e.g., CPS, IJP, ANIJP-EL, ZBK. (The first part of the document ID.)")
     sourceTitle: str = Field(None, title="Source Title", description="The name of the document's source (title) in abbreviated, bibliographic format")
+    sourceTitleAbbr: str = Field(None, title="Source Title Abbrev", description="The name of the document's source (title) in abbreviated, bibliographic format")
     sourceType:  str = Field(None, title="Source Type", description="Journal, Book, Videostream")
     kwicList: list = Field(None, title="Key Words in Context", description="The matched terms in the matched document context, set by server config DEFAULT_KWIC_CONTENT_LENGTH ") # a real list, seems better long term
     kwic: str = Field(None, title="Key Words in Context", description="KWIC as text, concatenated, not a list -- the way in v1 (May be deprecated later") # 
@@ -272,6 +313,8 @@ class DocumentListItem(BaseModel):
     issueSeqNbr: str = Field(None, title="Serial Issue Sequence Number (continuous count)") 
     issueTitle: str = Field(None, title="Serial Issue Title", description="Issues may have titles, e.g., special topic")
     newSectionName: str = Field(None, title="Name of Serial Section Starting", description="The name of the section of the issue, appears for the first article of a section")
+    currSectionName: str = Field(None, title="Current Section Name", description="The name of the section of the issue this article is in")
+    #instSectionName: str = Field(None, title="Name of Section from original instance", description="The name of the section of the issue, as represented in each article instance (even repetitively)")
     pgCount: str = Field(None, title="Page Count", description="The number of pages in the document")
     pgRg: str = Field(None, title="Page Range as Published", description="The published start and end pages of the document, separated by a dash")
     pgStart: str = Field(None, title="Starting Page Number as Published", description="The published start page number of the document")
@@ -468,7 +511,7 @@ class SessionInfo(BaseModel):
     user_id: int = Field(opasConfig.USER_NOT_LOGGED_IN_ID, title="User ID (numeric).  0 for unknown user.  Corresponds to the user table records")
     username: str = Field(opasConfig.USER_NOT_LOGGED_IN_NAME, title="Registered user name, for convenience here")
     user_type: str = Field("Unknown", title="User type, e.g., Admin or Individual")
-    is_valid_login: bool = Field(False, title="")
+    is_valid_login: bool = Field(False, title="From PaDS, is valid login")
     has_subscription: bool = Field(False, title="")
     is_valid_username: bool = Field(False, title="")
     authenticated: bool = Field(False, title="True if the user has been authenticated.")
@@ -514,6 +557,7 @@ class ServerStatusItem(BaseModel):
     dataSource: str = Field(None, title="Version of the API server software")
     timeStamp: str = Field(None, title="Current time")
     serverContent: ServerStatusContent = Field(None, title="Database Content (Counts)")
+    session_id: str = Field(None, title="Session ID")
     # admin only
     user_count:  int = Field(0, title="Number of users online")
     user_ip: str = Field(None, title="Requestor's ip")
@@ -558,7 +602,6 @@ class JournalInfoList(BaseModel):
     sourceInfo: JournalInfoStruct
 
 #-------------------------------------------------------
-
 class ReportListItem(BaseModel):
     row: dict = Field({}, title="Fully flexible content report row from Database")
     
@@ -568,11 +611,34 @@ class ReportStruct(BaseModel):
 
 class Report(BaseModel):
     report: ReportStruct
+
+# Tried this method when the normal mapping method was yielding {} in each row.  
+# started yielding empty rows, but worked before: ret_val = [model(**row) for row in curs.fetchall()]
+# explicit method worked: ret_val = [model(row=row) for row in curs.fetchall()] 
+# 
+# This workaround worked but with many complications that kept escalating.
+#import copy
+#from copy import deepcopy
+#from typing import Any, Dict
+
+#class ReportListItem_Alternate_Method(BaseModel):
+    #__root__: Dict[Any, Any]
+
+    #def __iter__(self):
+        #return iter(self.__root__)
+
+    #def __getattr__(self, item):
+        #return self.__root__[item]
     
-    #responseInfo: ResponseInfo
-    #responseSet: List[VolumeListItem] = []   
-    #reportTitle: str = Field(None, title="")
-    #reportData: List[ReportRow] = [] # ReportListStruct
+    #def __deepcopy__(self, item):
+        #dpcpy = self.__class__()
+        #item[id(self)] = dpcpy
+        #for attr in dir(self):
+            #if not attr.startswith('_'):
+                #value = getattr(self, attr)
+                #setattr(dpcpy, attr, copy.deepcopy(value, item))
+        #return dpcpy        
+ 
 
 #-------------------------------------------------------
 # This is the model (SolrQuerySpec) 
@@ -722,6 +788,7 @@ class SourceInfoListItem(BaseModel):
     bookCode: str = Field(None, title="Like PEPCode (srcCode) but specialized for books where many books fall under the same src_code")
     documentID: str = Field(None, title="OPAS ID for this document")
     bannerURL: str = Field(None, title="Graphical banner/logo for this source (URL)")
+    publisher: str = Field(None, title="Publisher name")
     displayTitle: str = Field(None, title="Reference format for this source")
     srcTitle: str = Field(None, title="Title of this source (from V1. Deprecated)")
     title: str = Field(None, title="Title of this source")

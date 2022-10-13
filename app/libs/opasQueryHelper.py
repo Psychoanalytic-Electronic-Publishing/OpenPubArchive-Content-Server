@@ -19,14 +19,15 @@ __license__     = "Apache 2.0"
 __version__     = "2021.1228.1"
 __status__      = "Development"
 
+import sys
+sys.path.append("..") # Adds higher directory to python modules path.
+
 import re
 import logging
 logger = logging.getLogger(__name__)
 #import time
 #from datetime import datetime
 
-import sys
-sys.path.append('./solrpy')
 # import solrpy as solr
 #from xml.sax import SAXParseException
 import lxml
@@ -44,7 +45,10 @@ import models
 import opasCentralDBLib
 import schemaMap
 import opasGenSupportLib as opasgenlib
+
 import opasXMLHelper as opasxmllib
+from opasArticleIDSupport import parse_issue_code, parse_volume_code
+   
 # import opasDocPermissions as opasDocPerm
 
 count_anchors = 0
@@ -52,7 +56,6 @@ count_anchors = 0
 import smartsearch
 import smartsearchLib
 
-sourceDB = opasCentralDBLib.SourceInfoDB()
 ocd = opasCentralDBLib.opasCentralDB()
 pat_prefix_amps = re.compile("^\s*&& ")
 
@@ -1189,13 +1192,17 @@ def parse_search_query_parameters(search=None,             # url based parameter
 
                 search_type = search_dict.get(opasConfig.KEY_SEARCH_TYPE)
                 if search_type == opasConfig.SEARCH_TYPE_LITERAL:
-                    literal_str = re.sub("'", '"', search_dict.get(opasConfig.KEY_SEARCH_VALUE))
+                    literal_str = search_dict.get(opasConfig.KEY_SEARCH_VALUE)
+                    literal_str = opasgenlib.add_smart_quote_search(literal_str) # temp, until we load smartquotes only
                     search_q += f'&& {literal_str}'
                 elif search_type == opasConfig.SEARCH_TYPE_BOOLEAN:
                     boolean_str = search_dict.get(opasConfig.KEY_SEARCH_VALUE)
+                    boolean_str = opasgenlib.add_smart_quote_search(boolean_str) # temp, until we load smartquotes only 
                     search_q += f'&& {boolean_str}'
                 elif search_type == opasConfig.SEARCH_TYPE_PARAGRAPH:
-                    search_q += f'&& {search_dict.get(KEY_SEARCH_VALUE)}'
+                    para_str = search_dict.get(opasConfig.KEY_SEARCH_VALUE) 
+                    para_str = opasgenlib.add_smart_quote_search(para_str) # temp, until we load smartquotes only
+                    search_q += f'&& {para_str}'
                 elif search_type == opasConfig.SEARCH_TYPE_WORDSEARCH:
                     pass # nothing else to do here, but don't want to hit else in this case
                 else: # allow trapping during debug
@@ -1426,9 +1433,9 @@ def parse_search_query_parameters(search=None,             # url based parameter
     if opasgenlib.not_empty(vol):
         if re.search("[\&\|\,\]]|AND|OR", vol, flags=re.I) is None:
             # single vol specified, if it contains a suffix, parse apart
-            vol, implied_issue = opasConfig.parse_volume_code(vol)
+            vol, implied_issue = parse_volume_code(vol)
             if implied_issue is not None and implied_issue is not "*":
-                implied_issue = opasConfig.parse_issue_code(issue_code=implied_issue)
+                implied_issue = parse_issue_code(issue_code=implied_issue)
                 if opasgenlib.not_empty(issue) == False:
                     issue = implied_issue
                     implied_issue = None               
@@ -1442,7 +1449,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
         # issue is a number, so if a letter is supplied, convert to numeric
         if re.search("[\&\|\,\]]|AND|OR", issue, flags=re.I) is None:
             # single issue specified, if it's a code, make it a number
-            issue = opasConfig.parse_issue_code(issue_code=issue)
+            issue = parse_issue_code(issue_code=issue)
 
         if implied_issue is not None:
             issue = issue + " OR " + implied_issue
@@ -1649,6 +1656,13 @@ def parse_search_query_parameters(search=None,             # url based parameter
     if search_q == "*:*" and filter_q == "*:*":
         filter_q = "art_level:1"
 
+    # No - As is can cause problems for advanced searches like:
+    #  "{!parent which='art_level:1'} art_level:2 && ((parent_tag:(p_body || p_summaries || p_appxs) && para:(ego id superego)))"
+    # may not be needed, but sometimes this tricks Solr (2022-04-07). Note: we have already removed colons in the string when it's prefixed by a fieldname+:
+    #if smartsearchLib.quoted_str_has_colons(search_q):
+        ## remove colons
+        #search_q = search_q.replace(":", "")
+        
     if smartsearchLib.str_has_wildcards(search_q) or smartsearchLib.str_has_fuzzy_ops(search_q): # quoted_str_has_wildcards(search_q):
         complex_phrase = "{!complexphrase}"
         search_q = f"{complex_phrase}{search_q}"
@@ -1962,7 +1976,7 @@ def parse_to_query_spec(solr_query_spec: models.SolrQuerySpec = None,
     #return ret_val
 
 #-----------------------------------------------------------------------------
-def get_excerpt_from_search_result(result, documentListItem: models.DocumentListItem, ret_format="HTML", omit_abstract=False):
+def get_excerpt_from_search_result(result: dict, documentListItem: models.DocumentListItem, ret_format="HTML", omit_abstract=False):
     """
     pass in the result from a solr query and this retrieves the abstract/excerpt from the excerpt field
      which is stored based on the abstract or summary or the first page of the document.
@@ -1984,7 +1998,8 @@ def get_excerpt_from_search_result(result, documentListItem: models.DocumentList
         abstract = None
     else:
         if omit_abstract:
-            art_excerpt = ocd.get_user_message(msg_code=opasConfig.ACCESS_ABSTRACT_RESTRICTED_MESSAGE)
+            import msgdb
+            art_excerpt = msgdb.get_user_message(msg_code=opasConfig.ACCESS_ABSTRACT_RESTRICTED_MESSAGE)
         
         heading = opasxmllib.get_running_head(source_title=documentListItem.sourceTitle,
                                               pub_year=documentListItem.year,
@@ -2017,15 +2032,17 @@ def get_excerpt_from_search_result(result, documentListItem: models.DocumentList
             abstract = abs_xml
             
         else: # ret_format == "HTML":
-            abstract = opasxmllib.xml_str_to_html(abs_xml, document_id=documentListItem.documentID)
+            abstract = opasxmllib.xml_str_to_html(abs_xml, transformer_name=opasConfig.TRANSFORMER_XMLTOHTML, document_id=documentListItem.documentID) # transformer_name default used explicitly for code readability
 
     # return it in the abstract field for display
     documentListItem.abstract = abstract
+    #if opasConfig.PADS_INFO_TRACE:
+        #print (f"[Trace/Get Excerpt] {documentListItem.documentID}/{documentListItem.year} is classified as {documentListItem.accessClassification}")
 
     return documentListItem
 
 #-----------------------------------------------------------------------------
-def get_base_article_info_from_search_result(result, documentListItem: models.DocumentListItem, session_info=None):
+def get_base_article_info_from_search_result(result: dict, documentListItem: models.DocumentListItem, session_info=None):
     
     if result is not None:
         try:
@@ -2035,6 +2052,9 @@ def get_base_article_info_from_search_result(result, documentListItem: models.Do
             if documentListItem.documentID is None and parent_tag is None:
                 logger.error(f"Database error, incomplete record, can't find ID: {result}")
             #else it's a child record
+            # NOTE: There were some of these in my local Solr
+            #    to find these in Solr 
+            #    q = -art_id:["" TO *] AND -parent_tag:["" TO *]
             
             documentListItem.PEPCode = result.get("art_sourcecode", None)
             # Note: This cautious (if not None) load method prevents data overwriting when not necessary
@@ -2076,6 +2096,7 @@ def get_base_article_info_from_search_result(result, documentListItem: models.Do
             if result.get("art_origrx", None): documentListItem.origrx = result.get("art_origrx", None)
             if result.get(opasConfig.RELATED_RX_FIELDNAME, None): documentListItem.relatedrx= result.get(opasConfig.RELATED_RX_FIELDNAME, None)
             documentListItem.sourceTitle = result.get("art_sourcetitlefull", None)
+            documentListItem.sourceTitleAbbr = result.get("art_sourcetitleabbr", None)
             documentListItem.sourceType = result.get("art_sourcetype", None)
             author_ids = result.get("art_authors", None)
             if author_ids is None:
@@ -2083,10 +2104,15 @@ def get_base_article_info_from_search_result(result, documentListItem: models.Do
                 documentListItem.authorMast = result.get("art_authors_mast", "")
             else:
                 documentListItem.authorMast = opasgenlib.derive_author_mast(author_ids)
-            if result.get("art_newsecnm", None): documentListItem.newSectionName=result.get("art_newsecnm", None)            
+            if result.get("art_newsecnm", None): documentListItem.newSectionName=result.get("art_newsecnm", None)
+            ## Usually we put the abbreviated title here, but that won't always work here.
+            # for reference, art_citeas_xml is both legal xml and html
+            # <p class="citeas"><span class="authors">%s</span> (<span class="year">%s</span>) <span class="title">%s</span>. 
+            #          <span class="sourcetitle">%s</span> <span class="vol">%s</span>:<span class="pgrg">%s</span></p>""" \
             citeas = result.get("art_citeas_xml", None)
             citeas = force_string_return_from_various_return_types(citeas)
             documentListItem.documentRef = opasxmllib.xml_elem_or_str_to_text(citeas, default_return="")
+            documentListItem.documentRefXML = citeas
             documentListItem.documentRefHTML = citeas
             
             # para level is ok, default to archive
@@ -2127,11 +2153,11 @@ def get_base_article_info_from_search_result(result, documentListItem: models.Do
             documentListItem.downloads = get_document_download_permission(documentInfoXML=documentListItem.documentInfoXML)
             if documentListItem.pgCount is not None:
                 if documentListItem.downloads == True: # this disables downloading and printing per the client if the condition below is met, even though downloads=True in the XML
-                    if documentListItem.pgCount >= opasConfig.DOWNLOADS_MAX_PAGE_COUNT and documentListItem.sourceType in opasConfig.DOWNLOADS_TYPES_RESTRICTED:
+                    if documentListItem.pgCount >= opasConfig.DOWNLOADS_LIMIT_PAGE_COUNT and documentListItem.sourceType in opasConfig.DOWNLOADS_LIMIT_TYPES_RESTRICTED:
                         documentListItem.downloads = False
                 else: # DT said "exceptions"...this overrides the downloads=False I set in all the book instances, if they meet the exception conditons 
                     # Allow DOWNLOADS_TYPES_OVERRIDDEN with fewer than DOWNLOADS_MAX_PAGE_COUNT pages to be downloaded, even if marked downloads==False
-                    if documentListItem.pgCount < opasConfig.DOWNLOADS_MAX_PAGE_COUNT and documentListItem.sourceType in opasConfig.DOWNLOADS_TYPES_OVERRIDDEN:
+                    if documentListItem.pgCount < opasConfig.DOWNLOADS_LIMIT_PAGE_COUNT and documentListItem.sourceType in opasConfig.DOWNLOADS_LIMIT_TYPES_OVERRIDDEN:
                         documentListItem.downloads = True
             else:
                 logger.info(f"{documentListItem.documentID} has no PageCount.")

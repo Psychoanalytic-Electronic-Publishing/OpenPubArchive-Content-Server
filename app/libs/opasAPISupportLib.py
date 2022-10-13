@@ -38,9 +38,9 @@ import http.cookies
 import re
 # import secrets
 # import socket, struct
-import urllib
-from urllib.parse import unquote
-from urllib.error import HTTPError
+# import urllib
+# from urllib.parse import unquote
+# from urllib.error import HTTPError
 # import json
 # from xml.sax import SAXParseException
 
@@ -50,19 +50,13 @@ from starlette.responses import Response
 # import starlette.status as httpCodes
 from starlette.exceptions import HTTPException
 
-#from starlette.status import HTTP_200_OK, \
-                                #HTTP_400_BAD_REQUEST, \
-                                #HTTP_401_UNAUTHORIZED, \
-                                #HTTP_403_FORBIDDEN, \
-                                #HTTP_404_NOT_FOUND, \
-                                #HTTP_500_INTERNAL_SERVER_ERROR, \
-                                #HTTP_503_SERVICE_UNAVAILABLE
 import time
 # used this name because later we needed to refer to the module, and datetime is also the name
 #  of the import from datetime.
 import datetime as dtime 
 # import datetime
 from datetime import datetime
+from datetime import datetime as dt # to avoid python's confusion with datetime.timedelta
 # from typing import Union, Optional, Tuple, List
 # from enum import Enum
 # import pymysql
@@ -72,18 +66,9 @@ import opasConfig
 import localsecrets
 
 import opasFileSupport
-# opas_fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET)
 
-# from localsecrets import BASEURL, SOLRURL, SOLRUSER, SOLRPW, DEBUG_DOCUMENTS, SOLR_DEBUG, CONFIG, COOKIE_DOMAIN
-# from localsecrets import TIME_FORMAT_STR # moved to opasConfig
-
-# from opasConfig import OPASSESSIONID
-# import configLib.opasCoreConfig as opasCoreConfig
-from configLib.opasCoreConfig import solr_docs2, solr_authors2, solr_gloss2
-
-from configLib.opasCoreConfig import EXTENDED_CORES
-
-# from fastapi import HTTPException
+# from configLib.opasCoreConfig import solr_docs2, solr_authors2, solr_gloss2
+# from configLib.opasCoreConfig import EXTENDED_CORES
 
 # Removed support for Py2, only Py3 supported now
 pyVer = 3
@@ -97,11 +82,11 @@ from pydantic import ValidationError
 # note: documents and documentList share the same internals, except the first level json label (documents vs documentlist)
 import models
 
-import opasXMLHelper as opasxmllib
+# import opasXMLHelper as opasxmllib
 import opasQueryHelper
 import opasGenSupportLib as opasgenlib
 import opasCentralDBLib
-import opasDocPermissions as opasDocPerm
+# import opasDocPermissions as opasDocPerm
 import opasPySolrLib
 from opasPySolrLib import search_text, search_text_qs
 
@@ -227,84 +212,6 @@ def get_max_age(keep_active=False):
     else:
         ret_val = opasConfig.COOKIE_MIN_KEEP_TIME     
     return ret_val  # maxAge
-
-
-#-----------------------------------------------------------------------------
-def get_session_info(request: Request,
-                     response: Response,
-                     session_id:str=None, 
-                     client_id=None,
-                     expires_time=None, 
-                     force_new_session=False,
-                     user=None,
-                     caller_name="get_session_info"):
-    """
-    Return a sessionInfo object with all of that info, and a database handle
-    Note that non-logged in sessions are not stored in the database
-
-    Get session info accesses the DB per the session_id to see if the session exists.
-
-     1) If no session_id is supplied (None), it returns a default SessionInfo object, user not logged in,
-        with a session id constant defined in opasConfig.NO_SESSION_ID.  These should
-        not be written to the DB api_session table (watch elsewhere).
-
-     2) If there is a session_id, it gets the session_info from the api_sessions table in the DB.
-        a) If it's not there (None):
-           i) It does a permission check on the user via the session_id
-           ii) It saves the session
-        b) If it's there already: (Repeatable, quickest path)
-           i) Done, returns it.  No update.  
-
-    New 2021-10-07 - Header will indicate (from client) if the user is logged in, saving queries to PaDS
-                     (Note The server still checks all permissions on full-text returns)
-
-    """
-    ocd = opasCentralDBLib.opasCentralDB()
-    if session_id is not None and session_id != opasConfig.NO_SESSION_ID:
-        user_logged_in_bool = opasDocPerm.user_logged_in_per_header(request, session_id=session_id, caller_name=caller_name)
-        ts = time.time()
-        session_info = ocd.get_session_from_db(session_id)
-        if session_info is None:
-            in_db = False
-            # logger.warning(f"Session info for {session_id} not found in db.  Getting from authserver (will save on server)")
-            # session info is saved in get_authserver_session_info if logged in  
-            session_info = opasDocPerm.get_authserver_session_info(session_id=session_id,
-                                                                   client_id=client_id,
-                                                                   request=request)
-            logger.debug(f"{caller_name}: Session {session_id} in DB:{in_db}. Authenticated:{session_info.authenticated}. URL: {request.url} PaDS SessionInfo: {session_info.pads_session_info}") # 09/13 removed  Server Session Info: {session_info} for brevity
-            # session info is saved in get_authserver_session_info   
-            # success, session_info = ocd.save_session(session_id, session_info)
-        else:
-            in_db = True
-            # if they weren't authenticated, but headers say they are, check again
-            if session_info.authenticated == False and user_logged_in_bool: # or session_info.session_expires_time < datetime.today(): # not logged in
-                # better check if now they are logged in
-                # session info is saved in get_authserver_session_info if logged in  
-                session_info = opasDocPerm.get_authserver_session_info(session_id=session_id,
-                                                                       client_id=client_id, 
-                                                                       request=request)
-                # session info is saved in get_authserver_session_info   
-                # success, session_info = ocd.save_session(session_id, session_info)
-                logger.debug(f"{caller_name}: Session {session_id} in DB:{in_db}. Authenticated:{session_info.authenticated}. URL: {request.url} PaDS SessionInfo: {session_info.pads_session_info}") # 09/14 removed  Server Session Info: {session_info} for brevity
-            else:
-                if session_info.authenticated == True and user_logged_in_bool == True:
-                    # note that user_logged_in_bool can be None
-                    ## important - because they "were" logged in, we will return a session timed out error
-                    ## so don't refresh it...server likes to know they were logged in
-                    remaining_time = session_info.session_expires_time - datetime.today()
-                    remaining_time_hrs = remaining_time.seconds // 3600
-                    logger.info(f"User was authenticated per server database record.  Session {session_id}. Expires: {remaining_time_hrs} hrs ({session_info.session_expires_time}). DB SessionInfo: {session_info}")
-                else:
-                    logger.debug(f"User is logged in (session {session_id}), but the client did not supply header info.")
-
-        if opasConfig.LOG_CALL_TIMING:
-            logger.debug(f"Get/Save session info response time: {time.time() - ts}")       
-        
-    else:
-        logger.warning("No SessionID; Default session info returned (Not Logged In)")
-        session_info = models.SessionInfo() # default session model
-
-    return ocd, session_info
 
 #-----------------------------------------------------------------------------
 def extract_abstract_from_html(html_str, xpath_to_extract=opasConfig.HTML_XPATH_ABSTRACT): # xpath example: "//div[@id='abs']"
@@ -568,7 +475,11 @@ def metadata_get_source_info(src_type=None, # opasConfig.VALS_PRODUCT_TYPES
         total_count, source_info_dblist, ret_val, return_status = opasPySolrLib.metadata_get_videos(src_type=src_type, pep_code=src_code, limit=limit, offset=offset, sort_field="title_str")
         count = len(source_info_dblist)
         if return_status != (200, "OK"):
-            raise Exception(return_status(1))
+            raise HTTPException(
+                status_code=return_status[0],
+                detail=return_status[1]
+            )                
+        
     else: # get from mySQL
         try:
             # note...this sorts by title as only current option
@@ -610,10 +521,10 @@ def metadata_get_source_info(src_type=None, # opasConfig.VALS_PRODUCT_TYPES
                 base_code = source.get("basecode")
                 documentID = source.get("documentID", source.get("articleID"))
                 title = source.get("title")
+                publisher_name = source.get("publisher", "Psychoanalytic Electronic Publishing")
+                biblio_abbrev = source.get("bib_abbrev", source.get("bibabbrev")) # videos and books
 
-                publisher = source.get("bib_abbrev", source.get("bibabbrev")) # videos and books
-
-                # for books
+                # for books (from productbase)
                 authors = source.get("author")
                 pub_year = source.get("pub_year") 
                 instance_count = source.get("instances", 1)
@@ -621,7 +532,7 @@ def metadata_get_source_info(src_type=None, # opasConfig.VALS_PRODUCT_TYPES
 
                 # src_type = source.get("product_type")
 
-                # for journals
+                # for journals (from productbase)
                 start_year = source.get("start_year")
                 end_year = source.get("end_year")
                 if start_year is None:
@@ -651,10 +562,11 @@ def metadata_get_source_info(src_type=None, # opasConfig.VALS_PRODUCT_TYPES
                             %                   (authors,
                                                  pub_year,
                                                  title,
-                                                 publisher
+                                                 biblio_abbrev
                                                  )
                 elif src_type == "videos":
                     art_citeas = source.get("art_citeas")
+                    base_code = source.get("src_code")
                 else:
                     art_citeas = title # journals just should show display title
     
@@ -672,10 +584,12 @@ def metadata_get_source_info(src_type=None, # opasConfig.VALS_PRODUCT_TYPES
                                                       bookCode = book_code,
                                                       abbrev = source.get("bibabbrev"),
                                                       bannerURL = f"{localsecrets.APIURL}/{opasConfig.IMAGES}/banner{source.get('basecode')}Logo.gif",
+                                                      publisher = publisher_name, 
                                                       language = source.get("language"),
                                                       ISSN = source.get("ISSN"),
                                                       ISBN10 = source.get("ISBN-10"),
                                                       ISBN13 = source.get("ISBN-13"),
+                                                      pub_year = pub_year, # added back 2022-01-22 (comes from productbase, for books -- not needed in solr)
                                                       yearFirst = start_year,
                                                       yearLast = end_year,
                                                       instanceCount = instance_count, 
@@ -910,7 +824,7 @@ def documents_get_document(document_id,
         filterQ = f"art_id:{document_id} && {solr_query_params.filterQ}"
         # solrParams = solr_query_params.dict() 
     else:
-        query = f"art_id:{document_id}"
+        query = f"art_id:{document_id}"  # TODO - Set this to accept with or without issue letter if one is supplied (seen in error logs - nrs)
         filterQ = None
         #solrMax = None
         # solrParams = None
@@ -986,9 +900,11 @@ def documents_get_document(document_id,
                         
                 document_list.documentList.responseSet[0].term = f'SearchHits({search_context})'
                 document_list.documentList.responseSet[0].termCount = 0
+            else:
+                logger.error(f"{caller_name}: No matches for: {solr_query_spec.solrQuery}") # added 2022-02-06 to help diagnose document not found errors in logs
 
     except Exception as e:
-        logger.error("get_document: No matches or another error: %s", e)
+        logger.error("get_document exception: No matches or another error: %s", e)
         # return None
     else:
         if page_limit is None:

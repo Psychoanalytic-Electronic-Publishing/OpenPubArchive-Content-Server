@@ -5,7 +5,6 @@ from optparse import OptionParser
 import logging
 import opasGenSupportLib as opasgenlib
 
-# from configLib.opasCoreConfig import solr_docs2, CORES # solr_authors2, solr_gloss2, solr_docs_term_search, solr_authors_term_search
 import opasConfig
 import smartsearchLib
 
@@ -14,6 +13,7 @@ logger = logging.getLogger(__name__)
 from opasSchemaInfoLib import SchemaInfo
 docschemainfo = SchemaInfo()
 import schemaMap
+from opasArticleIDSupport import ArticleID
 
 def smart_search(smart_search_text):
     """
@@ -106,29 +106,39 @@ def smart_search(smart_search_text):
     """
     # recognize Smart Search inputs
     ret_val = {}
+
+    for_words_only_remove_punct = '!"#$%&()+,-./;:<=>@[\\]^_`{|}~' # punctuation to be removed from words only searches - wild cards accepted
+    
     # get rid of leading spaces and zeros
     smart_search_text = smart_search_text.lstrip(" 0")
     # get rid of trailing spaces and zeros
     smart_search_text = smart_search_text.rstrip(" ")
     # get rid of smart quotes
     smart_search_text = re.sub("“|”", "'", smart_search_text)
-    # count words
-    # has_wildcards = len(re.findall(r'\*|(\S?\?+\S)', smart_search_text))
-    #if smart_search_includes_simple_wildcards:
-        #try:
-            #regc = re.compile(smart_search_text)
-            #smart_search_is_regex = None # we don't know
-        #except:
-            #smart_search_is_regex = False # we know it's not
+    # See if it has a field and then text with colon
+    m = re.match(smartsearchLib.rx_quoted_str_with_colon_and_coloned_field_prefix, smart_search_text)
+    if m:
+        # split in 2
+        fieldname = m.group("field")
+        quotedstr = m.group("qstr")
+        quotedstr = quotedstr.replace(":", "")
+        # remove the colons in the quote
+        smart_search_text = fieldname + quotedstr
     
+    if "TO" not in smart_search_text:
+        m = re.search("\[.*to.*\]", smart_search_text, re.IGNORECASE)
+        if m is None: # no Solr ranges
+            remove_characters = ("[", "]")
+            for character in remove_characters:
+                smart_search_text = smart_search_text.replace(character, "")            
     
-    if re.match("^[\"\'].*[\"\']$", smart_search_text):
+    if re.match(r"^([\"\'])(.*)\1$", smart_search_text):
         # literal string
         ret_val[opasConfig.KEY_SEARCH_SMARTSEARCH] = f"Matched articles for {opasConfig.SEARCH_TYPE_LITERAL}: ({smart_search_text})"
         ret_val[opasConfig.KEY_SEARCH_TYPE] = opasConfig.SEARCH_TYPE_LITERAL
-        ret_val[opasConfig.KEY_SEARCH_VALUE] = f"{smart_search_text}"
+        ret_val[opasConfig.KEY_SEARCH_VALUE] = smart_search_text
         
-    smart_article_id = opasConfig.ArticleID(articleID=smart_search_text)
+    smart_article_id = ArticleID(articleID=smart_search_text) # now from opasArticleIDSupport 2022-06-05
     if smart_article_id.isArticleID:
         # locator (articleID)
         if smartsearchLib.is_value_in_field(smart_article_id.standardized, opasConfig.SEARCH_FIELD_LOCATOR):
@@ -136,19 +146,7 @@ def smart_search(smart_search_text):
         elif smartsearchLib.is_value_in_field(smart_article_id.altStandard, opasConfig.SEARCH_FIELD_LOCATOR):
             ret_val = {opasConfig.SEARCH_FIELD_LOCATOR: smart_article_id.altStandard}           
 
-    ## TODO: Use wildcard parse in articleID per smart_article_id above
-    ## journal and issue and wildcard
-    #m = re.match("(?P<journal>[A-Z\-]{2," + f"{opasConfig.MAX_JOURNALCODE_LEN}" + "})\.(?P<vol>([0-9]{3,3}[A-Z]?)|(\*))\.(?P<page>\*)", smart_search_text, flags=re.IGNORECASE)
-    #if m is not None:
-        #src_code = m.group("journal")
-        #if src_code is not None:
-            #vol_code = m.group("vol")
-            #if vol_code is None:
-                #vol_code = "*"
-        #loc = f"{src_code}.{vol_code}.*"
-        #loc = loc.upper()
 
-        #ret_val = {"art_id": loc}
         
     if ret_val == {}: # (opasConfig.SEARCH_TYPE_ADVANCED, "ADVANCED")
         # this is not much different than search_type_fielded, except the Solr query will be cleaner and perhaps more flexible.
@@ -236,7 +234,7 @@ def smart_search(smart_search_text):
             if ret_val == {}:
                 if 0 != smartsearchLib.is_value_in_field(words, core="docs", field=opasConfig.SEARCH_FIELD_TITLE, match_type="ordered") == 1: # unique match only
                     if word_count > 4:
-                        ret_val["title"] = words
+                        ret_val["title"] = re.sub(f'[{for_words_only_remove_punct}]', '', words)
                         ret_val[opasConfig.KEY_SEARCH_TYPE] = opasConfig.SEARCH_TYPE_TITLE
                         ret_val[opasConfig.KEY_SEARCH_SMARTSEARCH] = f"Matched words in titles: {words}"
     
@@ -244,7 +242,7 @@ def smart_search(smart_search_text):
                 # unique match only
                 if 1 == smartsearchLib.is_value_in_field(words, core="docs", field=opasConfig.SEARCH_FIELD_TITLE, match_type="proximate"): 
                     if word_count > 4:
-                        ret_val["title"] = words
+                        ret_val["title"] = re.sub(f'[{for_words_only_remove_punct}]', '', words)
                         ret_val[opasConfig.KEY_SEARCH_TYPE] = opasConfig.SEARCH_TYPE_TITLE
                         ret_val[opasConfig.KEY_SEARCH_SMARTSEARCH] = f"Matched words in titles: {words}"
 
@@ -288,16 +286,22 @@ def smart_search(smart_search_text):
                     if not opasgenlib.in_quotes(smart_search_text):
                         if not opasgenlib.is_boolean(smart_search_text):
                             if not opasgenlib.in_brackets(smart_search_text) and word_count > 1:
-                                smart_search_text = f'"{smart_search_text}"~25'
+                                # phrase search, remove punctuation which if on the first word can be mistaken for field identifiers (fix 2022-02-05)
+                                punct = '!"#$%&()+,-./:;<=>@[\\]^_`{|}~' # string.punctuation - wild cards accepted (2022-04-15 Removed ' from string)
+                                phrase_search = re.sub(f'[{punct}]', '', smart_search_text)
+                                smart_search_text = f'"{phrase_search}"~25'         
+                                smart_search_text = opasgenlib.add_smart_quote_search(smart_search_text)
                                 ret_val[opasConfig.KEY_SEARCH_TYPE] = opasConfig.SEARCH_TYPE_PARAGRAPH
                                 ret_val[opasConfig.KEY_SEARCH_SMARTSEARCH] = f"Matched paragraphs with terms: ({orig_smart_search_text})"
                                 ret_val[opasConfig.KEY_SEARCH_VALUE] = f"{smart_search_text}"
                             else:
                                 ret_val["wordsearch"] = re.sub(":", "\:", smart_search_text)
+                                ret_val["wordsearch"] = opasgenlib.add_smart_quote_search(ret_val["wordsearch"]) # temp, until we load smartquotes only
                                 ret_val[opasConfig.KEY_SEARCH_TYPE] = opasConfig.SEARCH_TYPE_WORDSEARCH
                                 ret_val[opasConfig.KEY_SEARCH_SMARTSEARCH] = f"Matched articles for words: ({orig_smart_search_text})"
                         else:
                             smart_search_text = re.sub ("\snot\s", " NOT ", smart_search_text)
+                            smart_search_text = opasgenlib.add_smart_quote_search(smart_search_text)
                             ret_val[opasConfig.KEY_SEARCH_TYPE] = opasConfig.SEARCH_TYPE_BOOLEAN
                             ret_val[opasConfig.KEY_SEARCH_SMARTSEARCH] = f"Matched articles for boolean string: ({orig_smart_search_text})"
                             ret_val[opasConfig.KEY_SEARCH_VALUE] = f"{orig_smart_search_text}"
@@ -321,9 +325,10 @@ def smart_search(smart_search_text):
         pass # we're done
 
     if ret_val == {}:
-        ret_val["wordsearch"] = re.sub(":", "\:", smart_search_text)
+        # word search
+        ret_val["wordsearch"] = re.sub(f'[{for_words_only_remove_punct}]', '', smart_search_text)
         ret_val[opasConfig.KEY_SEARCH_TYPE] = opasConfig.SEARCH_TYPE_WORDSEARCH
-        ret_val[opasConfig.KEY_SEARCH_SMARTSEARCH] = f"Matched articles with text: {smart_search_text}"
+        ret_val[opasConfig.KEY_SEARCH_SMARTSEARCH] = f"Matched articles with words: {smart_search_text}"
 
     ret_val = smartsearchLib.dict_clean_none_terms(ret_val)
     

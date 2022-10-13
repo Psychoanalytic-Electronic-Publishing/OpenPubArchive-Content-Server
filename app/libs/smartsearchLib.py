@@ -63,10 +63,14 @@ rx_str_is_quotedstring = r"^\s*(\"|\')(?!^\1).*\1\s*$" # outer quote or single q
 pat_str_is_quotedstring = re.compile(rx_str_is_quotedstring, flags=re.I)
 
 rx_quoted_str_has_wildcards = r"(\"|\').*(\*|\?).*\1"
+rx_quoted_str_has_colons = r"(\"|\').*(\:).*\1"
+rx_quoted_str_with_colon_and_coloned_field_prefix = r"(?P<field>([^\"\:]+\:))\w*(?P<qstr>(\"|\').*(\:).*\4)"
+
 pat_str_has_wildcards = re.compile(rx_quoted_str_has_wildcards, flags=re.I)
 pat_quoted_str_has_wildcards = re.compile(rx_quoted_str_has_wildcards, flags=re.I)
 rx_quoted_str_has_booleans = r"(\"|\').*\b(AND|OR|NOT)\b.*\1"
 pat_quoted_str_has_booleans = re.compile(rx_quoted_str_has_booleans)
+pat_quoted_str_has_colons = re.compile(rx_quoted_str_has_colons)
 
 rx_str_has_wildcards = r".*(\*|\?).*"
 pat_str_has_wildcards = re.compile(rx_quoted_str_has_wildcards, flags=re.I)
@@ -153,6 +157,12 @@ def quoted_str_has_booleans(search_str):
 
 def str_has_fuzzy_ops(search_str):
     if pat_str_has_fuzzy_search.search(search_str):
+        return True
+    else:
+        return False
+
+def quoted_str_has_colons(search_str):
+    if pat_quoted_str_has_colons.search(search_str):
         return True
     else:
         return False
@@ -349,7 +359,10 @@ def get_list_of_name_ids(names_mess):
     try:
         for n in names.human_names:
             if n.last != "":
-                name_id = n.last + f", {n.first[0]}."
+                if n.first != "":
+                    name_id = n.last + f", {n.first[0]}."
+                else:
+                    name_id = n.last
                 ret_val.append(name_id)
             else:
                 ret_val.append(n.first)

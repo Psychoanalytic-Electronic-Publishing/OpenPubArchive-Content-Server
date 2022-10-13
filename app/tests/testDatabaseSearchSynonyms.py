@@ -19,8 +19,7 @@ class TestDatabaseSearchSynonyms(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         count1 = response_info["fullCount"]
-        print (f"FullCount: {count1}")
-        assert(count1 >= 90000 and count1 <= 110000)
+        assert(count1 >= 90000 and count1 <= 110000), f"Count: {count1}" 
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?fulltext1=body_xml%3A(hysteria)&synonyms=false')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
@@ -29,8 +28,7 @@ class TestDatabaseSearchSynonyms(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         count1 = response_info["fullCount"]
-        print (f"FullCount: {count1}")
-        assert(count1 >= 6000 and count1 <= 6966)
+        assert(count1 >= 6000 and count1 <= 7500), f"Count: {count1}" 
 
     def test_search_fulltext_syn_2(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?title=("Freudian Metapsychology")&synonyms=false')
@@ -40,8 +38,7 @@ class TestDatabaseSearchSynonyms(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         count1 = response_info["fullCount"]
-        print (f"FullCount: {count1}")
-        assert(count1 >= 5 and count1 <= 10)
+        assert(count1 >= 5 and count1 <= 10), f"Count: {count1}" 
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?title=("Freudian Metapsychology")&synonyms=true')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
@@ -49,8 +46,7 @@ class TestDatabaseSearchSynonyms(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         count1 = response_info["fullCount"]
-        print (f"FullCount: {count1}")
-        assert(count1 >= 50 and count1 <= 60)
+        assert(count1 >= 50 and count1 <= 60), f"Count: {count1}" 
 
     def test_search_fulltext_syn_3(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?fulltext1=dreams_xml:(affect)&synonyms=false')
@@ -60,8 +56,7 @@ class TestDatabaseSearchSynonyms(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         count1 = response_info["fullCount"]
-        print (f"FullCount: {count1}")
-        assert(count1 >= 2 and count1 <= 10)
+        assert(count1 >= 2 and count1 <= 10), f"Count: {count1}" 
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?fulltext1=dreams_xml:(affect)&synonyms=true')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
@@ -69,8 +64,7 @@ class TestDatabaseSearchSynonyms(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         count1 = response_info["fullCount"]
-        print (f"FullCount: {count1}")
-        assert(count1 >= 60 and count1 <= 450)
+        assert(count1 >= 60 and count1 <= 450), f"Count: {count1}" 
 
     def test_search_fulltext_syn_4(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?fulltext1=dialogs_xml:(affect)&synonyms=false')
@@ -80,8 +74,7 @@ class TestDatabaseSearchSynonyms(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         count1 = response_info["fullCount"]
-        print (f"FullCount: {count1}")
-        assert count1 >= 200 and count1 <= 220, f"Expected Count >= 200 and <= 220, Count: {response_info['count']}" 
+        assert(count1 >= 215 and count1 <= 300), f"Count: {count1}" 
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?fulltext1=dialogs_xml:(affect)&synonyms=true')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
@@ -89,28 +82,25 @@ class TestDatabaseSearchSynonyms(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         count1 = response_info["fullCount"]
-        print (f"FullCount: {count1}")
-        assert(count1 >= 1560 and count1 <= 1650)
+        assert(count1 >= 1560 and count1 <= 1750), f"Count: {count1}" 
 
     def test_search_fulltext_syn_5(self):
-        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?fulltext1=dialogs_xml:(affect)&synonyms=false')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?fulltext1=dialogs_xml:(conflict)&synonyms=false')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         count1 = response_info["fullCount"]
-        print (f"FullCount: {count1}")
-        assert count1 >= 200 and count1 <= 220, f"Expected Count >= 200 and <= 220, Count: {response_info['count']}" 
-        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?fulltext1=dialogs_xml:(affect)&synonyms=true')
+        assert count1 >= 200 and count1 <= 270, f"Count: {count1}" 
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?fulltext1=dialogs_xml:(conflict)&synonyms=true')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         count1 = response_info["fullCount"]
-        print (f"FullCount: {count1}")
-        assert(count1 >= 1560 and count1 <= 1650)
+        assert(count1 >= 1800 and count1 <= 2000), f"Count: {count1}" 
 
     def test_search_fulltext_syn_6(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?fulltext1=quotes_xml:(bisexuality)&synonyms=false')
@@ -120,8 +110,7 @@ class TestDatabaseSearchSynonyms(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         count1 = response_info["fullCount"]
-        print (f"FullCount: {count1}")
-        assert(count1 >= 100 and count1 <= 110)
+        assert(count1 >= 100 and count1 <= 110), f"Count: {count1}" 
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?fulltext1=quotes_xml:(bisexuality)&synonyms=true')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
@@ -129,8 +118,7 @@ class TestDatabaseSearchSynonyms(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         count1 = response_info["fullCount"]
-        print (f"FullCount: {count1}")
-        assert(count1 >= 2122 and count1 <= 2222)
+        assert(count1 >= 2150 and count1 <= 2350), f"Count: {count1}" 
 
     def test_search_fulltext_syn_7(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?fulltext1=references_xml:(bisexuality)&synonyms=false')
@@ -140,8 +128,7 @@ class TestDatabaseSearchSynonyms(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         count1 = response_info["fullCount"]
-        print (f"FullCount: {count1}")
-        assert(count1 >= 560 and count1 <= 660)
+        assert(count1 >= 560 and count1 <= 660), f"Count: {count1}" 
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?fulltext1=references_xml:(bisexuality)&synonyms=true')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
@@ -149,8 +136,7 @@ class TestDatabaseSearchSynonyms(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         count1 = response_info["fullCount"]
-        print (f"FullCount: {count1}")
-        assert(count1 >= 8450 and count1 <= 8780)
+        assert(count1 >= 8450 and count1 <= 9500), f"Count: {count1}" 
 
     def test_search_fulltext_syn_8(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?fulltext1=text:(externalization)&synonyms=false')
@@ -160,8 +146,7 @@ class TestDatabaseSearchSynonyms(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         count1 = response_info["fullCount"]
-        print (f"FullCount: {count1}")
-        assert(count1 >= 2300 and count1 <= 2400)
+        assert(count1 >= 2300 and count1 <= 2800), f"Count: {count1}" 
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?fulltext1=text:(externalization)&synonyms=true')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
@@ -169,8 +154,7 @@ class TestDatabaseSearchSynonyms(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         count1 = response_info["fullCount"]
-        print (f"FullCount: {count1}")
-        assert(count1 >= 63000 and count1 <= 65000)
+        assert(count1 >= 65000 and count1 <= 69000), f"Count: {count1}" 
 
 if __name__ == '__main__':
     unittest.main()

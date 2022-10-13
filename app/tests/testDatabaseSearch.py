@@ -70,7 +70,9 @@ class TestDatabaseSearch(unittest.TestCase):
         kwiclist = r["documentList"]["responseSet"][0]["kwicList"]
         assert(len(kwiclist) > 0)
         assert(response_info["count"] >= 1)
-        print (response_set[0])
+        print (f"return count: {response_info['count']}")
+        print (response_set[0]['documentRef'])
+        #print (response_set[0]['abstract'])
 
     def test_search_fulltext1(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?fulltext1="military"')
@@ -83,7 +85,8 @@ class TestDatabaseSearch(unittest.TestCase):
         kwiclist = r["documentList"]["responseSet"][0]["kwicList"]
         assert(len(kwiclist) > 0)
         assert(response_info["count"] >= 1)
-        print (response_set[0])
+        print (f"return count: {response_info['count']}")
+        #print (response_set[0]['abstract'])
 
     def test_search_long_para(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?sourcecode=OPUS&fulltext1="physics science observations"~25&abstract=True')
@@ -94,7 +97,7 @@ class TestDatabaseSearch(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         assert(response_info["count"] == 1)
-        print (response_set)
+        print (response_set[0]['documentRef'])
 
     def test_search_long_para_alt_seems_to_show_solr_misses_one(self):
         # This produces 0 results on the GVPi server; this result is correct though
@@ -107,7 +110,8 @@ class TestDatabaseSearch(unittest.TestCase):
         response_set = r["documentList"]["responseSet"] 
         assert(response_info["count"] == 2) # should REALLY be 3. I confirmed all three papers above in test_search_long_para...
                                             # not sure why we get 2 here, but set that way for now. TODO
-        print (response_set)
+        print (f"return count: {response_info['count']}")
+        print (response_set[0]['documentRef'])
 
     def test_0a_rank(self): 
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?sourcecode=AOP&fulltext1=cried&sort=rank desc&limit=15&offset=0')
@@ -119,6 +123,7 @@ class TestDatabaseSearch(unittest.TestCase):
         response_set = r["documentList"]["responseSet"] 
         assert(response_info["fullCount"] == 47)
         #print (response_set)
+        print (f"return count: {response_info['count']}")
         for n in response_set:
             print (n["documentRef"])
         # Confirm that the request-response cycle completed successfully.
@@ -153,7 +158,7 @@ class TestDatabaseSearch(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         assert(response_info["count"] == 12)
-        print (response_set[0])
+        print (response_set[0]['documentRef'])
 
     def test_search_author_and_journalcode_and_text(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?author=Blum&sourcecode=AOP&fulltext1=transference')
@@ -164,7 +169,7 @@ class TestDatabaseSearch(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         assert(response_info["count"] == 2)
-        print (response_set[0])
+        print (response_set[0]['documentRef'])
 
     def test_search_author_and_journalcode_and_citecount(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?author=Bollas&sourcecode=AOP&citecount=1 IN 10')
@@ -175,7 +180,7 @@ class TestDatabaseSearch(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         assert(response_info["count"] == 2)
-        print (response_set[0])
+        print (response_set[0]['documentRef'])
 
     def test_search_startyear(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?sourcecode=aop&startyear=2015')
@@ -186,7 +191,9 @@ class TestDatabaseSearch(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         assert(response_info["fullCount"] == 20)
-        print (response_set[0])
+        print("Titles:")
+        for n in response_set: 
+            print (n['title'])
         # try it with parens as the client does
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?sourcecode=aop&startyear=(2015)')
         response = requests.get(full_URL, headers=headers)
@@ -196,7 +203,10 @@ class TestDatabaseSearch(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         assert(response_info["fullCount"] == 20)
-        print (response_set[0])
+        print (f"return count: {response_info['count']}")
+        print("Titles:")
+        for n in response_set: 
+            print (n['title'])
 
     def test_search_endyear(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?sourcecode=aop&endyear=2011') # note: no volume in 2009-2011
@@ -207,7 +217,7 @@ class TestDatabaseSearch(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         assert(response_info["fullCount"] >= 610)
-        print (response_set[0])
+        print (response_set[0]['documentRef'])
         # try it with parens as the client does
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?sourcecode=aop&endyear=(2011)') # note: no volume in 2009-2011
         response = requests.get(full_URL, headers=headers)
@@ -217,7 +227,8 @@ class TestDatabaseSearch(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         assert(response_info["fullCount"] >= 610)
-        print (response_set[0])
+        print (f"return count: {response_info['count']}")
+        print (response_set[0]['documentRef'])
 
     def test_search_year_range1(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?sourcecode=aop&startyear=1975&endyear=1976')
@@ -228,7 +239,18 @@ class TestDatabaseSearch(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         assert(response_info["fullCount"] == 42)
-        print (response_set[0])
+        print (f"return count: {response_info['count']}")
+        print("Years:")
+        count = 0
+        year = ""
+        for n in response_set:
+            if year != n['year']:
+                print (n['year'])
+                year = n['year']
+                count += 1
+              
+            if count > 10:
+                break
 
     def test_search_year_range2(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?sourcecode=aop&startyear=1975&endyear=1975')
@@ -239,7 +261,18 @@ class TestDatabaseSearch(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         assert(response_info["fullCount"] == 21)
-        print (response_set[0])
+        print (f"return count: {response_info['count']}")
+        print("Years:")
+        count = 0
+        year = ""
+        for n in response_set:
+            if year != n['year']:
+                print (n['year'])
+                year = n['year']
+                count += 1
+              
+            if count > 10:
+                break
 
     def test_search_year_range3(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?sourcecode=aop&startyear=1975&endyear=2020')
@@ -250,7 +283,18 @@ class TestDatabaseSearch(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         assert(response_info["fullCount"] >= 588)
-        print (response_set[0])
+        print (f"return count: {response_info['count']}")
+        print("Years:")
+        count = 0
+        year = ""
+        for n in response_set:
+            if year != n['year']:
+                print (n['year'])
+                year = n['year']
+                count += 1
+              
+            if count > 10:
+                break
 
     def test_search_title(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?sourcecode=aop&title=west')
@@ -261,7 +305,9 @@ class TestDatabaseSearch(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         assert(response_info["fullCount"] == 3)
-        print (response_set[0])
+        print("Titles:")
+        for n in response_set: 
+            print (n['title'])
 
     def test_video_list_search(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?abstract=false&formatrequested=XML&limit=20&offset=0&source=PEPGRANTVS&sort=bibliographic&synonyms=false')
@@ -269,14 +315,18 @@ class TestDatabaseSearch(unittest.TestCase):
         assert(response.ok == True)
         # test return
         r = response.json()
-        assert(r['documentList']['responseInfo']['count'] >= 10)
+        response_info = r["documentList"]["responseInfo"]
+        assert(response_info['count'] >= 10)
+        print (f"return count: {response_info['count']}")
 
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?abstract=false&formatrequested=XML&limit=20&offset=0&smarttext=PEPGRANTVS.*.*&sort=bibliographic&synonyms=false')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         # test return
         r = response.json()
-        assert(r['documentList']['responseInfo']['count'] >= 10)
+        response_info = r["documentList"]["responseInfo"]
+        assert(response_info['count'] >= 10)
+        print (f"return count: {response_info['count']}")
 
         #  test longest (current) sourcecode
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?abstract=false&formatrequested=XML&limit=20&offset=0&smarttext=PEPTOPAUTHVS.*.*&sort=bibliographic&synonyms=false')
@@ -284,7 +334,9 @@ class TestDatabaseSearch(unittest.TestCase):
         assert(response.ok == True)
         # test return
         r = response.json()
-        assert(r['documentList']['responseInfo']['count'] >= 10)
+        response_info = r["documentList"]["responseInfo"]
+        assert(response_info['count'] >= 10)
+        print (f"return count: {response_info['count']}")
 
     def test_search_almost_all_params(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?fulltext1=transference&sourcecode=aop&sourcetype=journal&sourcelangcode=EN&volume=10&author=blum&startyear=1982&facetfields=art_sourcetype')
@@ -295,7 +347,8 @@ class TestDatabaseSearch(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         assert(response_info["count"] == 1)
-        print (response_set[0])
+        print (f"Response Set Length: {len(response_set)}")
+        print (response_set[0]['documentRef'])
         
     def test_v2_database_search_fulltext(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?title=psychoanalysis&sourcecode=CPS&startyear=1990-1993&fulltext1="child%20abuse"&sort=citeCount&limit=10&offset=0')
@@ -358,6 +411,7 @@ class TestDatabaseSearch(unittest.TestCase):
         assert(response.ok == True)
         r = response.json()
         print (f"Count: {r['documentList']['responseInfo']['fullCount']} Count complete: {r['documentList']['responseInfo']['fullCountComplete']}")
+        
         assert(r['documentList']['responseInfo']['fullCount'] >= 3)
         assert(r['documentList']['responseInfo']['fullCountComplete'] == True)
 

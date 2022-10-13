@@ -1,7 +1,6 @@
 # -*- coding: UTF-8 -*-
 #
 #  This file is used to export Google Metadata.
-#   It should probably be renamed to something more mnemonic.
 #
 #		Copyright N. Shapiro, Scilab Inc.
 #
@@ -10,9 +9,10 @@
 #
 
 import string, sys, re, os, copy
-import opasCentralMini
+import opasCentralDBLib
+from opasProductLib import SourceInfoDB
 import pymysql
-from PEPGlobals import *
+#from PEPGlobals import *
 
 #sys.path.append("e:\usr3\py\SCIHL")
 #sys.path.append("e:\usr3\py\PEPXML")
@@ -263,7 +263,7 @@ class PEPLibExport:
     #--------------------------------------------------------------------------------
     def __init__(self, biblioDB, rootDir, startDir="", outBuildName="a1v7"):
         self.biblioDB = biblioDB
-        artSet = cursor.fetchall() # returns empty list if no rows
+        # artSet = cursor.fetchall() # returns empty list if no rows
         self.rootDir = rootDir
         self.startDir = startDir
         self.fullStartDir = os.path.join(rootDir, startDir)
@@ -282,7 +282,54 @@ class PEPLibExport:
     #--------------------------------------------------------------------------------
     def metaDataExport(self, outputFileName="X:\googleMetadata.xml", jrnlCodeWhereClause="", outputBuildName="FO01"):
         """
-        Populate the build table from the articles table.
+        Populate the build table from the articles table.   XXX CONTINUE WORK HERE XXX
+        
+        Need info from Solr similar to the articles table from pepa1db including
+           articleID	varchar	24
+           arttype	varchar	4
+           authorMast	text	
+           hdgauthor	text	
+           hdgtitle	text	
+           srctitleseries	text	
+           publisher	varchar	255
+           jrnlcode	varchar	14
+           year	varchar	5
+           vol	int	11
+           volsuffix	char	5
+           issue	char	5
+           pgrg	varchar	20
+           pgstart	int	11
+           pgend	int	11
+           pgcount	int	11
+           source	varchar	10
+           preserve	int	11
+           filename	varchar	255
+           maintocID	varchar	20
+           newsecname	varchar	255
+           bktitle	varchar	255
+           bkauthors	varchar	255
+           xmlref	text	
+           references	int	11
+           doi	varchar	255
+           artkwds	varchar	384
+           artlang	varchar	255
+
+           but may only need these columns:
+		     art_id,
+             arttype,
+             hdgtitle,
+             srctitleseries,
+             publisher,
+             jrnlcode,
+             year,
+             vol,
+             issue,
+             pgrg,
+             pgstart,
+             pgend,
+             filename,
+             mainTOCID
+
         Create the include list by calling class member	writeFFFInclude
 
         The intermediate tables are built, rather than using a transitional query, in order to
@@ -293,26 +340,35 @@ class PEPLibExport:
         retVal = 0
 
         # queries to be used
-        selArt = r"""select articleID,
-                            arttype,
-                            hdgtitle,
-                            srctitleseries,
-                            publisher,
-                            jrnlcode,
-                            year,
-                            vol,
-                            issue,
-                            pgrg,
-                            pgstart,
-                            pgend,
+        selArt = r"""select art_id,
+                            art_type,
+                            art_title,
+                            src_title_abbr,
+                            bk_publisher,
+                            bk_title,
+                            bk_info_xml,
+                            src_code,
+                            art_year,
+                            art_vol,
+                            art_vol_suffix,
+                            art_issue,
+                            art_pgrg,
+                            art_pgstart,
+                            art_pgend,
                             filename,
-                            mainTOCID
-                            from articles
+                            main_toc_id
+                            from api_articles
                             %s
-                            order by articleID
+                            order by art_id
             """ % jrnlCodeWhereClause
 
-        selAuth = r"""select a.authorID as authorid, a.last as nlast, a.first as nfirst, a.middle as nmid, arta.authorder as norder, arta.authrole as role, a.suffix as nsufx
+        selAuth = r"""select a.authorID as authorid,
+                             a.last as nlast,
+                             a.first as nfirst,
+                             a.middle as nmid,
+                             arta.authorder as norder,
+                             arta.authrole as role,
+                             a.suffix as nsufx
                       from artauthorindex arta, authors a
                       where arta.articleID = '%s'
                       and arta.authorid = a.authorid
@@ -391,7 +447,7 @@ class PEPLibExport:
                         for auth in authSet:
                             self.setPrenames(auth)
                             auth = self.validateAuthLimits(auth)
-                            if sciSupport.isEmpty(auth[gConst.AUTHORNAMEROLE]):
+                            if opasgenlib.is_empty(auth[gConst.AUTHORNAMEROLE]):
                                 print("No author role.  Set to 'author'")
                                 auth[gConst.AUTHORNAMEROLE] = "author"
                             else:
@@ -418,7 +474,7 @@ class PEPLibExport:
                     for auth in authSet:
                         self.setPrenames(auth)
                         auth = self.validateAuthLimits(auth)
-                        if sciSupport.isEmpty(auth[gConst.AUTHORNAMEROLE]):
+                        if opasgenlib.is_empty(auth[gConst.AUTHORNAMEROLE]):
                             print("No author role.  Set to 'author'")
                             auth[gConst.AUTHORNAMEROLE] = "author"
                         else:
@@ -442,7 +498,7 @@ class PEPLibExport:
             else:
                 for auth in authSet:
                     self.setPrenames(auth)
-                    if sciSupport.isEmpty(auth[gConst.AUTHORNAMEROLE]):
+                    if opasgenlib.is_empty(auth[gConst.AUTHORNAMEROLE]):
                         #print "No author role.  Set to 'author'"
                         auth[gConst.AUTHORNAMEROLE] = "author"
                     else:
@@ -493,7 +549,7 @@ class PEPLibExport:
 
         if len(artRef[gConst.TITLE]) > limitTitle: artRef[gConst.TITLE] = artRef[gConst.TITLE][0:limitTitle]
         #print "Issue: ", artRef[gConst.ISSUE], artRef[gConst.TITLE]
-        if sciSupport.isEmptyOrNoneStr(artRef[gConst.ISSUE]):
+        if opasgenlib.is_emptyOrNoneStr(artRef[gConst.ISSUE]):
             artRef[gConst.ISSUE] = ""
 
         if artRef[gConst.ISSUE] == "S":
@@ -503,7 +559,7 @@ class PEPLibExport:
         if artRef[gConst.SOURCEPEPCODE] == "ZBK":
             artRef[gConst.VOL] = ""
 
-        if sciSupport.isEmptyOrNoneStr(artRef[gConst.PUBLISHER]):
+        if opasgenlib.is_emptyOrNoneStr(artRef[gConst.PUBLISHER]):
             artLoc = PEPLocator.Locator(artRef[gConst.KEY])
             if artLoc.isBook():
                 artBaseCode = artLoc.baseCode()
@@ -534,7 +590,7 @@ class PEPLibExport:
         if len(auth[gConst.AUTHORNAMEFIRSTMID]) > limitFirstName:
             auth[gConst.AUTHORNAMEFIRSTMID] = auth[gConst.AUTHORNAMEFIRSTMID][0:limitFirstName]
         if len(auth[gConst.AUTHORNAMELAST]) > limitLastName: auth[gConst.AUTHORNAMELAST] = auth[gConst.AUTHORNAMELAST][0:limitLastName]
-        if sciSupport.isEmptyOrNoneStr(auth[gConst.AUTHORNAMESUFX]):
+        if opasgenlib.is_emptyOrNoneStr(auth[gConst.AUTHORNAMESUFX]):
             auth[gConst.AUTHORNAMESUFX] = ""
         else:
             if len(auth[gConst.AUTHORNAMESUFX]) > limitSuffix:
@@ -547,13 +603,13 @@ class PEPLibExport:
     def setPrenames(self, auth):
 
         auth[gConst.AUTHORNAMEFIRSTMID] = ""
-        if not sciSupport.isEmptyOrNoneStr(auth[gConst.AUTHORNAMEFIRST]):
-            if not sciSupport.isEmptyOrNoneStr(auth[gConst.AUTHORNAMEMID]):
+        if not opasgenlib.is_emptyOrNoneStr(auth[gConst.AUTHORNAMEFIRST]):
+            if not opasgenlib.is_emptyOrNoneStr(auth[gConst.AUTHORNAMEMID]):
                 auth[gConst.AUTHORNAMEFIRSTMID] = auth[gConst.AUTHORNAMEFIRST] + ", " + auth[gConst.AUTHORNAMEMID]
             else:
                 auth[gConst.AUTHORNAMEFIRSTMID] = auth[gConst.AUTHORNAMEFIRST]
         else:
-            if not sciSupport.isEmptyOrNoneStr(auth[gConst.AUTHORNAMEMID]):
+            if not opasgenlib.is_emptyOrNoneStr(auth[gConst.AUTHORNAMEMID]):
                 auth[gConst.AUTHORNAMEFIRSTMID] = auth[gConst.AUTHORNAMEMID]
 
         return auth
@@ -655,7 +711,7 @@ class PEPLibExport:
                 #print "Key, ToFind, Value", string.upper(key), fieldToFind, n
                 if string.upper(key) == fieldToFind:
                     # Found unless value is empty
-                    if not sciSupport.isEmpty(n):
+                    if not opasgenlib.is_empty(n):
                         val = True
 
                     # break in either case once the key is found
@@ -689,7 +745,7 @@ class PEPLibExport:
                 #print "Key, ToFind, Value", string.upper(key), fieldToFind, n
                 if string.upper(key) == fieldToFind:
                     # Found unless value is empty
-                    if not sciSupport.isEmpty(n):
+                    if not opasgenlib.is_empty(n):
                         val = True
                     # break in either case once the key is found
                     break
@@ -716,7 +772,7 @@ class PEPLibExport:
             retVal = self.rgcBaseToken.sub("", retVal)
             # now look again--any left?
             #m = self.rgcBaseToken.search(retVal)
-            #if m <> None:
+            #if m is not None:
             #	log_error("Still untranslated tokens in template: '%s'" % retVal)
 
         #Remove any token delimiters (they will still be there from the sub areas that worked
@@ -742,11 +798,9 @@ if __name__ == "__main__":
 	"""
 
     import sys
-    import libPEPBiblioDB
-    from PEPProcessor import PEPProcessor
     totalErrors = []
 
-    ocd = opasCentralMini.opasCentralDBMini()
+    ocd = opasCentralDBLib.opasCentralDB()
 
     biblioDB = ocd
     biblioDB.open_connection()
@@ -761,12 +815,12 @@ if __name__ == "__main__":
     doSE = True
     #doGW = False
     doGW = True
+    productDB = SourceInfoDB()
     # try journal by journal/vol
     if doJournals:
-        jrnlCodes = gJrnlData.journalCodes()
-        #jrnlCodes = gJrnlData.PEPA1JrnlCodesLastVer
+        jrnlCodes = productDB.journalCodes()
+        #jrnlCodes = SourceInfoDB.PEPA1JrnlCodesLastVer
         #jrnlCodes = ["IZPA"]  # for testing
-        jrnlCodes.sort()
         print("Journal Set: ", jrnlCodes)
 
         totalCount = 0
@@ -776,13 +830,13 @@ if __name__ == "__main__":
                 continue
 
             jrnlCount = 0
-            restrictedYears = gJrnlData.volyears(jrnl)
-            if gDbg1: print("Journal Years: ", restrictedYears)
+            restrictedYears = productDB.volyears(jrnl)
+            print("Journal Years: ", restrictedYears)
             #restrictedYears = ["86", "2009"]  # for testing
             for vol, year in restrictedYears:
                 if type(vol) == type([]):
                     for volsub in vol:
-                        jrnlWhereClause = "where jrnlcode='%s' and vol='%s'" % (jrnl, volsub)
+                        jrnlWhereClause = "where src_code='%s' and art_vol='%s'" % (jrnl, volsub)
                         filenameBase = r"\%s.%s.xml" % (jrnl, year)
                         print("Processing %s: %s/%s to %s" % (jrnl, volsub, year, filenameBase))
                         count, errs = doMetaDataExport(pepExport, rootdir, filenameBase, jrnlWhereClause)
@@ -791,7 +845,7 @@ if __name__ == "__main__":
                         if errs!=[]: totalErrors.append((filenameBase, errs))
 
                 else:
-                    jrnlWhereClause = "where jrnlcode='%s' and vol='%s'" % (jrnl, vol)
+                    jrnlWhereClause = "where src_code='%s' and art_vol='%s'" % (jrnl, vol)
                     filenameBase = r"\%s.%s.xml" % (jrnl, year)
                     print("Processing %s: %s/%s to %s" % (jrnl, vol, year, filenameBase))
                     count, errs = doMetaDataExport(pepExport, rootdir, filenameBase, jrnlWhereClause)
