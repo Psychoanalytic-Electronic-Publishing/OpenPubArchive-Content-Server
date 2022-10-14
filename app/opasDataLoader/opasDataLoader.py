@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.0930/v2.0.012"   # semver versioning after date.
+__version__     = "2022.1014/v2.0.013"   # semver versioning after date.
 __status__      = "Development"
 
 programNameShort = "opasDataLoader"
@@ -887,6 +887,17 @@ def main():
     #currentfile_info.close()
 
     if not options.no_files: # no_files=false
+        database_updated = (files_found - skipped_files) != 0
+        if database_updated:
+            # write database_updated.txt
+            try:
+                fname = f"{localsecrets.DATA_UPDATE_LOG_DIR}/database_updated.txt"
+                with open(fname, 'a', encoding="utf8") as fo:
+                    fo.write('data loaded!\n')
+            except Exception as e:
+                # just in case there's a collision of several processes writing, ignore the error
+                logger.warning(f"When writing the database updated flag file an error occured: {e}")
+            
         # for logging
         if 1: # (options.biblio_update or options.fulltext_core_update) == True:
             elapsed_seconds = timeEnd-cumulative_file_time_start # actual processing time going through files
