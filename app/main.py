@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.1017/v2.1.180"   # semver versioning after date.
+__version__     = "2022.1017/v2.1.181"   # semver versioning after date.
 __status__      = "Development/Libs/Loader"  
 
 """
@@ -1693,37 +1693,37 @@ async def session_status(response: Response,
             sitemap_path = localsecrets.SITEMAP_PATH
         except Exception as e: 
             sitemap_path = "Not Set!"
-            logger.error(f"SITEMAP_PATH needs to be set (e).") # added for setup error notice 2022-06-06
+            logger.error(f"SITEMAP_PATH needs to be set ({e}).") # added for setup error notice 2022-06-06
 
         try:
             google_metadata_path = localsecrets.GOOGLE_METADATA_PATH
         except Exception as e: 
             google_metadata_path = "Not Set!"
-            logger.error(f"GOOGLE_METADATA_PATH needs to be set (e).") # added for setup error notice 2022-06-06
+            logger.error(f"GOOGLE_METADATA_PATH needs to be set ({e}).") # added for setup error notice 2022-06-06
 
         try:
             pdf_originals_path = localsecrets.PDF_ORIGINALS_PATH
         except Exception as e: 
             pdf_originals_path = "Not Set!"
-            logger.error(f"PDF_ORIGINALS_PATH needs to be set (e).") # added for setup error notice 2022-06-06
+            logger.error(f"PDF_ORIGINALS_PATH needs to be set ({e}).") # added for setup error notice 2022-06-06
             
         try:
             image_source_path = localsecrets.IMAGE_SOURCE_PATH
         except Exception as e: 
             image_source_path = "Not Set!"
-            logger.error(f"IMAGE_SOURCE_PATH needs to be set (e).") # added for setup error notice 2022-06-06
+            logger.error(f"IMAGE_SOURCE_PATH needs to be set ({e}).") # added for setup error notice 2022-06-06
 
         try:
             image_expert_picks_source_path = localsecrets.IMAGE_EXPERT_PICKS_PATH
         except Exception as e: 
             image_expert_picks_source_path = "Not Set!"
-            logger.error(f"IMAGE_EXPERT_PICKS_PATH needs to be set (e).") # added for setup error notice 2022-06-06
+            logger.error(f"IMAGE_EXPERT_PICKS_PATH needs to be set ({e}).") # added for setup error notice 2022-06-06
 
         try:
             xml_originals_source_path = localsecrets.XML_ORIGINALS_PATH
         except Exception as e: 
             xml_originals_source_path = "Not Set!"
-            logger.error(f"XML_ORIGINALS_PATH needs to be set (e).") # added for setup error notice 2022-06-06
+            logger.error(f"XML_ORIGINALS_PATH needs to be set ({e}).") # added for setup error notice 2022-06-06
 
         config_name = localsecrets.CONFIG
         mysql_ver = ocd.get_mysql_version()
@@ -5718,7 +5718,7 @@ async def documents_image_fetch(response: Response,
         logger.info(status_message)
     except Exception as e: # in case IMAGE_EXPERT_PICKS_PATH in localsecrets is not set
         expert_picks_path = "pep-web-expert-pick-images"
-        logger.error(f"IMAGE_EXPERT_PICKS_PATH needs to be set in localsecrets (e).") # added for setup error notice 2022-06-06
+        logger.error(f"IMAGE_EXPERT_PICKS_PATH needs to be set in localsecrets ({e}).") # added for setup error notice 2022-06-06
    
     if imageID is not None:
         imageID = imageID.replace("+", " ")
