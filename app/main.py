@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.1011/v2.1.178"   # semver versioning after date.
+__version__     = "2022.1017/v2.1.179"   # semver versioning after date.
 __status__      = "Development/Libs/Loader"  
 
 """
@@ -1706,6 +1706,12 @@ async def session_status(response: Response,
                                                          opas_version = __version__, 
                                                          db_server_url = localsecrets.DBHOST,
                                                          db_server_version = mysql_ver,
+                                                         sitemap_path = localsecrets.SITEMAP_PATH,
+                                                         google_metadata_path = localsecrets.GOOGLE_METADATA_PATH,
+                                                         pdf_originals_path = localsecrets.PDF_ORIGINALS_PATH,
+                                                         image_source_path = localsecrets.IMAGE_SOURCE_PATH,
+                                                         image_expert_picks_source_path = localsecrets.IMAGE_EXPERT_PICKS_PATH,
+                                                         xml_originals_source_path = localsecrets.XML_ORIGINALS_PATH,
                                                          #cors_regex=localsecrets.CORS_REGEX, # see moreinfo
                                                          #library_versions=library_versions,  # see moreinfo
                                                          config_name = config_name

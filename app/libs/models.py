@@ -565,6 +565,12 @@ class ServerStatusItem(BaseModel):
     text_server_url: str = Field(None, title="Current SOLR URL")
     cors_regex: str = Field(None, title="Current CORS Regex")
     db_server_url: str = Field(None, title="Current DB URL")
+    sitemap_path:  str = Field(None, title="Current Sitemap folder location setting")
+    google_metadata_path:  str = Field(None, title="Current google metadata folder location setting")
+    pdf_originals_path:  str = Field(None, title="Current folder location setting")
+    image_source_path:  str = Field(None, title="Current folder location setting")
+    image_expert_picks_source_path:  str = Field(None, title="Current folder location setting")
+    xml_originals_source_path:  str = Field(None, title="Current folder location setting")
     library_versions: dict = Field({}, title="Server Python Library Versions")
 
 #-------------------------------------------------------
