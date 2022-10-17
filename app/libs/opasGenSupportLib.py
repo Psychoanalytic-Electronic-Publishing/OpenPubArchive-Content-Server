@@ -367,18 +367,18 @@ def pgrg_splitter(pgrg_str: str) -> tuple:
     try:
         pgParts = [n.strip() for n in re.split("[-–—]", pgrg_str)]
     except:
-        logging.error(f"pgrg_splitter: bad input: {pgrg_str}")
+        logger.error(f"pgrg_splitter: bad input: {pgrg_str}")
         ret_val = (None, None)
     else:
         try:
             pgStart = pgParts[0]
         except IndexError as e:
-            logging.debug(f"pgrg_splitter (arg={pgrg_str}): pgStart index error: {e} PGParts: {pgParts}")
+            logger.debug(f"pgrg_splitter (arg={pgrg_str}): pgStart index error: {e} PGParts: {pgParts}")
             pgStart = None
         try:
             pgEnd = pgParts[1]
         except IndexError as e:
-            logging.debug(f"pgrg_splitter (arg={pgrg_str}): pgEnd index error: {e} PGParts: {pgParts}")
+            logger.debug(f"pgrg_splitter (arg={pgrg_str}): pgEnd index error: {e} PGParts: {pgParts}")
             pgEnd = None
 
     ret_val = (pgStart, pgEnd)    

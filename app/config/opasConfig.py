@@ -35,6 +35,7 @@ DATA_SOURCE = "v2022r1a/"
 # logFilename = BASELOGFILENAME + "_" + datetime.date.today().strftime('%Y-%m-%d') + ".log"
 FORMAT = '%(asctime)s %(name)s/%(funcName)s(%(lineno)d): %(levelname)s %(message)s'
 logging.basicConfig(format=FORMAT, level=logging.WARNING, datefmt='%Y-%m-%d %H:%M:%S')
+logger = logging.getLogger(__name__)
 
 # Various switches for information/debugging
 DEBUG_TRACE = False
@@ -100,6 +101,11 @@ EXPERT_PICK_IMAGE_FILENAME_READ_LIMIT = 13000 # lower numbers are faster, but do
 # paths vary because they depend on module location; solrXMLWebLoad needs a different path than the server
 # should do this better...later.
 
+# Default bucket locations for best resilience when running online, if there's a problem with the localsecrets definitions
+DEFAULT_PDF_ORIGINALS_PATH = "pep-web-live-data/PEPDownloads"
+DEFAULT_IMAGE_SOURCE_PATH = "pep-web-live-data/graphics"
+DEFAULT_IMAGE_EXPERT_PICKS_PATH = "pep-web-expert-pick-images"
+DEFAULT_XML_ORIGINALS_PATH = "pep-web-live-data"
 
 # the following symbolic codes are embargo types.  (Perhaps later the IJPOpen embargo types should be made into general embargo types 
 # if we are to withdraw other articles, though that's really not PEP's policy.
@@ -273,7 +279,7 @@ def normalize_val(val, val_dict, default=None):
                     ret_val = val_dict[val[:val_dict['length']]]
                 
         except Exception as e:
-            logging.warning(f"Value check returned error {e}")
+            logger.warning(f"Value check returned error {e}")
     
     return ret_val
 
@@ -943,15 +949,24 @@ def get_file_path(filename, subpath):
     return ret_val
     
 def fetch_resources(uri, rel):
-    logging.debug(f"Call to Fetch Resources: {uri} / {rel}")
+    """
+    Used to fetch fonts and styles
+    """
+    logger.debug(f"Call to Fetch Resources: {uri} / {rel}")
     path = None
     if ".ttf" in uri:
         path = get_file_path(uri, SUBPATH)
-        logging.info(f"Returning Font Location: {path} args=({uri} / {SUBPATH} / {rel})")
+        logger.info(f"Returning Font Location: {path} args=({uri} / {SUBPATH} / {rel})")
     elif ".css" in uri:
         path = get_file_path(uri, STYLEPATH)
-        logging.info(f"Returning style Location: {path} args=({uri} / {STYLEPATH} / {rel})")
+        logger.info(f"Returning style Location: {path} args=({uri} / {STYLEPATH} / {rel})")
     elif "http" in uri:
+        try:
+            image_source_path = localsecrets.IMAGE_SOURCE_PATH
+        except Exception as e:
+            image_source_path = DEFAULT_IMAGE_SOURCE_PATH
+            logger.error(f"IMAGE_SOURCE_PATH needs to be set ({e}) in localsecrets. Using opasConfig.DEFAULT_IMAGE_SOURCE_PATH {image_source_path} for resilience") # added for setup error notice 2022-06-06
+        
         if localsecrets.CONFIG == "Local":
             a = urlparse(uri)
             m = re.search(".*/Documents/Image/(.*)[/\"\']?", a.path)
@@ -963,10 +978,10 @@ def fetch_resources(uri, rel):
                 else:
                     filename = os.path.basename(urllib.parse.unquote(a.path))
             except Exception as e:
-                logging.error(f"Can't get filename from url: {a.path} ({e})")
+                logger.error(f"Can't get filename from url: {a.path} ({e})")
             else:
                 #print (f"PDF Image Filename: {filename}")
-                fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root=localsecrets.IMAGE_SOURCE_PATH)
+                fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root=image_source_path)
                 path = fs.get_image_filename(filename)
         else:
             path = uri
@@ -981,16 +996,16 @@ def fetch_resources(uri, rel):
                 else:
                     filename = os.path.basename(urllib.parse.unquote(a.path))
             except Exception as e:
-                logging.error(f"Can't get filename from url: {a.path} ({e})")
+                logger.error(f"Can't get filename from url: {a.path} ({e})")
                 path = uri
             else:
                 #print (f"PDF Image Filename: {filename}")
-                fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root=localsecrets.IMAGE_SOURCE_PATH)
+                fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root=image_source_path)
                 path = fs.get_image_filename(filename)
-                logging.info (f"Get HTTP Image Resource Path from S3 flex: {path}")
+                logger.info (f"Get HTTP Image Resource Path from S3 flex: {path}")
 
     # for now, to watch uri's on web.
-    logging.info(f"Fetched Resources for '{uri}': '{path}'")
+    logger.info(f"Fetched Resources for '{uri}': '{path}'")
     return path
 
 # Note the STSong-Light is a built in font for Pisa

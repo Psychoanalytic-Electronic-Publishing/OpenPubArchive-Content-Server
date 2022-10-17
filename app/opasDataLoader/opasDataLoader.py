@@ -853,7 +853,7 @@ def main():
                 fname = options.whatsnewfile
             msg = f"Writing Issue updates.  Writing to file {fname}"
             print (msg)
-            logging.info(msg)
+            logger.info(msg)
             with open(fname, 'w', encoding="utf8") as fo:
                 fo.write( f'<?xml version="1.0" encoding="UTF-8"?>\n')
                 fo.write('<issue_updates>\n')
@@ -865,21 +865,21 @@ def main():
                         try:
                             fo.write(f"\t\t\t{ref}\n")
                         except Exception as e:
-                            logging.error(f"Issue Update Article Write Error: ({e})")
+                            logger.error(f"Issue Update Article Write Error: ({e})")
                     fo.write("\t\t</articles>\n\t</issue>")
                 fo.write('\n</issue_updates>')
             if count_records > 0:
                 print (f"{count_records} issue updates written to whatsnew log file.")
 
         except Exception as e:
-            logging.error(f"Issue Update File Write Error: ({e})")
+            logger.error(f"Issue Update File Write Error: ({e})")
     else: # if issue_updates != {}
         if options.daysback is not None:
             msg = f"Note: There was nothing in the whats new request to output for days back == {options.daysback}."
-            logging.warning(msg)
+            logger.warning(msg)
         else:
             msg = f"Note: There was nothing new in the batch output whatsnew."
-            logging.warning(msg)
+            logger.warning(msg)
     # ---------------------------------------------------------
     # Closing time
     # ---------------------------------------------------------

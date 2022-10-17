@@ -2974,7 +2974,7 @@ def prep_document_download(document_id,
                                 html.write_pdf(target=output_filename, stylesheets=stylesheets, font_config=font_config)
 
                             except Exception as e:
-                                logging.error(f"Weasyprint error: {e}")
+                                logger.error(f"Weasyprint error: {e}")
                                 #status = models.ErrorReturn( httpcode=httpCodes.HTTP_500_INTERNAL_SERVER_ERROR,
                                                              #error_description="Sorry, due to a conversion error, this article cannot be converted to PDF. Try ePUB format instead."
                                                              #)

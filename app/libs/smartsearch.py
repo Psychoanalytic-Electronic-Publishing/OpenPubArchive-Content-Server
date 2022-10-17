@@ -340,7 +340,7 @@ def smart_search(smart_search_text):
             alist = opasgenlib.get_author_list_not_comma_separated(working_author_list)
             ret_val["author_list"] = alist
         except Exception as e:
-            logging.warning(f"Can't parse and replace author list {e}")
+            logger.warning(f"Can't parse and replace author list {e}")
     
         if alist == []:
             # try and?
@@ -348,7 +348,7 @@ def smart_search(smart_search_text):
                 alist = opasgenlib.get_author_list_and_separated(author_list)
                 ret_val["author_list"] = alist
             except Exception as e:
-                logging.warning(f"Can't parse and replace author list {e}")
+                logger.warning(f"Can't parse and replace author list {e}")
             
         ret_val["author_list"] = smartsearchLib.get_list_of_name_ids(author_list)
     return ret_val

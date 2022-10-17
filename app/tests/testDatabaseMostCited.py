@@ -72,13 +72,13 @@ class TestMost(unittest.TestCase):
         try:
             print (f"ReturnedData: {r['documentList']['responseSet'][0]['stat']['art_cited_5']}")
         except:
-            logging.warn("No returned data to test for test_0_mostcited_source PAQ")
+            logger.warn("No returned data to test for test_0_mostcited_source PAQ")
             
         try:
             if r['documentList']['responseSet'] != []:
                 assert(r['documentList']['responseSet'][0]['stat']['art_cited_5'] >= 15)
         except:
-            logging.warn("No stat to test for test_0_mostcited_source PAQ")
+            logger.warn("No stat to test for test_0_mostcited_source PAQ")
 
     def test_1_most_cited_pubperiod_author_viewperiod(self):
         print (f"Running: {sys._getframe(  ).f_code.co_name} at {datetime.now()}")
@@ -92,12 +92,12 @@ class TestMost(unittest.TestCase):
         try:
             print (f"ReturnedData: {r['documentList']['responseSet'][0]['stat']['art_cited_5']}")
         except:
-            logging.warn("No returned data to test for test_0_mostcited_author Benjamin")
+            logger.warn("No returned data to test for test_0_mostcited_author Benjamin")
         try:
             if r['documentList']['responseSet'] != []:
                 assert(r['documentList']['responseSet'][0]['stat']['art_cited_5'] >= 15)
         except:
-            logging.warn("No stat to test for test_0_mostviewed_videos")
+            logger.warn("No stat to test for test_0_mostviewed_videos")
         # print (r)
 
 if __name__ == '__main__':

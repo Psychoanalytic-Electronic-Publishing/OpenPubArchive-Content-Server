@@ -569,8 +569,8 @@ class ServerStatusItem(BaseModel):
     google_metadata_path:  str = Field(None, title="Current google metadata folder location setting")
     pdf_originals_path:  str = Field(None, title="Current folder location setting")
     image_source_path:  str = Field(None, title="Current folder location setting")
-    image_expert_picks_source_path:  str = Field(None, title="Current folder location setting")
-    xml_originals_source_path:  str = Field(None, title="Current folder location setting")
+    image_expert_picks_path:  str = Field(None, title="Current folder location setting")
+    xml_originals_path:  str = Field(None, title="Current folder location setting")
     library_versions: dict = Field({}, title="Server Python Library Versions")
 
 #-------------------------------------------------------

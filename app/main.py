@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.1017/v2.1.181"   # semver versioning after date.
+__version__     = "2022.1017/v2.1.182"   # semver versioning after date.
 __status__      = "Development/Libs/Loader"  
 
 """
@@ -1692,37 +1692,37 @@ async def session_status(response: Response,
         try:
             sitemap_path = localsecrets.SITEMAP_PATH
         except Exception as e: 
-            sitemap_path = "Not Set!"
+            sitemap_path = "Not Set in localsecrets!"
             logger.error(f"SITEMAP_PATH needs to be set ({e}).") # added for setup error notice 2022-06-06
 
         try:
             google_metadata_path = localsecrets.GOOGLE_METADATA_PATH
         except Exception as e: 
-            google_metadata_path = "Not Set!"
+            google_metadata_path = "Not Set in localsecrets!"
             logger.error(f"GOOGLE_METADATA_PATH needs to be set ({e}).") # added for setup error notice 2022-06-06
 
         try:
             pdf_originals_path = localsecrets.PDF_ORIGINALS_PATH
         except Exception as e: 
-            pdf_originals_path = "Not Set!"
+            pdf_originals_path = "Not Set in localsecrets!"
             logger.error(f"PDF_ORIGINALS_PATH needs to be set ({e}).") # added for setup error notice 2022-06-06
             
         try:
             image_source_path = localsecrets.IMAGE_SOURCE_PATH
         except Exception as e: 
-            image_source_path = "Not Set!"
+            image_source_path = "Not Set in localsecrets!"
             logger.error(f"IMAGE_SOURCE_PATH needs to be set ({e}).") # added for setup error notice 2022-06-06
 
         try:
-            image_expert_picks_source_path = localsecrets.IMAGE_EXPERT_PICKS_PATH
+            image_expert_picks_path = localsecrets.IMAGE_EXPERT_PICKS_PATH
         except Exception as e: 
-            image_expert_picks_source_path = "Not Set!"
+            image_expert_picks_path = "Not Set in localsecrets!"
             logger.error(f"IMAGE_EXPERT_PICKS_PATH needs to be set ({e}).") # added for setup error notice 2022-06-06
 
         try:
-            xml_originals_source_path = localsecrets.XML_ORIGINALS_PATH
+            xml_originals_path = localsecrets.XML_ORIGINALS_PATH
         except Exception as e: 
-            xml_originals_source_path = "Not Set!"
+            xml_originals_path = "Not Set in localsecrets!"
             logger.error(f"XML_ORIGINALS_PATH needs to be set ({e}).") # added for setup error notice 2022-06-06
 
         config_name = localsecrets.CONFIG
@@ -1745,8 +1745,8 @@ async def session_status(response: Response,
                                                          google_metadata_path = google_metadata_path,
                                                          pdf_originals_path = pdf_originals_path,
                                                          image_source_path = image_source_path,
-                                                         image_expert_picks_source_path = image_expert_picks_source_path,
-                                                         xml_originals_source_path = xml_originals_source_path,
+                                                         image_expert_picks_path = image_expert_picks_path,
+                                                         xml_originals_path = xml_originals_path,
                                                          #cors_regex=localsecrets.CORS_REGEX, # see moreinfo
                                                          #library_versions=library_versions,  # see moreinfo
                                                          config_name = config_name
@@ -5329,10 +5329,17 @@ def documents_downloads(response: Response,
         #endpoint = opasCentralDBLib.API_DOCUMENTS_HTML
 
     #prep_document_download will check permissions for this user, and return abstract based file
+    # so we need to check the PDF_ORIGINALS_PATH here first
+    try:
+        pdf_originals_path = localsecrets.PDF_ORIGINALS_PATH
+    except Exception as e:
+        pdf_originals_path = opasConfig.DEFAULT_PDF_ORIGINALS_PATH
+        logger.error(f"PDF_ORIGINALS_PATH needs to be set ({e}) in localsecrets. Using opasConfig.DEFAULT_PDF_ORIGINALS_PATH {pdf_originals_path} for recovery") # added for setup error notice 2022-06-06
+    
     #if there's no permission
     flex_fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY,
                                              secret=localsecrets.S3_SECRET,
-                                             root=localsecrets.PDF_ORIGINALS_PATH) # important to use this path, not the XML one!
+                                             root=pdf_originals_path) # important to use this path, not the XML one!
 
     # make sure it's upper case for consistency (added 2021-10-10)
     documentID = documentID.upper()
@@ -5415,38 +5422,6 @@ def documents_downloads(response: Response,
                                                 return_status_code = response.status_code,
                                                 status_message=status_message
                                                 )
-        elif file_format == 'PDFOLD':
-            try:
-                stamped_file = opasPDFStampCpyrght.stampcopyright(user_name, input_file=filename, suffix="pepweb")
-                response.status_code = httpCodes.HTTP_200_OK
-                ret_val = FileResponse(path=stamped_file,
-                                       status_code=response.status_code,
-                                       filename=os.path.split(stamped_file)[1], 
-                                       media_type=media_type)
-
-            except Exception as e:
-                response.status_code = httpCodes.HTTP_404_NOT_FOUND # changed from 400 code on 2022-04-11 to match 404 error code below
-                status_message = msgdb.get_user_message(opasConfig.ERROR_404_DOCUMENT_NOT_FOUND) + request_qualifier_text
-                extended_status_message = f"{status_message}:{e}"
-                logger.error(extended_status_message)
-                raise HTTPException(status_code=response.status_code,
-                                    detail=status_message)
-
-            else: # success
-                response.status_code = httpCodes.HTTP_200_OK
-                status_message = opasCentralDBLib.API_STATUS_SUCCESS
-                logger.debug(status_message)
-                # success
-                ocd.record_document_view(document_id=documentID,
-                                         session_info=session_info,
-                                         view_type=file_format)
-                ocd.record_session_endpoint(api_endpoint_id=endpoint,
-                                            session_info=session_info, 
-                                            params=request.url._url,
-                                            item_of_interest=f"{documentID}", 
-                                            return_status_code = response.status_code,
-                                            status_message=status_message
-                                            )
         elif file_format == 'PDF':
             try:
                 stamped_file = opasPDFStampCpyrght.stampcopyright(user_name, input_file=filename, suffix="pepweb")
@@ -5674,7 +5649,7 @@ async def documents_image_fetch(response: Response,
        USER NEEDS TO BE AUTHENTICATED to request a download.  Otherwise, returns error.
     """
     
-    def select_new_image():
+    def select_new_image(expert_picks_path):
         flex_fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY,
                                                  secret=localsecrets.S3_SECRET,
                                                  root=expert_picks_path) 
@@ -5711,14 +5686,12 @@ async def documents_image_fetch(response: Response,
                 status_code=response.status_code,
                 detail=status_message
             )
-       
-    try:
+
+    try: # Verify PATH setting
         expert_picks_path = localsecrets.IMAGE_EXPERT_PICKS_PATH
-        status_message = f"Expert Picks Path is: {expert_picks_path}"
-        logger.info(status_message)
-    except Exception as e: # in case IMAGE_EXPERT_PICKS_PATH in localsecrets is not set
-        expert_picks_path = "pep-web-expert-pick-images"
-        logger.error(f"IMAGE_EXPERT_PICKS_PATH needs to be set in localsecrets ({e}).") # added for setup error notice 2022-06-06
+    except Exception as e: # recover in case path in localsecrets is not set
+        expert_picks_path = opasConfig.DEFAULT_IMAGE_EXPERT_PICKS_PATH # "pep-web-expert-pick-images"
+        logger.error(f"IMAGE_EXPERT_PICKS_PATH needs to be set in localsecrets ({e}). Using opasConfig.DEFAULT_IMAGE_EXPERT_PICKS_PATH {expert_picks_path} for recovery") # added for setup error notice 2022-06-06
    
     if imageID is not None:
         imageID = imageID.replace("+", " ")
@@ -5761,7 +5734,14 @@ async def documents_image_fetch(response: Response,
                 detail=status_message
             )    
 
-    fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root=localsecrets.IMAGE_SOURCE_PATH)
+    # new failsafe check for this setting, 2022-10-17
+    try:
+        image_source_path = localsecrets.IMAGE_SOURCE_PATH
+    except Exception as e: # in case IMAGE_SOURCE_PATH in localsecrets is not set
+        image_source_path = "pep-web-live-data/graphics"
+        logger.error(f"IMAGE_SOURCE_PATH needs to be set in localsecrets ({e}).") # added for setup error notice 2022-06-06
+   
+    fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root=image_source_path)
     media_type='image/jpeg'
     if imageID != "*":
         filename = fs.get_image_filename(filespec=imageID, insensitive=insensitive, log_errors=False) # IMAGE_SOURCE_PATH set as root above, all that we need
@@ -5773,7 +5753,7 @@ async def documents_image_fetch(response: Response,
             try:
                 today = datetime.today().strftime("%Y%m%d")
                 if expert_pick_image[0] != today or reselect:
-                    returned_filename = select_new_image() # saves new image to expert_pick_image as a side effect
+                    returned_filename = select_new_image(expert_picks_path) # saves new image to expert_pick_image as a side effect
                     logger.debug(f"select_new_image returns filename: {returned_filename}")
                     filename = expert_pick_image[1] 
                 else:
@@ -5817,7 +5797,7 @@ async def documents_image_fetch(response: Response,
                     while doc_id is None: # non-conforming image filename
                         logger.error(f"ImageFetchError: Nonconforming image filename {filename}, can't get article id from it")
                         counter += 1
-                        filename = select_new_image()
+                        filename = select_new_image(expert_picks_path)
                         doc_id = opasGenSupportLib.DocumentID(filename).document_id
                         if doc_id is not None:
                             break

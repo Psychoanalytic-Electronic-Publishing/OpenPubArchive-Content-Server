@@ -1660,7 +1660,7 @@ def check_if_start_of_section(ocd, art_id, fname=None):
                     if curs.rowcount >= 1:
                         try:
                             data_for_debug = curs.fetchall()
-                            logging.info(f"Article info: {data_for_debug}")
+                            logger.info(f"Article info: {data_for_debug}")
                             ret_val = True
                         except Exception as e:
                             print (f"Error: {e}")
@@ -1675,7 +1675,7 @@ def check_if_start_of_section(ocd, art_id, fname=None):
     except Exception as e:
         logger.error(e)
     else:
-        logging.info("Article is the start of a new section.")
+        logger.info("Article is the start of a new section.")
         
     return ret_val
 

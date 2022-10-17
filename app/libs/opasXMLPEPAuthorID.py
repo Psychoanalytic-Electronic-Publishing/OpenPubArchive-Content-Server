@@ -126,7 +126,7 @@ def isAuthorIDString(idString):
         else:
             retVal = True
     else:
-        logging.warning("Empty idString to isAuthorID")
+        logger.warning("Empty idString to isAuthorID")
         retVal = False
 
     return retVal
