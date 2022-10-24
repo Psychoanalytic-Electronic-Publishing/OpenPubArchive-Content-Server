@@ -84,7 +84,7 @@ class TestDatabaseWhatsNew(unittest.TestCase):
         #assert(r["db_server_ok"] == True)
         print (f"Count: {r['whatsNew']['responseInfo']['count']}")
         #print (r)
-        assert(response_info["count"] >= 3)
+        assert(response_info["count"] >= 1)
 
 
 if __name__ == '__main__':

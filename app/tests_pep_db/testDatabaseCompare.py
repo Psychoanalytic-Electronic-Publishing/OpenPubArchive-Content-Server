@@ -71,12 +71,12 @@ class TestDoDatabaseCompare(unittest.TestCase):
                       "language", 
                       #"updated", 
                       "pepversion", 
-                      "duplicate", 
+                      "duplicate", # unused now
                       "landing_page", 
                       "coverage_notes", 
-                      "landing_page_intro_html", 
-                      "landing_page_end_html", 
-                      "google_books_link", 
+                      "landing_page_intro_html", # unused now
+                      "landing_page_end_html", # unused now
+                      "google_books_link", # unused now
               ]
         verbose = False
         ret_val = compareTables.compare_critical_column_lists("api_productbase","basecode", col_list, db1Name="LOCALDEV", db2Name="STAGE", verbose=verbose)

@@ -30,9 +30,9 @@ class TestReports(unittest.TestCase):
         import datetime
         from datetime import date, timedelta
         dt1 = date.today() - timedelta(2)
-        dt2 = date.today()
+        dt2 = date.today() + timedelta(1)
         dt3 = datetime.datetime.now() - timedelta(4)
-        dt4 = datetime.datetime.now()
+        dt4 = datetime.datetime.now() + timedelta(1)
         print (f"Dates dt1:{dt1} dt2:{dt2} dt3:{dt3} dt4:{dt4}")
         full_URL = base_plus_endpoint_encoded(f'/v2/Admin/Reports/Session-Log?limit=10&startdate={dt1}&enddate={dt2}')
         response = requests.get(full_URL, headers=headers)
@@ -99,6 +99,9 @@ class TestReports(unittest.TestCase):
 
     def test04_user_searches_report(self):
         # note api_key is required, but already in headers
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?abstract=true&facetfields=art_year_int%2Cart_views_last12mos%2Cart_cited_5%2Cart_authors%2Cart_lang%2Cart_type%2Cart_sourcetype%2Cart_sourcetitleabbr%2Cglossary_group_terms%2Cart_kwds_str&facetlimit=15&facetmincount=1&formatrequested=XML&fulltext1=text%3A(%22anxiety+hysteria%22~25)&highlightlimit=5&limit=20&offset=0&sort=author&synonyms=false')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
         full_URL = base_plus_endpoint_encoded(f'/v2/Admin/Reports/User-Searches?limit=10')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
@@ -111,7 +114,7 @@ class TestReports(unittest.TestCase):
 
     def test05_session_log_report_endpointid(self):
         # note api_key is required, but already in headers
-        full_URL = base_plus_endpoint_encoded(f'/v2/Admin/Reports/Session-Log?limit=10&endpointidlist=31,32')
+        full_URL = base_plus_endpoint_encoded(f'/v2/Admin/Reports/Session-Log?limit=10&endpointidlist=7,41')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         # these don't get affected by the level.
@@ -139,7 +142,7 @@ class TestReports(unittest.TestCase):
         if use_server == 5:
             assert(response_info["count"] >= 50000)
         else:
-            assert(response_info["count"] >= 100)
+            assert(response_info["count"] >= 10)
             
         #  try descending (these now 2021-01-03 use different views to optimize the query using USE INDEX ( `fk_last_update` ) and built in orderby needed for query optiimization )
         full_URL = base_plus_endpoint_encoded(f'/v2/Admin/Reports/Session-Log?startdate={dt}&limit=100000&offset=0&download=false&sortorder=desc')
@@ -154,14 +157,14 @@ class TestReports(unittest.TestCase):
         if use_server == 5:
             assert(response_info["count"] >= 50000)
         else:
-            assert(response_info["count"] >= 100)
+            assert(response_info["count"] >= 10)
 
     def test07_session_log_report_dateformats(self):
         # note api_key is required, but already in headers
         import datetime
         from datetime import timedelta
         dt1 = datetime.datetime.now() - timedelta(30)
-        dt2 = datetime.datetime.now() - timedelta(7)
+        dt2 = datetime.datetime.now() + timedelta(1)
         df1 = dt1.strftime("%Y-%m-%d")
         print (df1)
         df1a = dt1.strftime("%Y%m%d%H%M%S")

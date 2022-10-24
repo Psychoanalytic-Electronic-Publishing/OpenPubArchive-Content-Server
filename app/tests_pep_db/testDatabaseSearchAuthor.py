@@ -54,6 +54,19 @@ class TestDatabaseSearchAuthor(unittest.TestCase):
         response_set = r["documentList"]["responseSet"] 
         assert(response_info["fullCount"] == 2)
 
+    def test_search_facets1_multi2(self):
+        encodedarg = urllib.parse.quote_plus("David Tuckett OR Peter Fonagy")
+        encodedarg2 = urllib.parse.quote_plus('art_sourcetitleabbr:("Int. J. Psychoanal." OR "Int. Rev. Psycho-Anal." OR "Brit. J. Psychother.") AND art_authors:("taffler, richard" OR "amati mehler, jacqueline")')
+        full_URL = base_plus_endpoint_encoded(f"/v2/Database/Search/?author={encodedarg}&facetquery={encodedarg2}")
+        print (f"Full URL: {full_URL}")
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        r = response.json()
+        #print (r)
+        response_info = r["documentList"]["responseInfo"]
+        response_set = r["documentList"]["responseSet"] 
+        assert(response_info["fullCount"] == 2)
+
     def test_search_facets1_fullnames(self):
         encodedarg = urllib.parse.quote_plus("((Ithier, Béatrice) && (bournova, klio))")
         full_URL = base_plus_endpoint_encoded(f'/v2/Database/Search/?author={encodedarg}')

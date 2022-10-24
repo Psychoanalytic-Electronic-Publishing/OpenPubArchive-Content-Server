@@ -1251,7 +1251,10 @@ class opasCentralDB(object):
                     record = cursor.fetchone()
                     if record is not None:
                         ret_val = record['db_update_date']
-                        ret_val = ret_val.isoformat()
+                        if ret_val is not None:
+                            ret_val = ret_val.isoformat()
+                        else:
+                            ret_val = ""
                     else:
                         ret_val = ""
                     

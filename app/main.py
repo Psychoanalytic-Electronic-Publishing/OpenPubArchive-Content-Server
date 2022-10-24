@@ -903,12 +903,17 @@ async def admin_reports(response: Response,
 
             ret_val = models.Report(report = report_struct)
 
+    if response.status_code is None:
+        response_code = 200
+    else:
+        response_code = response.status_code
+        
     ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_ADMIN_REPORTS,
                                 api_endpoint_method=opasCentralDBLib.API_ENDPOINT_METHOD_GET,
                                 item_of_interest=report, 
                                 session_info=session_info, 
                                 params=request.url._url,
-                                return_status_code = response.status_code,
+                                return_status_code = response_code,
                                 status_message=opasCentralDBLib.API_STATUS_SUCCESS
                                 )
 
@@ -5690,7 +5695,7 @@ async def documents_image_fetch(response: Response,
     try: # Verify PATH setting
         expert_picks_path = localsecrets.IMAGE_EXPERT_PICKS_PATH
     except Exception as e: # recover in case path in localsecrets is not set
-        expert_picks_path = opasConfig.DEFAULT_IMAGE_EXPERT_PICKS_PATH # "pep-web-expert-pick-images"
+        expert_picks_path = opasConfig.DEFAULT_IMAGE_EXPERT_PICKS_PATH
         logger.error(f"IMAGE_EXPERT_PICKS_PATH needs to be set in localsecrets ({e}). Using opasConfig.DEFAULT_IMAGE_EXPERT_PICKS_PATH {expert_picks_path} for recovery") # added for setup error notice 2022-06-06
    
     if imageID is not None:
@@ -5738,7 +5743,7 @@ async def documents_image_fetch(response: Response,
     try:
         image_source_path = localsecrets.IMAGE_SOURCE_PATH
     except Exception as e: # in case IMAGE_SOURCE_PATH in localsecrets is not set
-        image_source_path = "pep-web-live-data/graphics"
+        image_source_path = opasConfig.DEFAULT_IMAGE_SOURCE_PATH 
         logger.error(f"IMAGE_SOURCE_PATH needs to be set in localsecrets ({e}).") # added for setup error notice 2022-06-06
    
     fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root=image_source_path)

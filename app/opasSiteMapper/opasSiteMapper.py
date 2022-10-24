@@ -145,11 +145,20 @@ if __name__ == "__main__":
     if options.testmode:
         import doctest
         doctest.testmod()
+        print ("Finished Doctests!")
+        #try new addition
+        import subprocess
+        subprocess.run(path_name="../opasGoogleMetadataExport/opasGoogleMetadataExport.py")
         print ("Fini. Tests complete.")
     else:
         ret_val = sitemapper(path=options.bucket, size=options.recordsperfile, max_records=options.maxrecords, clear_sitemap=options.clearsitemap)
         print (ret_val["siteMapIndexFile"])
         print (ret_val["siteMapList"])
+        print ("Sitemap Finished!")
+        print ("Running Google Metadata Generator (interim solution)")
+        #temp - Run opasGoogleMetadataExport from here until it's installed as a separate processing step on AWS
+        import subprocess
+        subprocess.run(path_name="../opasGoogleMetadataExport/opasGoogleMetadataExport.py")
         print ("Finished!")
 
     sys.exit()
