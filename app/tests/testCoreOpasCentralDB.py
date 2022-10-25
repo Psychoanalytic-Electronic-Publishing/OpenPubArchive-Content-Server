@@ -26,12 +26,12 @@ from opasCentralDBLib import opasCentralDB
 class TestDatabase(unittest.TestCase):
     def test_0_art_year(self):
         ocd = opasCentralDB()
-        year = ocd.get_article_year("FD.026.0007A")
-        assert(year == 2020)
+        year = ocd.get_article_year("CFP.007.0001A")
+        assert(year == 2017)
     
     def test_1_art_year(self):
         import timeit
-        timing = timeit.timeit('artyear = ocd.get_article_year("FD.026.0007A")', setup='from opasCentralDBLib import opasCentralDB; ocd = opasCentralDB()', number=10)
+        timing = timeit.timeit('artyear = ocd.get_article_year("CFP.007.0001A")', setup='from opasCentralDBLib import opasCentralDB; ocd = opasCentralDB()', number=10)
         print (f"timing: {timing}")
         assert(timing < 2.7) # 10 times slower running DB/Solr on AWS
     
@@ -43,26 +43,26 @@ class TestDatabase(unittest.TestCase):
     def test_opasdb_getsources(self):
         ocd = opasCentralDB()
         sources = ocd.get_sources()
-        assert(sources[0] > 100)
-        sources = ocd.get_sources(src_code="IJP")
+        assert(sources[0] > 5)
+        sources = ocd.get_sources(src_code="CFP")
         assert(sources[0] == 1)
         sources = ocd.get_sources(src_type="journal")
-        assert(sources[0] > 70)
+        assert(sources[0] >= 4)
         sources = ocd.get_sources(src_type="videos")
-        assert(sources[0] >= 12)
+        assert(sources[0] >= 1)
 
     def test_opasdb_getsourcetypes(self):
         ocd = opasCentralDB()
         sources = ocd.get_sources()
-        assert(sources[0] > 100)
+        assert(sources[0] >= 5)
         # unlike the API higher level function, both of these src_types--videos and stream--return streams on this direct call
         #  because the database vw_api_productbase_instance_counts view only has the stream information.
         #  see testAPIMetadata.test_3B_meta_videostreams to see the difference which is driven by
         #  query parameter streams
         sources = ocd.get_sources(src_type="videos")
-        assert(sources[0] >= 12)
+        assert(sources[0] >= 1)
         sources = ocd.get_sources(src_type="stream")
-        assert(sources[0] >= 12)
+        assert(sources[0] >= 1)
 
     # no longer applicable
     #def test_opasdb_abuse_too_many_opens(self):

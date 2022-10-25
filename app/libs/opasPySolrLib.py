@@ -434,7 +434,7 @@ def check_solr_docs_connection():
                    'rows':5,
                }
     
-        query = f"art_id:APA.009.0331A"
+        query = f"art_id:*"
         try:
             results = solr_docs2.search(query, **args)
         except Exception as e:

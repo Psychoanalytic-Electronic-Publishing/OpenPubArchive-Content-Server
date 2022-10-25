@@ -690,10 +690,6 @@ def main():
                     if separated_input_output and options.smartload and not smart_file_rebuild:
                         print (f"SmartLoad: File not modified. No need to recompile.")
                         
-                msg = f"\t...Opening precompiled XML file {final_fileinfo.basename} ({final_fileinfo.filesize} bytes) to load databases."
-                logger.info(msg)
-                print (msg) # Opening precompiled XML file
-                    
                 # import into lxml
                 parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True)
                 parsed_xml = etree.fromstring(opasxmllib.remove_encoding_string(fileXMLContents), parser)
@@ -707,6 +703,17 @@ def main():
                 artInfo.file_size = final_fileinfo.filesize
                 artInfo.file_updated = file_was_updated
                 artInfo.file_create_time = final_fileinfo.create_time
+                try:
+                    artInfo.file_classification = re.search("(?P<class>current|archive|future|free|special|offsite)", str(n.filespec), re.IGNORECASE).group("class")
+                    # set it to lowercase for ease of matching later
+                    if artInfo.file_classification is not None:
+                        artInfo.file_classification = artInfo.file_classification.lower()
+                except Exception as e:
+                    logger.warning("Could not determine file classification for %s (%s)" % (n.filespec, e))
+                
+                msg = f"\t...Loading precompiled XML file {final_fileinfo.basename} ({final_fileinfo.filesize} bytes) Access: {artInfo.file_classification }"
+                logger.info(msg)
+                print (msg) # Opening precompiled XML file
                 
                 # not a new journal, see if it's a new article.
                 if opasSolrLoadSupport.add_to_tracker_table(ocd, artInfo.art_id): # if true, added successfully, so new!
@@ -718,14 +725,6 @@ def main():
                         except Exception as e:
                             issue_updates[artInfo.issue_id_str] = [art]
     
-                try:
-                    artInfo.file_classification = re.search("(?P<class>current|archive|future|free|special|offsite)", str(n.filespec), re.IGNORECASE).group("class")
-                    # set it to lowercase for ease of matching later
-                    if artInfo.file_classification is not None:
-                        artInfo.file_classification = artInfo.file_classification.lower()
-                except Exception as e:
-                    logger.warning("Could not determine file classification for %s (%s)" % (n.filespec, e))
-                
                 # walk through bib section and add to refs core database
                 precommit_file_count += 1
                 if precommit_file_count > configLib.opasCoreConfig.COMMITLIMIT:

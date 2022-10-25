@@ -23,7 +23,7 @@ class TestSessionLogin(unittest.TestCase):
     def test_00_search_not_logged_in(self):
         # Send a request to the API server and store the response.
         # ### OR #####
-        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?fulltext1=collebianco&abstract=true')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?fulltext1=unconscious&abstract=true')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
@@ -53,7 +53,7 @@ class TestSessionLogin(unittest.TestCase):
         global orig_session_id
         print (f"Session ID: {orig_session_id}")
         print (f"headers: {headers}")
-        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Document/PCT.011.0171A/')
+        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Document/CFP.007.0001A/')
         # local, this works...but fails in the response.py code trying to convert self.status to int.
         response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
@@ -84,7 +84,7 @@ class TestSessionLogin(unittest.TestCase):
         global orig_session_id
         print (f"Session ID: {orig_session_id}")
         print (f"headers: {headers}")
-        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Document/PCT.011.0171A/')
+        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Document/CFP.007.0001A/')
         # local, this works...but fails in the response.py code trying to convert self.status to int.
         response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
