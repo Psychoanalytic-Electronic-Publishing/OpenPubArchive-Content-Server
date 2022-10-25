@@ -15,7 +15,7 @@ from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, sessio
 sessID, headers, session_info = test_login()
 
 
-class TestAPIStatus(unittest.TestCase):
+class TestDatabaseSegments(unittest.TestCase):
     """
     Tests for status endpoints 
     
@@ -31,13 +31,6 @@ class TestAPIStatus(unittest.TestCase):
         # has offsite been loaded
         # have stats been run
     """   
-
-    def test_v2_api_status(self):
-        # Send a request to the API server and store the response.
-        full_URL = base_plus_endpoint_encoded('/v2/Api/Status/')
-        response = requests.get(full_URL, headers=headers)
-        # Confirm that the request-response cycle completed successfully.
-        assert(response.ok == True)
 
     # 
     # Though not testing the API per se, the following ensures in this early test whether all the components of the database have been fully loaded.

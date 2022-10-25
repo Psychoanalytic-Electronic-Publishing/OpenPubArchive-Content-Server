@@ -4,6 +4,7 @@
 # Updates:
 #  2020-04-06 - Testing tightened to be exact.
 #  2020-04-30 - Added test 8x to test source info retrieval with wildcards
+#  2022-10-25 - Genericized
 
 import unittest
 import requests
@@ -16,12 +17,15 @@ from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_
 headers = get_headers_not_logged_in()
 
 
-# import opasCentralDBLib
-
 class TestArticleID(unittest.TestCase):
     """
     Note: tests are performed in alphabetical order, hence the function naming
           with forced order in the names.
+          
+    Test the PEP ID system
+    
+    These tests do not require PEP data to be loaded, but the ID system is PEP Specific
+    
     """   
         
     def test_0(self): 
@@ -61,6 +65,10 @@ class TestArticleID(unittest.TestCase):
             ("FA.001S.R0001", 19),
             ("FA.002S.R0001", 0),
             ("ajp.034.0155A", 0), 
+            ("PEPGRANTVS.001.0003A", 0),
+            ("PEPGRANTVS.001A.0015A", 1), 
+            ("JOAP.028B.0184A", 2), 
+            ("PAQ.011C.0148B", 3), 
         ]
         for n in testIDs:
             full_URL = base_plus_endpoint_encoded(f'/v2/Metadata/ArticleID/?articleID={n[0]}') 

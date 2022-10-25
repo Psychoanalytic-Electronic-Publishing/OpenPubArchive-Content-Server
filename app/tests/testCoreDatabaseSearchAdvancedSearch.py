@@ -14,7 +14,7 @@ class TestDatabaseSearchAdvancedSearch(unittest.TestCase):
         """
         Use equivalent field names in field search per schemaMap USERVARIATION2SOLR_MAP
         """
-        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?sourcecode=AOP&smarttext=type:(ART OR COM)')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?sourcecode=FA&smarttext=type:(ART OR COM)')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
@@ -22,10 +22,10 @@ class TestDatabaseSearchAdvancedSearch(unittest.TestCase):
         response_set = r["documentList"]["responseSet"] 
         print (f'Smarttext: {response_info["description"]}')
         print (response_info["fullCount"])
-        assert(response_info["fullCount"] >= 627)
+        assert(response_info["fullCount"] >= 2)
         # print (response_set[0])
 
-        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?sourcecode=AJP&smarttext=type:PRO')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?sourcecode=PEPGRANTVS&smarttext=type:VID')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
@@ -33,10 +33,10 @@ class TestDatabaseSearchAdvancedSearch(unittest.TestCase):
         response_set = r["documentList"]["responseSet"] 
         print (f'Smarttext: {response_info["description"]}')
         print (response_info["fullCount"])
-        assert(response_info["fullCount"] >= 37)
+        assert(response_info["fullCount"] >= 2)
         print (response_set[0])
 
-        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=author:Tuckett')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=author:Kahr')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
@@ -44,7 +44,7 @@ class TestDatabaseSearchAdvancedSearch(unittest.TestCase):
         response_set = r["documentList"]["responseSet"] 
         print (f'Smarttext: {response_info["description"]}')
         print (response_info["fullCount"])
-        assert(response_info["fullCount"] >= 60)
+        assert(response_info["fullCount"] >= 1)
         print (response_set[0])
 
 if __name__ == '__main__':

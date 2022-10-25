@@ -12,7 +12,7 @@ class TestDatabaseSearchAbstractReturn(unittest.TestCase):
     def test_01_search_abstract_on(self):
         # Send a request to the API server and store the response.
         # ### OR #####
-        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?fulltext1=collebianco&abstract=true')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?fulltext1=transformation&abstract=true')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
@@ -25,7 +25,7 @@ class TestDatabaseSearchAbstractReturn(unittest.TestCase):
     def test_01_search_abstract_on_xml(self):
         # Send a request to the API server and store the response.
         # ### OR #####
-        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?fulltext1=collebianco&abstract=true&formatrequested=XML')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?fulltext1=transformation&abstract=true&formatrequested=XML')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
@@ -38,7 +38,7 @@ class TestDatabaseSearchAbstractReturn(unittest.TestCase):
     def test_01_search_abstract_off(self):
         # Send a request to the API server and store the response.
         # ### OR #####
-        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?fulltext1=collebianco&abstract=false')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?fulltext1=transformation&abstract=false')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
@@ -51,7 +51,7 @@ class TestDatabaseSearchAbstractReturn(unittest.TestCase):
     def test_01_search_abstract_default_off(self):
         # Send a request to the API server and store the response.
         # ### OR #####
-        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?fulltext1=collebianco')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?fulltext1=transformation')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()

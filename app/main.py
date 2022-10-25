@@ -3630,7 +3630,7 @@ async def database_open_url(response: Response,
     else:
         author = None
     
-    sourcetype = "journal"
+    sourcetype = "journal OR videostream"
     if issn is not None:
         smarttext = f"art_issn:{issn}"
     elif eissn is not None:

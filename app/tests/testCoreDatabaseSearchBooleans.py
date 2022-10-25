@@ -21,7 +21,7 @@ class TestDatabaseSearchBooleans(unittest.TestCase):
         response_set = r["documentList"]["responseSet"] 
         bool_or = response_info["fullCount"]
         print(f"bool_or {bool_or}")
-        assert(bool_or >= 30000)
+        assert(bool_or >= 10)
 
         # ### AND #####
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?fulltext1=Mother+and+Father')

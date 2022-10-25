@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+# Updates:
+#  2022-10-25 - Set to use only sample data
+
 import sys
 import os.path
 import logging
@@ -33,7 +36,7 @@ class TestClientLogin(unittest.TestCase):
     def test_client_login_document_access(self):
         # Login to PaDS with test account and then check responses to mostCited for access.
         # 2020-11-06 change document...too many requests for the same as on the home page of the new PEP-Web
-        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Document/PAQ.073.0005A/')
+        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Document/BIP.001.0342A/')
         # local, this works...but fails in the response.py code trying to convert self.status to int.
         response = client.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.

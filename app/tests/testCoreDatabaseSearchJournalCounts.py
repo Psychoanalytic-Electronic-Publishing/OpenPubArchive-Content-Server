@@ -11,22 +11,22 @@ headers = get_headers_not_logged_in()
 class TestDatabaseSearchJournalCounts(unittest.TestCase):
     def test_1a_search_sourcecodes(self):
         # Send a request to the API server and store the response.
-        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?art_sourcecode=ADPSA') 
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?art_sourcecode=PEPGRANTVS') 
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
         response_info = r["documentList"]["responseInfo"]
         print(response_info["fullCount"])
-        assert(response_info["fullCount"] >= 291)
+        assert(response_info["fullCount"] >= 2)
         
         # Send a request to the API server and store the response.
-        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?art_sourcecode=IJPSPPSC') 
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?art_sourcecode=CFP') 
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
         response_info = r["documentList"]["responseInfo"]
         print(response_info["fullCount"])
-        assert(response_info["fullCount"] >= 158)
+        assert(response_info["fullCount"] >= 2)
 
     def test_2a_sourcecode_facets(self):
         # Send a request to the API server and store the response.
@@ -36,7 +36,7 @@ class TestDatabaseSearchJournalCounts(unittest.TestCase):
         r = response.json()
         response_info = r["documentList"]["responseInfo"]
         print(response_info["facetCounts"]["facet_fields"]["art_sourcecode"])
-        assert(response_info["fullCount"] >= 291)
+        assert(response_info["fullCount"] >= 10)
         
 
 
