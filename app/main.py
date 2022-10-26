@@ -3503,19 +3503,31 @@ def database_mostcited(response: Response,
         header = ["Document", "Last 5 Years", "Last 10 years", "Last 20 years", "All years"]
         df = pd.DataFrame(cites)
         stream = io.StringIO()
-        df.to_csv(stream, header=header, index = False)
-        response = StreamingResponse(iter([stream.getvalue()]), media_type="text/csv")
-        response.headers["Content-Disposition"] = "attachment; filename=pepcited.csv"
-        ret_val = response
-        # Don't record endpoint use (not a user request, just a default) but do record download
-        status_message = "Success"
-        status_code = httpCodes.HTTP_200_OK
-        ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DATABASE_MOSTCITED,
-                                    session_info=session_info, 
-                                    params=request.url._url,
-                                    return_status_code = status_code,
-                                    status_message=status_message
-                                    )
+        if len(df > 0):
+            df.to_csv(stream, header=header, index = False)
+            response = StreamingResponse(iter([stream.getvalue()]), media_type="text/csv")
+            response.headers["Content-Disposition"] = "attachment; filename=pepcited.csv"
+            ret_val = response
+            status_message = "Success"
+            # Don't record endpoint use (not a user request, just a default) but do record download
+            status_code = httpCodes.HTTP_200_OK
+            ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DATABASE_MOSTCITED,
+                                        session_info=session_info, 
+                                        params=request.url._url,
+                                        return_status_code = status_code,
+                                        status_message=status_message
+                                        )
+        else:
+            ret_val = None
+            status_message = "Success, But No Data to download"
+            if ret_val is None:
+                detail = "MostCitedError: " + ERR_MSG_SEARCH_RETURNED_NONE
+                logger.error(detail)
+                raise HTTPException(
+                    status_code=httpCodes.HTTP_400_BAD_REQUEST, 
+                    detail = detail
+                )           
+            
 
     else:
         # if no special paramaters, then use the cache. It doesn't make sense otherwise.

@@ -6,7 +6,7 @@ import opasCentralDBLib
 
 ocd = opasCentralDBLib.opasCentralDB()
 
-class TestStandaloneDataLoaderFunctions(unittest.TestCase):
+class TestStandaloneCrosstabFunctions(unittest.TestCase):
     """
     Tests
     
