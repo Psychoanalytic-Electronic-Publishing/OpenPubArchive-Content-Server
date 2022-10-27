@@ -240,6 +240,86 @@ def file_was_loaded_after(solrcore, after_date, filename):
     return ret_val
 
 #------------------------------------------------------------------------------------------------------
+def output_file_needs_rebuilding(outputfilename, inputfilename=None, inputfilespec=None, input_build=loaderConfig.default_input_build, output_build=loaderConfig.default_output_build):
+    ret_val = False
+    
+    if inputfilespec is None:
+        inputfilespec = FileInfo()
+        exists = inputfilespec.mapFS(inputfilename) # if exists, data in fileinfo
+        
+    if inputfilename is None and inputfilespec is not None:
+        inputfilename = inputfilespec.filespec
+       
+    if inputfilename != outputfilename:
+        # see if inputfilename is older           
+        try:
+            # fileinfoout = FileInfo(fs=fs)
+            fileinfoout = FileInfo()
+            exists = fileinfoout.mapFS(outputfilename)
+            if not exists:
+                # need to build
+                ret_val = True
+            else:    
+                if fileinfoout.date_modified <  inputfilespec.date_modified:
+                    # need to rebuild
+                    ret_val = True
+                else:
+                    ret_val = False
+
+        except Exception as e:
+            print (e)
+            ret_val = False # no need to rebuild
+    
+    return ret_val
+
+#------------------------------------------------------------------------------------------------------
+def file_needs_reloading_to_solr(solrcore, art_id, timestamp_str, filename=None, fs=None, filespec=None, smartload=False, input_build=loaderConfig.default_input_build, output_build=loaderConfig.default_output_build):
+    """
+    Now, since Solr may have EXP_ARCH1 and the load 'candidate' may be KBD3, the one in Solr
+      can be the same or NEWER, and it's ok, no need to reprocess.
+      
+      BUT: We need to see if there actually is a bEXP_ARCH1 
+    """
+    ret_val = True
+    if filename is None:
+        filename = art_id
+
+    try:
+        outputfname = filename.replace(input_build, output_build)
+        result = opasSolrLoadSupport.get_file_dates_solr(solrcore, art_id=art_id, filename=outputfname)
+        if result[0]["file_last_modified"] >= timestamp_str:
+            ret_val = False # newer in solr
+        else:
+            ret_val = True
+
+        if options.display_verbose: # To refresh or not to refresh
+            try:
+                filetime = datetime.strptime(timestamp_str, "%Y-%m-%dT%H:%M:%SZ")
+                filetime = filetime.strftime("%Y-%m-%d %H:%M:%S")
+                solrtime = result[0]['file_last_modified']
+                solrtime = datetime.strptime(solrtime, "%Y-%m-%dT%H:%M:%SZ")
+                solrtime = solrtime.strftime("%Y-%m-%d %H:%M:%S")
+                if not ret_val:
+                    print (f"Skipped - No refresh needed File {filename}: {filetime} vs Solr: {solrtime}")
+                else:
+                    print (f"Refresh needed File {filename}: {filetime} vs Solr: {solrtime}")
+
+            except Exception as e:
+                msg =f"Can't get file info {filename}"
+                logger.error(msg)
+                print (msg)
+
+            
+    except KeyError as e:
+        ret_val = True # not found, return true so it's loaded anyway.
+    except Exception as e:
+        logger.info(f"File check error: {e}")
+        ret_val = True # error, return true so it's loaded anyway.
+        
+    return ret_val 
+
+
+#------------------------------------------------------------------------------------------------------
 def file_is_same_or_newer_in_solr_by_artid(solrcore, art_id, timestamp_str, filename=None, fs=None, filespec=None, smartload=False, input_build=loaderConfig.default_input_build, output_build=loaderConfig.default_output_build):
     """
     Now, since Solr may have EXP_ARCH1 and the load 'candidate' may be KBD3, the one in Solr
@@ -279,11 +359,13 @@ def file_is_same_or_newer_in_solr_by_artid(solrcore, art_id, timestamp_str, file
                 ret_val = True # no need to recompile
         else:
             result = opasSolrLoadSupport.get_file_dates_solr(solrcore, art_id=art_id)
-            if result[0]["file_last_modified"] >= timestamp_str:
-                ret_val = True # newer in solr, no need to reload
+            if len(result) >= 1:
+                if result[0]["file_last_modified"] >= timestamp_str:
+                    ret_val = True # newer in solr, no need to reload
+                else:
+                    ret_val = False
             else:
-                ret_val = False
-            
+                ret_val = False # need to build
     else:
         try:
             outputfname = filename.replace(input_build, output_build)
@@ -537,7 +619,8 @@ def main():
             filenames = [fileinfo]
             print (f"Filenames: {filenames}")
         else:
-            pat = fr"(.*?)\({selected_input_build}\)\.(xml|XML)$"
+            # allow for SMARTBUILD_EXCEPTIONS filenames which are output only and have them in the list.
+            pat = fr"((.*?)\({selected_input_build}\))|({loaderConfig.SMARTBUILD_EXCEPTIONS}(.*?)\({loaderConfig.default_precompiled_input_build_pattern}\))\.(xml|XML)$"
             filenames = []
         
         if filenames == []:
@@ -579,9 +662,13 @@ def main():
             # Now walk through all the filenames selected
             # ----------------------------------------------------------------------
             print (f"{pre_action_verb} started ({time.ctime()}).  Examining files.")
+            glossary_file_skip_pattern=r"ZBK.069(.*)"
+            rc_skip_glossary_kbd3_files = re.compile(glossary_file_skip_pattern, re.IGNORECASE)
             
             for n in filenames:
                 fileTimeStart = time.time()
+                input_file_was_updated = False
+                output_file_newer_than_solr = False
                 file_was_updated = False
                 smart_file_rebuild = False
                 base = n.basename
@@ -590,25 +677,46 @@ def main():
                 artID = m.group(1)
                 artID = artID.upper()
                 
-                if not options.forceRebuildAllFiles:  # always force processed for single file                  
+                try:
+                    inputfilename = n.fileinfo["name"]
+                except KeyError as e:
+                    inputfilename = str(n.filespec)
+                
+                outputfilename = inputfilename.replace(loaderConfig.default_input_build, loaderConfig.default_output_build)
+
+                if inputfilename != outputfilename:
+                    output_recompile = \
+                       input_file_was_updated = False                    
+                else:
+                    # does output build need to be regenerated?
+                    output_recompile = \
+                       input_file_was_updated = output_file_needs_rebuilding(inputfilespec=n,
+                                                                             inputfilename=inputfilename,
+                                                                             outputfilename=outputfilename, 
+                                                                             input_build=loaderConfig.default_input_build,
+                                                                             output_build=loaderConfig.default_output_build)
+                
+                timestamp = n.timestamp_str
+                output_file_newer_than_solr = file_needs_reloading_to_solr(solrcore=solr_docs2,
+                                                                           art_id=artID,
+                                                                           timestamp_str=timestamp,
+                                                                           filename=outputfilename)
+                
+                                   
+                if not options.forceRebuildAllFiles:  # not forced, but always force processed for single file 
                     if not options.display_verbose and processed_files_count % 100 == 0 and processed_files_count != 0: # precompiled xml files loaded progress indicator
                         print (f"Precompiled XML Files ...loaded {processed_files_count} out of {files_found} possible.")
     
                     if not options.display_verbose and skipped_files % 100 == 0 and skipped_files != 0: # xml files loaded progress indicator
                         print (f"Skipped {skipped_files} so far...loaded {processed_files_count} out of {files_found} possible." )
                     
-                    if file_is_same_or_newer_in_solr_by_artid(solr_docs2, art_id=artID, timestamp_str=n.timestamp_str,
-                                                              filename=n.basename, fs=fs, filespec=n, smartload=options.smartload,
-                                                              input_build=selected_input_build,
-                                                              output_build=options.output_build):
-                        # but does the exp_arch exist?
-                        if not options.forceReloadAllFiles:
-                            skipped_files += 1
-                            continue
-                        else:
-                            reload_count += 1
+                    # if smartload, this will be kbd3, and it basically only decides whether it needs to be built.
+                    
+                    if options.forceReloadAllFiles or input_file_was_updated or output_file_newer_than_solr:
+                        reload_count += 1
                     else:
-                        file_was_updated = True
+                        skipped_files += 1
+                        continue
                 
                 # get mod date/time, filesize, etc. for mysql database insert/update
                 processed_files_count += 1
@@ -618,7 +726,7 @@ def main():
                         break
 
                 if options.smartload:
-                    if options.forceRebuildAllFiles or file_was_updated:
+                    if options.forceRebuildAllFiles or input_file_was_updated:
                         smart_file_rebuild = True
                     else:
                         smart_file_rebuild = False
@@ -634,7 +742,8 @@ def main():
                                                             output_build=options.output_build)
                 separated_input_output = final_xml_filename != n.filespec
 
-                if smart_file_rebuild:
+                # smart rebuild should not rebuild glossary files, so skip those
+                if smart_file_rebuild and not rc_skip_glossary_kbd3_files.match(n.basename):
                     # make changes to the XML
                     input_filespec = n.filespec
                     fileXMLContents, input_fileinfo = fs.get_file_contents(input_filespec)
@@ -734,7 +843,7 @@ def main():
                 if 1: # options.glossary_core_update:
                     # load the glossary core if this is a glossary item
                     glossary_file_pattern=r"ZBK.069(.*)\(bEXP_ARCH1\)\.(xml|XML)$"
-                    if re.match(glossary_file_pattern, n.basename):
+                    if re.match(glossary_file_pattern, n.basename, re.IGNORECASE):
                         opasSolrLoadSupport.process_article_for_glossary_core(parsed_xml, artInfo, solr_gloss2, fileXMLContents, verbose=options.display_verbose)
                 
                 # input to the full-text and authors cores
@@ -1076,7 +1185,7 @@ if __name__ == "__main__":
             options.input_build = f"{options.input_build})"
 
     if options.glossary_only and options.file_key is None:
-        options.file_key = "ZBK.069"
+        options.file_key = "ZBK.069.*"
 
     if options.testmode:
         import doctest
