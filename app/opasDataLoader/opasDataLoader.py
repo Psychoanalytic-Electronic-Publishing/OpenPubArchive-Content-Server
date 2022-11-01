@@ -7,11 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-<<<<<<< Updated upstream
-__version__     = "2022.1014/v2.0.013"   # semver versioning after date.
-=======
-__version__     = "2022.1101/v2.0.016"   # semver versioning after date.
->>>>>>> Stashed changes
+__version__     = "2022.1101/v2.0.017"   # semver versioning after date.
 __status__      = "Development"
 
 programNameShort = "opasDataLoader"
@@ -254,8 +250,6 @@ def file_was_loaded_after(solrcore, after_date, filename):
     return ret_val
 
 #------------------------------------------------------------------------------------------------------
-<<<<<<< Updated upstream
-=======
 def output_file_needs_rebuilding(outputfilename, inputfilename=None, inputfilespec=None):
     ret_val = False
     outfile_exists = True
@@ -345,7 +339,6 @@ def file_needs_reloading_to_solr(solrcore, art_id, timestamp_str, filename=None,
 
 
 #------------------------------------------------------------------------------------------------------
->>>>>>> Stashed changes
 def file_is_same_or_newer_in_solr_by_artid(solrcore, art_id, timestamp_str, filename=None, fs=None, filespec=None, smartload=False, input_build=loaderConfig.default_input_build, output_build=loaderConfig.default_output_build):
     """
     Now, since Solr may have EXP_ARCH1 and the load 'candidate' may be KBD3, the one in Solr
@@ -385,8 +378,11 @@ def file_is_same_or_newer_in_solr_by_artid(solrcore, art_id, timestamp_str, file
                 ret_val = True # no need to recompile
         else:
             result = opasSolrLoadSupport.get_file_dates_solr(solrcore, art_id=art_id)
-            if result[0]["file_last_modified"] >= timestamp_str:
-                ret_val = True # newer in solr, no need to reload
+            if len(result) >= 1:
+                if result[0]["file_last_modified"] >= timestamp_str:
+                    ret_val = True # newer in solr, no need to reload
+                else:
+                    ret_val = False
             else:
                 ret_val = False
             
@@ -652,12 +648,8 @@ def main():
             filenames = [fileinfo]
             print (f"Filenames: {filenames}")
         else:
-<<<<<<< Updated upstream
-            pat = fr"(.*?)\({selected_input_build}\)\.(xml|XML)$"
-=======
             # allow for SMARTBUILD_EXCEPTIONS filenames which are output only and have them in the list.
             pat = fr"(((.*?)\({selected_input_build}\))|({loaderConfig.SMARTBUILD_EXCEPTIONS}(.*?)\({selected_output_build}\)))\.(xml|XML)$" # should we include the pattern including TOC?
->>>>>>> Stashed changes
             filenames = []
         
         if filenames == []:
@@ -699,9 +691,13 @@ def main():
             # Now walk through all the filenames selected
             # ----------------------------------------------------------------------
             print (f"{pre_action_verb} started ({time.ctime()}).  Examining files.")
+            glossary_file_skip_pattern=r"ZBK.069(.*)"
+            rc_skip_glossary_kbd3_files = re.compile(glossary_file_skip_pattern, re.IGNORECASE)
             
             for n in filenames:
                 fileTimeStart = time.time()
+                input_file_was_updated = False
+                output_file_newer_than_solr = False
                 file_was_updated = False
                 smart_file_rebuild = False
                 base = n.basename
@@ -710,9 +706,6 @@ def main():
                 artID = m.group(1)
                 artID = artID.upper()
                 
-<<<<<<< Updated upstream
-                if not options.forceRebuildAllFiles:  # always force processed for single file                  
-=======
                 try:
                     inputfilename = n.fileinfo["name"]
                 except KeyError as e:
@@ -743,25 +736,18 @@ def main():
                     #output_file_newer_than_solr = False
                     
                 if not options.forceRebuildAllFiles:  # not forced, but always force processed for single file 
->>>>>>> Stashed changes
                     if not options.display_verbose and processed_files_count % 100 == 0 and processed_files_count != 0: # precompiled xml files loaded progress indicator
                         print (f"Precompiled XML Files ...loaded {processed_files_count} out of {files_found} possible.")
     
                     if not options.display_verbose and skipped_files % 100 == 0 and skipped_files != 0: # xml files loaded progress indicator
                         print (f"Skipped {skipped_files} so far...loaded {processed_files_count} out of {files_found} possible." )
                     
-                    if file_is_same_or_newer_in_solr_by_artid(solr_docs2, art_id=artID, timestamp_str=n.timestamp_str,
-                                                              filename=n.basename, fs=fs, filespec=n, smartload=options.smartload,
-                                                              input_build=selected_input_build,
-                                                              output_build=options.output_build):
-                        # but does the exp_arch exist?
-                        if not options.forceReloadAllFiles:
-                            skipped_files += 1
-                            continue
-                        else:
-                            reload_count += 1
+                    # if smartload, this will be kbd3, and it basically only decides whether it needs to be built.
+                    if options.forceReloadAllFiles or input_file_was_updated or output_file_newer_than_solr:
+                        reload_count += 1
                     else:
-                        file_was_updated = True
+                        skipped_files += 1
+                        continue
                 
                 # get mod date/time, filesize, etc. for mysql database insert/update
                 processed_files_count += 1
@@ -771,7 +757,7 @@ def main():
                         break
 
                 if options.smartload:
-                    if options.forceRebuildAllFiles or file_was_updated:
+                    if options.forceRebuildAllFiles or input_file_was_updated:
                         smart_file_rebuild = True
                     else:
                         smart_file_rebuild = False
@@ -785,14 +771,11 @@ def main():
                 final_xml_filename = derive_output_filename(n.filespec, 
                                                             input_build=selected_input_build, 
                                                             output_build=options.output_build)
+
                 separated_input_output = final_xml_filename != n.filespec
 
-<<<<<<< Updated upstream
-                if smart_file_rebuild:
-=======
                 # smart rebuild should not rebuild glossary files, so skip those
                 if (smart_file_rebuild or options.forceRebuildAllFiles) and not rc_skip_glossary_kbd3_files.match(n.basename):
->>>>>>> Stashed changes
                     # make changes to the XML
                     input_filespec = n.filespec
                     fileXMLContents, input_fileinfo = fs.get_file_contents(input_filespec)
@@ -803,7 +786,7 @@ def main():
                     artInfo.filedatetime = input_fileinfo.timestamp_str
                     artInfo.filename = base
                     artInfo.file_size = input_fileinfo.filesize
-                    artInfo.file_updated = file_was_updated
+                    artInfo.file_updated = input_file_was_updated
                     artInfo.file_create_time = input_fileinfo.create_time
                     parsed_xml, ret_status = opasXMLProcessor.xml_update(parsed_xml,
                                                                          artInfo,
@@ -848,9 +831,6 @@ def main():
                     if separated_input_output and options.smartload and not smart_file_rebuild:
                         print (f"SmartLoad: File not modified. No need to recompile.")
                         
-                msg = f"\t...Opening precompiled XML file {final_fileinfo.basename} ({final_fileinfo.filesize} bytes) to load databases."
-                logger.info(msg)
-                print (msg) # Opening precompiled XML file
                     
                 # import into lxml
                 parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True)
@@ -863,8 +843,17 @@ def main():
                 artInfo.filedatetime = final_fileinfo.timestamp_str
                 artInfo.filename = base
                 artInfo.file_size = final_fileinfo.filesize
-                artInfo.file_updated = file_was_updated
+                artInfo.file_updated = input_file_was_updated
                 artInfo.file_create_time = final_fileinfo.create_time
+                try:
+                    artInfo.file_classification = re.search("(?P<class>current|archive|future|free|special|offsite)", str(n.filespec), re.IGNORECASE).group("class")
+                    if artInfo.file_classification is not None:
+                        artInfo.file_classification = artInfo.file_classification.lower()
+                except Exception as e:
+                    logger.warning("Could not determine file classification for %s (%s)" % (n.filespec, e))
+                msg = f"\t...Loading precompiled XML file {final_fileinfo.basename} ({final_fileinfo.filesize} bytes) Access: {artInfo.file_classification }"
+                logger.info(msg)
+                print (msg) # Opening precompiled XML file
                 
                 # not a new journal, see if it's a new article.
                 if opasSolrLoadSupport.add_to_tracker_table(ocd, artInfo.art_id): # if true, added successfully, so new!
@@ -876,13 +865,7 @@ def main():
                         except Exception as e:
                             issue_updates[artInfo.issue_id_str] = [art]
     
-                try:
-                    artInfo.file_classification = re.search("(?P<class>current|archive|future|free|special|offsite)", str(n.filespec), re.IGNORECASE).group("class")
                     # set it to lowercase for ease of matching later
-                    if artInfo.file_classification is not None:
-                        artInfo.file_classification = artInfo.file_classification.lower()
-                except Exception as e:
-                    logger.warning("Could not determine file classification for %s (%s)" % (n.filespec, e))
                 
                 # walk through bib section and add to refs core database
                 precommit_file_count += 1
@@ -893,7 +876,7 @@ def main():
                 if 1: # options.glossary_core_update:
                     # load the glossary core if this is a glossary item
                     glossary_file_pattern=r"ZBK.069(.*)\(bEXP_ARCH1\)\.(xml|XML)$"
-                    if re.match(glossary_file_pattern, n.basename):
+                    if re.match(glossary_file_pattern, n.basename, re.IGNORECASE):
                         opasSolrLoadSupport.process_article_for_glossary_core(parsed_xml, artInfo, solr_gloss2, fileXMLContents, verbose=options.display_verbose)
                 
                 # input to the full-text and authors cores
