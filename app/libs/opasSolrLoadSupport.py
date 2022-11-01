@@ -864,7 +864,7 @@ def process_article_for_glossary_core(pepxml, artInfo, solr_gloss, fileXMLConten
     try:
         response_update = solr_gloss.add(all_dict_entries)  # lets hold off on the , _commit=True)
 
-        if not re.search('"status">0</int>', response_update):
+        if not re.search('"status":0', response_update):
             logger.info(response_update)
         ret_val = True
 

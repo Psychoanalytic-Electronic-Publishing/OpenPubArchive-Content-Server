@@ -106,10 +106,10 @@ class FileInfo(object):
             
         return ret_val
 
-    def mapFS(self, filespec, path=None):
+    def mapFS(self, filespec, path=None, log_files_not_found=True):
         ret_val = False
         if self.fs_s3type:
-            fileinfo = self.fs.fileinfo(filespec, path=path)
+            fileinfo = self.fs.fileinfo(filespec, path=path, log_files_not_found=log_files_not_found)
             if fileinfo is not None:
                 ret_val = self.mapS3(fileinfo.fileinfo)
                 ret_val = True
@@ -218,7 +218,7 @@ class FlexFileSystem(object):
 
         return ret_val # full file spec    
     #-----------------------------------------------------------------------------
-    def fileinfo(self, filespec, path=None, path_is_root_bucket=False):
+    def fileinfo(self, filespec, path=None, path_is_root_bucket=False, log_files_not_found=True):
         """
          Get the file info if it exists, otherwise return None
          if the instance variable key was set at init, checks s3 otherwise, local file system
@@ -234,7 +234,8 @@ class FlexFileSystem(object):
                     fileinfo_dict = self.fs.info(fullfilespec)
                     ret_obj.mapS3(fileinfo_dict)
                 except FileNotFoundError:
-                    logger.error(f"FlexFileSystemError: File not found: {fullfilespec}")
+                    if log_files_not_found:
+                        logger.error(f"FlexFileSystemError: File not found: {fullfilespec}")
                     ret_obj = None
                 except Exception as e:
                     logger.error(f"FlexFileSystemError: File access error: {e}")
