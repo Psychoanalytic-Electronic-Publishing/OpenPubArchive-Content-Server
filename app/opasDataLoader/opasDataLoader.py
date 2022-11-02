@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.1025/v2.0.014"   # semver versioning after date.
+__version__     = "2022.1101/v2.0.017"   # semver versioning after date.
 __status__      = "Development"
 
 programNameShort = "opasDataLoader"
@@ -167,6 +167,11 @@ def get_defaults(options, default_build_pattern, default_build):
         build_pattern = default_build_pattern
         
     return (build_pattern, selected_build)
+def get_output_defaults(options, default_build):
+    if options.output_build is not None:
+        selected_build = options.output_build
+    else:
+        selected_build = default_build           
 #------------------------------------------------------------------------------------------------------
 def find_all(name_pat, path):
     result = []
@@ -240,8 +245,11 @@ def file_was_loaded_after(solrcore, after_date, filename):
     return ret_val
 
 #------------------------------------------------------------------------------------------------------
-def output_file_needs_rebuilding(outputfilename, inputfilename=None, inputfilespec=None, input_build=loaderConfig.default_input_build, output_build=loaderConfig.default_output_build):
+def output_file_needs_rebuilding(outputfilename, inputfilename=None, inputfilespec=None):
     ret_val = False
+    outfile_exists = True
+    infile_exists = True
+    both_same = False
     
     if inputfilespec is None:
         inputfilespec = FileInfo()
@@ -255,12 +263,13 @@ def output_file_needs_rebuilding(outputfilename, inputfilename=None, inputfilesp
         try:
             # fileinfoout = FileInfo(fs=fs)
             fileinfoout = FileInfo()
-            exists = fileinfoout.mapFS(outputfilename)
+            exists = fileinfoout.mapFS(outputfilename, log_files_not_found=False)
             if not exists:
                 # need to build
                 ret_val = True
+                outfile_exists = False
             else:    
-                if fileinfoout.date_modified <  inputfilespec.date_modified:
+                if fileinfoout.timestamp < inputfilespec.timestamp:
                     # need to rebuild
                     ret_val = True
                 else:
@@ -268,12 +277,17 @@ def output_file_needs_rebuilding(outputfilename, inputfilename=None, inputfilesp
 
         except Exception as e:
             print (e)
+            logger.error(msg)
             ret_val = False # no need to rebuild
+    else:
+        both_same = True
     
-    return ret_val
+    return (ret_val, infile_exists, outfile_exists, both_same)
 
 #------------------------------------------------------------------------------------------------------
-def file_needs_reloading_to_solr(solrcore, art_id, timestamp_str, filename=None, fs=None, filespec=None, smartload=False, input_build=loaderConfig.default_input_build, output_build=loaderConfig.default_output_build):
+def file_needs_reloading_to_solr(solrcore, art_id, timestamp_str, filename=None, fs=None, filespec=None, smartload=False,
+                                 input_build=loaderConfig.default_input_build,
+                                 output_build=loaderConfig.default_output_build):
     """
     Now, since Solr may have EXP_ARCH1 and the load 'candidate' may be KBD3, the one in Solr
       can be the same or NEWER, and it's ok, no need to reprocess.
@@ -383,9 +397,9 @@ def file_is_same_or_newer_in_solr_by_artid(solrcore, art_id, timestamp_str, file
                     solrtime = datetime.strptime(solrtime, "%Y-%m-%dT%H:%M:%SZ")
                     solrtime = solrtime.strftime("%Y-%m-%d %H:%M:%S")
                     if ret_val:
-                        print (f"Skipped - No refresh needed File {filename}: {filetime} vs Solr: {solrtime}")
+                        print (f"Skipped - No Solr refresh needed File {filename}: {filetime} vs Solr: {solrtime}")
                     else:
-                        print (f"Refresh needed File {filename}: {filetime} vs Solr: {solrtime}")
+                        print (f"Solr Refresh needed File {filename}: {filetime} vs Solr: {solrtime}")
     
                 except Exception as e:
                     msg =f"Can't get file info {filename}"
@@ -465,10 +479,8 @@ def main():
             print("Input data Root: ", start_folder)
             print("Input data Subfolder: ", options.subFolder)
 
-            if options.forceRebuildAllFiles == True:
-                msg = "Forced Rebuild - All files recompiled from source XML to precompiled XML and added."
-                logger.info(msg)
-                print (msg)
+            selected_output_build = loaderConfig.default_output_build
+
                 
             if options.forceReloadAllFiles == True:
                 options.smartload = True
@@ -476,7 +488,18 @@ def main():
                 logger.info(msg)
                 print (msg)
 
-            if options.loadprecompiled and not options.smartload:
+            if options.forceRebuildAllFiles == True:
+                msg = "Forced Rebuild - All specified files recompiled from source XML to precompiled XML and added."
+                logger.info(msg)
+                print (msg)
+                input_build_pattern, selected_input_build = get_defaults(options,
+                                                                         default_build_pattern=loaderConfig.default_input_build_pattern,
+                                                                         default_build=loaderConfig.default_input_build)
+                selected_output_build = get_output_defaults(options,
+                                                            default_build=loaderConfig.default_output_build)
+                pre_action_verb = "Compile, save and load"
+                post_action_verb = "Compiled, saved and loaded"
+            elif options.loadprecompiled and not options.smartload:
                 input_build_pattern, selected_input_build = get_defaults(options,
                                                                          default_build_pattern=loaderConfig.default_precompiled_input_build_pattern,
                                                                          default_build=loaderConfig.default_precompiled_input_build)
@@ -489,9 +512,8 @@ def main():
                 input_build_pattern, selected_input_build = get_defaults(options,
                                                                          default_build_pattern=loaderConfig.default_input_build_pattern,
                                                                          default_build=loaderConfig.default_input_build)
-                output_build_pattern, selected_output_build = get_defaults(options,
-                                                                           default_build_pattern=None,
-                                                                           default_build=loaderConfig.default_output_build)
+                selected_output_build = get_output_defaults(options,
+                                                            default_build=loaderConfig.default_output_build)
                 print(f"Smartload. XML of build {input_build_pattern} will be compiled and saved and loaded if newer than compiled build {selected_output_build}")
                 pre_action_verb = "Smart compile, save and load"
                 post_action_verb = "Smart compiled, saved and loaded"
@@ -598,6 +620,7 @@ def main():
 
     if options.no_files == False: # process and/or load files (no_files just generates a whats_new list, no processing or loading)
         print (f"Locating files for processing at {start_folder} with build pattern {selected_input_build}. Started at ({time.ctime()}).")
+        print (f"Smartbuild exceptions: Files matching {loaderConfig.SMARTBUILD_EXCEPTIONS} are load only, no recompile.  Will load from output format {selected_output_build}")
         if options.file_key is not None:  
             # print (f"File Key Specified: {options.file_key}")
             # Changed from opasDataLoader (reading in bKBD3 files rather than EXP_ARCH1)
@@ -620,7 +643,7 @@ def main():
             print (f"Filenames: {filenames}")
         else:
             # allow for SMARTBUILD_EXCEPTIONS filenames which are output only and have them in the list.
-            pat = fr"((.*?)\({selected_input_build}\))|({loaderConfig.SMARTBUILD_EXCEPTIONS}(.*?)\({loaderConfig.default_precompiled_input_build_pattern}\))\.(xml|XML)$"
+            pat = fr"(((.*?)\({selected_input_build}\))|({loaderConfig.SMARTBUILD_EXCEPTIONS}(.*?)\({selected_output_build}\)))\.(xml|XML)$" # should we include the pattern including TOC?
             filenames = []
         
         if filenames == []:
@@ -682,25 +705,26 @@ def main():
                 except KeyError as e:
                     inputfilename = str(n.filespec)
                 
-                outputfilename = inputfilename.replace(loaderConfig.default_input_build, loaderConfig.default_output_build)
+                outputfilename = inputfilename.replace(loaderConfig.default_input_build, selected_output_build) # loaderConfig.default_output_build)
 
-                if inputfilename != outputfilename:
-                    output_recompile = \
-                       input_file_was_updated = False                    
-                else:
+                #if inputfilename != outputfilename:
+                    #output_recompile = \
+                       #input_file_was_updated = False                    
+                #else:
                     # does output build need to be regenerated?
-                    output_recompile = \
-                       input_file_was_updated = output_file_needs_rebuilding(inputfilespec=n,
-                                                                             inputfilename=inputfilename,
-                                                                             outputfilename=outputfilename, 
-                                                                             input_build=loaderConfig.default_input_build,
-                                                                             output_build=loaderConfig.default_output_build)
+                file_status_tuple = output_file_needs_rebuilding(inputfilespec=n,
+                                                                 inputfilename=inputfilename,
+                                                                 outputfilename=outputfilename)
+
+                input_file_was_updated, infile_exists, outfile_exists, both_same = file_status_tuple
                 
-                timestamp = n.timestamp_str
-                output_file_newer_than_solr = file_needs_reloading_to_solr(solrcore=solr_docs2,
-                                                                           art_id=artID,
-                                                                           timestamp_str=timestamp,
-                                                                           filename=outputfilename)
+                if outfile_exists and not input_file_was_updated and not options.forceRebuildAllFiles and not options.forceReloadAllFiles:
+                    timestamp = n.timestamp_str
+                    output_file_newer_than_solr = file_needs_reloading_to_solr(solrcore=solr_docs2,
+                                                                               art_id=artID,
+                                                                               timestamp_str=timestamp,
+                                                                               filename=outputfilename,
+                                                                               output_build=selected_output_build)
                 
                                    
                 if not options.forceRebuildAllFiles:  # not forced, but always force processed for single file 
@@ -743,7 +767,7 @@ def main():
                 separated_input_output = final_xml_filename != n.filespec
 
                 # smart rebuild should not rebuild glossary files, so skip those
-                if smart_file_rebuild and not rc_skip_glossary_kbd3_files.match(n.basename):
+                if (smart_file_rebuild or options.forceRebuildAllFiles) and not rc_skip_glossary_kbd3_files.match(n.basename):
                     # make changes to the XML
                     input_filespec = n.filespec
                     fileXMLContents, input_fileinfo = fs.get_file_contents(input_filespec)
@@ -754,7 +778,7 @@ def main():
                     artInfo.filedatetime = input_fileinfo.timestamp_str
                     artInfo.filename = base
                     artInfo.file_size = input_fileinfo.filesize
-                    artInfo.file_updated = file_was_updated
+                    artInfo.file_updated = input_file_was_updated
                     artInfo.file_create_time = input_fileinfo.create_time
                     parsed_xml, ret_status = opasXMLProcessor.xml_update(parsed_xml,
                                                                          artInfo,
@@ -810,7 +834,7 @@ def main():
                 artInfo.filedatetime = final_fileinfo.timestamp_str
                 artInfo.filename = base
                 artInfo.file_size = final_fileinfo.filesize
-                artInfo.file_updated = file_was_updated
+                artInfo.file_updated = input_file_was_updated
                 artInfo.file_create_time = final_fileinfo.create_time
                 try:
                     artInfo.file_classification = re.search("(?P<class>current|archive|future|free|special|offsite)", str(n.filespec), re.IGNORECASE).group("class")
@@ -1168,7 +1192,7 @@ if __name__ == "__main__":
 
     if len(options.output_build) < 2:
         logger.error("Bad output buildname. Using default.")
-        options.output_build = '(bEXP_ARCH1)'
+        options.output_build = loaderConfig.default_output_build
         
     if options.output_build is not None and (options.output_build[0] != "(" or options.output_build[-1] != ")"):
         print ("Warning: output build should have parenthesized format like (bEXP_ARCH1). Adding () as needed.")
@@ -1185,7 +1209,7 @@ if __name__ == "__main__":
             options.input_build = f"{options.input_build})"
 
     if options.glossary_only and options.file_key is None:
-        options.file_key = "ZBK.069.*"
+        options.file_key = "ZBK.069"
 
     if options.testmode:
         import doctest
