@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.1101/v2.0.017"   # semver versioning after date.
+__version__     = "2022.1102/v2.0.018"   # semver versioning after date.
 __status__      = "Development"
 
 programNameShort = "opasDataLoader"
@@ -172,6 +172,7 @@ def get_output_defaults(options, default_build):
         selected_build = options.output_build
     else:
         selected_build = default_build           
+    return selected_build
 #------------------------------------------------------------------------------------------------------
 def find_all(name_pat, path):
     result = []
