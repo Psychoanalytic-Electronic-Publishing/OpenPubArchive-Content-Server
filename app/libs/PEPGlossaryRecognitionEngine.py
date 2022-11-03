@@ -630,12 +630,16 @@ class GlossaryRecognitionEngine(UserDict):
                         len_node_text = len_node_text2 # for the next compare
 
             if changes:
-                new_node = lxml.etree.XML(node_text)
-                parent_node = para_working.getparent()
-                parent_node.replace(para_working, new_node)
-                if diagnostics:
-                    print (f"Final markup: {node_text}")
-                    print ("%s glossary terms recognized." % countInDoc)
+                try:
+                    new_node = lxml.etree.XML(node_text)
+                    parent_node = para_working.getparent()
+                    parent_node.replace(para_working, new_node)
+                    if diagnostics:
+                        print (f"Final markup: {node_text}")
+                        print ("%s glossary terms recognized." % countInDoc)
+                except Exception as e:
+                    # skip this change and log
+                    logger.error(f"Could not save node change (skipped) {e}.")
 
         if gDbg2 or diagnostics:
             endTime = time.time()
