@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.1102/v2.0.018"   # semver versioning after date.
+__version__     = "2022.1103/v2.0.019"   # semver versioning after date.
 __status__      = "Development"
 
 programNameShort = "opasDataLoader"
@@ -315,7 +315,8 @@ def file_needs_reloading_to_solr(solrcore, art_id, timestamp_str, filename=None,
                 solrtime = datetime.strptime(solrtime, "%Y-%m-%dT%H:%M:%SZ")
                 solrtime = solrtime.strftime("%Y-%m-%d %H:%M:%S")
                 if not ret_val:
-                    print (f"Skipped - No refresh needed File {filename}: {filetime} vs Solr: {solrtime}")
+                    pass
+                    # print (f"Skipped - No refresh needed File {filename}: {filetime} vs Solr: {solrtime}")
                 else:
                     print (f"Refresh needed File {filename}: {filetime} vs Solr: {solrtime}")
 

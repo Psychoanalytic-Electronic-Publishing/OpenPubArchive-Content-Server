@@ -46,16 +46,17 @@ class TestOpasLoaderProgram(unittest.TestCase):
     def test_process_newroot(self):
         if CONFIG == "Local":
             #--nocheck -d X:\_PEPA1\_PEPa1v --sub=_PEPFree
-            result = subprocess.run([sys.executable, '../opasDataLoader/opasDataLoader.py', '-dX:/_PEPA1/_PEPa1v', '--sub=_PEPFree', '--nocheck', '--load'], capture_output=True)
+            print (os.getcwd())
+            result = subprocess.run([sys.executable, '../opasDataLoader/opasDataLoader.py', '--verbose', '-d e:/usr3/GitHub/openpubarchive/app/tests/testdatasource/_PEPFree', '--nocheck', '--smartload', '--rebuild'], capture_output=True)
         else:
             result = subprocess.run([sys.executable, '../opasDataLoader/opasDataLoader.py', '-dpep-web-xml', '--sub=_PEPFree', '--nocheck', '--load'], capture_output=True)
 
         out = result.stdout.decode("UTF-8")
         err = result.stderr.decode("UTF-8")
         print ("Stdout:")
-        print (out[-400:])
+        print (out[-1600:])
         print ("Stderr:")
-        print (err[-400:])
+        print (err[-1600:])
         self.assertIn(b'Load process complete', result.stdout)
 
 
