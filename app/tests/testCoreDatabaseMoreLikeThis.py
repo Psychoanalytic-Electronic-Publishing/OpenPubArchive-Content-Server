@@ -14,13 +14,13 @@ class TestDatabaseMoreLikeThis(unittest.TestCase):
         r = response.json()
         # #print (r)
         response_info = r["documentList"]["responseInfo"]
-        assert(response_info["count"] == 1)
+        assert(response_info["count"] >= 1)
         response_set = r["documentList"]["responseSet"] 
-        similar = response_set[0]["similarityMatch"]["similarDocs"]["ZBK.028.0086A"]
-        for n in similar:
-            print (n)
+        similar = response_set[0]["similarityMatch"]["similarDocs"]
+        for n,y in similar.items():
+            print (y[0]['documentID'])
         print (f"Similar Count: {len(similar)}")
-        assert(len(similar) == 4)
+        assert(len(similar) >= 1)
         
 
 if __name__ == '__main__':

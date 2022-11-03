@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.1026/v2.1.184"   # semver versioning after date.
+__version__     = "2022.1102/v2.1.185"   # semver versioning after date.
 __status__      = "Development/Libs/Loader"  
 
 """
@@ -3503,7 +3503,7 @@ def database_mostcited(response: Response,
         header = ["Document", "Last 5 Years", "Last 10 years", "Last 20 years", "All years"]
         df = pd.DataFrame(cites)
         stream = io.StringIO()
-        if len(df > 0):
+        if len(df) > 0:
             df.to_csv(stream, header=header, index = False)
             response = StreamingResponse(iter([stream.getvalue()]), media_type="text/csv")
             response.headers["Content-Disposition"] = "attachment; filename=pepcited.csv"

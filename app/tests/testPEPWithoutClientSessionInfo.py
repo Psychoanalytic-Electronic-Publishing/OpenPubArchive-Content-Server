@@ -68,6 +68,19 @@ class TestsWithoutClientSession(unittest.TestCase):
         print (f"Count: {r['authorPubList']['responseInfo']['fullCount']} Count complete: {r['authorPubList']['responseInfo']['fullCountComplete']}")
         assert(r['authorPubList']['responseInfo']['fullCount'] == 3)
 
+    def test_9b_pubs_authornames(self):
+        """
+        Get Author Pubs For Matching Author Names
+        /v1​/Authors​/Publications​/{authorNamePartial}​/
+        """
+        # try a regex wildcard search (regex wildcards permitted anywhere EXCEPT the end of the name, since that's done automatically)
+        # Last name starts in he, followed by a or l, ending in n or y
+        full_URL = base_plus_endpoint_encoded('/v2/Authors/Publications/he[al][^\s,]+[ny]/')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        r = response.json()
+        assert(r['authorPubList']['responseInfo']['fullCount'] >= 2)
+
     def test_10_get_term_counts(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/TermCounts/?termlist=fear,loathing,elections')
         response = requests.get(full_URL)

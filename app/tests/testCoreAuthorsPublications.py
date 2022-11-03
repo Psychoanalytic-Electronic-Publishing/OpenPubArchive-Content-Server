@@ -29,7 +29,7 @@ class TestAuthorsPublications(unittest.TestCase):
         assert(response.ok == True)
         r = response.json()
         print (f"Count: {r['authorPubList']['responseInfo']['fullCount']} Count complete: {r['authorPubList']['responseInfo']['fullCountComplete']}")
-        assert(r['authorPubList']['responseInfo']['fullCount'] >= 3)
+        assert(r['authorPubList']['responseInfo']['fullCount'] >= 2)
         
         # Doesn't return an error, returns 0 matches.
         full_URL = base_plus_endpoint_encoded('/v2/Authors/Publications/Flintstone, Fred.*/')
@@ -46,11 +46,12 @@ class TestAuthorsPublications(unittest.TestCase):
         /v1​/Authors​/Publications​/{authorNamePartial}​/
         """
         # try a regex wildcard search (regex wildcards permitted anywhere EXCEPT the end of the name, since that's done automatically)
-        full_URL = base_plus_endpoint_encoded('/v2/Authors/Publications/he[af].*h/')
+        # Last name starts in he, ending in th
+        full_URL = base_plus_endpoint_encoded('/v2/Authors/Publications/he[^\s,]+th/')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        assert(r['authorPubList']['responseInfo']['fullCount'] >= 2)
+        assert(r['authorPubList']['responseInfo']['fullCount'] >= 1)
         
 if __name__ == '__main__':
     unittest.main()

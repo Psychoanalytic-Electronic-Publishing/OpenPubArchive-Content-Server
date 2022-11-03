@@ -1837,33 +1837,6 @@ if __name__ == "__main__":
                 <div class='pagebreak><p class='pagenumber'>6</p></div>
               </test>
               """
-
-    test_xml3 = xml_file_to_xmlstr("./tstfiles/IJP.051.0175A(bEXP_ARCH1).XML")
-    
-    if 0:
-        page0 = xml_get_pages(test_xml3, 0, 1, inside="body", env="tes1")
-        # print (page0[0][-33:])
-        txt = page0[0][-33:]
-        page0 = xml_get_pages(test_xml3, 1, 2, env="body")
-        assert ("177" == page0[0][-22:-19])
-        page0 = xml_get_pages(test_xml3, 2, 3, env="body")
-        # print (page0[0][-33:])
-        assert ("179" == page0[0][-22:-19])
-        test_xml3 = xml_file_to_xmlstr("./tstfiles/IJP.043.0306A(bEXP_ARCH1).XML")
-        page0 = xml_get_pages(test_xml3, 0, 1, inside="body", env="tes2")
-        txt = page0[0][-33:]
-        #assert ("306" == page0[0][-22:-19])
-        # print (page0[0][-33:])
-        
-        # it doesn't work for page breaks inside a list, underneath body!!
-        page0 = xml_get_pages(test_xml3, 1, 2, env="body")
-        txt = page0[0][-33:]
-        # print (page0[0][-33:])
-        #assert ("308" == page0[0][-22:-19])
-        page0 = xml_get_pages(test_xml3, 2, 3, env="body")
-        # print (page0[0][-33:])
-        #assert ("309" == page0[0][-22:-19])
-    
     doctest.testmod(optionflags=doctest.ELLIPSIS|doctest.NORMALIZE_WHITESPACE)
     print ("All Tests Completed")
     sys.exit()

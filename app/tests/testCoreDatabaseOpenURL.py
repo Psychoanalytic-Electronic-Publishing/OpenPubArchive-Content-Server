@@ -73,7 +73,7 @@ class TestDatabaseOpenURL(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         print (response_set[0]["authorMast"])
-        assert(response_set[0]["authorMast"][0:14] == 'A. Chris Heath')
+        assert(response_set[0]["authorMast"][-5:] == 'Heath')
 
     def test_search_volume(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/OpenURL/?volume=1')
@@ -159,7 +159,7 @@ class TestDatabaseOpenURL(unittest.TestCase):
         assert(response_set[0]["pgEnd"] == '168')
 
     def test_search_date(self):
-        full_URL = base_plus_endpoint_encoded('/v2/Database/OpenURL/?date=2021')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/OpenURL/?date=2015')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
@@ -192,7 +192,7 @@ class TestDatabaseOpenURL(unittest.TestCase):
         assert(response_set[0]["PEPCode"] == 'PEPGRANTVS')
 
     def test_search_date_sort_offset(self):
-        full_URL = base_plus_endpoint_encoded('/v2/Database/OpenURL/?date=2015&sort=author&limit=2&offset=2')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/OpenURL/?date>1921&sort=author&limit=2&offset=2')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()

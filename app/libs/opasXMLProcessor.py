@@ -492,7 +492,7 @@ def xml_update(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
     
     parsed_xml.attrib["procby"] = f"{programNameShort}.{__version__}"
     xml_artinfo = parsed_xml.find("artinfo")
-    source_row = ocd.get_sources(src_code=artInfo.src_prodkey)
+    source_row = ocd.get_sources(src_code=artInfo.src_prodkey, get_counts=False)
     known_books = PEPBookInfo.PEPBookInfo()
 
     try:

@@ -49,7 +49,7 @@ class TestDatabaseSearch(unittest.TestCase):
         #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
-        assert(response_info["count"] == 1)
+        assert(response_info["count"] >= 1)
         print (response_set[0]['documentRef'])
 
     def test_0a_rank(self): 
@@ -60,7 +60,7 @@ class TestDatabaseSearch(unittest.TestCase):
         #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
-        assert(response_info["fullCount"] == 2)
+        assert(response_info["fullCount"] >= 2)
         #print (response_set)
         print (f"return count: {response_info['count']}")
         for n in response_set:
@@ -118,7 +118,7 @@ class TestDatabaseSearch(unittest.TestCase):
         #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
-        assert(response_info["fullCount"] >= 5)
+        assert(response_info["fullCount"] >= 2)
         print("Titles:")
         for n in response_set: 
             print (n['title'])
@@ -274,7 +274,7 @@ class TestDatabaseSearch(unittest.TestCase):
         #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
-        assert(response_info["count"] >= 4)
+        assert(response_info["count"] >= 2)
         print (f"Response Set Length: {len(response_set)}")
         print (response_set[0]['documentRef'])
         
@@ -304,14 +304,13 @@ class TestDatabaseSearch(unittest.TestCase):
         r = response.json()
         print (f"Count: {r['documentList']['responseInfo']['fullCount']} Count complete: {r['documentList']['responseInfo']['fullCountComplete']}")
         assert(r['documentList']['responseInfo']['fullCount'] >= 1)
-        assert(r['documentList']['responseInfo']['fullCountComplete'] == True)
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?author=heath&limit=1&offset=0')
         response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()
         print (f"Count: {r['documentList']['responseInfo']['fullCount']} Count complete: {r['documentList']['responseInfo']['fullCountComplete']}")
-        assert(r['documentList']['responseInfo']['count'] == 1)
+        assert(r['documentList']['responseInfo']['count'] >= 1)
         assert(r['documentList']['responseInfo']['fullCountComplete'] == False)
 
     def test_v2_database_search_synonyms(self):
@@ -321,14 +320,14 @@ class TestDatabaseSearch(unittest.TestCase):
         assert(response.ok == True)
         r = response.json()
         print (f"Count: {r['documentList']['responseInfo']['fullCount']} Count complete: {r['documentList']['responseInfo']['fullCountComplete']}")
-        assert(r['documentList']['responseInfo']['fullCount'] == 1)
+        assert(r['documentList']['responseInfo']['fullCount'] >= 1)
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?synonyms=true&sourcecode=BAP&fulltext1=text:bisexuality&sort=citeCount&limit=10&offset=0')
         response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()
         print (f"Count: {r['documentList']['responseInfo']['fullCount']} Count complete: {r['documentList']['responseInfo']['fullCountComplete']}")
-        assert(r['documentList']['responseInfo']['fullCount'] == 1)
+        assert(r['documentList']['responseInfo']['fullCount'] >= 1)
 
        
         

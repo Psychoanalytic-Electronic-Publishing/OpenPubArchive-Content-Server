@@ -4,7 +4,7 @@
 import unittest
 import localsecrets
 import pathlib
-
+import datetime as dt
 import opasFileSupport
 
 from unitTestConfig import base_plus_endpoint_encoded, headers
@@ -147,10 +147,11 @@ class TestOpasFileSupport(unittest.TestCase):
         root = pathlib.Path(localsecrets.XML_ORIGINALS_PATH)
         testsubpath = "_PEPCurrent/IJP/"
         testfullpath = root / testsubpath
-
-        matchlist = fs.get_matching_filelist(path=testfullpath, filespec_regex=pat, revised_after_date="2022-09-04")
+        # two weeks to today
+        two_weeks_ago = dt.date.today() - dt.timedelta(days=14)
+        matchlist = fs.get_matching_filelist(path=testfullpath, filespec_regex=pat, revised_after_date=str(two_weeks_ago))
         print (len(matchlist))
-        assert (len(matchlist) == 0)
+        assert (len(matchlist) >= 1)
 
         matchlist = fs.get_matching_filelist(path=testfullpath, filespec_regex=pat)
         print (len(matchlist))
@@ -158,11 +159,11 @@ class TestOpasFileSupport(unittest.TestCase):
 
         matchlist = fs.get_matching_filelist(path=testfullpath, filespec_regex=pat, max_items=20)
         print (len(matchlist))
-        assert (len(matchlist) == 20)
+        assert (len(matchlist) >= 20)
 
         matchlist = fs.get_matching_filelist(path=testfullpath, filespec_regex=pat, max_items=20)
         print (len(matchlist))
-        assert (len(matchlist) == 20)
+        assert (len(matchlist) >= 20)
 
         # function removed 2021-05-05
            #res = opasFileSupport.get_s3_matching_files(subpath_tomatch="_PEPArchive/BAP/.*\.xml", after_revised_date="2020-09-01")

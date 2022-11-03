@@ -8,6 +8,7 @@ Version: 2020-08-24
 """
 import os.path
 import sys
+import re
 import urllib
 import requests
 import opasDocPermissions
@@ -56,6 +57,7 @@ VOL_COUNT_IJPSP = 11 #  source code ended, 11 should always be correct
 
 ip = requests.get('https://api.ipify.org').content.decode('utf8')
 myTestSystemIP = ip
+myTestSystemIP = re.sub("\n\r", "", myTestSystemIP)
 
 def get_session_info_for_test():
     session_info = opasDocPermissions.get_authserver_session_info(session_id=None, client_id=UNIT_TEST_CLIENT_ID)

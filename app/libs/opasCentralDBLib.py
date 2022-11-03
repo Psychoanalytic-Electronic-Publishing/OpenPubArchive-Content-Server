@@ -1651,7 +1651,7 @@ class opasCentralDB(object):
 
         return ret_val
 
-    def get_sources(self, src_code=None, src_type=None, src_name=None, limit=None, offset=0):
+    def get_sources(self, src_code="*", src_type=None, src_name=None, limit=None, offset=0, get_counts=True):
         """
         Return a list of sources
           - for a specific source_code
@@ -1728,7 +1728,13 @@ class opasCentralDB(object):
                     src_title_clause = f"AND title rlike '(.*\s)?{src_name}(\s.*)?'"
 
                 # 2020-11-13 - changed ref from vw_api_productbase to vw_api_productbase_instance_counts to include instance counts
-                sqlAll = f"""FROM vw_api_productbase_instance_counts
+                # 2022-11-02 - Use both views, because if there are no instances yet, you don't get product info from vw_api_productbase_instance_counts
+                if get_counts:
+                    tbl_name = "vw_api_productbase_instance_counts"
+                else:
+                    tbl_name = "vw_api_productbase"
+                    
+                sqlAll = f"""FROM {tbl_name}
                              WHERE active >= 1
                                 AND product_type <> 'bookseriessub'
                                 {src_code_clause}

@@ -15,6 +15,8 @@ session_info = opasDocPermissions.get_authserver_session_info(pads_session_info.
 # Confirm that the request-response cycle completed successfully.
 session_id = pads_session_info.SessionId
 headers = {f"client-session":f"{session_id}","client-id": UNIT_TEST_CLIENT_ID}
+import logging
+logger = logging.getLogger(__name__)
 
 class TestZimulateExternalClient(unittest.TestCase):
     """
@@ -114,8 +116,10 @@ class TestZimulateExternalClient(unittest.TestCase):
         print (f"Limit: {r['documentList']['responseInfo']['limit']}")
         if r['documentList']['responseInfo']['count'] > 0:
             try:
-                print (f"ReturnedData: {r['documentList']['responseSet'][0]['stat']['art_views_last12mos']}")
-                assert(r['documentList']['responseSet'][0]['stat']['art_views_last12mos'] >= 0)
+                count = r['documentList']['responseSet'][0]['stat'].get('art_views_last12mos')
+                print (f"ReturnedData: {r['documentList']['responseSet'][0]['stat'].get('art_views_last12mos')}")
+                if count is not None:
+                    assert(count >= 0)
             except:
                 logger.warning("No stat in return...has solrUpdateData been run on this database?")
             assert(r['documentList']['responseInfo']['count'] <= r['documentList']['responseInfo']['limit'])

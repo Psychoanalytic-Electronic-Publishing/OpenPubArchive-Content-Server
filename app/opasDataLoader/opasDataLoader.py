@@ -88,7 +88,7 @@ help_text = (
 
           Import single precompiled file (e.g., EXP_ARCH1) only (no processing), verbose
 
-             python opasDataLoader.py --verbose --key CFP.012.0022A --load --inputbuild=(bEXP_ARCH1)
+             python opasDataLoader.py --verbose --key BIP.001.0342A --load --inputbuild=(bEXP_ARCH1)
 
           Import folder of precompiled files, even if the same (--rebuild).
              python opasDataLoader.py --verbose --sub _PEPCurrent\CFP\012.2022 --load --rebuild --inputbuild=(bEXP_ARCH1)
@@ -264,7 +264,7 @@ def output_file_needs_rebuilding(outputfilename, inputfilename=None, inputfilesp
         try:
             # fileinfoout = FileInfo(fs=fs)
             fileinfoout = FileInfo()
-            exists = fileinfoout.mapFS(outputfilename, log_files_not_found=False)
+            exists = fileinfoout.mapFS(outputfilename)
             if not exists:
                 # need to build
                 ret_val = True
@@ -278,7 +278,7 @@ def output_file_needs_rebuilding(outputfilename, inputfilename=None, inputfilesp
 
         except Exception as e:
             print (e)
-            logger.error(msg)
+            logger.error(f"File checking error {e}")
             ret_val = False # no need to rebuild
     else:
         both_same = True
