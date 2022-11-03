@@ -107,43 +107,6 @@ class TestArticleID(unittest.TestCase):
             a = ArticleID(articleID=n)
             print (a.articleID, a.altStandard)
             
-    def test_3_sample_set(self): 
-        # ---------------------------------------------------------------------------------------
-        # Version 2 style, better, including sourcetype support
-        # ---------------------------------------------------------------------------------------
-        testIDs = [
-            "BAFC.012.0071A",
-            "BAFC.016.0054A",
-            "BAP.013.0720A",
-            "BAP.018.0821A",
-            "BIP.001.0342A",
-            "BIP.003.0117A",
-            "BIP.003.0263A",
-            "BIP.003.0513A",
-            "BIP.012.0258A",
-            "CFP.001.0001A",
-            "CFP.007.0001A",
-            "CPS.001.0001A",
-            "CPS.007.0001A",
-            "IFP.017.0027A",
-            "IFP.017.0158A",
-            "ZBK.028.0000A",
-            "ZBK.028.0086A",
-            "FA.001A.0005A",
-            "FA.018B.0001A",
-            "PEPGRANTVS.001.0003A",
-            "PEPGRANTVS.001.0004A"
-        ]
-        for n in testIDs:
-            full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Abstracts/?articleID={n}') 
-            response = requests.get(full_URL, headers=headers)
-            assert(response.ok == True)
-            # test return
-            r = response.json()
-            a = ArticleID(**r)
-            assert(a.standardized == n.upper())
-            print (n, " = ", r)
-            
         
         
 if __name__ == '__main__':

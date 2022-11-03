@@ -2804,9 +2804,9 @@ def prep_document_download(document_id,
            - If access not permitted, this returns an error (and None for the filename)
            - If access allowed, it returns with the document itself
 
-    >>> a = prep_document_download("IJP.051.0175A", ret_format="html") 
+    >>> a = prep_document_download("BIP.001.0342A", ret_format="html") 
 
-    >>> a = prep_document_download("IJP.051.0175A", ret_format="epub") 
+    >>> a = prep_document_download("BIP.001.0342A", ret_format="epub") 
 
 
     """
