@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.1103/v2.0.020"   # semver versioning after date.
+__version__     = "2022.1107/v2.0.021"   # semver versioning after date.
 __status__      = "Development"
 
 programNameShort = "opasDataLoader"
@@ -776,9 +776,10 @@ def main():
                     parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True)
                     parsed_xml = etree.fromstring(opasxmllib.remove_encoding_string(fileXMLContents), parser)
                     # save common document (article) field values into artInfo instance for both databases
-                    artInfo = opasSolrLoadSupport.ArticleInfo(sourceDB.sourceData, parsed_xml=parsed_xml, art_id=artID, logger=logger)
+                    artInfo = opasSolrLoadSupport.ArticleInfo(sourceDB.sourceData, parsed_xml=parsed_xml, art_id=artID, filename_base=base, logger=logger)
                     artInfo.filedatetime = input_fileinfo.timestamp_str
-                    artInfo.filename = base
+                    # artInfo.filename = base # now done in articleInfo
+                    # get artinfo per filename, to see if this is an issue coded with volume suffix
                     artInfo.file_size = input_fileinfo.filesize
                     artInfo.file_updated = input_file_was_updated
                     artInfo.file_create_time = input_fileinfo.create_time
@@ -800,11 +801,13 @@ def main():
                     file_text = lxml.etree.tostring(parsed_xml, pretty_print=options.pretty_printed, encoding="utf8").decode("utf-8")
                     file_text = file_prefix + file_text
                     # this is required if running on S3
-                    msg = f"\t...Exporting! Writing precompiled XML file to {fname}"
+                    msg = f"\t...Compiling {n.basename} to precompiled XML"
                     success = fs.create_text_file(fname, data=file_text, delete_existing=True)
                     if success:
                         rebuild_count += 1
-                        if options.display_verbose: print (msg) # Exporting! Writing precompiled XML file
+                        #if options.display_verbose:
+                        print (msg) # Exporting! Writing precompiled XML file
+                            
                     else:
                         msg = f"\t...There was a problem writing {fname}."
                         logger.error(msg)
@@ -832,9 +835,9 @@ def main():
                 #root = pepxml.getroottree()
         
                 # save common document (article) field values into artInfo instance for both databases
-                artInfo = opasSolrLoadSupport.ArticleInfo(sourceDB.sourceData, parsed_xml=parsed_xml, art_id=artID, logger=logger)
+                artInfo = opasSolrLoadSupport.ArticleInfo(sourceDB.sourceData, parsed_xml=parsed_xml, art_id=artID, filename_base=base, logger=logger)
                 artInfo.filedatetime = final_fileinfo.timestamp_str
-                artInfo.filename = base
+                # artInfo.filename = base
                 artInfo.file_size = final_fileinfo.filesize
                 artInfo.file_updated = input_file_was_updated
                 artInfo.file_create_time = final_fileinfo.create_time

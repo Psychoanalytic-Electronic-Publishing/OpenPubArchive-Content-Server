@@ -42,7 +42,7 @@ import opasGenSupportLib as opasgenlib
 import opasXMLHelper as opasxmllib
 import loaderConfig
 import opasLocator
-
+import opasArticleIDSupport
 import logging
 logger = logging.getLogger(__name__)
 
@@ -216,7 +216,7 @@ class ArticleInfo(object):
        client searches.
 
     """
-    def __init__(self, sourceinfodb_data, parsed_xml, art_id, logger, verbose=None):
+    def __init__(self, sourceinfodb_data, parsed_xml, art_id, logger, filename_base, verbose=None):
         # let's just double check artid!
         self.art_id = None
         self.art_id_from_filename = art_id # file name will always already be uppercase (from caller)
@@ -229,7 +229,9 @@ class ArticleInfo(object):
         self.file_classification = None
         self.file_size = 0  
         self.filedatetime = ""
-        self.filename = ""
+        self.filename = filename_base
+        # compute various artinfo parts from filename
+        self.filename_artinfo = opasArticleIDSupport.ArticleID(articleID=filename_base) # use base filename for implied artinfo
 
         # now, the rest of the variables we can set from the data
         self.processed_datetime = datetime.utcfromtimestamp(time.time()).strftime(opasConfig.TIME_FORMAT_STR)
@@ -268,36 +270,39 @@ class ArticleInfo(object):
         if 1: # vol info (just if'd for folding purposes)
             vol_actual = opasxmllib.xml_xpath_return_textsingleton(parsed_xml, '//artinfo/artvol/@actual', default_return=None)
             self.art_vol_str = opasxmllib.xml_xpath_return_textsingleton(parsed_xml, '//artinfo/artvol/node()', default_return=None)
-            m = re.match("(\d+)([A-Z]*)", self.art_vol_str)
-            if m is None:
-                logger.error(f"ArticleInfoError: Bad Vol # in element content: {self.art_vol_str}")
-                m = re.match("(\d+)([A-z\-\s]*)", vol_actual)
-                if m is not None:
-                    self.art_vol_int = m.group(1)
-                    logger.error(f"ArticleInfoError: Recovered Vol # from actual attr: {self.art_vol_int}")
-                else:
-                    raise ValueError("ArticleInfoError: Severe Error in art_vol")
+            if opasgenlib.not_empty(self.filename_artinfo.issueCode):
+                # use filename markup
+                self.art_vol_int = self.filename_artinfo.volumeInt
+                self.art_vol_str = self.filename_artinfo.volumeNbrStr
+                self.art_vol_suffix = self.filename_artinfo.issueCode
             else:
-                self.art_vol_int = m.group(1)
-                if len(m.groups()) == 2:
-                    art_vol_suffix = m.group(2)
+                m = re.match("(\d+)([A-Z]*)", self.art_vol_str)
+                if m is None:
+                    logger.error(f"ArticleInfoError: Bad Vol # in element content: {self.art_vol_str}")
+                    m = re.match("(\d+)([A-z\-\s]*)", vol_actual)
+                    if m is not None:
+                        self.art_vol_int = m.group(1)
+                        logger.error(f"ArticleInfoError: Recovered Vol # from actual attr: {self.art_vol_int}")
+                    else:
+                        raise ValueError("ArticleInfoError: Severe Error in art_vol")
+                else:
+                    self.art_vol_int = m.group(1)
+                    if len(m.groups()) == 2:
+                        self.art_vol_suffix = m.group(2)
     
-            # now convert to int
-            try:
-                self.art_vol_int = int(self.art_vol_int)
-            except ValueError:
-                logger.warning(f"Can't convert art_vol to int: {self.art_vol_int} Error: {e}")
-                art_vol_suffix = self.art_vol_int[-1]
-                art_vol_ints = re.findall(r'\d+', self.art_vol_str)
-                if len(art_vol_ints) >= 1:
-                    self.art_vol_int = art_vol_ints[1]
+                # now convert to int
+                try:
                     self.art_vol_int = int(self.art_vol_int)
-            except Exception as e:
-                logger.warning(f"Can't convert art_vol to int: {self.art_vol_int} Error: {e}")
-    
-            if vol_actual is not None:
-                self.art_vol_str = vol_actual
-                  
+                except ValueError:
+                    logger.warning(f"Can't convert art_vol to int: {self.art_vol_int} Error: {e}")
+                    self.art_vol_suffix = self.art_vol_int[-1]
+                    art_vol_ints = re.findall(r'\d+', self.art_vol_str)
+                    if len(art_vol_ints) >= 1:
+                        self.art_vol_int = art_vol_ints[1]
+                        self.art_vol_int = int(self.art_vol_int)
+                except Exception as e:
+                    logger.warning(f"Can't convert art_vol to int: {self.art_vol_int} Error: {e}")
+                     
         try: #  lookup source in db
             if self.src_code in ["ZBK", "IPL", "NLP"]:
                 self.src_prodkey = pepsrccode = f"{self.src_code}%03d" % self.art_vol_int

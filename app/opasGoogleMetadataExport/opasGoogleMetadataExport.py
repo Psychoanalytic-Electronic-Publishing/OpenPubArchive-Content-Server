@@ -386,6 +386,7 @@ def writePublisherFile(path=None, fs=None, online_link_location="http://peparchi
         if success:
             if options.display_verbose: # Exporting! Writing publisher XML file
                 print (msg)
+                print ("\t"+60*"-")
         else:
             print (f"\t...There was a problem writing {publisher_file_name}.")
     else:

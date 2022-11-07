@@ -485,8 +485,8 @@ def xml_update(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
     if not verbose:
         gDbg1 = False
         gDbg2 = False
-    else:
-        print ("\t...Preprocessing/converting keyboarded XML.")
+    #else:
+        #print ("\t...Converting! Keyboarded XML to processed/precompiled XML.")
         
     # write issn and id to artinfo
     
@@ -523,6 +523,15 @@ def xml_update(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
     if artInfo.art_type is not None: xml_artinfo.set("arttype", artInfo.art_type)
     if artInfo.start_sectname is not None: xml_artinfo.set("newsecnm", artInfo.start_sectname)
     if artInfo.start_sectlevel is not None: xml_artinfo.set("newseclevel", artInfo.start_sectlevel)
+    if artInfo.art_vol_suffix is not None:
+        xml_artvol = parsed_xml.xpath("//artvol")
+        if xml_artvol != []:
+            artvol = xml_artvol[0]
+            actual = str(artInfo.art_vol_int)
+            artvol.attrib["actual"] = actual
+            artvol.text = actual + artInfo.art_vol_suffix
+            if verbose:
+                print (f"\t...Volume suffix required: set in XML to {artvol.text} and attrib 'actual' to {actual}")
 
     artbkinfo = parsed_xml.xpath("//artbkinfo")
     if artbkinfo != []:

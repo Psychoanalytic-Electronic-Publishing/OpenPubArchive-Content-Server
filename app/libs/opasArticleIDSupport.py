@@ -153,6 +153,8 @@ class ArticleID(BaseModel):
                 self.volumeInt = int(self.volumeInt)
                 # make sure str is at least 3 places via zero fill
                 self.volumeNbrStr = format(self.volumeInt, '03')
+                if self.issueCode != "":
+                    self.volumeNbrStr += self.issueCode # covers journals with repeating pages
             else:
                 self.volumeInt = 0
 

@@ -235,7 +235,7 @@ class ArticleID(BaseModel):
     volumeSuffix: str = Field(None, title="")
     # volumeWildcardOverride: str = Field(None, title="")
     volumeInt: int = Field(0, title="")
-    volumeNbrStr: str = Field(None, title="")
+    volumeNbrStr: str = Field(None, title="Volume number padded to 3 digits and issuecode if repeating pages or supplement")
     issueCode: str = Field(None, title="")
     isSupplement: bool = Field(False, title="")
     issueInt: int = Field(0, title="")
