@@ -189,6 +189,7 @@ class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
         # Try to return current content, should only return abstract
         full_URL = base_plus_endpoint_encoded(f"/v2/Documents/Document/IJPOPEN.004.0013A/?return_format=XML")
         response = requests.get(full_URL, headers=headers)
+        assert response.ok == True, f"Get {full_URL} Failed"
         r = response.json()
         response_info = r["documents"]["responseInfo"]
         response_set = r["documents"]["responseSet"][0]

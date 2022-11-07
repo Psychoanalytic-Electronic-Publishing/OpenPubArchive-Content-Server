@@ -185,8 +185,7 @@ class TestDocumentsDocumentGet(unittest.TestCase):
         data = opasAPISupportLib.documents_get_document("LU-AM.029B.0202A", session_info=session_info)
         # Confirm that the request-response cycle completed successfully.
         if data is None:
-            print ("Data not found")
-            assert ("doc not found" == True)
+            assert False, "Data not found"
         else:
             assert (data.documents.responseInfo.fullCount == 1)
             assert (data.documents.responseSet[0].documentID == 'LU-AM.029B.0202A')

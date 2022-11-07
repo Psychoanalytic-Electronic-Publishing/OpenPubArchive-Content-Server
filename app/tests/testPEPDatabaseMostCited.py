@@ -52,7 +52,7 @@ class TestMost(unittest.TestCase):
         except:
             similar_count = 0
             
-        assert(similar_count >= 1)
+        assert similar_count >= 1, f"expected >1, similar count={similar_count} "
 
     def test_0_most_cited_download(self):
         print (f"Running: {sys._getframe(  ).f_code.co_name} at {datetime.now()}")

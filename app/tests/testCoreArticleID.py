@@ -33,6 +33,8 @@ class TestArticleID(unittest.TestCase):
         # Version 2 style, better, including sourcetype support
         # ---------------------------------------------------------------------------------------
         testIDs = [
+            "FA.001A.0005A",
+            "FA.018B.0001A",
             "BAFC.012.0071A",
             "BAFC.016.0054A",
             "BAP.013.0720A",
@@ -50,8 +52,6 @@ class TestArticleID(unittest.TestCase):
             "IFP.017.0158A",
             "ZBK.028.0000A",
             "ZBK.028.0086A",
-            "FA.001A.0005A",
-            "FA.018B.0001A",
             "PEPGRANTVS.001.0003A",
             "PEPGRANTVS.001.0004A"
         ]

@@ -574,7 +574,7 @@ def google_metadata_generator(path=None, source_type="journal", fs=None, size=No
                     logger.error(msg)
                     print (msg)
             else:
-                msg = f"\t...There was a problem writing {outputFileName}. Filesystem not supplied")
+                msg = f"\t...There was a problem writing {outputFileName}. Filesystem not supplied"
                 logger.error(msg)
                 print (msg)
             

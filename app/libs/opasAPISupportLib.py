@@ -796,6 +796,8 @@ def documents_get_document(document_id,
     caller_name = "documents_get_document"
     ret_val = None
     document_list = None
+    search_context = None
+    
     ext = localsecrets.PDF_ORIGINALS_EXTENSION #  PDF originals extension
     # search_text_qs handles the authentication verification
 

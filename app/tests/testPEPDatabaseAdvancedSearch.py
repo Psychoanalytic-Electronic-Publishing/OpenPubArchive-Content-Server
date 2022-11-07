@@ -22,7 +22,7 @@ class TestDatabaseAdvancedSearch(unittest.TestCase):
         #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
-        assert(response_info["count"] >= 1)
+        assert response_info["count"] >= 1, f"Expected >=1, was {response_info['count']}" 
         print (response_set[0])
 
     def test_search_advanced2(self):
@@ -34,7 +34,7 @@ class TestDatabaseAdvancedSearch(unittest.TestCase):
         #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
-        assert(response_info["fullCount"] >= 50)
+        assert response_info["fullCount"] >= 50, f"Expected >50, was {response_info['fullCount']}" 
         print (response_set[0])
 
     def test_search_advanced3(self):
@@ -46,7 +46,7 @@ class TestDatabaseAdvancedSearch(unittest.TestCase):
         #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
-        assert(response_info["fullCount"] >= 2)
+        assert response_info["fullCount"] >= 2, f"Expected >2, was {response_info['fullCount']}" 
         print (response_set[0])
 
     def test_search_advanced4(self):
@@ -58,7 +58,7 @@ class TestDatabaseAdvancedSearch(unittest.TestCase):
         #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
-        assert(response_info["fullCount"] >= 3 and response_info["fullCount"] < 6)
+        assert response_info["fullCount"] >= 3 and response_info["fullCount"] < 6, f"Expected >=3 and <6, was {response_info['fullCount']}" 
         print (response_set[0])
 
     def test_search_advanced5(self):
@@ -70,7 +70,7 @@ class TestDatabaseAdvancedSearch(unittest.TestCase):
         #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
-        assert(response_info["fullCount"] >= 1)
+        assert response_info["fullCount"] >= 1, f"Expected >=1, was {response_info['fullCount']}" 
         print (response_set[0])
 
     def test_search_advanced6(self):
@@ -85,7 +85,7 @@ class TestDatabaseAdvancedSearch(unittest.TestCase):
         #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
-        assert(response_info["fullCount"] >= 1)
+        assert response_info["fullCount"] >= 1, f"Expected >=1, was {response_info['fullCount']}" 
         print (response_set[0])
 
 

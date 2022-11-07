@@ -34,7 +34,7 @@ class TestOpasLoaderProgram(unittest.TestCase):
     
     """
     def test_process_sub(self):
-        result = subprocess.run([sys.executable, '../opasDataLoader/opasDataLoader.py', '--sub=_PEPFree', '--nocheck', '--load'], capture_output=True)
+        result = subprocess.run([sys.executable, '../opasDataLoader/opasDataLoader.py', '--sub=_PEPFree', '--nocheck', '--nohelp', '--load'], capture_output=True)
         out = result.stdout.decode("UTF-8")
         err = result.stderr.decode("UTF-8")
         print ("Stdout:")
@@ -47,17 +47,17 @@ class TestOpasLoaderProgram(unittest.TestCase):
         if CONFIG == "Local":
             #--nocheck -d X:\_PEPA1\_PEPa1v --sub=_PEPFree
             print (os.getcwd())
-            result = subprocess.run([sys.executable, '../opasDataLoader/opasDataLoader.py', '--verbose', '-d e:/usr3/GitHub/openpubarchive/app/tests/testdatasource/_PEPFree', '--nocheck', '--smartload', '--rebuild'], capture_output=True)
+            result = subprocess.run([sys.executable, '../opasDataLoader/opasDataLoader.py', '-de:/usr3/GitHub/openpubarchive/app/tests/testdatasource/_PEPFree', '--nocheck', '--verbose', '--smartload', '--rebuild'], capture_output=True)
         else:
-            result = subprocess.run([sys.executable, '../opasDataLoader/opasDataLoader.py', '-dpep-web-xml', '--sub=_PEPFree', '--nocheck', '--load'], capture_output=True)
+            result = subprocess.run([sys.executable, '../opasDataLoader/opasDataLoader.py', '-dpep-web-xml', '--sub=_PEPFree', '--nocheck', '--nohelp', '--load'], capture_output=True)
 
         out = result.stdout.decode("UTF-8")
         err = result.stderr.decode("UTF-8")
         print ("Stdout:")
-        print (out[-1600:])
+        print (out[-2600:])
         print ("Stderr:")
         print (err[-1600:])
-        self.assertIn(b'Load process complete', result.stdout)
+        self.assertIn(b'Compile, save and load process complete', result.stdout)
 
 
 if __name__ == '__main__':

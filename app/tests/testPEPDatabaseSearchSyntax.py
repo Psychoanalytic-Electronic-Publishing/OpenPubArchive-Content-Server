@@ -86,8 +86,7 @@ class TestDatabaseSearchSyntax(unittest.TestCase):
             #  if there's a Solr server error in the call, it returns a non-200 ret_status[0]
             assert(ret_status[0] == httpCodes.HTTP_200_OK)
             full_count = ret_val.documentList.responseInfo.fullCount
-            print (f"Checking query:{n}; count: {full_count} vs expected: {expected_count}\n")
-            assert expected_count <= full_count
+            assert expected_count <= full_count, f"Query:{n}; count: {full_count} vs expected: {expected_count}\n"
         
 if __name__ == '__main__':
     unittest.main()

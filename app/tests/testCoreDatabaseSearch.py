@@ -27,6 +27,21 @@ class TestDatabaseSearch(unittest.TestCase):
         print (response_set[0]['documentRef'])
         #print (response_set[0]['abstract'])
 
+    def test_search_fulltext0A(self):
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?fulltext1="self-harm" child*&abstract=True')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        r = response.json()
+        #print (r)
+        response_info = r["documentList"]["responseInfo"]
+        response_set = r["documentList"]["responseSet"]
+        kwiclist = r["documentList"]["responseSet"][0]["kwicList"]
+        assert(len(kwiclist) > 0)
+        assert(response_info["count"] >= 1)
+        print (f"return count: {response_info['count']}")
+        print (response_set[0]['documentRef'])
+        #print (response_set[0]['abstract'])
+
     def test_search_fulltext1(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?fulltext1="mother"')
         response = requests.get(full_URL, headers=headers)

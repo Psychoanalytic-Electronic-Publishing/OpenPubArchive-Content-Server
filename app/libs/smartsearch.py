@@ -287,7 +287,7 @@ def smart_search(smart_search_text):
                         if not opasgenlib.is_boolean(smart_search_text):
                             if not opasgenlib.in_brackets(smart_search_text) and word_count > 1:
                                 # phrase search, remove punctuation which if on the first word can be mistaken for field identifiers (fix 2022-02-05)
-                                punct = '!"#$%&()+,-./:;<=>@[\\]^_`{|}~' # string.punctuation - wild cards accepted (2022-04-15 Removed ' from string)
+                                punct = '!"#$%&()+,./:;<=>@[\\]^_`{|}~' # string.punctuation - wild cards accepted (2022-04-15 Removed ' from string) (2922-11-07 removed - from string)
                                 phrase_search = re.sub(f'[{punct}]', '', smart_search_text)
                                 smart_search_text = f'"{phrase_search}"~25'         
                                 smart_search_text = opasgenlib.add_smart_quote_search(smart_search_text)

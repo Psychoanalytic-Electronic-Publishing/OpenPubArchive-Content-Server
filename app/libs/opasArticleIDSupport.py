@@ -183,12 +183,17 @@ class ArticleID(BaseModel):
             if self.isRoman:
                 self.romanPrefix = roman_prefix 
                
-            self.pageSuffix = self.articleInfo.get("page_suffix", "A")
-            self.standardized = f"{self.sourceCode}.{self.volumeNbrStr}{self.issueCode}"
+            self.pageSuffix = self.articleInfo.get("page_suffix", "")
+            
+            if not self.volumeNbrStr[-1].isalpha() and self.issueCode != "":
+                self.standardized = f"{self.sourceCode}.{self.volumeNbrStr}{self.issueCode}"
+            else:
+                self.standardized = f"{self.sourceCode}.{self.volumeNbrStr}"
+                
             self.altStandard = f"{self.sourceCode}.{self.volumeNbrStr}"
             if self.standardized == self.altStandard:
                 # there's no issue code in the standard one. Try adding one:
-                if altVolSuffix != "":
+                if altVolSuffix != "" and not self.volumeNbrStr[-1].isalpha():
                     self.altStandard = f"{self.sourceCode}.{self.volumeNbrStr}{altVolSuffix}"
                 else: # use 1 character wildcard
                     self.altStandard = f"{self.sourceCode}.{self.volumeNbrStr}?"

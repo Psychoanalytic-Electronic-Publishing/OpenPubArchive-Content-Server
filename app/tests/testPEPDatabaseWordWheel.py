@@ -34,7 +34,7 @@ class TestDatabaseWordWheel(unittest.TestCase):
                               core="authors", 
                               order="index")
         print (resp.termIndex.responseInfo.count)
-        assert(resp.termIndex.responseInfo.count >= 7)
+        assert resp.termIndex.responseInfo.count >= 7, f"count: {resp.termIndex.responseInfo.count} vs expected: {7}\n"
 
     def test_2a_get_term_index_api(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/WordWheel/?word=measuring&core=docs')
