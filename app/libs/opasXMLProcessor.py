@@ -28,7 +28,7 @@ logger = logging.getLogger(programNameShort)
 
 from loggingDebugStream import log_everywhere_if    # log as usual, but if first arg is true, also put to stdout for watching what's happening
 
-# import lxml
+import lxml.etree as ET
 import sys
 import re
 
@@ -572,6 +572,27 @@ def xml_update(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
         #else:
             #print (artInfo.art_author_id_list)
     
+    nodes = parsed_xml.xpath("/pepkbd3//artkwds") # PYXTree.getElements(ALL, E("artkwds"), childSpec=E("impx"), notChild=1)
+    # PYXTree.keywordListImpx = None
+    for node in nodes:
+        markedup_list = []
+        keywords = node.text.split(",")
+        if verbose:
+            print (f"\t...Keyword markup added: {node.text}")
+        count = len(keywords)
+        for keyword in keywords:
+            markup = f'<impx type="KEYWORD">{keyword.strip()}</impx>'
+            markedup_list.append(markup)
+
+        if count > 0:
+            keyword_str = "".join(markedup_list)
+            keywords = f"<artkwds>{keyword_str}</artkwds>"
+            newnode = ET.XML(keywords)
+            try:
+                node.getparent().replace(node, newnode)
+            except Exception as e:
+                logger.warning(f"Can't replace artkwds node {e}")
+
     # normalize local ids
     # normalize_local_ids(parsed_xml, verbose=verbose)
     
@@ -774,7 +795,7 @@ def xml_update(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
 
     # xml_artauth = pepxml.findall("artinfo/artauth/aut")
     # parsed_xml, ret_status = glossEngine.doGlossaryMarkup(parsed_xml, pretty_print=pretty_print)
-    glossEngine.doGlossaryMarkup(parsed_xml, pretty_print=pretty_print)
+    glossEngine.doGlossaryMarkup(parsed_xml, pretty_print=pretty_print, diagnostics=False) # set diagnostics=True to see markup during processing.
 
     web_links = parsed_xml.xpath("/pepkbd3//autaff//url") 
     logger.info("\t...Processing url links.")

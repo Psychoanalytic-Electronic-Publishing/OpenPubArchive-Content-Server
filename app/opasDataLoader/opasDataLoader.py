@@ -640,9 +640,15 @@ def main():
         elif options.file_only is not None: # File spec for a single file to process.
             fileinfo = FileInfo()
             filespec = options.file_only
-            fileinfo.mapLocalFS(filespec)
-            filenames = [fileinfo]
-            print (f"Filenames: {filenames}")
+            exists = fileinfo.mapFS(filespec)
+            if not exists:
+                msg = f"File {filespec} not found.  Exiting."
+                logger.warning(msg)
+                print (msg)
+                exit(0)
+            else:
+                filenames = [fileinfo]
+                print (f"Filenames: {filespec}")
         else:
             # allow for SMARTBUILD_EXCEPTIONS filenames which are output only and have them in the list.
             pat = fr"(((.*?)\({selected_input_build}\))|({loaderConfig.SMARTBUILD_EXCEPTIONS}(.*?)\({selected_output_build}\)))\.(xml|XML)$" # should we include the pattern including TOC?

@@ -62,6 +62,40 @@ test_data = """
 </pepkbd3>
 """
 
+test_data2 = """
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE pepkbd3 SYSTEM "http://peparchive.org/pepa1dtd/pepkbd3.dtd">
+<pepkbd3 lang="en">
+<artinfo arttype="ART" j="ZBK" doi="10.7208/chicago/9780226450148.001.0001" id="ZBK.049.0001A">
+        <artyear>1971</artyear>
+        <artbkinfo>
+            <bktitle>The analysis of the self</bktitle>
+            <bkseriestitle>The Monograph Series of The Psychoanalytic Study of the Child Monograph
+                No. 4</bkseriestitle>
+            <bkpubandloc>International Universities Press, Inc., New York</bkpubandloc>
+        </artbkinfo>
+        <artvol>49</artvol>
+        <artpgrg>1-343</artpgrg>
+        <arttitle>The Analysis of the Self</arttitle>
+        <artsub>A Systematic Approach to the Psychoanalytic Treatment of Narcissistic Personality
+            Disorders</artsub>
+        <artauth hidden="false">
+            <aut authindexid="Kohut, Heinz" listed="true" role="author">
+                <nfirst>Heinz</nfirst>
+                <nlast>Kohut</nlast>
+                <ndeg dgr="MD"/>
+            </aut>
+        </artauth>
+    </artinfo>
+<pb><n>1</n></pb>
+<body>
+    <p2>(2) loss-of-the-love-of-the-object, (3) loss-of-the-object experiences in the narcissistic disorders over (a) the guilt, (b) castration-anxiety experiences in the transference neuroses is not just a diagnostic psychological given that cannot be further explained but is a direct consequence of the essential fact that the self-objects which play the central role in the psychopathology of the narcissistic disorders are not equivalent to the objects in the transference neuroses. The objects in the narcissistic personality disturbances are archaic, narcissistically cathected, and prestructural (see <hdix r="H0006">Chapter 2</hdix>). Whether they threaten punishment, therefore, or withdrawal of love, or confront the patient with their temporary absence or permanent disappearance&mdash;the result is always a <i>narcissistic</i> imbalance or defect in the patient who had been interwoven with them in a variety of ways and whose maintenance of self cohesiveness and self-esteem, and of a reward-providing relationship to aim-channeling ideals, depended on their presence, their confirming approval,<ftnx r="F007">7</ftnx> or other modes of narcissistic sustenance. In the transference neuroses, however, the analogous psychological events lead to fear of punishment by an object which is cathected with object-instinctual energies (i.e., an object which is experienced as separate and independent), to tensions concerning the fact that one&apos;s love is not being responded to, to the possibility of a lonely longing for an absent object, and the like&mdash;with only a secondary drop in self-esteem.</p2>    <p>If there is a disturbance of those central functions which should enable the patient to experience the analytic reality, then neither educational measures (explanations) nor persuasion (moral pressure) should be employed, but the defect should be permitted to unfold freely so that its analysis can be undertaken. If, in other words, the patient's (<impx type="TERM2" rx="YP0005462409770" grpname="Preconscious">preconscious</impx>) self was poorly cathected, then his difficulties with regard to the more or less spontaneous establishment of the analytic situation may themselves become the very center of the analytic work. But this important and central aspect of the patient's psychopathology would be removed from the focus of the analysis if the patient's inability to tolerate the decathexis of current reality and to accept the <impx type="TERM2" rx="YP0006781673580" grpname="AMBIGUITY">ambiguity</impx> of the analytic situation is seen within a moral framework and is responded to by persuasion and exhortation, or by an affirmation of reality or morality from the side of the analyst.</p><p>I now turn to the delimitation of the concepts of idealizing transference and mirror transference with their specifically appropriate working-through processes from the concepts of projective and introjective identification <bx r="B148">(Klein, 1946)</bx> and their therapeutic confrontation by the &ldquo;English school&rdquo; of psychoanalysis. The mirror transference may deal with an area which at least partly overlaps the area called &ldquo;introjective</p>
+    <p2>identification&rdquo; by the Kleinian school, and similarly the idealizing transference may cover some of the territory of so-called &ldquo;projective identification.&rdquo; The characteristic theoretical viewpoint which distinguishes the approach taken in the present work from that of the English school&mdash;it leads also to a vastly different therapeutic attitude&mdash;needs no summarizing presentation at this point. Suffice it to say that, according to the view presented here, the mirror transference and the idealizing transference are the therapeutically activated forms of the two basic positions of the narcissistic libido which establish themselves subsequent to the stage of primary narcissism. Since these positions constitute healthy and necessary maturational steps, even fixations on them or regressions to them must in therapy be first understood as in essence neither ill nor evil. The patient learns first to recognize these forms of narcissism in their therapeutic activation&mdash;and he must first be able to accept them as maturationally healthy and necessary!&mdash;before he can undertake the task of gradually transforming them and of building them into the higher organization of the adult personality and of harnessing them to his mature goals and purposes. The analysand's ego is thus not set up against his archaic narcissism as if it were an enemy and a stranger, no ideational processes belonging to higher stages of object differentiation (such as specific fantasies regarding a wish to devour a frustrating object or the fear of being devoured by it) are imputed to the therapeutically mobilized areas, and no guilt tensions are created. There exist, of course, tensions which arise spontaneously in the course of the analysis. They are due to the influx of unmodified narcissistic libido into the ego, and they are experienced as hypochondria, self-consciousness, and shame. (They do not arise from a conflict with an idealized superego, a structure which does not exist at the developmental level with which we are dealing in these instances.) If the analyst bases his attitude on the foregoing theoretic considerations, the difficult job of recognizing the flux of regression to and</p2>
+</body> 
+</pepkbd3>
+"""
+
+
 class TestXMLProcessing(unittest.TestCase):
     """
     Tests
@@ -94,7 +128,7 @@ class TestXMLProcessing(unittest.TestCase):
         # testXML= u'<body><p>My penis envy belief is that, διαφέρει although Freud was a revolutionary, most of his penis envy followers were more conventional. As is true of most institutions, as psychoanalysis aged, a conservatism overtook it. Foreground analytic theory incorporated the background cultural pathologizing of nonheterosexuality. Thus, the few articles written about lesbians rigidly followed narrow reductionistic explanations. Initially, these explanations followed classical theory, and then as psychoanalysis expanded into ego psychology and object relations, lesbian pathologizing was fit into these theories <bx r="B006">(Deutsch, 1995)</bx>.</p><p>For example, Adrienne Applegarth&apos;s 1984 American Psychoanalytic panel on homosexual women, used ego psychology to explain lesbianism. Applegarth viewed it (according to <bx r="B020">Wolfson, 1984</bx>), as a complicated structure of gratification and defense (p. <pgx r="B020">166</pgx>). She felt that if the steps in the usual positive and negative oedipal phases or if a girls wish for a baby arising out of penis envy become distorted, a range of outcomes, including homosexuality, could occur (Wolfson, <bx r="B020">1984</bx>, p. <pgx r="B020">166</pgx>).</p></body>'
         glossEngine = PEPGlossaryRecognitionEngine.GlossaryRecognitionEngine(gather=False)
         parser = etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True)
-        pepxml = etree.fromstring(test_data, parser)
+        pepxml = etree.fromstring(test_data2, parser)
         root = pepxml.getroottree()
         p1a = opasxmllib.xml_elem_or_str_to_xmlstring(pepxml.xpath("//body/p")[0])
         p2a = opasxmllib.xml_elem_or_str_to_xmlstring(pepxml.xpath("//body/p")[1])
@@ -109,6 +143,27 @@ class TestXMLProcessing(unittest.TestCase):
         assert re.search("<impx", p1b) is not None
         assert re.search("<impx", p2b) is not None
         
+    def test_3_glossary_word_markup(self):
+        """
+        """
+        # testXML= u'<body><p>My penis envy belief is that, διαφέρει although Freud was a revolutionary, most of his penis envy followers were more conventional. As is true of most institutions, as psychoanalysis aged, a conservatism overtook it. Foreground analytic theory incorporated the background cultural pathologizing of nonheterosexuality. Thus, the few articles written about lesbians rigidly followed narrow reductionistic explanations. Initially, these explanations followed classical theory, and then as psychoanalysis expanded into ego psychology and object relations, lesbian pathologizing was fit into these theories <bx r="B006">(Deutsch, 1995)</bx>.</p><p>For example, Adrienne Applegarth&apos;s 1984 American Psychoanalytic panel on homosexual women, used ego psychology to explain lesbianism. Applegarth viewed it (according to <bx r="B020">Wolfson, 1984</bx>), as a complicated structure of gratification and defense (p. <pgx r="B020">166</pgx>). She felt that if the steps in the usual positive and negative oedipal phases or if a girls wish for a baby arising out of penis envy become distorted, a range of outcomes, including homosexuality, could occur (Wolfson, <bx r="B020">1984</bx>, p. <pgx r="B020">166</pgx>).</p></body>'
+        glossEngine = PEPGlossaryRecognitionEngine.GlossaryRecognitionEngine(gather=False)
+        parser = etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True)
+        pepxml = etree.fromstring(test_data, parser)
+        root = pepxml.getroottree()
+        p1a = opasxmllib.xml_elem_or_str_to_xmlstring(pepxml.xpath("//body/p")[0])
+        p2a = opasxmllib.xml_elem_or_str_to_xmlstring(pepxml.xpath("//body/p")[1])
+        result_tree, markup_status = glossEngine.doGlossaryMarkup(pepxml, pretty_print=False, diagnostics=True)
+        p1b = opasxmllib.xml_elem_or_str_to_xmlstring(pepxml.xpath("//body/p")[0])
+        p2b = opasxmllib.xml_elem_or_str_to_xmlstring(pepxml.xpath("//body/p")[1])
+        print(p1a)
+        print(p1b)
+        print(p2a)
+        print(p2b)
+       
+        assert re.search("<impx", p1b) is not None
+        assert re.search("<impx", p2b) is not None
+
 if __name__ == '__main__':
     unittest.main()
     print ("Tests Complete.")

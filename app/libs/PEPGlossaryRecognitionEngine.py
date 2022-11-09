@@ -20,7 +20,7 @@ import lxml
 import opasXMLHelper as opasxmllib
 
 # no glossary link/markup if under these ancestoral tags
-default_ancestor_list = r"\b(abbr|abs|artinfo|bkpubandloc|be|h[1-9]|cgrp|figx|frac|impx|ln|pgx|url|tbl|table|a|bx|bxe|webx)\b"
+default_ancestor_list = r"\b(abbr|abs|artinfo|artkwds|bkpubandloc|be|h[1-9]|cgrp|figx|frac|impx|ln|pgx|url|tbl|table|a|bx|bxe|webx)\b"
 ocd = opasCentralDBLib.opasCentralDB()
 
 gDbg1 = 0 # general info
