@@ -21,7 +21,7 @@ programNameShort = "opasXMLProcessor"
 XMLProcessingEnabled = True
 
 gDbg1 = False # display errors on stdout
-gDbg2 = True # processing details
+gDbg2 = False # processing details
 
 import logging
 logger = logging.getLogger(programNameShort)
@@ -277,7 +277,11 @@ def add_article_to_split_pages_table(ocd, parsed_xml, artInfo, remove_old=False,
             print ("Warning!  Blank Page Number")
 
 #------------------------------------------------------------------------------------------------------
-def pgx_add_rx_info(parsed_xml, ocd, artInfo, split_book_data=None, verbose=False):
+def pgx_add_rx_jump_via_biblio_entry(parsed_xml, ocd, artInfo, split_book_data=None, verbose=False):
+    """
+    Look for pgx links which reference the bibliography and link to the referenced
+      source page number
+    """
     global gDbg1, gDbg2
     if not verbose:
         gDbg1 = False
@@ -308,19 +312,20 @@ def pgx_add_rx_info(parsed_xml, ocd, artInfo, split_book_data=None, verbose=Fals
     pgxlink_type = "BIBPGLINK"
         
     for pgx in pgx_links:
-        r_attr = pgx.attrib["r"]
-        pg_num = pgx.text
-        pg_numeric = pg_num.isnumeric()
-        if opasgenlib.not_empty(r_attr) and pg_numeric:
-            if r_attr[0] == "B":
-                # bib...get linked rx, if there is one
-                bib_node = parsed_xml.xpath(f'//be[@id="{r_attr}"]')
-                if len(bib_node) == 1:
-                    rx = bib_node[0].attrib.get("rx", None)
-                    if rx is not None:
-                        pgx.attrib["rx"] = rx + f".P{pg_num}"
-                        pgx.attrib["type"] = pgxlink_type
-                        ret_val += 1
+        r_attr = pgx.attrib.get("r", None)
+        if r_attr is not None:
+            pg_num = pgx.text
+            pg_numeric = pg_num.isnumeric()
+            if opasgenlib.not_empty(r_attr) and pg_numeric:
+                if r_attr[0] == "B":
+                    # bib...get linked rx, if there is one
+                    bib_node = parsed_xml.xpath(f'//be[@id="{r_attr}"]')
+                    if len(bib_node) == 1:
+                        rx = bib_node[0].attrib.get("rx", None)
+                        if rx is not None:
+                            pgx.attrib["rx"] = rx + f".P{pg_num}"
+                            pgx.attrib["type"] = pgxlink_type
+                            ret_val += 1
                     
     if verbose and ret_val:
         print(f"\t...Found biblo based page links. {ret_val} external pgx links added.")
@@ -368,7 +373,7 @@ def pgx_add_rx_book_links(parsed_xml, ocd, artInfo, split_book_data=None, verbos
         split_book_data = opasXMLSplitBookSupport.SplitBookData(database_connection=ocd)
         pgx_links = parsed_xml.xpath("/pepkbd3//pgx")
         if verbose:
-            print(f"\t...Processing page links. {len(pgx_links)} pgx links found.")
+            print(f"\t...Processing book page links. {len(pgx_links)} pgx links found.")
             
         for pgx in pgx_links:
             if pgx.attrib.get("type", "") == "BIBPGLINK":
@@ -444,40 +449,12 @@ def pgxPreProcessing(parsed_xml, ocd, artInfo, split_book_data=None, verbose=Fal
 
     # Walk through pgx elements, and fix locators
     #split_book_data = opasXMLSplitBookSupport.SplitBookData(database_connection=ocd)
-    pgx_links = parsed_xml.xpath("/pepkbd3//pgx")
-    if verbose:
-        print(f"\t...Processing page links. {len(pgx_links)} pgx links found.")
-        
-    for pgx in pgx_links:
-        if pgx.attrib.get("type", "") == "BIBPGLINK":
-            continue
-        # where are we
-        #in_toc = pgx.xpath("ancestor::grp[@name='TOC']")
-        pgxlink_type = "OTHER"
-        #parentNameElem = pgx.getparent()
-        grp_ancestor_list = pgx.xpath("ancestor::grp")
-        if len(grp_ancestor_list) > 0:
-            grp_ancestor = grp_ancestor_list[0]
-            grp_type = grp_ancestor.attrib.get("name", None)
-            if grp_type is not None:
-                grp_type = grp_type.upper()
-                if grp_type in ["TOC", "INDEX"]:
-                    pgxlink_type = "INDEX" # for TOC or an INDEX
-                else:
-                    pgxlink_type = grp_type
-            
-        current_rx_link = pgx.attrib.get("rx", None)
-            
-    nodes = parsed_xml.xpath("/pepkbd3//bxe")
-    for node in nodes:
-        if node.tag == "bxe":
-            fulltext = opasxmllib.xml_elem_or_str_to_text(node) # x.find("pgx")
-            bxRefRX = node.attrib.get("rx", None)
-            if bxRefRX is None:
-                log_everywhere_if(gDbg2, level="warning", msg=f"\t\t\t...BXE tag {fulltext} found in {artInfo.art_id} without rx info.")
-        
+    #if verbose:
+        #print(f"\t...Processing external biblio links. {len(pgx_links)} pgx links found.")   
+    
+
     ## update local ids for biblios if applicable
-    #nodes = pepxml.xpath("/pepkbd3//bx|bxe")
+    #nodes = parsed_xml.xpath("/pepkbd3//bx|bxe")
     #for node in nodes:
         #if node.tag == "bx":
             #bxRefR = node.get("r")
@@ -988,7 +965,7 @@ def xml_update(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
     pgnbr_add_next_attrib(parsed_xml)
 
     # Walk through biblio, add links
-    update_biblio(parsed_xml, artInfo, ocd)
+    update_biblio(parsed_xml, artInfo, ocd, verbose=verbose)
     
     # Add page number markup (next and prev page info on page breaks)
     add_page_number_markup(parsed_xml)
@@ -997,7 +974,7 @@ def xml_update(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
     split_book_data = opasXMLSplitBookSupport.SplitBookData(database_connection=ocd)
     
     # if this is a split book, add pg numbers to split book table
-    add_pagenbrs_to_splitbook_table(parsed_xml, artInfo, ocd, split_book_data)
+    add_pagenbrs_to_splitbook_table(parsed_xml, artInfo, ocd, split_book_data, verbose=verbose)
             
     # ------------------------------------------------------
     #  pgx (link) handling routines
@@ -1011,9 +988,9 @@ def xml_update(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
             pgx_add_rx_split_book_links(parsed_xml, ocd, artInfo=artInfo,
                                         split_book_data=split_book_data, verbose=verbose)
         
-    pgxPreProcessing(parsed_xml, ocd, artInfo=artInfo, split_book_data=split_book_data, verbose=verbose)
+    # pgxPreProcessing(parsed_xml, ocd, artInfo=artInfo, split_book_data=split_book_data, verbose=verbose)
 
-    pgx_add_rx_info(parsed_xml, ocd, artInfo=artInfo, split_book_data=split_book_data, verbose=verbose)
+    pgx_add_rx_jump_via_biblio_entry(parsed_xml, ocd, artInfo=artInfo, split_book_data=split_book_data, verbose=verbose)
 
     glossEngine.doGlossaryMarkup(parsed_xml, pretty_print=pretty_print, diagnostics=False, verbose=verbose) # set diagnostics=True to see markup during processing.
 

@@ -561,7 +561,7 @@ class GlossaryRecognitionEngine(UserDict):
         """
         
         ret_status = True
-        if verbose: print (f"\t...Starting Glossary Markup")
+        if gDbg2: print (f"\t...Starting Glossary Markup")
         count = 0
         #preface="""<?xml version='1.0' encoding='UTF-8' ?><!DOCTYPE %s SYSTEM '%s'>""" % ("p", gDefaultDTD) + "\n"
         preface = """<?xml version='1.0' encoding='UTF-8' ?>""" # TRY THIS TEST CODE 2017-04-02, without named entities, we should not need a DTD loaded (much quicker)
@@ -580,15 +580,15 @@ class GlossaryRecognitionEngine(UserDict):
         allParas = parsed_xml.xpath(".//p|.//p2")
         para_count = 0
         for para_working in allParas:
+            para_count += 1
             #para_working = para
             # skip if has skipped ancestor:
             # ancestors = opasxmllib.xml_node_list_ancestor_names(para_working)
             ancestor_match = opasxmllib.xml_node_regx_ancestors(para_working, regx=skipIfHasAncestorRegx)
             if ancestor_match:
-                if diagnostics: print (f"Skipped para {para_count} (due to ancestor)")
+                if diagnostics: print (f"\t\t...Skipped para {para_count} (due to ancestor)")
                 continue
 
-            para_count += 1
             # unicode opt returns string inst of bytes, which is for compat w py2 (http://makble.com/python-why-lxml-etree-tostring-method-returns-bytes)
             node_text = lxml.etree.tostring(para_working, encoding="unicode")
             len_node_text = len(node_text)
@@ -600,6 +600,10 @@ class GlossaryRecognitionEngine(UserDict):
                 term_data = rcrow[1]
                 grpnm = term_data[2]
                 rx = term_data[3]
+                #if grpnm == "Attachment Theory":
+                    #print (grpnm)
+                #if diagnostics:
+                    #print (f"\t\t\t...Groupname: {grpnm} Term Data: {term_data}")
                 if theGroupName == grpnm:
                     continue # skip per parameter def [TBD: Needs to be checked for glossary build]
                 
@@ -608,16 +612,14 @@ class GlossaryRecognitionEngine(UserDict):
                 # Match at the start, at the end, the whole, and in the middle, delineated
                 rc = rcrow[0]
                 try:
-                    if verbose: 
-                        change_count = len(rc.findall(node_text))
-                        total_changes += change_count
-
-                    node_text2 = rc.sub(subStrCxt, node_text)
+                    change_count = len(rc.findall(node_text))
+                    total_changes += change_count
+                    if change_count:
+                        node_text2 = rc.sub(subStrCxt, node_text)
                 except Exception as e:
                     print (e)
 
-                len_node_text2 = len(node_text2)
-                if len_node_text2 != len_node_text:
+                if change_count: 
                     # if the markup is within quotes, don't keep it.
                     if re.search("\".*?<impx.*</impx>.*?\"", node_text2, flags=re.IGNORECASE):
                         if gDbg1: print ("\t..Error: impx in quoted passage detected. Skipping markup")
@@ -628,12 +630,11 @@ class GlossaryRecognitionEngine(UserDict):
                         continue
                     else:
                         # sciSupport.trace("%s%sMarked Abbr %s in %s: " % (60*"-","\n", rc.pattern, nodeText2), outlineLevel=1, debugVar=gDbg7)
-                        if diagnostics: print (f"\t..Marked Glossary Term: {grpnm} ID: {rx}")
+                        if diagnostics: print (f"\t\t...Para {para_count}: Marked Glossary Term: {grpnm} ID: {rx}")
                         changes = True
                         count += 1
                         countInDoc += 1
                         node_text = node_text2
-                        len_node_text = len_node_text2 # for the next compare
 
             if changes:
                 try:
@@ -641,8 +642,8 @@ class GlossaryRecognitionEngine(UserDict):
                     parent_node = para_working.getparent()
                     parent_node.replace(para_working, new_node)
                     if diagnostics:
-                        print (f"Final markup: {node_text}")
-                        print ("%s glossary terms recognized." % countInDoc)
+                        print (f"\t\t...Para {para_count}: Final markup: {node_text}")
+                        print (f"\t\t...Para {para_count}: {countInDoc} glossary terms recognized.")
                 except Exception as e:
                     # skip this change and log
                     logger.error(f"Could not save node change (skipped) {e}.")
