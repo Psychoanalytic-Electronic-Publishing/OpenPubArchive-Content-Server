@@ -119,8 +119,9 @@ class BiblioEntry(object):
             self.ref_entry_xml = self.ref_entry_xml.decode("utf8") # convert from bytes
         self.ref_entry_text = opasxmllib.xml_elem_or_str_to_text(ref)
         self.art_id = artInfo.art_id
-        self.source_type = ""
         self.sourcecode = ""
+        self.ref_source_type = ""
+        self.ref_is_book = False
         self.art_year_int = artInfo.art_year_int
         self.ref_local_id= opasxmllib.xml_get_element_attr(ref, "id")
         self.ref_id = artInfo.art_id + "." + self.ref_local_id
@@ -144,14 +145,17 @@ class BiblioEntry(object):
         if self.source_title is None or self.source_title == "":
             self.source_title = opasxmllib.xml_get_direct_subnode_textsingleton(ref, "bst")  # book title
             if self.source_title is not None and self.source_title != "":
-                self.source_type = "book"
+                self.ref_source_type = "book"
+                self.ref_is_book = True
         
         if self.publishers != "":
-            self.source_type = "book"
-        elif self.source_type is None or self.source_type == "":
-            self.source_type = "journal"
+            self.ref_source_type = "book"
+            self.ref_is_book = True
+        elif self.ref_source_type is None or self.ref_source_type == "":
+            self.ref_source_type = "journal"
+            self.ref_is_book = False
 
-        if self.source_type == "book":
+        if self.ref_source_type == "book":
             self.year_of_publication = opasxmllib.xml_get_subelement_textsingleton(ref, "bpd")
             if self.year_of_publication == "":
                 self.year_of_publication = opasxmllib.xml_get_subelement_textsingleton(ref, "y")
@@ -160,7 +164,7 @@ class BiblioEntry(object):
                 #self.source_title = opasxmllib.xml_get_direct_subnode_textsingleton(ref, "bst")  # book title
         else:
             self.year_of_publication = opasxmllib.xml_get_subelement_textsingleton(ref, "y")
-            sourcecode = jrnlData.getPEPJournalCode(self.source_title)
+            sourcecode, dummy, dummy = jrnlData.getPEPJournalCode(self.source_title)
             if sourcecode is not None:
                 self.sourcecode = sourcecode[0]
                 if self.rx_sourcecode is None and self.sourcecode is not None:
@@ -224,7 +228,8 @@ class ArticleInfo(object):
         self.bk_seriestoc = None
         self.verbose = verbose
         self.src_code_active = 0
-
+        self.src_is_book = False
+        
         # Just init these.  Creator will set based on filename
         self.file_classification = None
         self.file_size = 0  
@@ -307,8 +312,10 @@ class ArticleInfo(object):
             if self.src_code in ["ZBK", "IPL", "NLP"]:
                 self.src_prodkey = pepsrccode = f"{self.src_code}%03d" % self.art_vol_int
                 self.src_type = "book"
+                self.src_is_book = True
             else:
                 self.src_prodkey = pepsrccode = f"{self.src_code}"
+                self.src_is_book = False
 
             self.src_title_abbr = sourceinfodb_data[pepsrccode].get("sourcetitleabbr", None)
             self.src_title_full = sourceinfodb_data[pepsrccode].get("sourcetitlefull", None)
@@ -1426,7 +1433,7 @@ def add_reference_to_biblioxml_table(ocd, artInfo, bib_entry, verbose=None):
                                         %(author_list_str)s,
                                         %(authors_xml)s,
                                         %(ref_title)s,
-                                        %(source_type)s,
+                                        %(ref_source_type)s,
                                         %(source_title)s,
                                         %(pgrg)s,
                                         %(year_of_publication)s,

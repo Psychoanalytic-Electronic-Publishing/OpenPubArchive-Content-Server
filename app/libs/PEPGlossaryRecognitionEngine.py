@@ -529,7 +529,7 @@ class GlossaryRecognitionEngine(UserDict):
         return ret_val, ret_status # return new reparsed_xml if ret_status is true, orig parsed_xml if not.
 
     #--------------------------------------------------------------------------------
-    def doGlossaryMarkup(self, parsed_xml, skipIfHasAncestorRegx=default_ancestor_list, preface=None, theGroupName=None, pretty_print=False, diagnostics=False):
+    def doGlossaryMarkup(self, parsed_xml, skipIfHasAncestorRegx=default_ancestor_list, preface=None, theGroupName=None, pretty_print=False, diagnostics=False, verbose=False):
         """
         Markup any glossary entries in paragraphs (only).
 
@@ -559,9 +559,9 @@ class GlossaryRecognitionEngine(UserDict):
         3
 
         """
-
+        
         ret_status = True
-        if gDbg1: print ("***** Do Glossary Markup *****")
+        if verbose: print (f"\t...Starting Glossary Markup")
         count = 0
         #preface="""<?xml version='1.0' encoding='UTF-8' ?><!DOCTYPE %s SYSTEM '%s'>""" % ("p", gDefaultDTD) + "\n"
         preface = """<?xml version='1.0' encoding='UTF-8' ?>""" # TRY THIS TEST CODE 2017-04-02, without named entities, we should not need a DTD loaded (much quicker)
@@ -575,6 +575,7 @@ class GlossaryRecognitionEngine(UserDict):
         #count = tree.replaceAttrText("altdata", "(.*)", "XXX\0", ALL, E("impx", {"type":"TERM1"}))
         # tree.deleteAttributes(ALL, elemSpec=E("impx", {"type":"TERM1"}), attrNamePtn="altdata")
         countInDoc = 0
+        total_changes = 0
         # get all paragraphs
         allParas = parsed_xml.xpath(".//p|.//p2")
         para_count = 0
@@ -603,9 +604,14 @@ class GlossaryRecognitionEngine(UserDict):
                     continue # skip per parameter def [TBD: Needs to be checked for glossary build]
                 
                 subStrCxt = f'<impx type="TERM2" rx="{rx}" grpname="{grpnm}">\g<whole></impx>'
+                # count changes
                 # Match at the start, at the end, the whole, and in the middle, delineated
                 rc = rcrow[0]
                 try:
+                    if verbose: 
+                        change_count = len(rc.findall(node_text))
+                        total_changes += change_count
+
                     node_text2 = rc.sub(subStrCxt, node_text)
                 except Exception as e:
                     print (e)
@@ -641,11 +647,11 @@ class GlossaryRecognitionEngine(UserDict):
                     # skip this change and log
                     logger.error(f"Could not save node change (skipped) {e}.")
 
-        if gDbg2 or diagnostics:
+        if verbose: 
             endTime = time.time()
             timeDiff = endTime - startTime
-            print (80*"-")
-            print ("%d paragraphs marked with glossary terms in %s secs" % (countInDoc, timeDiff))
+            #print (80*"-")
+            print (f"\t...{total_changes} glossary term markups for {countInDoc} paragraphs in {timeDiff} secs")
 
         # option: should we return count of changed paragraphs?
         ret_status = count

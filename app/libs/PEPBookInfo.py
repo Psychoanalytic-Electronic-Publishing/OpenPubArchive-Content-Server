@@ -302,7 +302,7 @@ class PEPBookInfo:
 
         "ZBK.003.0001A": (  30,
                             bionW,
-                            "Learning from  Experience",             #checked
+                            "Learning from Experience",             #checked
                             "(1962|1970)",
                             None
                             ),
@@ -1076,7 +1076,7 @@ class PEPBookInfo:
                 yearPat = re.sub("\s+", r"\\s+", yearPat)
                 rgxAuth = re.compile(authPat, re.IGNORECASE)
                 rgxTitle = re.compile(titlePat, re.IGNORECASE)
-                rgxYear = re.compile(yearPat, re.IGNORECASE)
+                rgxYear = re.compile(yearPat+"[a-d]?", re.IGNORECASE) # allow for when they add a suffix
                 if extraPat != None:
                     rgxExtra = re.compile(extraPat, re.IGNORECASE)
                 else:

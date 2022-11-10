@@ -1358,7 +1358,7 @@ class PEPJournalData:
     patChina = r"China"
     patChild = r"(Ch((ild)?(\b|\.)))"
     patClinical = r"C(\.|lin(\b|\.|ical)?)?"
-    patContemporary = "\s*Contemp(\.|orary)"
+    patContemporary = "\s*Contemp(\.?|orary)"
     patContext = "\s*Cont(\.|ext)"
     patCouple = r"((Coup(le)?|Cpl)(\b|\.))"
     patCulture = r"C(\.|ult(\b|\.|ure)?)?"
