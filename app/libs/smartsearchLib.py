@@ -355,22 +355,25 @@ def get_list_of_name_ids(names_mess):
       ['Goldberg, E.', 'Myers, W.', 'Zeifman, I.']
     """
     ret_val = []
-    names = HumanNames(names_mess)
-    try:
-        for n in names.human_names:
-            if n.last != "":
-                if n.first != "":
-                    name_id = n.last + f", {n.first[0]}."
+    if len(names_mess.split()) == 1:
+        ret_val = [names_mess]
+    else:
+        names = HumanNames(names_mess)
+        try:
+            for n in names.human_names:
+                if n.last != "":
+                    if n.first != "":
+                        name_id = n.last + f", {n.first[0]}."
+                    else:
+                        name_id = n.last
+                    ret_val.append(name_id)
                 else:
-                    name_id = n.last
-                ret_val.append(name_id)
-            else:
-                ret_val.append(n.first)
-            
-    except Exception as e:
-        logger.warning(f"name parse: {names_mess} {e}")
-        print (e)
-
+                    ret_val.append(n.first)
+                
+        except Exception as e:
+            logger.warning(f"name parse: {names_mess} {e}")
+            print (e)
+    
     return ret_val
         
 #-----------------------------------------------------------------------------
