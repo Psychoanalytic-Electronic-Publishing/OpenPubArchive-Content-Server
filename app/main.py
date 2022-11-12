@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.1111/v2.1.188"   # semver versioning after date.
+__version__     = "2022.1112/v2.1.189"   # semver versioning after date.
 __status__      = "Development/Libs/Loader"  
 
 """
@@ -2730,7 +2730,7 @@ async def database_search(response: Response,
     if ret_status[0] != httpCodes.HTTP_200_OK:
         #  throw an exception rather than return an object (which will fail)
         try:
-            detail = ERR_MSG_BAD_SEARCH_REQUEST + f" {ret_status[1].reason}:{ret_status[1].body}"
+            detail = ERR_MSG_BAD_SEARCH_REQUEST + f" {ret_status[1]['reason']}:{ret_status[1]['body']}"
         except Exception as e:
             logger.warning(e)
             detail = ERR_MSG_BAD_SEARCH_REQUEST # "Bad Search Request"
