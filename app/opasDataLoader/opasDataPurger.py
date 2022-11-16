@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.1115/v1.0.001"   # semver versioning after date.
+__version__     = "2022.1115/v1.0.002"   # semver versioning after date.
 __status__      = "Development"
 
 programNameShort = "opasDataPurger"
@@ -55,22 +55,15 @@ import os.path
 import pathlib
 # from opasFileSupport import FileInfo
 
-import datetime as dtime
 from datetime import datetime
 import logging
 logger = logging.getLogger(programNameShort)
 
 from optparse import OptionParser
 
-# import mysql.connector
-
 import configLib.opasCoreConfig
-from configLib.opasCoreConfig import solr_authors2, solr_gloss2
 import loaderConfig
-# import opasSolrLoadSupport
-
 import opasCentralDBLib
-import opasProductLib
 import opasFileSupport
 
 #detect data is on *nix or windows system
@@ -78,9 +71,6 @@ if "AWS" in localsecrets.CONFIG or re.search("/", localsecrets.IMAGE_SOURCE_PATH
     path_separator = "/"
 else:
     path_separator = r"\\"
-
-# for processxml (build XML or update directly without intermediate file)
-import opasXMLProcessor
 
 # Module Globals
 fs_flex = None
@@ -242,12 +232,6 @@ if __name__ == "__main__":
     parser.add_option("--verbose", action="store_true", dest="display_verbose", default=False,
                       help="Display status and operational timing info as load progresses.")
     # New OpasLoader2 Options
-    parser.add_option("--inputbuildpattern", dest="input_build_pattern", default=None,
-                      help="Pattern of the build specifier to load (input), e.g., (bEXP_ARCH1|bSeriesTOC), or (bKBD3|bSeriesTOC)")
-    
-    parser.add_option("--inputbuild", dest="input_build", default=None,
-                      help=f"Build specifier to load (input), e.g., (bKBD3) or just bKBD3")
-    
     parser.add_option("--outputbuild", dest="output_build", default=loaderConfig.DEFAULT_OUTPUT_BUILD,
                       help=f"Specific output build specification, default='{loaderConfig.DEFAULT_OUTPUT_BUILD}'. e.g., (bEXP_ARCH1) or just bEXP_ARCH1.")
     
