@@ -70,6 +70,7 @@ class TestArticleID(unittest.TestCase):
         # Version 2 style, better, including sourcetype support
         # ---------------------------------------------------------------------------------------
         testIDs = [
+            ("GW.018S.0000A", 0), # (ArticleID, Expected issue number)
             ("FA.001A.0005A", 1),
             ("FA.001C.0074", 3), 
             ("FA.001F.R0001", 6),
@@ -105,8 +106,8 @@ class TestArticleID(unittest.TestCase):
         ]
         for n in testIDs:
             a = ArticleID(articleID=n)
-            print (a.articleID, a.altStandard)
-            
+            print (a.articleID, a.standardized, a.altStandard)
+            assert(a.standardized == n.upper())
         
         
 if __name__ == '__main__':

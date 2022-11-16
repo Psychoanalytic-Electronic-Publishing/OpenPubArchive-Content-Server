@@ -92,7 +92,7 @@ class TestDatabaseSearchSpecialCases(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         print (response_info["fullCount"])
-        assert(response_info["fullCount"] >= 95 and response_info["fullCount"] <= 125) # range just to give it some upper slack for new data
+        assert(response_info["fullCount"] >= 95 and response_info["fullCount"] <= 155) # range just to give it some upper slack for new data
 
     def test_2b_example_fulltext1_search_types(self):
         """

@@ -40,7 +40,7 @@ class TestOpasQueryHelperMostsCalls(unittest.TestCase):
     
         r, status = opasPySolrLib.search_stats_for_download(solr_query_spec,
                                                             limit=100)
-        assert (r.documentList.responseInfo.fullCount > 15000)
+        assert r.documentList.responseInfo.fullCount > 15000, r.documentList.responseInfo.fullCount
 
 
     def test_1_most_cited_direct(self):
@@ -62,7 +62,7 @@ class TestOpasQueryHelperMostsCalls(unittest.TestCase):
     
         r, status = opasPySolrLib.search_stats_for_download(solr_query_spec,
                                                             limit=100)
-        assert (r.documentList.responseInfo.fullCount > 15000)
+        assert r.documentList.responseInfo.fullCount > 15000, r.documentList.responseInfo.fullCount
 
     def test_3_most_cited_direct_simple(self):
         """
@@ -84,7 +84,7 @@ class TestOpasQueryHelperMostsCalls(unittest.TestCase):
         r, status = opasPySolrLib.search_stats_for_download(solr_query_spec,
                                                             session_info=session_info,
                                                             limit=100)
-        assert (r.documentList.responseInfo.fullCount > 1200)
+        assert r.documentList.responseInfo.fullCount > 1200, r.documentList.responseInfo.fullCount
 
     def test_3_most_cited_direct_simple2(self):
         """
@@ -106,7 +106,7 @@ class TestOpasQueryHelperMostsCalls(unittest.TestCase):
         r, status = opasPySolrLib.search_stats_for_download(solr_query_spec,
                                                             session_info=session_info,
                                                             limit=100)
-        assert (r.documentList.responseInfo.fullCount > 1500)
+        assert r.documentList.responseInfo.fullCount > 1500, r.documentList.responseInfo.fullCount
 
 if __name__ == '__main__':
     unittest.main()

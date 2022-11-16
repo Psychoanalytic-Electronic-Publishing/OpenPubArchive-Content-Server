@@ -16,7 +16,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 import unittest
-from localsecrets import PADS_TEST_ID, PADS_TEST_PW, PDF_ORIGINALS_PATH, PADS_TEST_ID2, PADS_TEST_PW2
+from localsecrets import PADS_TEST_ID2, PADS_TEST_PW2
 from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_id, UNIT_TEST_CLIENT_ID, test_login
 
 # Login!
@@ -50,7 +50,7 @@ class TestDocumentDownloadSetForInspection(unittest.TestCase):
                 response = requests.get(full_URL, headers=headers)
                     
             except Exception as e:
-                print (f"{testArticle} not available in that format.")
+                print (f"{testArticle} not available in that format. {e}")
             else:
                 print (f"Downloads complete for {testArticle} in folder {tempdir}. Ready for manual evaluation.")
                 
@@ -64,7 +64,7 @@ class TestDocumentDownloadSetForInspection(unittest.TestCase):
                 response = requests.get(full_URL, headers=headers)
                     
             except Exception as e:
-                print (f"{testArticle} not available in that format.")
+                print (f"{testArticle} not available in that format. {e}")
             else:
                 print (f"Downloads complete for {testArticle} in folder {tempdir}. Ready for manual evaluation.")
 

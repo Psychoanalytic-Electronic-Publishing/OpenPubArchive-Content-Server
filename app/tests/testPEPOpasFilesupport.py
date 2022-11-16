@@ -68,21 +68,21 @@ class TestOpasFileSupport(unittest.TestCase):
                                                 secret=localsecrets.S3_SECRET,
                                                 root=localsecrets.IMAGE_SOURCE_PATH)
             ret = fs.fullfilespec(filespec="IJAPS.016.0181A.FIG002.jpg", path=localsecrets.IMAGE_SOURCE_PATH)
-            assert(ret ==f'{localsecrets.IMAGE_SOURCE_PATH}/IJAPS.016.0181A.FIG002.jpg')
+            assert ret ==f'{localsecrets.IMAGE_SOURCE_PATH}/IJAPS.016.0181A.FIG002.jpg', ret
         else:
             print ("Local FS tests")
             fs = opasFileSupport.FlexFileSystem(root=localsecrets.XML_ORIGINALS_PATH)
             # >>> fs.fullfilespec(filespec="pep.css", path="embedded-graphics")
             'pep-graphics/embedded-graphics/pep.css'
             ret = fs.fullfilespec(filespec="IJAPS.016.0181A.FIG002.jpg", path=localsecrets.IMAGE_SOURCE_PATH)
-            assert(ret == 'X:\\AWS_S3\\AWS PEP-Web-Live-Data\\graphics\\IJAPS.016.0181A.FIG002.jpg')
+            assert ret == 'X:\\AWS_S3\\AWS PEP-Web-Live-Data\\graphics\\IJAPS.016.0181A.FIG002.jpg', ret
    
     def test_2_exists(self):
         fs = opasFileSupport.FlexFileSystem(root=localsecrets.IMAGE_SOURCE_PATH)
         ret = fs.exists(filespec="IJAPS.016.0181A.FIG002.jpg", path=localsecrets.IMAGE_SOURCE_PATH)
         assert(ret == True)
         ret = fs.exists(filespec="IJAPS.016.0181A.FIG002B.jpg", path=localsecrets.IMAGE_SOURCE_PATH)
-        assert(ret == False)
+        assert ret == False, ret
    
     def test_3_get_download_filename(self):
         """
@@ -91,7 +91,7 @@ class TestOpasFileSupport(unittest.TestCase):
         filespec = "AIM.026.0021A.pdf"
         ret = fs.get_download_filename(filespec=filespec, path=localsecrets.PDF_ORIGINALS_PATH)
         print (ret)
-        assert(filespec in ret)
+        assert filespec in ret, f"{filespec} / {ret}" 
    
     def test_4_get_image_filename(self):
         """
@@ -100,10 +100,10 @@ class TestOpasFileSupport(unittest.TestCase):
         filespec = "AIM.036.0275A.FIG001"
         ret = fs.get_image_filename(filespec=filespec, path=localsecrets.IMAGE_SOURCE_PATH)
         print (ret)
-        assert(filespec in ret)
+        assert filespec in ret, f"{filespec} / {ret}" 
         ret = fs.get_image_filename(filespec=filespec)
         print (ret)
-        assert(filespec in ret)
+        assert filespec in ret, f"{filespec} / {ret}" 
    
     def test_5_get_image_len(self):
         """
@@ -118,7 +118,7 @@ class TestOpasFileSupport(unittest.TestCase):
         img_bin = fs.get_image_binary(filespec=filespec, path=localsecrets.IMAGE_SOURCE_PATH)
         image_len = len(img_bin)
         print (image_len)
-        assert(image_len >= 26038)
+        assert image_len >= 26038, image_len
    
     def test_6_get_file_contents(self):
         """
@@ -135,7 +135,7 @@ class TestOpasFileSupport(unittest.TestCase):
         content, fileinfo = fs.get_file_contents(filespec=filespec, path=localsecrets.XML_ORIGINALS_PATH)
         content_len = len(content)
         print (content_len)
-        assert(content_len >= 691)
+        assert content_len >= 691, content_len
     
     def test_7_get_matching_filenames(self):
         
@@ -148,22 +148,22 @@ class TestOpasFileSupport(unittest.TestCase):
         testsubpath = "_PEPCurrent/IJP/"
         testfullpath = root / testsubpath
         # two weeks to today
-        two_weeks_ago = dt.date.today() - dt.timedelta(days=14)
-        matchlist = fs.get_matching_filelist(path=testfullpath, filespec_regex=pat, revised_after_date=str(two_weeks_ago))
-        print (len(matchlist))
-        assert (len(matchlist) >= 1)
+        four_weeks_ago = dt.date.today() - dt.timedelta(days=28)
+        matchlist = fs.get_matching_filelist(path=testfullpath, filespec_regex=pat, revised_after_date=str(four_weeks_ago))
+        #print (len(matchlist))
+        assert len(matchlist) >= 1, len(matchlist) 
 
         matchlist = fs.get_matching_filelist(path=testfullpath, filespec_regex=pat)
         print (len(matchlist))
-        assert (len(matchlist) >= 100)
+        assert len(matchlist) >= 100, len(matchlist)  
 
         matchlist = fs.get_matching_filelist(path=testfullpath, filespec_regex=pat, max_items=20)
         print (len(matchlist))
-        assert (len(matchlist) >= 20)
+        assert len(matchlist) >= 20, len(matchlist) 
 
         matchlist = fs.get_matching_filelist(path=testfullpath, filespec_regex=pat, max_items=20)
         print (len(matchlist))
-        assert (len(matchlist) >= 20)
+        assert len(matchlist) >= 20, len(matchlist) 
 
         # function removed 2021-05-05
            #res = opasFileSupport.get_s3_matching_files(subpath_tomatch="_PEPArchive/BAP/.*\.xml", after_revised_date="2020-09-01")

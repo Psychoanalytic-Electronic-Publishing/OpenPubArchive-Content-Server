@@ -3,7 +3,10 @@
 
 import unittest
 import unitTestConfig
-from config import msgdb
+#from config import msgdb
+import opasMessageLib
+msgdb = opasMessageLib.messageDB()
+
 import opasCentralDBLib
 
 ocd = opasCentralDBLib.opasCentralDB()

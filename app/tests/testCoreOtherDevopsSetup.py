@@ -39,7 +39,6 @@ class TestOtherDevopsSetup(unittest.TestCase):
         assert(DBUSER is not None)
         assert(DBPW is not None)
         assert(DBNAME is not None)
-        assert(SSH_HOST is not None or SSH_HOST is None)
        
 if __name__ == '__main__':
     unittest.main()    

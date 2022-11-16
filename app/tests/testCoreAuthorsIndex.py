@@ -18,7 +18,7 @@ class TestAuthorsIndex(unittest.TestCase):
     2022-10-25 These tests only require the Opas sample data to be loaded
     """   
 
-    def test_index_authornamepartial(self):
+    def test_01_index_authornamepartial(self):
         """
         Get Author Index For Matching Author Names
         /v1/Authors/Index/{authorNamePartial}/
@@ -27,14 +27,18 @@ class TestAuthorsIndex(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        assert(r['authorIndex']['responseSet'][0]['publicationsURL'] == '/v2/Authors/Publications/heath, a. chris/')
+        response_info = r["authorIndex"]["responseInfo"]
+        response_set = r["authorIndex"]["responseSet"][0]
+        assert response_info["count"] >= 5
        
+    def test_02_index_authornamepartial(self):
         full_URL = base_plus_endpoint_encoded('/v2/Authors/Index/Kahr/')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        assert(r['authorIndex']['responseSet'][0]['publicationsURL'] == '/v2/Authors/Publications/kahr, brett/')
-
+        response_info = r["authorIndex"]["responseInfo"]
+        response_set = r["authorIndex"]["responseSet"][0]
+        assert(response_set['publicationsURL'] == '/v2/Authors/Publications/kahr, brett/')
         
         
 if __name__ == '__main__':

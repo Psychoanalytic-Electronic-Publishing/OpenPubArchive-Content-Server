@@ -175,10 +175,10 @@ class TestXMLProcessing(unittest.TestCase):
                
         command_lines = [
             # Force build via REBUILD option (or RELOAD) forces the build
-            ("Finished!", "Loaded 10 documents", fr"{pycmd} {data_file3} --nocheck --nohelp --rebuild --inputbuild=bKBD3 --outputbuild=bEXP_TEST1"),
+            ("Finished!", "loaded 10 documents", fr"{pycmd} {data_file3} --nocheck --nohelp --rebuild --inputbuild=bKBD3 --outputbuild=bEXP_TEST1"),
             # The parens () around builds now optional, they will be added if missing
             ("Finished!", "loaded 0 documents (bEXP_TEST1)", fr"{pycmd} {data_file3} --nocheck --nohelp --verbose --smartload --inputbuild=bKBD3 --outputbuild=bEXP_TEST1"),
-            ("Finished!", "Finished! Loaded 10 documents (bEXP_ARCH1)", fr"{pycmd} {data_file3} --nocheck --nohelp --verbose --rebuild --inputbuild=(bKBD3) --outputbuild=(bEXP_ARCH1)"),
+            ("Finished!", "loaded 10 documents (bEXP_ARCH1)", fr"{pycmd} {data_file3} --nocheck --nohelp --verbose --rebuild --inputbuild=(bKBD3) --outputbuild=(bEXP_ARCH1)"),
             # bEXP_ARCH1 files deleted automatically after above command
             # bEXP_TEST1 files still in place
             ("Finished!", "loaded 0 documents (bEXP_TEST1)", fr"{pycmd} {data_file3} --nocheck --nohelp --verbose --smartload --outputbuild=(bEXP_TEST1)"), # should not reprocess if not changed
