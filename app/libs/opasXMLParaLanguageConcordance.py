@@ -35,7 +35,7 @@ class PEPGWSEParaConcordance:
         self.ocd = ocd
 
     #----------------------------------------------------------------------------------------
-    def addRelatedIDs(self, parsed_xml, artInfo):
+    def addRelatedIDs(self, parsed_xml, artInfo, verbose=False):
         """
         Add the related IDS from GWSEparaconcordance to each paragraph, right now used only for GW and SE.
 
@@ -103,7 +103,8 @@ class PEPGWSEParaConcordance:
                         except KeyError:
                             pass
 
-            print("%d nodes marked with GW/SE related IDs" % lgIDCount)
+            if verbose:
+                print("\t...%d nodes marked with GW/SE related IDs" % lgIDCount)
 
     #----------------------------------------------------------------------------------------
     def getSEParaID(self, GWParaID):

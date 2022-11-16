@@ -26,28 +26,23 @@ logger = logging.getLogger(__name__)
 import time
 import copy
 from pydantic import ValidationError
-# from fastapi import HTTPException
 from errorMessages import *
-#import datetime as dtime 
 from datetime import datetime
 from collections import OrderedDict
-# import datetime as dtime
-# from operator import itemgetter
 
-from config import msgdb
+# from config import msgdb
+import opasMessageLib
+msgdb = opasMessageLib.messageDB()
 
 from xml.sax import SAXParseException
-# import lxml
 
 import localsecrets
 from opasConfig import TIME_FORMAT_STR
 from opasArticleIDSupport import ArticleID
 
-# from localsecrets import BASEURL, SOLRURL, SOLRUSER, SOLRPW, DEBUG_DOCUMENTS, SOLR_DEBUG, CONFIG, COOKIE_DOMAIN  
 import starlette.status as httpCodes
 from configLib.opasCoreConfig import solr_docs2, solr_authors2, solr_gloss2
 import opasConfig 
-# from opasConfig import KEY_SEARCH_FIELD, KEY_SEARCH_SMARTSEARCH, KEY_SEARCH_VALUE
 from configLib.opasCoreConfig import EXTENDED_CORES
 from stdMessageLib import COPYRIGHT_PAGE_HTML  # copyright page text to be inserted in ePubs and PDFs
 
@@ -2844,15 +2839,15 @@ def prep_document_download(document_id,
                             # html_string.encode("UTF-8")
                             filename = document_id + ".PDF" 
                             output_filename = os.path.join(tempfile.gettempdir(), filename)
-                            try:
-                                # temp debugging change to write out intermediate HTML file
-                                if localsecrets.DEVELOPMENT_DEBUGGING:
-                                    html_filename = document_id + ".html" 
-                                    html_out_filename  = os.path.join(tempfile.gettempdir(), html_filename)
-                                    with open(html_out_filename, 'w', encoding="utf8") as fo:
-                                        fo.write(html_string)
-                            except:
-                                pass
+                            #try:
+                                ## temp debugging change to write out intermediate HTML file
+                                #if localsecrets.DEVELOPMENT_DEBUGGING:
+                                    #html_filename = document_id + ".html" 
+                                    #html_out_filename  = os.path.join(tempfile.gettempdir(), html_filename)
+                                    #with open(html_out_filename, 'w', encoding="utf8") as fo:
+                                        #fo.write(html_string)
+                            #except:
+                                #pass
 
                             # due to problems with pisa and referenced graphics and banners, weasyprint used now rather than Pisa 2022-04-20
                             try:

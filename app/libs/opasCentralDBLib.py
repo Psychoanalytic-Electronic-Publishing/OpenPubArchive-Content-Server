@@ -2180,6 +2180,16 @@ class opasCentralDB(object):
         self.do_action_query(querytxt="DELETE FROM api_biblioxml", queryparams=None)
         self.do_action_query(querytxt="DELETE FROM api_articles", queryparams=None)
         
+    def delete_specific_article_data(self, art_id):
+        """
+        Delete the information for art_id from the api_articles and api_biblioxml table
+        """
+        query_param_dict = {}
+        query_param_dict["art_id"] = art_id
+        
+        self.do_action_query(querytxt="DELETE FROM api_biblioxml WHERE art_id=%(art_id)s;", queryparams=query_param_dict)
+        self.do_action_query(querytxt="DELETE FROM api_articles WHERE art_id=%(art_id)s;", queryparams=query_param_dict)
+
     #----------------------------------------------------------------------------------------
     def do_action_query(self, querytxt, queryparams, contextStr=None):
     

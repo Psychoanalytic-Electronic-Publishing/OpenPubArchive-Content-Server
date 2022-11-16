@@ -34,9 +34,10 @@ print(
 
 import os
 import re
-import codecs
+# import codecs
 import time
 import logging
+from datetime import datetime
 
 from lxml import objectify
 
@@ -45,7 +46,7 @@ sys.path.append('../config')
 sys.path.append('../libs/configLib')
 import localsecrets
 import opasFileSupport
-import opasAPISupportLib
+from opasAPISupportLib import metadata_get_source_info  
 import opasPySolrLib
 from configGoogleMeta import googleMetadataConfig
 
@@ -168,7 +169,6 @@ class REFCONSTANTS:
     SIMILARITYRATIOS    = "SimilarityRatios"           # a dictionary after a similarity compare
 
 gConst = REFCONSTANTS()
-
 
 tplBookChapter = """
             <article>
@@ -397,7 +397,7 @@ def writePublisherFile(path=None, fs=None, online_link_location="http://peparchi
     return
 
 def google_metadata_generator(path=None, source_type="journal", fs=None, size=None, max_records=None, clear_sitemap=None, path_is_root_bucket=False):
-    journal_info = opasAPISupportLib.metadata_get_source_info(src_type=source_type)
+    journal_info = metadata_get_source_info(src_type=source_type)
     #journal_codes = [doc.PEPCode for doc in journal_info.sourceInfo.responseSet]
     jinfo = [(doc.PEPCode, doc) for doc in journal_info.sourceInfo.responseSet]
     journal_info_dict = dict(sorted(jinfo, key=lambda PEPCode: PEPCode[0]))

@@ -14,11 +14,10 @@ Can optionally
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.0926/v.1.0.101"  # recorded in xml processed pepkbd3 procby
+__version__     = "2022.1113/v.1.0.102"  # recorded in xml processed pepkbd3 procby
 __status__      = "Development"
 
 programNameShort = "opasXMLProcessor"
-XMLProcessingEnabled = True
 
 gDbg1 = False # display errors on stdout
 gDbg2 = False # processing details
@@ -43,6 +42,7 @@ import models
 import opasLocator
 from opasLocator import Locator
 import opasGenSupportLib as opasgenlib
+import loaderConfig
 import opasSolrLoadSupport
 import PEPBookInfo
 import opasXMLPEPAuthorID 
@@ -341,7 +341,7 @@ def pgx_add_rx_split_book_links(parsed_xml, ocd, artInfo, split_book_data=None, 
     pgx_links = parsed_xml.xpath("/pepkbd3//pgx") 
     logger.info("\t...Processing page links.")
     for pgx in pgx_links:
-        inst = split_book_data.get_splitbook_page_instance(book_code=artInfo.src_code, vol=artInfo.art_vol_str, page_id=pgx.text)
+        inst = split_book_data.get_splitbook_page_instance(book_code=artInfo.src_code, vol=artInfo.art_vol_str, page_id=pgx.text, vol_suffix=artInfo.art_vol_suffix)
         if gDbg2:
             print (f"Split book info: {pgx.text}, {pgx.attrib}, {inst}")
             
@@ -398,9 +398,9 @@ def pgx_add_rx_book_links(parsed_xml, ocd, artInfo, split_book_data=None, verbos
                 fulltext_cleaned = opasgenlib.removeAllPunct(fulltext_cleaned)
                 fulltext_cleaned = opasDocuments.PageNumber(fulltext_cleaned)
                 fulltext_cleaned = fulltext_cleaned.format(keyword=fulltext_cleaned.LOCALID)
-                split_inst_from_fulltext = split_book_data.get_splitbook_page_instance(book_code=jrnlCode, vol=vol, page_id=fulltext_cleaned)
+                split_inst_from_fulltext = split_book_data.get_splitbook_page_instance(book_code=jrnlCode, vol=vol, vol_suffix=artInfo.art_vol_suffix, page_id=fulltext_cleaned)
                 if split_inst_from_fulltext is None:
-                    splitLoc = opasLocator.Locator(jrnlCode=jrnlCode, jrnlVol=vol, pgStart="1", art_info=artInfo, ocd=ocd)
+                    splitLoc = opasLocator.Locator(jrnlCode=jrnlCode, jrnlVol=vol, jrnlVolSuffix=artInfo.art_vol_suffix, pgStart="1", art_info=artInfo, ocd=ocd)
                     local = splitLoc.localID(fulltext_cleaned).upper()
                     pgx.attrib["rx"] = local
                     pgx.attrib["type"] = pgxlink_type
@@ -769,31 +769,32 @@ def update_biblio(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
                                            noStartingPageException=True, 
                                            filename=artInfo.filename)
                         # check locator
-                        base_info = opasPySolrLib.get_base_article_info_by_id(locator)
-                        if base_info is None:
-                            # try without page number
-                            locator = Locator(strLocator=None,
-                                               jrnlCode=bib_entry.sourcecode, 
-                                               jrnlVolSuffix="", 
-                                               jrnlVol=bib_entry.volume, 
-                                               jrnlIss=None, 
-                                               jrnlYear=bib_entry.year, 
-                                               localID=ref_id, 
-                                               keepContext=1, 
-                                               forceRoman=False, 
-                                               notFatal=True, 
-                                               noStartingPageException=True, 
-                                               filename=artInfo.filename)
-                            # recheck locator
+                        if locator is not None:
                             base_info = opasPySolrLib.get_base_article_info_by_id(locator)
-                            
-                        if base_info is not None:
-                            ref.attrib["rx"] = locator.articleID()
-                            search_str = f"//be[@id='{ref_id}']"
-                            msg = f"\t\t\t...Matched Book {match_val}. {opasxmllib.xml_xpath_return_xmlstringlist(parsed_xml, search_str)[0]}"
-                            log_everywhere_if(gDbg2, level="debug", msg=msg)
-                        else:
-                            log_everywhere_if(gDbg2, level="debug", msg=f"didn't find this: {bib_entry.sourcecode}")
+                            if base_info is None:
+                                # try without page number
+                                locator = Locator(strLocator=None,
+                                                   jrnlCode=bib_entry.sourcecode, 
+                                                   jrnlVolSuffix="", 
+                                                   jrnlVol=bib_entry.volume, 
+                                                   jrnlIss=None, 
+                                                   jrnlYear=bib_entry.year, 
+                                                   localID=ref_id, 
+                                                   keepContext=1, 
+                                                   forceRoman=False, 
+                                                   notFatal=True, 
+                                                   noStartingPageException=True, 
+                                                   filename=artInfo.filename)
+                                # recheck locator
+                                base_info = opasPySolrLib.get_base_article_info_by_id(locator)
+                                
+                            if base_info is not None:
+                                ref.attrib["rx"] = locator.articleID()
+                                search_str = f"//be[@id='{ref_id}']"
+                                msg = f"\t\t\t...Matched Book {match_val}. {opasxmllib.xml_xpath_return_xmlstringlist(parsed_xml, search_str)[0]}"
+                                log_everywhere_if(gDbg2, level="debug", msg=msg)
+                            else:
+                                log_everywhere_if(gDbg2, level="debug", msg=f"didn't find this: {bib_entry.sourcecode}")
                             
                         
                     else:     
@@ -819,7 +820,7 @@ def add_pagenbrs_to_splitbook_table(parsed_xml, artInfo, ocd, split_book_data, p
             has_toc = len(parsed_xml.xpath('//grp[@name="TOC"]'))
         
         if verbose:
-            print ("\t...split book: adding page info to the database split book page tracking table")
+            print (f"\t...split book: adding page info for {artInfo.art_id} to the database split book page tracking table")
             
         for pgnum in pagebreaks:
             page_id = opasDocuments.PageNumber(pgNum=pgnum).pageID()
@@ -898,8 +899,13 @@ def update_artinfo_in_instance(parsed_xml, artInfo, ocd, pretty_print=False, ver
         if xml_artvol != []:
             artvol = xml_artvol[0]
             actual = str(artInfo.art_vol_int)
-            artvol.attrib["actual"] = actual
             artvol.text = actual + artInfo.art_vol_suffix
+            # GW keeps the suffix in the actual attribute.
+            if artInfo.art_vol_suffix == "S" and artInfo.src_code == "GW":
+                artvol.attrib["actual"] = artvol.text
+            else:
+                artvol.attrib["actual"] = actual
+                
             if verbose:
                 print (f"\t...Volume suffix required: set in XML to {artvol.text} and attrib 'actual' to {actual}")
 
@@ -981,12 +987,13 @@ def xml_update(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
     # ------------------------------------------------------
     
     # add pgx links for books and if necessary to split book instances
-    if artInfo.src_is_book:
+    if artInfo.src_is_book or artInfo.src_code in loaderConfig.NON_BOOK_SRC_CODES_FOR_PGX_LINKING:
+        #if artInfo.is_splitbook:
+            #pgx_add_rx_split_book_links(parsed_xml, ocd, artInfo=artInfo,
+                                        #split_book_data=split_book_data, verbose=verbose)
+        #else:
         pgx_add_rx_book_links(parsed_xml, ocd, artInfo=artInfo,
                               split_book_data=split_book_data, verbose=verbose)
-        if artInfo.is_splitbook:
-            pgx_add_rx_split_book_links(parsed_xml, ocd, artInfo=artInfo,
-                                        split_book_data=split_book_data, verbose=verbose)
         
     # pgxPreProcessing(parsed_xml, ocd, artInfo=artInfo, split_book_data=split_book_data, verbose=verbose)
 
@@ -1005,7 +1012,7 @@ def xml_update(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
     if artInfo.src_code in ["GW", "SE"]:
         if verbose: print (f"\t...Starting SE/GW Concordance Tagging")
         paraGWSEConcordance = opasXMLParaLanguageConcordance.PEPGWSEParaConcordance(ocd=ocd)
-        paraGWSEConcordance.addRelatedIDs(parsed_xml=parsed_xml, artInfo=artInfo) # pass in database instance
+        paraGWSEConcordance.addRelatedIDs(parsed_xml=parsed_xml, artInfo=artInfo, verbose=verbose) # pass in database instance
     
     ret_val = parsed_xml
 

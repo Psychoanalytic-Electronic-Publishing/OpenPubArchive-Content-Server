@@ -16,7 +16,6 @@ from datetime import datetime
 import localsecrets
 from opasConfig import TIME_FORMAT_STR
 
-# from localsecrets import BASEURL, SOLRURL, SOLRUSER, SOLRPW, DEBUG_DOCUMENTS, SOLR_DEBUG, CONFIG, COOKIE_DOMAIN  
 import starlette.status as httpCodes
 from configLib.opasCoreConfig import solr_docs2, solr_authors2, solr_gloss2
 import opasConfig 

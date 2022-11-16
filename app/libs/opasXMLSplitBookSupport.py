@@ -47,7 +47,7 @@ class SplitBookData:
         self.dbName = None
 
     #--------------------------------------------------------------------------------
-    def get_splitbook_page_instance(self, book_code, vol, page_id, has_biblio=0, has_toc=0):
+    def get_splitbook_page_instance(self, book_code, vol, page_id, vol_suffix=None, has_biblio=0, has_toc=0):
         """
         Return the instance locator containing the pageID for the journalCode and volume.
 
@@ -57,7 +57,7 @@ class SplitBookData:
         'ZBK.027.0168A'
         """
         ret_val = None
-        vol_number_obj = opasDocuments.VolumeNumber(vol)
+        vol_number_obj = opasDocuments.VolumeNumber(vol, volSuffix=vol_suffix)
         vol_number_int = vol_number_obj.volNumber
         vol_number_suffix = vol_number_obj.volSuffix
         if isinstance(page_id, opasDocuments.PageNumber):

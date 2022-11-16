@@ -11,7 +11,6 @@ __version__     = "2022.1110/v2.0.022"   # semver versioning after date.
 __status__      = "Development"
 
 programNameShort = "opasDataLoader"
-XMLProcessingEnabled = True
 
 import lxml
 import sys
@@ -59,7 +58,7 @@ help_text = (
          --smartload         see if inputbuild file is newer or missing from db,
                              if so then compile and load, otherwise skip
          --nohelp            Turn off front-matter help (that displays when you run)
-         --doctype           Output doctype (defaults to default_doctype setting in loaderConfig.py)
+         --doctype           Output doctype (defaults to DEFAULT_DOCTYPE setting in loaderConfig.py)
          --rebuild           Rebuild all compiled XML files, then load into the database, even if not changed
          --reload            Reload all compiled XML files into the database, even if not changed
          
@@ -167,6 +166,7 @@ def get_defaults(options, default_build_pattern, default_build):
         build_pattern = default_build_pattern
         
     return (build_pattern, selected_build)
+
 def get_output_defaults(options, default_build):
     if options.output_build is not None:
         selected_build = options.output_build
@@ -183,7 +183,7 @@ def find_all(name_pat, path):
                 result.append(os.path.join(root, filename))
     return result
 
-def derive_output_filename(input_filename, input_build=loaderConfig.default_input_build, output_build=loaderConfig.default_output_build):
+def derive_output_filename(input_filename, input_build=loaderConfig.DEFAULT_INPUT_BUILD, output_build=loaderConfig.DEFAULT_OUTPUT_BUILD):
     
     filename = str(input_filename)
     ret_val = filename.replace(input_build, output_build)
@@ -287,8 +287,8 @@ def output_file_needs_rebuilding(outputfilename, inputfilename=None, inputfilesp
 
 #------------------------------------------------------------------------------------------------------
 def file_needs_reloading_to_solr(solrcore, art_id, timestamp_str, filename=None, fs=None, filespec=None, smartload=False,
-                                 input_build=loaderConfig.default_input_build,
-                                 output_build=loaderConfig.default_output_build):
+                                 input_build=loaderConfig.DEFAULT_INPUT_BUILD,
+                                 output_build=loaderConfig.DEFAULT_OUTPUT_BUILD):
     """
     Now, since Solr may have EXP_ARCH1 and the load 'candidate' may be KBD3, the one in Solr
       can be the same or NEWER, and it's ok, no need to reprocess.
@@ -336,7 +336,7 @@ def file_needs_reloading_to_solr(solrcore, art_id, timestamp_str, filename=None,
 
 
 #------------------------------------------------------------------------------------------------------
-def file_is_same_or_newer_in_solr_by_artid(solrcore, art_id, timestamp_str, filename=None, fs=None, filespec=None, smartload=False, input_build=loaderConfig.default_input_build, output_build=loaderConfig.default_output_build):
+def file_is_same_or_newer_in_solr_by_artid(solrcore, art_id, timestamp_str, filename=None, fs=None, filespec=None, smartload=False, input_build=loaderConfig.DEFAULT_INPUT_BUILD, output_build=loaderConfig.DEFAULT_OUTPUT_BUILD):
     """
     Now, since Solr may have EXP_ARCH1 and the load 'candidate' may be KBD3, the one in Solr
       can be the same or NEWER, and it's ok, no need to reprocess.
@@ -481,7 +481,7 @@ def main():
             print("Input data Root: ", start_folder)
             print("Input data Subfolder: ", options.subFolder)
 
-            selected_output_build = loaderConfig.default_output_build
+            selected_output_build = loaderConfig.DEFAULT_OUTPUT_BUILD
 
                 
             if options.forceReloadAllFiles == True:
@@ -491,20 +491,21 @@ def main():
                 print (msg)
 
             if options.forceRebuildAllFiles == True:
-                msg = "Forced Rebuild - All specified files recompiled from source XML to precompiled XML and added."
-                logger.info(msg)
-                print (msg)
                 input_build_pattern, selected_input_build = get_defaults(options,
-                                                                         default_build_pattern=loaderConfig.default_input_build_pattern,
-                                                                         default_build=loaderConfig.default_input_build)
+                                                                         default_build_pattern=loaderConfig.DEFAULT_INPUT_BUILD_PATTERN,
+                                                                         default_build=loaderConfig.DEFAULT_INPUT_BUILD)
                 selected_output_build = get_output_defaults(options,
-                                                            default_build=loaderConfig.default_output_build)
+                                                            default_build=loaderConfig.DEFAULT_OUTPUT_BUILD)
                 pre_action_verb = "Compile, save and load"
                 post_action_verb = "Compiled, saved and loaded"
+                msg = f"Forced Rebuild - All specified files of build {input_build_pattern} recompiled from source XML to precompiled XML {selected_output_build} and loaded."
+                logger.info(msg)
+                print (msg)
+
             elif options.loadprecompiled and not options.smartload:
                 input_build_pattern, selected_input_build = get_defaults(options,
-                                                                         default_build_pattern=loaderConfig.default_precompiled_input_build_pattern,
-                                                                         default_build=loaderConfig.default_precompiled_input_build)
+                                                                         default_build_pattern=loaderConfig.DEFAULT_PRECOMPILED_INPUT_BUILD_PATTERN,
+                                                                         default_build=loaderConfig.DEFAULT_PRECOMPILED_INPUT_BUILD)
                 print(f"Precompiled XML of build {selected_input_build} will be loaded to the databases if newer tan Solr, without examining source and compiling.")
                 pre_action_verb = "Load"
                 post_action_verb = "Loaded"
@@ -512,10 +513,10 @@ def main():
             elif options.smartload:
                 # compiled and loaded if input file is newer than output written file or if there's no output file
                 input_build_pattern, selected_input_build = get_defaults(options,
-                                                                         default_build_pattern=loaderConfig.default_input_build_pattern,
-                                                                         default_build=loaderConfig.default_input_build)
+                                                                         default_build_pattern=loaderConfig.DEFAULT_INPUT_BUILD_PATTERN,
+                                                                         default_build=loaderConfig.DEFAULT_INPUT_BUILD)
                 selected_output_build = get_output_defaults(options,
-                                                            default_build=loaderConfig.default_output_build)
+                                                            default_build=loaderConfig.DEFAULT_OUTPUT_BUILD)
                 print(f"Smartload. XML of build {input_build_pattern} will be compiled and saved and loaded if newer than compiled build {selected_output_build}")
                 pre_action_verb = "Smart compile, save and load"
                 post_action_verb = "Smart compiled, saved and loaded"
@@ -538,7 +539,7 @@ def main():
                 print ("--includeparas option selected. Each paragraph will also be stored individually for *Docs* core. Increases core size markedly!")
             else:
                 try:
-                    print (f"Paragraphs only stored for sources indicated in loaderConfig. Currently: [{', '.join(loaderConfig.src_codes_to_include_paras)}]")
+                    print (f"Paragraphs only stored for sources indicated in loaderConfig. Currently: [{', '.join(loaderConfig.SRC_CODES_TO_INCLUDE_PARAS)}]")
                 except:
                     print ("Paragraphs only stored for sources indicated in loaderConfig.")
     
@@ -621,7 +622,7 @@ def main():
     timeStart = time.time()
 
     if options.no_files == False: # process and/or load files (no_files just generates a whats_new list, no processing or loading)
-        print (f"Locating files for processing at {start_folder} with build pattern {selected_input_build}. Started at ({time.ctime()}).")
+        print (f"Locating files for processing at {start_folder} with build pattern {input_build_pattern}. Started at ({time.ctime()}).")
         print (f"Smartbuild exceptions: Files matching {loaderConfig.SMARTBUILD_EXCEPTIONS} are load only, no recompile.  Will load from output format {selected_output_build}")
         if options.file_key is not None:  
             # print (f"File Key Specified: {options.file_key}")
@@ -651,7 +652,7 @@ def main():
                 print (f"Filenames: {filespec}")
         else:
             # allow for SMARTBUILD_EXCEPTIONS filenames which are output only and have them in the list.
-            pat = fr"(((.*?)\({selected_input_build}\))|({loaderConfig.SMARTBUILD_EXCEPTIONS}(.*?)\({selected_output_build}\)))\.(xml|XML)$" # should we include the pattern including TOC?
+            pat = fr"(((.*?)\({input_build_pattern}\))|({loaderConfig.SMARTBUILD_EXCEPTIONS}(.*?)\({selected_output_build}\)))\.(xml|XML)$" # should we include the pattern including TOC?
             filenames = []
         
         if filenames == []:
@@ -713,7 +714,7 @@ def main():
                 except KeyError as e:
                     inputfilename = str(n.filespec)
                 
-                outputfilename = inputfilename.replace(loaderConfig.default_input_build, selected_output_build) # loaderConfig.default_output_build)
+                outputfilename = inputfilename.replace(loaderConfig.DEFAULT_INPUT_BUILD, selected_output_build) # was loaderConfig.DEFAULT_OUTPUT_BUILD)
 
                 #if inputfilename != outputfilename:
                     #output_recompile = \
@@ -802,10 +803,10 @@ def main():
                     # root = parsed_xml.getroottree()
                     # this only works on a local file system...using 
                     # root.write(fname, encoding="utf-8", method="xml", pretty_print=True, xml_declaration=True, doctype=options.output_doctype)
-                    file_prefix = f"""{loaderConfig.default_xml_declaration}\n{options.output_doctype}\n"""
+                    file_prefix = f"""{options.output_doctype}\n"""
                     # xml_text version, not reconverted to tree
                     file_text = lxml.etree.tostring(parsed_xml, pretty_print=options.pretty_printed, encoding="utf8").decode("utf-8")
-                    file_text = file_prefix + file_text
+                    # file_text = file_prefix + file_text
                     # this is required if running on S3
                     msg = f"\t...Compiling {n.basename} to precompiled XML"
                     success = fs.create_text_file(fname, data=file_text, delete_existing=True)
@@ -836,7 +837,18 @@ def main():
                         
                 # import into lxml
                 parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True)
-                parsed_xml = etree.fromstring(opasxmllib.remove_encoding_string(fileXMLContents), parser)
+                try:
+                    parsed_xml = etree.fromstring(opasxmllib.remove_encoding_string(fileXMLContents), parser)
+                except Exception as e:
+                    if fileXMLContents is None:
+                        logger.error(f"Can't parse empty converted XML string")
+                    else:
+                        logger.error(f"Can't parse XML starting '{fileXMLContents[0:64]}'")
+                else:
+                    if parsed_xml is None:
+                        logger.error(f"Rebuild failed. Can't parse converted XML! Skipping file {final_xml_filename}")
+                        continue
+                    
                 #treeroot = pepxml.getroottree()
                 #root = pepxml.getroottree()
         
@@ -1166,8 +1178,8 @@ if __name__ == "__main__":
     parser.add_option("--inputbuild", dest="input_build", default=None,
                       help=f"Build specifier to load (input), e.g., (bKBD3) or just bKBD3")
     
-    parser.add_option("--outputbuild", dest="output_build", default=loaderConfig.default_output_build,
-                      help=f"Specific output build specification, default='{loaderConfig.default_output_build}'. e.g., (bEXP_ARCH1) or just bEXP_ARCH1.")
+    parser.add_option("--outputbuild", dest="output_build", default=loaderConfig.DEFAULT_OUTPUT_BUILD,
+                      help=f"Specific output build specification, default='{loaderConfig.DEFAULT_OUTPUT_BUILD}'. e.g., (bEXP_ARCH1) or just bEXP_ARCH1.")
     
     # --load option still the default.  Need to keep for backwards compatibility, at least for now (7/2022)
     parser.add_option("--load", "--loadxml", action="store_true", dest="loadprecompiled", default=True,
@@ -1182,8 +1194,8 @@ if __name__ == "__main__":
     parser.add_option("--nohelp", action="store_true", dest="no_help", default=False,
                       help="Turn off front-matter help")
 
-    parser.add_option("--doctype", dest="output_doctype", default=loaderConfig.default_doctype,
-                      help=f"""For output files, default={loaderConfig.default_doctype}.""")
+    parser.add_option("--doctype", dest="output_doctype", default=loaderConfig.DEFAULT_DOCTYPE,
+                      help=f"""For output files, default={loaderConfig.DEFAULT_DOCTYPE}.""")
 
     #parser.add_option("-w", "--writexml", "--writeprocessed", action="store_true", dest="write_processed", default=False,
                       #help="Write the processed data to files, using the output build (e.g., (bEXP_ARCH1).")
@@ -1203,7 +1215,7 @@ if __name__ == "__main__":
 
     if len(options.output_build) < 2:
         logger.error("Bad output buildname. Using default.")
-        options.output_build = loaderConfig.default_output_build
+        options.output_build = loaderConfig.DEFAULT_OUTPUT_BUILD
         
     if options.output_build is not None and (options.output_build[0] != "(" or options.output_build[-1] != ")"):
         print ("Warning: output build should have parenthesized format like (bEXP_ARCH1). Adding () as needed.")

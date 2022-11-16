@@ -255,6 +255,7 @@ class ArticleInfo(object):
                 
         except Exception as err:
             logger.error("Issue reading file's article id. (%s)", err)
+            self.art_id = self.filename_artinfo.articleID
 
         # Containing Article data
         #<!-- Common fields -->

@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.1112/v2.1.189"   # semver versioning after date.
+__version__     = "2022.1116/v2.1.190"   # semver versioning after date.
 __status__      = "Development/Libs/Loader"  
 
 """
@@ -127,7 +127,7 @@ from requests.auth import HTTPBasicAuth
 
 from pydantic import ValidationError
 import solrpy as solr # needed for extended search
-from config.opasConfig import OPASSESSIONID #, OPASACCESSTOKEN, OPASEXPIRES
+# from config.opasConfig import OPASSESSIONID #, OPASACCESSTOKEN, OPASEXPIRES
 import config.opasConfig as opasConfig
 import logging
 logger = logging.getLogger(__name__)
@@ -273,7 +273,11 @@ app.add_middleware(
 from config import whatsnewdb
 from config import mostviewedcache
 from config import mostcitedcache
-from config import msgdb
+
+# load this separately in individual modules, so mostviewedcache and mostcitedcache are not loaded when only msgdb is needed
+# from config import msgdb
+import opasMessageLib
+msgdb = opasMessageLib.messageDB()
 
 msg = 'Started at %s' % datetime.today().strftime('%Y-%m-%d %H:%M:%S"')
 logger.info(msg)
@@ -1490,7 +1494,7 @@ def session_login_basic(response: Response,
 
         if session_info.is_valid_login:
             response.set_cookie(
-                OPASSESSIONID,
+                opasConfig.OPASSESSIONID,
                 value=f"{session_id}",
                 domain=localsecrets.COOKIE_DOMAIN
             )
@@ -1572,7 +1576,7 @@ def session_login(response: Response,
         #opas_session_cookie = request.cookies.get(opasConfig.OPASSESSIONID, None)
         if session_info.is_valid_login:
             response.set_cookie(
-                OPASSESSIONID,
+                opasConfig.OPASSESSIONID,
                 value=f"{session_id}",
                 domain=localsecrets.COOKIE_DOMAIN
             )
@@ -1637,7 +1641,7 @@ def session_logout_user(response: Response,
                 ocd.end_session(session_id=session_id)
     
             #if direct_login:
-            response.delete_cookie(key=OPASSESSIONID,path="/", domain=localsecrets.COOKIE_DOMAIN)
+            response.delete_cookie(key=opasConfig.OPASSESSIONID,path="/", domain=localsecrets.COOKIE_DOMAIN)
             opasDocPermissions.authserver_logout(session_id, request=request, response=response)
 
         # logged out

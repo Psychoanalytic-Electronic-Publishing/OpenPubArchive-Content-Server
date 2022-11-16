@@ -192,7 +192,7 @@ class ArticleID(BaseModel):
                 
             self.altStandard = f"{self.sourceCode}.{self.volumeNbrStr}"
             if self.standardized == self.altStandard:
-                # there's no issue code in the standard one. Try adding one:
+                # there's no alpha issue code in the standard one. Try adding one:
                 if altVolSuffix != "" and not self.volumeNbrStr[-1].isalpha():
                     self.altStandard = f"{self.sourceCode}.{self.volumeNbrStr}{altVolSuffix}"
                 else: # use 1 character wildcard
@@ -238,15 +238,15 @@ class ArticleID(BaseModel):
     
     # pydantic field definitions for ArticleID       
     articleID: str = Field(None, title="As submitted ID, if it's a valid ID")
-    standardized: str = Field(None, title="Standard form of article (document) ID")
-    altStandard: str = Field(None, title="Standard form of article (document) ID from 2020 (most without volume suffix)")
+    standardized: str = Field(None, title="Standard form of article (document) ID, volume suffix included if volume includes repeat page #s or for supplements")
+    altStandard: str = Field(None, title="Alternate form of article (document) ID from 2020 (most without volume suffix)")
     isArticleID: bool = Field(False, title="True if initialized value is an article (document) ID")
     sourceCode: str = Field(None, title="Source material assigned code (e.g., journal, book, or video source code)")
     # volumeStr: str = Field(None, title="")
     volumeSuffix: str = Field(None, title="")
     # volumeWildcardOverride: str = Field(None, title="")
     volumeInt: int = Field(0, title="")
-    volumeNbrStr: str = Field(None, title="")
+    volumeNbrStr: str = Field(None, title="Volume number padded to 3 digits and issuecode if repeating pages or supplement")
     issueCode: str = Field(None, title="")
     isSupplement: bool = Field(False, title="")
     issueInt: int = Field(0, title="")

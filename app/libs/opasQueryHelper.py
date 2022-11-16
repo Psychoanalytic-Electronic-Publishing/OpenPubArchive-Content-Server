@@ -25,18 +25,9 @@ sys.path.append("..") # Adds higher directory to python modules path.
 import re
 import logging
 logger = logging.getLogger(__name__)
-#import time
-#from datetime import datetime
 
-# import solrpy as solr
-#from xml.sax import SAXParseException
 import lxml
 
-# import localsecrets
-# from opasConfig import TIME_FORMAT_STR
-
-# from localsecrets import BASEURL, SOLRURL, SOLRUSER, SOLRPW, DEBUG_DOCUMENTS, SOLR_DEBUG, CONFIG, COOKIE_DOMAIN  
-# import starlette.status as httpCodes
 import opasConfig 
 from opasConfig import KEY_SEARCH_FIELD, KEY_SEARCH_SMARTSEARCH, KEY_SEARCH_VALUE
 from configLib.opasCoreConfig import EXTENDED_CORES
@@ -48,9 +39,10 @@ import opasGenSupportLib as opasgenlib
 
 import opasXMLHelper as opasxmllib
 from opasArticleIDSupport import parse_issue_code, parse_volume_code
-   
-# import opasDocPermissions as opasDocPerm
 
+import opasMessageLib
+msgdb = opasMessageLib.messageDB()
+   
 count_anchors = 0
 
 import smartsearch
@@ -58,11 +50,6 @@ import smartsearchLib
 
 ocd = opasCentralDBLib.opasCentralDB()
 pat_prefix_amps = re.compile("^\s*&& ")
-
-#cores  = {
-    #"docs": solr_docs,
-    #"authors": solr_authors,
-#}
 
 #-----------------------------------------------------------------------------
 def get_document_download_permission(documentInfoXML):
@@ -227,46 +214,6 @@ def strip_outer_matching_chars(s, outer_char):
             logger.error(f"Can't remove outer chars from: {s}. Error: {e}")
 
     return ret_val
-##-----------------------------------------------------------------------------
-#def search_qualifiers(searchstr, field_label, field_thesaurus=None, paragraph_len=25):
-    #"""
-    #See if the searchstr has a special prefix qualifying the search
-    
-    #[5]P> = within 5 paragraphs, P> (default one paragraph, paragraph_len)
-    #[5]W> = within 5 words
-    #T>    = Use Thesaurus 
-    
-    #"""
-    #ret_val = False # if there's no qualifier
-    #search_specs = None
-    #search_qual = "^\s*(?P<arg>[0-9]{0,3})(?P<op>[PWT])\s(?P<spec>.*)"
-    #m = re.match(search_qual, searchstr, re.IGNORECASE)
-    #if m:
-        #ret_val = True
-        #op = m.group("op").upper()
-        #spec = m.group("spec")
-        #arg = m.group("arg")
-        #if arg == "":
-            #arg = 1
-        #else:
-            #arg = int(arg)
-
-        #if op == "P":
-            ##  paragraph proximity
-            #distance = arg * paragraph_len
-            #search_specs = f'{field_label}:"{spec}"~{distance}'
-        #elif op == "W":
-            #distance = arg
-            #search_specs = f'{field_label}:"{spec}"~{distance}'
-        #elif op == "T":
-            #distance = arg
-            ## Thesaurus
-            #if field_thesaurus is not None:
-                #search_specs = f'{field_thesaurus}:"{spec}"~{distance}'
-        #else:
-            #raise Exception("Programming Error - RE Specification")
-            
-    #return ret_val, search_specs
 
 #-----------------------------------------------------------------------------
 def comma_sep_list_to_simple_bool(termlist_str, boolpred="||"):
@@ -294,32 +241,6 @@ def comma_sep_list_to_simple_bool(termlist_str, boolpred="||"):
     term_list = [val for val in term_list if val not in ("NOT", "OR", "AND")] # list(filter(("OR").__ne__, term_list))
     ret_val = f" {boolpred} ".join(term_list)
     return ret_val
-#-----------------------------------------------------------------------------
-#def termlist_to_doubleamp_query(termlist_str, field=None):
-    #"""
-    #Take a comma separated term list and change to a
-    #(double ampersand) type query term (e.g., for solr)
-    
-    #>>> a = "tuckett, dav"
-    #>>> termlist_to_doubleamp_query(a)
-    #'tuckett && dav'
-    #>>> termlist_to_doubleamp_query(a, field="art_authors_ngrm")
-    #'art_authors_ngrm:tuckett && art_authors_ngrm:dav'
-
-    #"""
-    ## in case it's in quotes in the string
-    #termlist_str = termlist_str.replace('"', '')
-    ## split it
-    #name_list = re.split("\W+", termlist_str)
-    ## if a field or function is supplied, use it
-    #if field is not None:
-        #name_list = [f"art_authors_ngrm:{x}"
-                     #for x in name_list if len(x) > 0]
-    #else:
-        #name_list = [f"{x}" for x in name_list]
-        
-    #ret_val = " && ".join(name_list)
-    #return ret_val
 
 def parse_to_query_term_list(str_query):
     """
@@ -1056,9 +977,6 @@ def parse_search_query_parameters(search=None,             # url based parameter
 
     if smarttext is not None:
         search_dict = smartsearch.smart_search(smarttext)
-        # search_dict = smartsearch_analyze.analyze_smart_string(smarttext)
-        # search_analysis = smartsearch_analyze.analyze_smart_string(smarttext)
-        
         # set up parameters as a solrQueryTermList to share that processing
         # solr_query_spec.solrQueryOpts.qOper = "OR"
         schema_field = search_dict.get(opasConfig.KEY_SEARCH_FIELD)
@@ -1998,7 +1916,6 @@ def get_excerpt_from_search_result(result: dict, documentListItem: models.Docume
         abstract = None
     else:
         if omit_abstract:
-            import msgdb
             art_excerpt = msgdb.get_user_message(msg_code=opasConfig.ACCESS_ABSTRACT_RESTRICTED_MESSAGE)
         
         heading = opasxmllib.get_running_head(source_title=documentListItem.sourceTitle,

@@ -307,7 +307,7 @@ def load_whats_new(days_back=opasConfig.DEFAULT_DAYS_BACK_FOR_WHATS_NEW,
                    req_url="Caching"
                    ):
     ret_val = None
-    fname = "load_whats_new"
+    # fname = "load_whats_new"
     try:
         # return whatsNewList
         ret_val = database_get_whats_new(limit=limit, 

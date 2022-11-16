@@ -25,10 +25,6 @@ import localsecrets
 # import json
 from fastapi import HTTPException
 from errorMessages import *
-from opasConfig import USER_NOT_LOGGED_IN_NAME
-
-from config.opasConfig import OPASSESSIONID
-from config import msgdb
 
 logger = logging.getLogger(__name__)
 # for this module
@@ -53,7 +49,10 @@ from localsecrets import PADS_BASE_URL, PADS_TEST_ID, PADS_TEST_PW # , PADS_BASE
 base = PADS_BASE_URL
 # base = "http://development.org:9300"
 import opasCentralDBLib
-from config import msgdb
+#from config import msgdb
+import opasMessageLib
+msgdb = opasMessageLib.messageDB()
+
 ocd = opasCentralDBLib.opasCentralDB()
 
 def user_logged_in_per_header(request, session_id=None, caller_name="unknown") -> bool:
@@ -141,7 +140,7 @@ def find_client_session_id(request: Request,
             #  overwrite any saved cookie, if there is one
             logger.debug(f"Saved OpasSessionID Cookie: {ret_val}") 
             response.set_cookie(
-                OPASSESSIONID,
+                opasConfig.OPASSESSIONID,
                 value=f"{client_session}",
                 domain=localsecrets.COOKIE_DOMAIN
             )
