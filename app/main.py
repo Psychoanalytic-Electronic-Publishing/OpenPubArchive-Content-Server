@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.1117/v2.1.191"   # semver versioning after date.
+__version__     = "2022.1117/v2.1.192"   # semver versioning after date.
 __status__      = "Development/Libs/Loader"  
 
 """
@@ -120,14 +120,11 @@ from typing import Union
 import pandas as pd
 import requests
 from requests.auth import HTTPBasicAuth
-# import aiofiles
-# from typing import List
 
 # TIME_FORMAT_STR = '%Y-%m-%dT%H:%M:%SZ' # moved to opasConfig
 
 from pydantic import ValidationError
 import solrpy as solr # needed for extended search
-# from config.opasConfig import OPASSESSIONID #, OPASACCESSTOKEN, OPASEXPIRES
 import config.opasConfig as opasConfig
 import logging
 logger = logging.getLogger(__name__)
@@ -439,11 +436,6 @@ def login_via_pads(request: Request,
             headers={"WWW-Authenticate": "Basic"},
         )
     else:
-        #session_info = opasDocPermissions.get_authserver_session_info(pads_session_info.SessionId,
-                                                                      #client_id,
-                                                                      #pads_session_info=pads_session_info,
-                                                                      #request=request)
-
         ocd, session_info = opasDocPermissions.get_session_info(request,
                                                                response,
                                                                session_id=pads_session_info.SessionId,
