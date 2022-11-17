@@ -7,10 +7,10 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.1115/v1.0.002"   # semver versioning after date.
+__version__     = "2022.1117/v1.0.003"   # semver versioning after date.
 __status__      = "Development"
 
-programNameShort = "opasDataPurger"
+programNameShort = "opasDataCleaner"
 
 import sys
 if sys.version_info[0] < 3:
@@ -19,17 +19,21 @@ if sys.version_info[0] < 3:
 border = 80 * "*"
 print (f"""\n
         {border}
-            {programNameShort} - Open Publications-Archive Server (OPAS) Data Purger
+            {programNameShort} - Open Publications-Archive Server (OPAS) Data Cleaner
                             Version {__version__}
         {border}
         """)
 
 help_text = (
     fr""" 
-        - Look for files in the api_articles database that don't exist anymore and remove them from the DB and Solr
+        - Look for files in the api_articles database that don't exist anymore in the filesystem and remove them
+            from the SQL DB and Solr. This is only necessary if incremental updates have been done but
+            corrections have been made to datafiles that affect their article ID. When that happens,
+            the same data exists in two articles of the database, one with the old, and one with the
+            corrected ID.
         
         Example Invocation:
-                $ python opasDataPurger.py
+                $ python opasDataCleaner.py
                 
         Important option choices:
          -h, --help         List all help options
@@ -220,7 +224,7 @@ def main():
 if __name__ == "__main__":
     global options  # so the information can be used in support functions
     options = None
-    parser = OptionParser(usage="%prog [options] - PEP Solr DataPurger", version=f"%prog ver. {__version__}")
+    parser = OptionParser(usage="%prog [options] - PEP DataCleaner", version=f"%prog ver. {__version__}")
     parser.add_option("-d", "--dataroot", dest="rootFolder", default=localsecrets.XML_ORIGINALS_PATH,
                       help="Bucket (Required S3) or Root folder path where data is located")
     parser.add_option("-l", "--loglevel", dest="logLevel", default=logging.ERROR,
