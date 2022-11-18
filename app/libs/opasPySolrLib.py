@@ -1873,7 +1873,35 @@ def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
     # for debugging type error
     log_params = (pep_code, year, vol, req_url, extra_info, limit, offset)
     
-    if year == "*" and vol != "*":
+    if year != "*" and vol != "*":
+        # specified only volume
+        field="art_vol"
+        search_val = vol
+        # get rid of alpha chars
+        if not vol.isnumeric():
+            search_val_num = ''.join(filter(str.isnumeric, search_val))
+        else:
+            search_val_num = ''
+        
+        if search_val_num != '':
+            clause_2 = f"{field}:({search_val} || {search_val_num})"
+        else:
+            clause_2 = f"{field}:{search_val}"
+            
+        field="art_year"
+        search_val = year  #  was "*", thats an error, fixed 2019-12-19
+        # get rid of alpha chars
+        if not vol.isnumeric():
+            search_val_num = ''.join(filter(str.isnumeric, search_val))
+        else:
+            search_val_num = ''
+
+        if search_val_num != '':
+            clause_2 += f" && {field}:({search_val} || {search_val_num})"
+        else:
+            clause_2 += f" && {field}:{search_val}"
+
+    elif year == "*" and vol != "*":
         # specified only volume
         field="art_vol"
         search_val = vol
@@ -1883,6 +1911,11 @@ def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
         else:
             search_val_num = ''
             
+        if search_val_num != '':
+            clause_2 = f"{field}:({search_val} || {search_val_num})"
+        else:
+            clause_2 = f"{field}:{search_val}"       
+        
     else:  #Just do year
         field="art_year"
         search_val = year  #  was "*", thats an error, fixed 2019-12-19
@@ -1892,10 +1925,10 @@ def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
         else:
             search_val_num = ''
 
-    if search_val_num != '':
-        clause_2 = f"{field}:({search_val} || {search_val_num})"
-    else:
-        clause_2 = f"{field}:{search_val}"       
+        if search_val_num != '':
+            clause_2 = f"{field}:({search_val} || {search_val_num})"
+        else:
+            clause_2 = f"{field}:{search_val}"       
 
     try:
         code = pep_code.upper()
@@ -2553,6 +2586,131 @@ def metadata_get_next_and_prev_vols(source_code=None,
         print(f"Match Prev {prev_vol}, Curr: {match_vol}, Next: {next_vol}")
         
     return prev_vol, match_vol, next_vol
+#-----------------------------------------------------------------------------
+def metadata_get_years(source_code=None,
+                       source_type=None,
+                       req_url: str=None, 
+                       limit: int=1000,
+                       #offset=0
+                       ):
+    """
+    Return a list of years
+      - for a specific source_code (code),
+      - OR for a specific source_type (e.g. journal)
+      - OR if source_code and source_type are not specified, bring back them all
+      
+    This is a new version (08/2020) using Solr pivoting rather than the OCD database.
+      
+    """
+    # returns multiple gw's and se's, 139 unique volumes counting those (at least in 2020)
+    # works for journal, videostreams have more than one year per vol.
+    # works for books, videostream vol numbers
+    #results = solr_docs.query( q = f"art_sourcecode:{pep_code} && art_year:{year}",  
+                                #fields = "art_sourcecode, art_vol, art_year",
+                                #sort="art_sourcecode, art_year", sort_order="asc",
+                                #fq="{!collapse field=art_vol}",
+                                #rows=limit, start=offset
+                                #)
+    
+    distinct_return = "art_sourcecode, art_vol, art_year, art_sourcetype"
+    row_limit = 6 # small number, since we don't care about the rows, we care about the facet limit.
+    facet_limit = limit, 
+    count = 0
+    ret_val = None
+    # normalize source type
+    if source_type is not None: # none is ok
+        source_type = opasConfig.normalize_val(source_type, opasConfig.VALS_SOURCE_TYPE, None)
+    
+    q_str = "bk_subdoc:false"
+    if source_code is not None:
+        q_str += f" && art_sourcecode:{source_code}"
+    if source_type is not None:
+        q_str += f" && art_sourcetype:{source_type}"
+    facet_fields = ["art_vol", "art_sourcecode"]
+    facet_pivot = "art_sourcecode,art_year,art_vol" # important ...no spaces!
+    try:
+        logger.info(f"Solr Query: q={q_str} facet='on'")
+        args = {"fq":"*:*", 
+                "fields" : distinct_return,
+                "sort":"art_sourcecode ASC, art_year ASC, art_vol ASC",
+                "facet":"on", 
+                "facet.fields" : facet_fields, 
+                "facet.pivot" : facet_pivot,
+                "facet.mincount":1,
+                "facet.sort":"art_year asc",
+                "facet.limit": facet_limit,
+                "rows":row_limit, 
+                #"start":offset
+              }
+
+        results = solr_docs2.search(q_str, **args)
+        
+        facet_pivot = results.facets["facet_pivot"][facet_pivot]
+        #ret_val = [(piv['value'], [n["value"] for n in piv["pivot"]]) for piv in facet_pivot]
+
+        response_info = models.ResponseInfo( count = count,
+                                             fullCount = count,
+                                             #limit = limit,
+                                             #offset = offset,
+                                             listType="volumelist",
+                                             fullCountComplete = (limit == 0 or limit >= count),
+                                             request=f"{req_url}",
+                                             timeStamp = datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)                     
+                                             )
+
+        
+        year_item_list = []
+        year_dup_check = {}
+        for m1 in facet_pivot:
+            journal_code = m1["value"] # pepcode
+            seclevel = m1["pivot"]
+            for m2 in seclevel:
+                secfield = m2["field"] # year
+                secval = m2["value"]
+                thirdlevel = m2["pivot"]
+                for m3 in thirdlevel:
+                    thirdfield = m3["field"] # vol
+                    thirdval = m3["value"]
+                    PEPCode = journal_code
+                    year = secval
+                    vol = thirdval
+                    count = m3["count"]
+                    pep_code_year = PEPCode + year
+                    # if it's a journal, Supplements are not a separate vol, they are an issue.
+                    cur_code = year_dup_check.get(pep_code_year)
+                    if cur_code is None:
+                        year_dup_check[pep_code_year] = [vol]
+                        year_list_item = models.YearListItem(PEPCode=PEPCode,
+                                                                 vol=vol,
+                                                                 year=year,
+                                                                 vols=[vol],
+                                                                 count=count
+                        )
+                        year_item_list.append(year_list_item)
+                    else:
+                        year_dup_check[pep_code_year].append(vol)
+                        if year not in year_list_item.vols:
+                            year_list_item.vols.append(vol)
+                        year_list_item.count += count
+
+                
+    except Exception as e:
+        #logger.error(f"MetadataGetVolsError: {e}")
+        err_info = pysolrerror_processing(e)
+        logger.error(f"MetadataGetVolsError: {err_info.httpcode}. Query: {query} Error: {err_info.error_description}")
+    else:
+        response_info.count = len(year_item_list)
+        response_info.fullCount = len(year_item_list)
+    
+        year_list_struct = models.YearListStruct( responseInfo = response_info, 
+                                                      responseSet = year_item_list
+                                                      )
+    
+        year_list = models.YearList(yearList = year_list_struct)
+    
+        ret_val = year_list
+        
+    return ret_val
 #-----------------------------------------------------------------------------
 
 #-----------------------------------------------------------------------------

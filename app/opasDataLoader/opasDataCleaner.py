@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.1117/v1.0.003"   # semver versioning after date.
+__version__     = "2022.1118/v1.0.004"   # semver versioning after date.
 __status__      = "Development"
 
 programNameShort = "opasDataCleaner"
@@ -110,6 +110,7 @@ def main():
             # print("Logfile: ", logFilename)
             print("Messaging verbose: ", options.display_verbose)
             print("Input data Root: ", start_folder)
+            print("Article ID Prefix: ", options.artid_prefix)
 
             print(80*"*")
             print(f"Database tables api_articles and api_biblioxml will be updated. Location: {localsecrets.DBHOST}")
@@ -155,7 +156,7 @@ def main():
     
         print ("Fetching filenames...")
         if filenames == []:
-            filenames = fs.get_matching_filelist(filespec_regex=".*\(bEXP_ARCH1\).*$", path=start_folder)
+            filenames = fs.get_matching_filelist(filespec_regex=f"{options.artid_prefix}.*\(bEXP_ARCH1\).*$", path=start_folder)
             for n in filenames:
                 nm = n.basename
                 nroot = nm[:nm.find('(')]
@@ -166,16 +167,20 @@ def main():
         # Get list of articles from the tracker table.  TBD: Later add filename with path to the table so you don't need to read all
         #  the files at once above.
         time_milestone1 = time.time()
-        print (f"Filename Load took {time_milestone1-timeStart}")
+        print (f"Filename collection from storage took {(time_milestone1-timeStart)/60} minutes")
         print (f"Fetching article info from database...")
-        
-        articles_to_check = """
-                              select art_id, filename from api_articles;
-                            """
+        if options.artid_prefix != "":
+            search_clause = f" WHERE art_id LIKE '{options.artid_prefix}%'"
+        else:
+            search_clause = ""
+            
+        articles_to_check = f"""
+                              select art_id, filename from api_articles{search_clause};
+                             """
         article_list = ocd.get_select_as_list_of_dicts(articles_to_check)
         time_milestone2 = time.time()
         
-        print (f"DB Article Load took {time_milestone2-time_milestone1}")
+        print (f"DB Article Load took {time_milestone2-time_milestone1} secs")
         print ("Checking for missing articles...")
         # look to see if they exist
         for article in article_list:
@@ -201,7 +206,7 @@ def main():
                 print (f"Test mode active...if not {art_id} would have been removed from the database.")
         
         time_milestone3 = time.time()
-        print (f"Checking for missing articles and deleting them from Solr took {time_milestone3-time_milestone2}")
+        print (f"Checking for missing articles and deleting them from the databases (if present) took {time_milestone3-time_milestone2}")
         if not options.testmode:
             solr_docs2.commit()
             solr_authors.commit()
@@ -227,6 +232,8 @@ if __name__ == "__main__":
     parser = OptionParser(usage="%prog [options] - PEP DataCleaner", version=f"%prog ver. {__version__}")
     parser.add_option("-d", "--dataroot", dest="rootFolder", default=localsecrets.XML_ORIGINALS_PATH,
                       help="Bucket (Required S3) or Root folder path where data is located")
+    parser.add_option("--prefix", "--artidprefix", dest="artid_prefix", default="",
+                      help="Article ID/Filename prefix to limit processing")
     parser.add_option("-l", "--loglevel", dest="logLevel", default=logging.ERROR,
                       help="Level at which events should be logged (DEBUG, INFO, WARNING, ERROR")
     parser.add_option("--nocheck", action="store_true", dest="no_check", default=False,

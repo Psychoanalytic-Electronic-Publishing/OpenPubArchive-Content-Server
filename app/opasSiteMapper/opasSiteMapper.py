@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2021.0721/v1.0.1" 
+__version__     = "2021.1118/v1.0.2" 
 __status__      = "Development"
 
 programNameShort = "opasSiteMapper"
@@ -156,9 +156,6 @@ if __name__ == "__main__":
         print (ret_val["siteMapList"])
         print ("Sitemap Finished!")
         print ("Running Google Metadata Generator (interim solution)")
-        #temp - Run opasGoogleMetadataExport from here until it's installed as a separate processing step on AWS
-        import subprocess
-        subprocess.run(path_name="../opasGoogleMetadataExport/opasGoogleMetadataExport.py")
         print ("Finished!")
 
     sys.exit()

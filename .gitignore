@@ -63,3 +63,4 @@ pydantic_model_test.py
 *abandoned*
 *in prog*
 app/opasDataLoader/dataUpdateLogs/database_updated.txt
+app/opasGoogleMetadataExport/PEPGoogleMetaBookExportDraft.py

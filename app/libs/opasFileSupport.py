@@ -633,7 +633,7 @@ class FlexFileSystem(object):
         if self.key is not None:
             data_folder = data_folder.as_posix()
             
-        kwargs = {"detail": True,}
+        kwargs = {"detail": True, "filter": [filespec_regex]} # fs.walk does not appear to support the filter keyword unfortunately. os.walk does not either.
         if revised_after_date is not None:
             revised_after_date = datetime.datetime.date(datetime.datetime.strptime(revised_after_date, '%Y-%m-%d'))
             

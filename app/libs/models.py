@@ -896,6 +896,23 @@ class VolumeListStruct(BaseModel):
 
 class VolumeList(BaseModel):
     volumeList: VolumeListStruct
+
+#-------------------------------------------------------
+class YearListItem(BaseModel):
+    PEPCode: str = Field(None, title="")
+    vol: str = Field(None, title="")
+    year: str = Field(None, title="")
+    vols: list = Field([], title="")
+    count: int = Field(0, title="")
+    
+#-------------------------------------------------------
+
+class YearListStruct(BaseModel):
+    responseInfo: ResponseInfo
+    responseSet: List[YearListItem] = []   
+
+class YearList(BaseModel):
+    yearList: YearListStruct
     
 #-------------------------------------------------------
 class WhatsNewListItem(BaseModel):
