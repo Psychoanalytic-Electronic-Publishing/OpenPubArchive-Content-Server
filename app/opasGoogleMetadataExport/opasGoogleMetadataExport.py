@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.1118/v1.0.1" 
+__version__     = "2022.1119/v1.0.2" 
 __status__      = "Development"
 
 programNameShort = "opasGoogleMetadataExport"
@@ -56,6 +56,7 @@ from configGoogleMeta import googleMetadataConfig
 logger = logging.getLogger(programNameShort)
 
 from optparse import OptionParser
+
 class REFCONSTANTS:
     # Article Info Constants - Field Names for article info and biblioentry dictionary
     CONFIDENCELEVEL     = "ConfidenceLevel"             # if this was a heuristic search from the DB, how good of a match was it?
@@ -396,7 +397,11 @@ def writePublisherFile(path=None, fs=None, online_link_location="http://peparchi
 
     return
 
-def google_metadata_generator(path=None, source_type="journal", fs=None, size=None, max_records=None, clear_sitemap=None, path_is_root_bucket=False, this_journal_code_only=None):
+def google_metadata_generator(path=None,
+                              source_type="journal",
+                              fs=None, size=None, max_records=None, clear_sitemap=None,
+                              path_is_root_bucket=False,
+                              this_journal_code_only=None):
     journal_info = metadata_get_source_info(src_type=source_type, src_code=this_journal_code_only)
     #journal_codes = [doc.PEPCode for doc in journal_info.sourceInfo.responseSet]
     jinfo = [(doc.PEPCode, doc) for doc in journal_info.sourceInfo.responseSet]
@@ -422,7 +427,7 @@ def google_metadata_generator(path=None, source_type="journal", fs=None, size=No
                     contents = opasPySolrLib.metadata_get_contents(pep_code=journal_code, year=year, vol=volume_nbr_str)
                     contents = contents.documentList.responseSet
                     article_count = len(contents)
-                    if options.disply_verbose:
+                    if options.display_verbose:
                         print (f"\tWriting metadata for {journal_code}.{year} (Volume {volume_nbr_str}, Article Count: {article_count})")
                     a = 1
                     #  SOURCETITLEFULL, SOURCETITLESERIES, ISSN, PUBLISHER, KEY, TITLE, AUTHORMARKUP, YEAR, VOL, ISSUE, PGSTART, PGEND
@@ -441,15 +446,21 @@ def google_metadata_generator(path=None, source_type="journal", fs=None, size=No
                                 art_subtitle = find_or_emptystr(artinfo, "artsub")
                                 if art_subtitle != "":
                                     art_title_text += f": {art_subtitle}"
+
+                            art_title_text = art_title_text
                             art_vol = artinfo.artvol
                             art_year = artinfo.artyear
-                            if options.disply_verbose:
+                            if options.display_verbose:
                                 print (f"\t\t{art_year}.{art_vol}:{art_title_text}")
                             auts = artinfo.artauth
                             publisher = journal_info_dict[journal_code].publisher
                             issn = journal_info_dict[journal_code].ISSN
                             contribs = ""
                             aut_count = 0
+                            # last page is required
+                            if doclistitem.pgEnd == "" or doclistitem.pgEnd is None:
+                                doclistitem.pgEnd = doclistitem.pgStart
+                            
                             try:
                                 aut_count += 1
                                 for a in auts.aut:
@@ -575,6 +586,8 @@ def google_metadata_generator(path=None, source_type="journal", fs=None, size=No
             # single year is done...write output file for journal vol
             outputFileName = f"{journal_code}.{year}.xml"
             if fs is not None:
+                # watch out for & that's not escaped as an entity
+                vol_metadata_text = vol_metadata_text.replace("& ", "&amp; ")
                 success = fs.create_text_file(outputFileName, data=vol_metadata_text, path=path, path_is_root_bucket=path_is_root_bucket)
                 if success:
                     if options.display_verbose: # vol is done...write output file for journal vol
@@ -619,6 +632,7 @@ if __name__ == "__main__":
                       help="The name of the output root (bucket) on AWS")
 
     (options, args) = parser.parse_args()
+    print (f"Metadata is being written to: {options.aws_bucket}")
     if options.testmode:
         import doctest
         doctest.testmod()
