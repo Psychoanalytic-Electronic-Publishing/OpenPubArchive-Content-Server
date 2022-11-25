@@ -435,6 +435,20 @@ def file_is_same_as_in_solr(solrcore, filename, timestamp_str):
     return ret_val
 
 #------------------------------------------------------------------------------------------------------
+def file_exists_in_solr(solrcore, art_id):
+            try:
+                results = solrcore.search(f"art_level:1 && art_id:{art_id}", rows=0)
+                if results.hits > 0:
+                    return True
+                else:
+                    return False
+            except Exception as e:
+                print(e)
+                return False
+                
+            return ret_val
+
+#------------------------------------------------------------------------------------------------------
 def main():
     
     global options  # so the information can be used in support functions
@@ -626,19 +640,6 @@ def main():
         # START - PRE-PROCESS IJPO ARTICLES
         print((80*"-"))
 
-        def file_exists_in_solr(solrcore, art_id):
-            try:
-                results = solrcore.search(f"art_level:1 && art_id:{art_id}", rows=0)
-                if results.hits > 0:
-                    return True
-                else:
-                    return False
-            except Exception as e:
-                print(e)
-                return False
-                
-            return ret_val
-
         print ("Updating IJPOpen version references")
 
         # Create a list of all IJPO files
@@ -687,7 +688,6 @@ def main():
                         print (msg)
 
         print((80*"-"))
-
         # END -  PRE-PROCESS IJPO ARTICLES
 
         print (f"Locating files for processing at {start_folder} with build pattern {input_build_pattern}. Started at ({time.ctime()}).")
