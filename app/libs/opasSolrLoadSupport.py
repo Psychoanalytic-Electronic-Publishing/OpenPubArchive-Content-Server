@@ -272,6 +272,12 @@ class ArticleInfo(object):
             if opasConfig.TEMP_IJPOPEN_VER_COMPAT_FIX:
                 if self.embargotype == "IJPOPEN_FULLY_REMOVED":
                     self.embargotype = "IJPOPEN_REMOVED" 
+
+        parsed_mc_id = parsed_xml.xpath("//artinfo/@mc_id")
+        self.mc_id = parsed_mc_id[0] if len(parsed_mc_id) > 0 else None
+
+        parsed_latest_version_id = parsed_xml.xpath("//artinfo/@latest_version_id")
+        self.latest_version_id = parsed_latest_version_id[0] if len(parsed_latest_version_id) > 0 else None
         
         if 1: # vol info (just if'd for folding purposes)
             vol_actual = opasxmllib.xml_xpath_return_textsingleton(parsed_xml, '//artinfo/artvol/@actual', default_return=None)
@@ -1083,6 +1089,8 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents, in
     new_rec = {
                 "id": artInfo.art_id,                                         # important =  note this is unique id for every reference
                 "art_id" : artInfo.art_id,                                    # important
+                "mc_id": artInfo.mc_id,                                       # Used for IJPOpen automated Disqus comments
+                "latest_version_id": artInfo.latest_version_id,               # Used to filter out old IJPOPen versions from search and provide link to latest in document frontend
                 "art_embargo" : artInfo.embargo,                              # limit display if true (e.g., IJPOpen removed articles)
                 "art_embargotype" : artInfo.embargotype,
                 "title" : artInfo.art_title,                                  # important
