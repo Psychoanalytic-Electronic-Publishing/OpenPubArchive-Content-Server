@@ -643,6 +643,7 @@ def main():
     timeStart = time.time()
 
     if options.no_files == False: # process and/or load files (no_files just generates a whats_new list, no processing or loading)
+        parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True)
 
         # START - PRE-PROCESS IJPO ARTICLES
         print((80*"-"))
@@ -665,8 +666,6 @@ def main():
                 ijpo_versions_dict[numerical_id].append(name)
             else:
                 ijpo_versions_dict[numerical_id] = [name]
-
-        parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True)
 
         # Update latest_version_id for each IJPO article
         for key, value in ijpo_versions_dict.items():
@@ -851,7 +850,6 @@ def main():
                     # make changes to the XML
                     input_filespec = n.filespec
                     fileXMLContents, input_fileinfo = fs.get_file_contents(input_filespec)
-                    parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True)
                     parsed_xml = etree.fromstring(opasxmllib.remove_encoding_string(fileXMLContents), parser)
                     # save common document (article) field values into artInfo instance for both databases
                     artInfo = opasSolrLoadSupport.ArticleInfo(sourceDB.sourceData, parsed_xml=parsed_xml, art_id=artID, filename_base=base, logger=logger)
@@ -906,8 +904,6 @@ def main():
                     if separated_input_output and options.smartload and not smart_file_rebuild:
                         print (f"SmartLoad: File not modified. No need to recompile.")
                         
-                # import into lxml
-                parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True)
                 try:
                     parsed_xml = etree.fromstring(opasxmllib.remove_encoding_string(fileXMLContents), parser)
                 except Exception as e:
