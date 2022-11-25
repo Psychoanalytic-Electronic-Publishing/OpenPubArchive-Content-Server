@@ -628,13 +628,13 @@ def main():
 
         def file_exists_in_solr(solrcore, art_id):
             try:
-                result = opasSolrLoadSupport.get_file_dates_solr(solrcore, art_id=art_id)
-                print(f"File {filename} found in solr with dates: {result}")
-                if len(result) >= 1:
+                results = solrcore.search(f"art_level:1 && art_id:{art_id}", rows=0)
+                if results.hits > 0:
                     return True
                 else:
                     return False
             except Exception as e:
+                print(e)
                 return False
                 
             return ret_val
