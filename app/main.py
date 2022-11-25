@@ -5179,7 +5179,7 @@ def documents_document_fetch(response: Response,
                 search = f"&smarttext={ft2}"
             if ft1 is not None:
                 search += f"&fulltext1={ft1}"
-            solr_query_params = opasQueryHelper.parse_search_query_parameters(fulltext1=ft1, smarttext=ft2)
+            solr_query_params = opasQueryHelper.parse_search_query_parameters(fulltext1=ft1, smarttext=ft2, filter_old_versions=False)
             
             # solr_query_params = opasQueryHelper.parse_search_query_parameters(**argdict)
             logger.debug("Document View Request: %s/%s/%s", solr_query_params, documentID, return_format)

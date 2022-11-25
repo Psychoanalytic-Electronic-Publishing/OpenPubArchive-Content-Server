@@ -743,6 +743,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
                                   extra_context_len=None,
                                   limit=None,
                                   offset=None, 
+                                  filter_old_versions=True, # filter out old versions of articles, e.g., only return IJPOPEN.001.0001B not IJPOPEN.001.0001A and IJPOPEN.001.0001B
                                   # v1 parameters
                                   journal = None,
                                   forced_searchq=None,
@@ -1557,6 +1558,9 @@ def parse_search_query_parameters(search=None,             # url based parameter
         search_q = forced_searchq
     if forced_filterq is not None:
         filter_q = forced_filterq
+
+    if filter_old_versions:
+        filter_q += "&& -latest_version_id:[* TO *]" # exclude documents where the latest_version_id field exists
 
     # now clean up the final components.
     search_q = cleanup_solr_query(search_q)
