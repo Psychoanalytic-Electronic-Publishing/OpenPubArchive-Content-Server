@@ -449,6 +449,13 @@ def file_exists_in_solr(solrcore, art_id):
             return ret_val
 
 #------------------------------------------------------------------------------------------------------
+def extract_id_from_filename(filename):
+            m = re.match(r"([^ ]*).*\(.*\)", filename)
+            art_id = m.group(1)
+            art_id = latest_version_id.upper()
+            return art_id
+
+#------------------------------------------------------------------------------------------------------
 def main():
     
     global options  # so the information can be used in support functions
@@ -666,9 +673,7 @@ def main():
             print(key, value)
 
             # Extract the latest article ID from file path
-            m = re.match(r"([^ ]*).*\(.*\)", os.path.basename(value[0]))
-            latest_version_id = m.group(1)
-            latest_version_id = latest_version_id.upper()
+            latest_version_id = extract_id_from_filename(os.path.basename(value[0]))
 
             if options.force_ijpo_rebuild or not file_exists_in_solr(solr_docs2, latest_version_id):
                 print(f"Updating latest version for article group {key}")
@@ -773,10 +778,7 @@ def main():
                 file_was_updated = False
                 smart_file_rebuild = False
                 base = n.basename
-                artID = os.path.splitext(base)[0]
-                m = re.match(r"([^ ]*).*\(.*\)", artID)
-                artID = m.group(1)
-                artID = artID.upper()
+                artID = extract_id_from_filename(os.path.splitext(base)[0])
                 
                 try:
                     inputfilename = n.fileinfo["name"]
