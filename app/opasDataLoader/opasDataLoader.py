@@ -669,7 +669,7 @@ def main():
             latest_version_id = m.group(1)
             latest_version_id = latest_version_id.upper()
 
-            if not file_exists_in_solr(solr_docs2, latest_version_id):
+            if options.force_ijpo_rebuild or not file_exists_in_solr(solr_docs2, latest_version_id):
                 print(f"Updating latest version for article group {key}")
 
                 # The most recent version of the article has never been processed, so we need to update the latest_version_id for all previous versions
@@ -1265,6 +1265,9 @@ if __name__ == "__main__":
 
     parser.add_option("--doctype", dest="output_doctype", default=loaderConfig.DEFAULT_DOCTYPE,
                       help=f"""For output files, default={loaderConfig.DEFAULT_DOCTYPE}.""")
+
+    parser.add_option("--force_ijpo_rebuild", action="store_true", dest="force_ijpo_rebuild", default=False,
+                      help="Force a full rebuild of the IJPOpen last_version_id references during IJPO pre-processing")
 
     #parser.add_option("-w", "--writexml", "--writeprocessed", action="store_true", dest="write_processed", default=False,
                       #help="Write the processed data to files, using the output build (e.g., (bEXP_ARCH1).")
