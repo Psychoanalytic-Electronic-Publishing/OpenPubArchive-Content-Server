@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <!--
     PEP Web Database Schema for core PEPWebDocs
+
+    2022-11-25 Added mc_id to allow Disqus comment automation for IJPOpen and latest_version_id to track the latest
+               version of an IJPOpen article
     
     2022-01-20 Added art_sourcecode_active to allow marking in Solr Future documents as 2, and Active docs as 1, to allow 
                the sourceDB to include Future documents, and the server to easily exclude them, for example in counting 
@@ -240,6 +243,8 @@
   <field name="art_subtitle_xml" type="text_simple" indexed="true" stored="true" multiValued="false"/>
   <!--......................................................................................................-->
   <!--DOCUMENT METADATA-->
+  <field name="latest_version_id" type="string" indexed="true" stored="true" />
+  <field name="mc_id" type="string" indexed="true" stored="true" />
   <field name="art_vol" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
   <field name="art_vol_int" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>
   <field name="art_vol_suffix" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
