@@ -622,6 +622,74 @@ def main():
     timeStart = time.time()
 
     if options.no_files == False: # process and/or load files (no_files just generates a whats_new list, no processing or loading)
+
+        # START - PRE-PROCESS IJPO ARTICLES
+        print((80*"-"))
+
+        def file_exists_in_solr(solrcore, art_id):
+            try:
+                result = opasSolrLoadSupport.get_file_dates_solr(solrcore, art_id=art_id)
+                print(f"File {filename} found in solr with dates: {result}")
+                if len(result) >= 1:
+                    return True
+                else:
+                    return False
+            except Exception as e:
+                return False
+                
+            return ret_val
+
+        print ("Updating IJPOpen version references")
+
+        # Create a list of all IJPO files
+        ijpo_files_pat = fr"(IJPOPEN(.*?)\({input_build_pattern}\))"
+        ijpo_files = fs.get_matching_filelist(filespec_regex=ijpo_files_pat, path=start_folder)
+        ijpo_files  = [str(k.filespec) for k in ijpo_files]
+
+        # Sort IJPO list in reverse order so that we process the latest version first
+        ijpo_files = sorted(ijpo_files, reverse=True)
+
+        # Group the IJPO article versions based on their numerical ID
+        ijpo_versions_dict = {}
+        for name in ijpo_files:
+            numerical_id = name.split("IJPOPEN")[1].split("(")[0][:-1] # Extract numerical ID from filename (e.g. .027.0099)
+            if numerical_id in ijpo_versions_dict:
+                ijpo_versions_dict[numerical_id].append(name)
+            else:
+                ijpo_versions_dict[numerical_id] = [name]
+
+        parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True)
+
+        # Update latest_version_id for each IJPO article
+        for key, value in ijpo_versions_dict.items():
+            print(key, value)
+
+            # Extract the latest article ID from file path
+            m = re.match(r"([^ ]*).*\(.*\)", os.path.basename(value[0]))
+            latest_version_id = m.group(1)
+            latest_version_id = latest_version_id.upper()
+
+            if not file_exists_in_solr(solr_docs2, latest_version_id):
+                print(f"Updating latest version for article group {key}")
+
+                # The most recent version of the article has never been processed, so we need to update the latest_version_id for all previous versions
+                for filepath in value[1:]:
+                    # Update latest version attribute
+                    fileXMLContents, input_fileinfo = fs.get_file_contents(filepath)
+                    parsed_xml = etree.fromstring(opasxmllib.remove_encoding_string(fileXMLContents), parser)
+                    article_info_tag = parsed_xml.xpath("//artinfo")[0]
+                    article_info_tag.attrib["latest_version_id"] = latest_version_id
+                    file_text = lxml.etree.tostring(parsed_xml, pretty_print=options.pretty_printed, encoding="utf8").decode("utf-8")
+                    success = fs.create_text_file(filepath, data=file_text, delete_existing=True)
+                    if not success:
+                        msg = f"\t...There was a problem writing {fname}."
+                        logger.error(msg)
+                        print (msg)
+
+        print((80*"-"))
+
+        # END -  PRE-PROCESS IJPO ARTICLES
+
         print (f"Locating files for processing at {start_folder} with build pattern {input_build_pattern}. Started at ({time.ctime()}).")
         print (f"Smartbuild exceptions: Files matching {loaderConfig.SMARTBUILD_EXCEPTIONS} are load only, no recompile.  Will load from output format {selected_output_build}")
         if options.file_key is not None:  
@@ -676,70 +744,6 @@ def main():
     
         timeStart = time.time()
         print (f"Processing started at ({time.ctime()}).")
-    
-        print((80*"-"))
-
-        # START - PRE-PROCESS IJPO ARTICLES
-        def file_exists_in_solr(solrcore, filename):
-            try:
-                result = opasSolrLoadSupport.get_file_dates_solr(solrcore, filename)
-                if result.length >= 1:
-                    return True
-                else:
-                    return False
-            except Exception as e:
-                return False
-                
-            return ret_val
-
-        print ("Updating IJPOpen version references")
-
-        # Create a list of all IJPO files
-        ijpo_files = []
-        for filename in filenames:
-            filePath = str(filename.filespec)
-            if "IJPOPEN" in filePath and loaderConfig.DEFAULT_INPUT_BUILD in filePath:
-                ijpo_files.append(filePath)
-
-        # Sort IJPO list in reverse order so that we process the latest version first
-        ijpo_files = sorted(ijpo_files, reverse=True)
-
-        # Group the IJPO article versions based on their numerical ID
-        ijpo_versions_dict = {}
-        for name in ijpo_files:
-            numerical_id = name.split("IJPOPEN")[1].split("(")[0][:-1] # Extract numerical ID from filename (e.g. .027.0099)
-            if numerical_id in ijpo_versions_dict:
-                ijpo_versions_dict[numerical_id].append(name)
-            else:
-                ijpo_versions_dict[numerical_id] = [name]
-
-        parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True)
-
-        # Update latest_version_id for each IJPO article
-        for key, value in ijpo_versions_dict.items():
-            print(key, value)
-            if not file_exists_in_solr(solr_docs2, value[0]):
-                print(f"Updating latest version for article group {key}")
-                # Extract the latest article ID from file path
-                m = re.match(r"([^ ]*).*\(.*\)", os.path.basename(value[0]))
-                latest_version_id = m.group(1)
-                latest_version_id = latest_version_id.upper()
-
-                # The most recent version of the article has never been processed, so we need to update the latest_version_id for all previous versions
-                for filepath in value[1:]:
-                    # Update latest version attribute
-                    fileXMLContents, input_fileinfo = fs.get_file_contents(filepath)
-                    parsed_xml = etree.fromstring(opasxmllib.remove_encoding_string(fileXMLContents), parser)
-                    article_info_tag = parsed_xml.xpath("//artinfo")[0]
-                    article_info_tag.attrib["latest_version_id"] = latest_version_id
-                    file_text = lxml.etree.tostring(parsed_xml, pretty_print=options.pretty_printed, encoding="utf8").decode("utf-8")
-                    success = fs.create_text_file(filepath, data=file_text, delete_existing=True)
-                    if not success:
-                        msg = f"\t...There was a problem writing {fname}."
-                        logger.error(msg)
-                        print (msg)
-
-        # END -  PRE-PROCESS IJPO ARTICLES
 
         print((80*"-"))
         precommit_file_count = 0
