@@ -14,7 +14,7 @@ Can optionally
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.1113/v.1.0.102"  # recorded in xml processed pepkbd3 procby
+__version__     = "2022.1128/v.1.0.103"  # recorded in xml processed pepkbd3 procby
 __status__      = "Development"
 
 programNameShort = "opasXMLProcessor"
@@ -839,22 +839,30 @@ def tag_keywords(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
     # PYXTree.keywordListImpx = None
     for node in nodes:
         markedup_list = []
-        keywords = node.text.split(",")
-        if verbose:
-            print (f"\t...Keyword markup added: {node.text}")
-        count = len(keywords)
-        for keyword in keywords:
-            markup = f'<impx type="KEYWORD">{keyword.strip()}</impx>'
-            markedup_list.append(markup)
-
-        if count > 0:
-            keyword_str = "".join(markedup_list)
-            keywords = f"<artkwds>{keyword_str}</artkwds>"
-            newnode = ET.XML(keywords)
-            try:
-                node.getparent().replace(node, newnode)
-            except Exception as e:
-                logger.warning(f"Can't replace artkwds node {e}")
+        try:
+            keywords = node.text.split(",")
+        except Exception as e:
+            if node.text is None:
+                msg = f"Keyword list may already be marked up with impx. Leaving as is: {ET.tostring(node)}"
+                print (msg)
+            else:
+                logger.warning(f"Error handling Keyword list {e}. Leaving as is.")
+        else:
+            if verbose:
+                print (f"\t...Keyword markup added: {node.text}")
+            count = len(keywords)
+            for keyword in keywords:
+                markup = f'<impx type="KEYWORD">{keyword.strip()}</impx>'
+                markedup_list.append(markup)
+    
+            if count > 0:
+                keyword_str = "".join(markedup_list)
+                keywords = f"<artkwds>{keyword_str}</artkwds>"
+                newnode = ET.XML(keywords)
+                try:
+                    node.getparent().replace(node, newnode)
+                except Exception as e:
+                    logger.warning(f"Can't replace artkwds node {e}")
     
 def update_artinfo_in_instance(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
     """
