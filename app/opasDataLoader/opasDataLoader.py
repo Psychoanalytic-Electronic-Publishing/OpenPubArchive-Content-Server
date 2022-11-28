@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.1110/v2.0.022"   # semver versioning after date.
+__version__     = "2022.1128/v2.0.023"   # semver versioning after date.
 __status__      = "Development"
 
 programNameShort = "opasDataLoader"
@@ -1049,6 +1049,11 @@ def main():
                 fname = f"{localsecrets.DATA_UPDATE_LOG_DIR}/database_updated.txt"
                 with open(fname, 'a', encoding="utf8") as fo:
                     fo.write('data loaded!\n')
+                msg = f"Database was updated with {files_found - skipped_files} articles! Wrote {fname} written in order to flag changes."
+                if options.display_verbose:
+                    print (msg)
+                logger.warning(msg)
+                
             except Exception as e:
                 # just in case there's a collision of several processes writing, ignore the error
                 logger.warning(f"When writing the database updated flag file an error occured: {e}")
