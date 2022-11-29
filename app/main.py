@@ -21,7 +21,7 @@ To Install (at least in windows)
   rem python 3.7 required
   python -m venv .\env
   .\venv\Scripts\activate.bat
-  pip install --trusted-host pypi.python.org -r /app/requirements.txt
+  pip install --trusted-host pypi.python.org -r requirements.txt
   rem if it complains pip is not up to date
   python -m pip install --upgrade pip
 
