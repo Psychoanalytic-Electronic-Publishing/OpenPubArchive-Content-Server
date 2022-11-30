@@ -6,7 +6,7 @@ DEFAULT_PRECOMPILED_INPUT_BUILD = "(bEXP_ARCH1)"
 # default_process_pattern = "(bKBD3|bSeriesTOC)"
 DEFAULT_INPUT_BUILD = "(bKBD3)"
 DEFAULT_OUTPUT_BUILD = "(bEXP_ARCH1)"
-DEFAULT_DOCTYPE = '<!DOCTYPE pepkbd3 SYSTEM "http://peparchive.org/pepa1dtd/pepkbd3.dtd">'
+DEFAULT_DOCTYPE = '<!DOCTYPE pepkbd3 SYSTEM "https://pep-web-includes.s3.amazonaws.com/pepkbd3.dtd">'
 DEFAULT_XML_DECLARATION = "<?xml version='1.0' encoding='UTF-8'?>"
 
 # Global variables (for data and instances)
