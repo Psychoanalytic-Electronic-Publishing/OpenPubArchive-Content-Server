@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.1118/v2.1.193"   # semver versioning after date.
+__version__     = "2022.1130/v2.1.194"   # semver versioning after date.
 __status__      = "Development/Libs/Loader"  
 
 """
@@ -21,7 +21,7 @@ To Install (at least in windows)
   rem python 3.7 required
   python -m venv .\env
   .\venv\Scripts\activate.bat
-  pip install --trusted-host pypi.python.org -r /app/requirements.txt
+  pip install --trusted-host pypi.python.org -r requirements.txt
   rem if it complains pip is not up to date
   python -m pip install --upgrade pip
 

@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.1110/v2.0.022"   # semver versioning after date.
+__version__     = "2022.1129/v2.0.025"   # semver versioning after date.
 __status__      = "Development"
 
 programNameShort = "opasDataLoader"
@@ -863,6 +863,8 @@ def main():
                                                                          artInfo,
                                                                          ocd,
                                                                          pretty_print=options.pretty_printed,
+                                                                         markup_terms=options.glossary_term_tagging,
+                                                                         add_glossary_list=options.add_glossary_term_dict, 
                                                                          verbose=options.display_verbose)
                     # impx_count = int(pepxml.xpath('count(//impx[@type="TERM2"])'))
                     # write output file
@@ -872,10 +874,10 @@ def main():
                     # root = parsed_xml.getroottree()
                     # this only works on a local file system...using 
                     # root.write(fname, encoding="utf-8", method="xml", pretty_print=True, xml_declaration=True, doctype=options.output_doctype)
-                    file_prefix = f"""{options.output_doctype}\n"""
+                    file_prefix = f"""{loaderConfig.DEFAULT_XML_DECLARATION}\n{options.output_doctype}\n"""
                     # xml_text version, not reconverted to tree
                     file_text = lxml.etree.tostring(parsed_xml, pretty_print=options.pretty_printed, encoding="utf8").decode("utf-8")
-                    # file_text = file_prefix + file_text
+                    file_text = file_prefix + file_text
                     # this is required if running on S3
                     msg = f"\t...Compiling {n.basename} to precompiled XML"
                     success = fs.create_text_file(fname, data=file_text, delete_existing=True)
@@ -1116,6 +1118,11 @@ def main():
                 fname = f"{localsecrets.DATA_UPDATE_LOG_DIR}/database_updated.txt"
                 with open(fname, 'a', encoding="utf8") as fo:
                     fo.write('data loaded!\n')
+                msg = f"Database was updated with {files_found - skipped_files} articles! Wrote {fname} written in order to flag changes."
+                if options.display_verbose:
+                    print (msg)
+                logger.warning(msg)
+                
             except Exception as e:
                 # just in case there's a collision of several processes writing, ignore the error
                 logger.warning(f"When writing the database updated flag file an error occured: {e}")
@@ -1255,7 +1262,7 @@ if __name__ == "__main__":
     parser.add_option("--smartload", "--smartbuild", action="store_true", dest="smartload", default=False,
                       help="Load precompiled XML (e.g., bEXP_ARCH1), or if needed, precompile keyboarded XML (e.g., bKBD3) and load into database.")
 
-    parser.add_option("--prettyprint", action="store_true", dest="pretty_printed", default=True,
+    parser.add_option("--prettyprint", action="store_true", dest="pretty_printed", default=False,
                       help="Pretty format the compiled XML.")
 
     parser.add_option("--nohelp", action="store_true", dest="no_help", default=False,
@@ -1266,6 +1273,12 @@ if __name__ == "__main__":
 
     parser.add_option("--force_ijpo_rebuild", action="store_true", dest="force_ijpo_rebuild", default=False,
                       help="Force a full rebuild of the IJPOpen last_version_id references during IJPO pre-processing")
+    
+    parser.add_option("--term_tags_off", action="store_false", dest="glossary_term_tagging", default=True,
+                      help=f"""Do not markup glossary terms in paragraphs when compiling xml""")
+
+    parser.add_option("--term_dict", action="store_true", dest="add_glossary_term_dict", default=False,
+                      help=f"""Add the glossary term/count dictionary when compiling xml""")
 
     #parser.add_option("-w", "--writexml", "--writeprocessed", action="store_true", dest="write_processed", default=False,
                       #help="Write the processed data to files, using the output build (e.g., (bEXP_ARCH1).")
@@ -1279,6 +1292,10 @@ if __name__ == "__main__":
     
     if not (options.loadprecompiled):
         options.smartload = True
+    
+    # if you turn off term tagging, always add the term dict.
+    if options.glossary_term_tagging:
+        options.add_glossary_term_dict = True
     
     if not options.no_help:
         print (help_text)

@@ -529,14 +529,15 @@ class GlossaryRecognitionEngine(UserDict):
         return ret_val, ret_status # return new reparsed_xml if ret_status is true, orig parsed_xml if not.
 
     #--------------------------------------------------------------------------------
-    def doGlossaryMarkup(self, parsed_xml, skipIfHasAncestorRegx=default_ancestor_list, preface=None, theGroupName=None, pretty_print=False, diagnostics=False, verbose=False):
+    def doGlossaryMarkup(self, parsed_xml, skipIfHasAncestorRegx=default_ancestor_list, preface=None,
+                         theGroupName=None, pretty_print=False, markup_terms=True, diagnostics=False, verbose=False):
         """
         Markup any glossary entries in paragraphs (only).
 
         If theGroupName is supplied, it means we are marking up the glossary itself, and any impxs that match
         theGroupName will be removed (as self referential)
 
-        Returns the number of changed terms.
+        Returns the number of changed terms, and a dictionary of terms and counts
 
         >>> glossEngine = GlossaryRecognitionEngine(gather=False)
         Gathering regex patterns is off.
@@ -562,23 +563,15 @@ class GlossaryRecognitionEngine(UserDict):
         
         ret_status = True
         if gDbg2: print (f"\t...Starting Glossary Markup")
-        count = 0
         #preface="""<?xml version='1.0' encoding='UTF-8' ?><!DOCTYPE %s SYSTEM '%s'>""" % ("p", gDefaultDTD) + "\n"
         preface = """<?xml version='1.0' encoding='UTF-8' ?>""" # TRY THIS TEST CODE 2017-04-02, without named entities, we should not need a DTD loaded (much quicker)
-
         startTime = time.time()
-
-        # strText = ""
-
-        # Replace altdata so it doesn't match - Better still, just delete it
-        # BUT NOTE: the altdata attribute in L&P is actually "alternate terms"! (not a display, altdata thing...).  That's why it matches sometimes.
-        #count = tree.replaceAttrText("altdata", "(.*)", "XXX\0", ALL, E("impx", {"type":"TERM1"}))
-        # tree.deleteAttributes(ALL, elemSpec=E("impx", {"type":"TERM1"}), attrNamePtn="altdata")
-        countInDoc = 0
+        count_in_doc = 0
         total_changes = 0
         # get all paragraphs
         allParas = parsed_xml.xpath(".//p|.//p2")
         para_count = 0
+        found_term_dict = {}
         for para_working in allParas:
             para_count += 1
             #para_working = para
@@ -600,64 +593,76 @@ class GlossaryRecognitionEngine(UserDict):
                 term_data = rcrow[1]
                 grpnm = term_data[2]
                 rx = term_data[3]
-                #if grpnm == "Attachment Theory":
-                    #print (grpnm)
                 #if diagnostics:
                     #print (f"\t\t\t...Groupname: {grpnm} Term Data: {term_data}")
                 if theGroupName == grpnm:
                     continue # skip per parameter def [TBD: Needs to be checked for glossary build]
                 
                 subStrCxt = f'<impx type="TERM2" rx="{rx}" grpname="{grpnm}">\g<whole></impx>'
-                # count changes
                 # Match at the start, at the end, the whole, and in the middle, delineated
                 rc = rcrow[0]
                 try:
-                    change_count = len(rc.findall(node_text))
+                    found = rc.findall(node_text)
+                    change_count = len(found)
                     total_changes += change_count
                     if change_count:
-                        node_text2 = rc.sub(subStrCxt, node_text)
+                        term = found[0][0]
+                        if diagnostics: print (f"\t\t\tTerm: {term}")
+                        term_count = found_term_dict.get(term, 0)
+                        term_count += change_count
+                        count_in_doc += change_count
+                        found_term_dict[term] = term_count
+                        if markup_terms:
+                            node_text2 = rc.sub(subStrCxt, node_text)
                 except Exception as e:
                     print (e)
 
-                if change_count: 
+                if change_count and markup_terms: 
+                    #  or if within one of these tags within a paragraph, don't keep it
+                    if re.search("<(j|pb|t)>.*?<impx.*?</(j|pb)>", node_text2, flags=re.IGNORECASE):
+                        if gDbg1: print ("\t..Error: Nested in forbidden tag. Skipping markup for para")
+                        continue
                     # if the markup is within quotes, don't keep it.
-                    if re.search("\".*?<impx.*</impx>.*?\"", node_text2, flags=re.IGNORECASE):
-                        if gDbg1: print ("\t..Error: impx in quoted passage detected. Skipping markup")
+                    elif re.search("\".*?<impx.*</impx>.*?\"", node_text2, flags=re.IGNORECASE):
+                        if gDbg1: print ("\t..Error: impx in quoted passage detected. Skipping markup for para")
                         continue
                     #  or if nested impx, don't keep it
                     elif re.search("<impx type=\"TERM2\"><impx", node_text2, flags=re.IGNORECASE):
-                        print ("\t..Error: Double nested impx detected. Skipping markup")
+                        if gDbg1: print ("\t..Error: Double nested impx detected. Skipping markup for para")
                         continue
                     else:
                         # sciSupport.trace("%s%sMarked Abbr %s in %s: " % (60*"-","\n", rc.pattern, nodeText2), outlineLevel=1, debugVar=gDbg7)
                         if diagnostics: print (f"\t\t...Para {para_count}: Marked Glossary Term: {grpnm} ID: {rx}")
                         changes = True
-                        count += 1
-                        countInDoc += 1
                         node_text = node_text2
 
-            if changes:
+            if changes and markup_terms:
                 try:
                     new_node = lxml.etree.XML(node_text)
                     parent_node = para_working.getparent()
                     parent_node.replace(para_working, new_node)
                     if diagnostics:
                         print (f"\t\t...Para {para_count}: Final markup: {node_text}")
-                        print (f"\t\t...Para {para_count}: {countInDoc} glossary terms recognized.")
+                        print (f"\t\t...Para {para_count}: {count_in_doc} glossary terms recognized.")
                 except Exception as e:
                     # skip this change and log
                     logger.error(f"Could not save node change (skipped) {e}.")
+
+        
 
         if verbose: 
             endTime = time.time()
             timeDiff = endTime - startTime
             #print (80*"-")
-            print (f"\t...{total_changes} glossary term markups for {countInDoc} paragraphs in {timeDiff} secs")
+            if markup_terms:
+                print (f"\t...{total_changes} glossary term markups for {count_in_doc} paragraphs in {timeDiff} secs")
+            else:  
+                print (f"\t...{total_changes} glossary terms recognized in {timeDiff} secs")
 
         # option: should we return count of changed paragraphs?
-        ret_status = count
+        ret_status = count_in_doc
         
-        return parsed_xml, ret_status
+        return ret_status, found_term_dict
 
 
 #==================================================================================================

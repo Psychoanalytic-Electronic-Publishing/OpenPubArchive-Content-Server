@@ -14,7 +14,7 @@ Can optionally
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.1113/v.1.0.102"  # recorded in xml processed pepkbd3 procby
+__version__     = "2022.1128/v.1.0.103"  # recorded in xml processed pepkbd3 procby
 __status__      = "Development"
 
 programNameShort = "opasXMLProcessor"
@@ -30,6 +30,7 @@ from loggingDebugStream import log_everywhere_if    # log as usual, but if first
 import lxml.etree as ET
 import sys
 import re
+import json
 
 if sys.version_info[0] < 3:
     raise Exception("Must be using Python 3")
@@ -839,22 +840,30 @@ def tag_keywords(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
     # PYXTree.keywordListImpx = None
     for node in nodes:
         markedup_list = []
-        keywords = node.text.split(",")
-        if verbose:
-            print (f"\t...Keyword markup added: {node.text}")
-        count = len(keywords)
-        for keyword in keywords:
-            markup = f'<impx type="KEYWORD">{keyword.strip()}</impx>'
-            markedup_list.append(markup)
-
-        if count > 0:
-            keyword_str = "".join(markedup_list)
-            keywords = f"<artkwds>{keyword_str}</artkwds>"
-            newnode = ET.XML(keywords)
-            try:
-                node.getparent().replace(node, newnode)
-            except Exception as e:
-                logger.warning(f"Can't replace artkwds node {e}")
+        try:
+            keywords = node.text.split(",")
+        except Exception as e:
+            if node.text is None:
+                msg = f"Keyword list may already be marked up with impx. Leaving as is: {ET.tostring(node)}"
+                print (msg)
+            else:
+                logger.warning(f"Error handling Keyword list {e}. Leaving as is.")
+        else:
+            if verbose:
+                print (f"\t...Keyword markup added: {node.text}")
+            count = len(keywords)
+            for keyword in keywords:
+                markup = f'<impx type="KEYWORD">{keyword.strip()}</impx>'
+                markedup_list.append(markup)
+    
+            if count > 0:
+                keyword_str = "".join(markedup_list)
+                keywords = f"<artkwds>{keyword_str}</artkwds>"
+                newnode = ET.XML(keywords)
+                try:
+                    node.getparent().replace(node, newnode)
+                except Exception as e:
+                    logger.warning(f"Can't replace artkwds node {e}")
     
 def update_artinfo_in_instance(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
     """
@@ -941,7 +950,8 @@ def update_artinfo_in_instance(parsed_xml, artInfo, ocd, pretty_print=False, ver
             aut.set("role", aut.get("role", "author"))
         
 #------------------------------------------------------------------------------------------------------
-def xml_update(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
+def xml_update(parsed_xml, artInfo, ocd, add_glossary_list=False, markup_terms=True,
+               pretty_print=False, verbose=False, no_database_update=False):
     """
     Driving Logic to convert KBD3 to EXP_ARCH1 per PEP requirements
     """
@@ -971,7 +981,8 @@ def xml_update(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
     pgnbr_add_next_attrib(parsed_xml)
 
     # Walk through biblio, add links
-    update_biblio(parsed_xml, artInfo, ocd, verbose=verbose)
+    if not no_database_update:
+        update_biblio(parsed_xml, artInfo, ocd, verbose=verbose)
     
     # Add page number markup (next and prev page info on page breaks)
     add_page_number_markup(parsed_xml)
@@ -980,7 +991,8 @@ def xml_update(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
     split_book_data = opasXMLSplitBookSupport.SplitBookData(database_connection=ocd)
     
     # if this is a split book, add pg numbers to split book table
-    add_pagenbrs_to_splitbook_table(parsed_xml, artInfo, ocd, split_book_data, verbose=verbose)
+    if not no_database_update:
+        add_pagenbrs_to_splitbook_table(parsed_xml, artInfo, ocd, split_book_data, verbose=verbose)
             
     # ------------------------------------------------------
     #  pgx (link) handling routines
@@ -998,9 +1010,17 @@ def xml_update(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
     # pgxPreProcessing(parsed_xml, ocd, artInfo=artInfo, split_book_data=split_book_data, verbose=verbose)
 
     pgx_add_rx_jump_via_biblio_entry(parsed_xml, ocd, artInfo=artInfo, split_book_data=split_book_data, verbose=verbose)
-
-    glossEngine.doGlossaryMarkup(parsed_xml, pretty_print=pretty_print, diagnostics=False, verbose=verbose) # set diagnostics=True to see markup during processing.
-
+    
+    # now the doGlossaryMarkup returns a dictionary of terms and counts, so potentially a term list could be appended to
+    #  the xml rather than, or in addition to, marking up the terms within.
+    total_count, term_dict = glossEngine.doGlossaryMarkup(parsed_xml, pretty_print=pretty_print, diagnostics=False, markup_terms=markup_terms, verbose=verbose) # set diagnostics=True to see markup during processing.
+    if add_glossary_list:
+        parser = ET.XMLParser(encoding='utf-8', recover=True, resolve_entities=False, load_dtd=False)
+        term_json = json.dumps(term_dict)
+        pep_addon = f'<unit type="glossary_term_dict"><!-- {term_json} --></unit>'
+        new_unit = ET.fromstring(pep_addon, parser)
+        parsed_xml.append(new_unit)
+    
     web_links = parsed_xml.xpath("/pepkbd3//autaff//url") 
     logger.info("\t...Processing url links.")
     for url in web_links:
