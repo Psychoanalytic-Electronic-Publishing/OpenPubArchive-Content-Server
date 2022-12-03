@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.1129/v2.0.025"   # semver versioning after date.
+__version__     = "2022.1202/v2.0.026"   # semver versioning after date.
 __status__      = "Development"
 
 programNameShort = "opasDataLoader"
@@ -1011,25 +1011,29 @@ def main():
             msg = f"Writing Issue updates.  Writing to file {fname}"
             print (msg)
             logger.info(msg)
-            with open(fname, 'w', encoding="utf8") as fo:
-                fo.write( f'<?xml version="1.0" encoding="UTF-8"?>\n')
-                fo.write('<issue_updates>\n')
-                count_records = 0
-                for k, a in issue_updates.items():
-                    fo.write(f"\n\t<issue>\n\t\t{str(k)}\n\t\t<articles>\n")
-                    count_records += 1
-                    for ref in a:
-                        try:
-                            fo.write(f"\t\t\t{ref}\n")
-                        except Exception as e:
-                            logger.error(f"Issue Update Article Write Error: ({e})")
-                    fo.write("\t\t</articles>\n\t</issue>")
-                fo.write('\n</issue_updates>')
-            if count_records > 0:
-                print (f"{count_records} issue updates written to whatsnew log file.")
+            filedata =  f'<?xml version="1.0" encoding="UTF-8"?>\n<issue_updates>\n'
+            count_records = 0
+            for k, a in issue_updates.items():
+                filedata +=  f"\n\t<issue>\n\t\t{str(k)}\n\t\t<articles>\n"
+                count_records += 1
+                for ref in a:
+                    try:
+                        filedata +=  f"\t\t\t{ref}\n"
+                    except Exception as e:
+                        logger.error(f"Issue Update Article Write Error: ({e})")
+                filedata +=  "\t\t</articles>\n\t</issue>"
+            filedata +=  '\n</issue_updates>'
+
+            success = fs.create_text_file(fname, data=filedata, delete_existing=True)            
+
+            if count_records > 0 and success:
+                msg = f"{count_records} issue updates written to whatsnew log file."
+                print (msg)
+                logger.info(msg)
 
         except Exception as e:
             logger.error(f"Issue Update File Write Error: ({e})")
+            
     else: # if issue_updates != {}
         if options.daysback is not None:
             msg = f"Note: There was nothing in the whats new request to output for days back == {options.daysback}."
@@ -1049,12 +1053,12 @@ def main():
             # write database_updated.txt
             try:
                 fname = f"{localsecrets.DATA_UPDATE_LOG_DIR}/database_updated.txt"
-                with open(fname, 'a', encoding="utf8") as fo:
-                    fo.write('data loaded!\n')
-                msg = f"Database was updated with {files_found - skipped_files} articles! Wrote {fname} written in order to flag changes."
-                if options.display_verbose:
-                    print (msg)
-                logger.warning(msg)
+                success = fs.create_text_file(fname, data='data loaded!\n', delete_existing=True)
+                msg = f"Database was updated with {files_found - skipped_files} articles! Wrote {fname} in order to flag changes."
+                if success:
+                    if options.display_verbose:
+                        print (msg)
+                    logger.warning(msg)
                 
             except Exception as e:
                 # just in case there's a collision of several processes writing, ignore the error
