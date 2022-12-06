@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.1202/v2.0.026"   # semver versioning after date.
+__version__     = "2022.1206/v2.0.027"   # semver versioning after date.
 __status__      = "Development"
 
 programNameShort = "opasDataLoader"
@@ -140,6 +140,7 @@ import opasCentralDBLib
 import opasProductLib
 import opasFileSupport
 import opasAPISupportLib
+import opasDataLoaderIJPOpenSupport
 
 #detect data is on *nix or windows system
 if "AWS" in localsecrets.CONFIG or re.search("/", localsecrets.IMAGE_SOURCE_PATH) is not None:
@@ -777,6 +778,7 @@ def main():
 
                 # smart rebuild should not rebuild glossary files, so skip those
                 if (smart_file_rebuild or options.forceRebuildAllFiles) and not rc_skip_glossary_kbd3_files.match(n.basename):
+                        
                     # make changes to the XML
                     input_filespec = n.filespec
                     fileXMLContents, input_fileinfo = fs.get_file_contents(input_filespec)
@@ -790,6 +792,28 @@ def main():
                     artInfo.file_size = input_fileinfo.filesize
                     artInfo.file_updated = input_file_was_updated
                     artInfo.file_create_time = input_fileinfo.create_time
+                    #artInfo.metadata_dict = {}
+                    #root = parsed_xml.getroottree()
+                    #adldata_list = root.findall('meta/adldata')
+                    #for adldata in adldata_list:
+                        #fieldname = adldata[0].text
+                        #fieldvalue = adldata[1].text
+                        #artInfo.metadata_dict[fieldname] = fieldvalue 
+
+                    #artInfo.publisher_ms_id = artInfo.metadata_dict["manuscript-id"]
+                    # check if IJPOpen Article and look for older versions
+                    version_history_unit = None
+                    if artInfo.src_code == "IJPOPEN":
+                        # get manuscript id
+                        if opasDataLoaderIJPOpenSupport.is_removed_version(ocd, art_id=artInfo.art_id):
+                            continue # skip this file
+                        else:
+                            version_history_unit = opasDataLoaderIJPOpenSupport.version_history_processing(artInfo,
+                                                                                                           solrdocs=solr_docs2, solrauth=solr_authors2,
+                                                                                                           file_xml_contents=fileXMLContents,
+                                                                                                           filename=inputfilename,
+                                                                                                           verbose=options.display_verbose)
+
                     parsed_xml, ret_status = opasXMLProcessor.xml_update(parsed_xml,
                                                                          artInfo,
                                                                          ocd,
@@ -797,6 +821,11 @@ def main():
                                                                          markup_terms=options.glossary_term_tagging,
                                                                          add_glossary_list=options.add_glossary_term_dict, 
                                                                          verbose=options.display_verbose)
+                    
+                    # if there's a version history to be appended, do it so it's written to output file!
+                    if version_history_unit is not None:
+                        parsed_xml.append(version_history_unit)
+                    
                     # impx_count = int(pepxml.xpath('count(//impx[@type="TERM2"])'))
                     # write output file
                     fname = str(n.filespec)
@@ -1024,7 +1053,7 @@ def main():
                 filedata +=  "\t\t</articles>\n\t</issue>"
             filedata +=  '\n</issue_updates>'
 
-            success = fs.create_text_file(fname, data=filedata, delete_existing=True)            
+            success = fs.create_local_text_file(fname, data=filedata, delete_existing=True)            
 
             if count_records > 0 and success:
                 msg = f"{count_records} issue updates written to whatsnew log file."
@@ -1053,7 +1082,7 @@ def main():
             # write database_updated.txt
             try:
                 fname = f"{localsecrets.DATA_UPDATE_LOG_DIR}/database_updated.txt"
-                success = fs.create_text_file(fname, data='data loaded!\n', delete_existing=True)
+                success = fs.create_local_text_file(fname, data='data loaded!\n', delete_existing=True)
                 msg = f"Database was updated with {files_found - skipped_files} articles! Wrote {fname} in order to flag changes."
                 if success:
                     if options.display_verbose:

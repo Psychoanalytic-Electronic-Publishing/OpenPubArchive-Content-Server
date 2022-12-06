@@ -262,6 +262,7 @@ class ArticleInfo(object):
         #<!-- Article front matter fields -->
         #---------------------------------------------
         artinfo_xml = parsed_xml.xpath("//artinfo")[0] # grab full artinfo node, so it can be returned in XML easily.
+        self.artinfo_meta_xml = parsed_xml.xpath("//artinfo/meta")
         self.artinfo_xml = etree.tostring(artinfo_xml).decode("utf8")
         self.src_code = parsed_xml.xpath("//artinfo/@j")[0]
         self.src_code = self.src_code.upper()  # 20191115 - To make sure this is always uppercase
@@ -272,6 +273,17 @@ class ArticleInfo(object):
             if opasConfig.TEMP_IJPOPEN_VER_COMPAT_FIX:
                 if self.embargotype == "IJPOPEN_FULLY_REMOVED":
                     self.embargotype = "IJPOPEN_REMOVED" 
+
+        # Added for IJPOpen but could apply elsewhere        
+        self.metadata_dict = {}
+        root = parsed_xml.getroottree()
+        adldata_list = root.findall('meta/adldata')
+        for adldata in adldata_list:
+            fieldname = adldata[0].text
+            fieldvalue = adldata[1].text
+            self.metadata_dict[fieldname] = fieldvalue 
+    
+        self.publisher_ms_id = self.metadata_dict.get("manuscript-id", "")
         
         if 1: # vol info (just if'd for folding purposes)
             vol_actual = opasxmllib.xml_xpath_return_textsingleton(parsed_xml, '//artinfo/artvol/@actual', default_return=None)
@@ -1512,6 +1524,7 @@ def add_article_to_api_articles_table(ocd, artInfo, verbose=None):
                                     art_citeas_xml,
                                     art_citeas_text,
                                     ref_count,
+                                    publisher_ms_id,
                                     filename,
                                     filedatetime
                                     )
@@ -1542,6 +1555,7 @@ def add_article_to_api_articles_table(ocd, artInfo, verbose=None):
                                         %(art_citeas_xml)s,
                                         %(art_citeas_text)s,
                                         %(ref_count)s,
+                                        %(publisher_ms_id)s,
                                         %(filename)s,
                                         %(filedatetime)s
                                         );
@@ -1574,6 +1588,7 @@ def add_article_to_api_articles_table(ocd, artInfo, verbose=None):
         "art_citeas_xml":  artInfo.art_citeas_xml,
         "art_citeas_text":  artInfo.art_citeas_text,
         "ref_count":  artInfo.ref_count,
+        "publisher_ms_id" : artInfo.publisher_ms_id,
         "filename":  artInfo.filename,
         "filedatetime": artInfo.filedatetime
     }
@@ -1603,7 +1618,7 @@ def add_article_to_api_articles_table(ocd, artInfo, verbose=None):
         ret_val = False
     
     return ret_val  # return True for success
-    
+
 #------------------------------------------------------------------------------------------------------
 def add_to_tracker_table(ocd, art_id, verbose=None):
     """

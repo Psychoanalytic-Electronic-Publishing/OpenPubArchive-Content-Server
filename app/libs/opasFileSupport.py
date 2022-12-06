@@ -310,6 +310,34 @@ class FlexFileSystem(object):
         return ret_val        
 
     #-----------------------------------------------------------------------------
+    def create_local_text_file(self, filespec, path="", data=" ", encoding="utf-8", delete_existing=True):
+        """
+        Provide a means to write a file using local file system access, even when running on AWS s3 where self.key is defined.
+        
+         >>> fs = FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root=localsecrets.XML_ORIGINALS_PATH)
+         >>> fs.create_local_text_file('test-delete.txt', delete_existing=True)
+         True
+        """
+        #  see if the file exists
+        ret_val = False
+        fullfilespec = os.path.join(path, filespec)
+        try:
+            if delete_existing:
+                os.remove(fullfilespec)
+        except Exception as e:
+            pass # ok
+            
+        try:
+            with open(fullfilespec, 'w', encoding=encoding) as out:
+                out.write(data)
+        except Exception as e:
+            logger.error(f"FlexFileSystemError: Local File System write/access error: ({e})")
+        else:
+            ret_val = True
+        
+        return ret_val        
+
+    #-----------------------------------------------------------------------------
     def create_text_file(self, filespec, path=None, data=" ", encoding="utf-8", delete_existing=True, path_is_root_bucket=False):
         """
          >>> fs = FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root=localsecrets.XML_ORIGINALS_PATH)

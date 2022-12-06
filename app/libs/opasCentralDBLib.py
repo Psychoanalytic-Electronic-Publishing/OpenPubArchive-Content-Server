@@ -2191,7 +2191,7 @@ class opasCentralDB(object):
         self.do_action_query(querytxt="DELETE FROM api_articles WHERE art_id=%(art_id)s;", queryparams=query_param_dict)
 
     #----------------------------------------------------------------------------------------
-    def do_action_query(self, querytxt, queryparams, contextStr=None):
+    def do_action_query(self, querytxt, queryparams=None, contextStr=None, log_integrity_errors=True):
     
         fname = "do_action_query"
         ret_val = False
@@ -2202,7 +2202,10 @@ class opasCentralDB(object):
             
         with closing(self.db.cursor(buffered=True, dictionary=True)) as dbc:
             try:
-                dbc.execute(querytxt, queryparams)
+                if queryparams is not None:
+                    dbc.execute(querytxt, queryparams)
+                else:
+                    dbc.execute(querytxt)
             except mysql.connector.DataError as e:
                 logger.error(f"DBError: Art: {contextStr}. DB Data Error {e} ({querytxt})")
                 # raise self.db.DataError(e)
@@ -2210,7 +2213,8 @@ class opasCentralDB(object):
                 logger.error(f"DBError: Art: {contextStr}. DB Operation Error {e} ({querytxt})")
                 raise mysql.connector.OperationalError(e)
             except mysql.connector.IntegrityError as e:
-                logger.error(f"DBError: Art: {contextStr}. DB Integrity Error {e} ({querytxt})")
+                if log_integrity_errors:
+                    logger.error(f"DBError: Art: {contextStr}. DB Integrity Error {e} ({querytxt})")
                 raise mysql.connector.IntegrityError(e)
             except mysql.connector.InternalError as e:
                 logger.error(f"DBError: Art: {contextStr}. DB Internal Error {e} ({querytxt})")
