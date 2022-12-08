@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.1206/v2.1.195"   # semver versioning after date.
+__version__     = "2022.1208/v2.1.196"   # semver versioning after date.
 __status__      = "Development/Libs/Loader"  
 
 """
@@ -5210,6 +5210,156 @@ def documents_document_fetch(response: Response,
                     ret_val.documents.responseSet[0].sourceNext = supplemental[2]["art_id"]
             except Exception as e:
                 logger.debug(f"No next/prev data to return ({e})")
+        
+        except Exception as e:
+            response.status_code=httpCodes.HTTP_400_BAD_REQUEST
+            status_message = f"DocumentFetchError: {client_id}/{session_id}: {e}"
+            logger.error(status_message)
+            ret_val = None
+            raise HTTPException(
+                status_code=response.status_code,
+                detail=status_message
+            )
+        else:
+            if ret_val is not None and ret_val != {}:
+                response.status_code = httpCodes.HTTP_200_OK
+                status_message = opasCentralDBLib.API_STATUS_SUCCESS
+                try:
+                    access = ret_val.documents.responseSet[0].accessChecked == True and ret_val.documents.responseSet[0].accessLimited == False
+                    doc_len = len(ret_val.documents.responseSet[0].document)
+                except Exception as e:
+                    access = False
+                    doc_len = 0
+                    status_message = f"{client_id}:{session_id}: Document fetch Error {e}"
+                    logger.info(status_message)
+                else:
+                    if access == False:
+                        status_message = f"{client_id}:{session_id}: Document (Abstract only) fetch (access: {access}; doc length: {doc_len}"
+                    else:
+                        status_message = f"{client_id}:{session_id}: Document fetch (access: {access}; doc length: {doc_len}"
+                    
+                    logger.info(status_message)
+
+            else:
+                # make sure we specify an error in the session log
+                # not sure this is the best return code, but for now...
+                status_message = msgdb.get_user_message(opasConfig.ERROR_404_DOCUMENT_NOT_FOUND) + request_qualifier_text 
+                response.status_code = httpCodes.HTTP_404_NOT_FOUND
+                # record session endpoint in any case   
+
+            ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DOCUMENTS,
+                                        session_info=session_info, 
+                                        params=req_url,
+                                        item_of_interest=documentID, 
+                                        return_status_code = response.status_code,
+                                        status_message=status_message
+                                        )
+
+            if ret_val is None or ret_val == {}:
+                logger.error(status_message)
+                raise HTTPException(
+                    status_code=response.status_code,
+                    detail=status_message
+                )           
+            else:
+                ret_val.documents.responseInfo.request = req_url
+                if access == False:
+                    #  abstract returned...we don't count those currently.
+                    logger.info("Full-text access not allowed--Abstract only." + request_qualifier_text)
+                else:
+                    if ret_val.documents.responseInfo.count > 0:
+                        #  record document view if found
+                        ocd.record_document_view(document_id=documentID,
+                                                 session_info=session_info,
+                                                 view_type="Document")
+                    else:
+                        logger.error("No document available." + request_qualifier_text)
+
+    log_endpoint_time(request, ts=ts, level="debug")
+    return ret_val
+
+@app.get("/v2/Documents/Archival/{documentID}/", response_model=models.Documents, tags=["Documents"], summary=opasConfig.ENDPOINT_SUMMARY_DOCUMENT_VIEW, response_model_exclude_unset=True) # more consistent with the model grouping
+def documents_archival_fetch(response: Response,
+                             request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
+                             documentID: str=Path(..., title=opasConfig.TITLE_DOCUMENT_ID, description=opasConfig.DESCRIPTION_DOCIDSINGLE), # return controls 
+                             specialoptions:int=Query(0, title=opasConfig.TITLE_SPECIALOPTIONS, description=opasConfig.DESCRIPTION_SPECIALOPTIONS), 
+                             client_id:int=Depends(get_client_id), 
+                             client_session:str= Depends(get_client_session)
+                             ):
+    """
+    ## Function
+        <b>Returns the Document information, document summary (absract) and full-text - but conditionally.</b>
+
+        Restricted to a single document return (partial documentID not permitted).
+
+        Parameter Additonal information
+
+    ## Return Type
+       models.Documents
+
+    ## Status
+       Development
+
+    ## Notes
+
+    ## Potential Errors
+       THE USER NEEDS TO BE AUTHENTICATED to return a document.
+
+    """
+    # NOTE: Calls the code for the Glossary endpoint via function view_a_glossary_entry)
+    ret_val = None
+    ts = time.time()
+    caller_name = "[v2/Documents/Archival]"
+    if opasConfig.DEBUG_TRACE:
+        print(f"{datetime.now().time().isoformat()}: {caller_name} {client_session}: ")
+
+    session_id = client_session
+    document_id = documentID
+    opasDocPermissions.verify_header(request, "archival_fetch") # for debugging client call
+    log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
+    ocd, session_info = opasDocPermissions.get_session_info(request, response, session_id=client_session, client_id=client_id, caller_name=caller_name)
+    # for qualifying any errors:
+    request_qualifier_text = f" Request: {documentID}. Session {session_info.session_id}."
+
+    if 1:    
+        try:
+            # documents_get_document handles the view authorization and returns abstract if not authenticated.
+            req_url=urllib.parse.unquote(request.url._url)
+            req_url_params = dict(parse.parse_qsl(parse.urlsplit(req_url).query))
+            # param_search = req_url_params.get("search", None)
+            
+            # let's see about loading it directly.
+            # See if it's in the api_articles_removed table
+            sqlSelect = f"SELECT * from api_articles_removed WHERE art_id='{documentID}'"
+            rows = ocd.get_select_as_list_of_dicts(sqlSelect)
+            # if not, it's an error
+            if rows == []:
+                logger.error("Archival Document not found")
+            else:
+                if len(rows) > 1: #this is an error
+                    logger.error("There are more than one matching row")
+                else:
+                    document_record = rows[0]
+                    filename = document_record.get("filename", None)
+                    fullfilename = document_record.get("fullfilename", None)
+                    art_id = document_record.get("art_id", None)
+                    title = document_record.get("art_title", None)
+                    ret_val = opasAPISupportLib.documents_get_document_from_file( documentID, 
+                                                                                  req_url=req_url,
+                                                                                  fullfilename=fullfilename, 
+                                                                                  session_info=session_info,
+                                                                                  option_flags=specialoptions,
+                                                                                  request=request
+                                                                                  )
+    
+                try:
+                    supplemental = opasPySolrLib.metadata_get_next_and_prev_articles(art_id=documentID)
+                    if supplemental[0] != {}:
+                        ret_val.documents.responseSet[0].sourcePrevious = supplemental[0]["art_id"]
+                    if supplemental[2] != {}:
+                        ret_val.documents.responseSet[0].sourceNext = supplemental[2]["art_id"]
+                except Exception as e:
+                    logger.debug(f"No next/prev data to return ({e})")
         
         except Exception as e:
             response.status_code=httpCodes.HTTP_400_BAD_REQUEST

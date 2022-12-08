@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.1206/v2.0.027"   # semver versioning after date.
+__version__     = "2022.1208/v2.0.028"   # semver versioning after date.
 __status__      = "Development"
 
 programNameShort = "opasDataLoader"
@@ -134,6 +134,7 @@ import configLib.opasCoreConfig
 from configLib.opasCoreConfig import solr_authors2, solr_gloss2
 import loaderConfig
 import opasSolrLoadSupport
+import opasArticleIDSupport
 
 import opasXMLHelper as opasxmllib
 import opasCentralDBLib
@@ -451,7 +452,10 @@ def main():
     rebuild_count = 0
     reload_count = 0
     ocd =  opasCentralDBLib.opasCentralDB()
-    fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root=localsecrets.FILESYSTEM_ROOT)
+    # options.rootFolder defaults to localsecrets.FILESYSTEM_ROOT, unless option is specified otherwise
+    # this allows relative paths, by specifying dataroot="", example:
+    #       --dataroot="" --only "./../tests/testdatasource/_PEPSpecial/IJPOpen/IJPOPEN.008.0100A(bKBD3).xml"
+    fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root=options.rootFolder)
 
     # set toplevel logger to specified loglevel
     logger = logging.getLogger()
@@ -644,7 +648,7 @@ def main():
             filespec = options.file_only
             exists = fileinfo.mapFS(filespec)
             if not exists:
-                msg = f"File {filespec} not found.  Exiting."
+                msg = f"File {filespec} not found.  Exiting. {os.getcwd()}"
                 logger.warning(msg)
                 print (msg)
                 exit(0)
@@ -782,10 +786,11 @@ def main():
                     # make changes to the XML
                     input_filespec = n.filespec
                     fileXMLContents, input_fileinfo = fs.get_file_contents(input_filespec)
+                    # print (f"Filespec: {input_filespec}")
                     parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True)
                     parsed_xml = etree.fromstring(opasxmllib.remove_encoding_string(fileXMLContents), parser)
                     # save common document (article) field values into artInfo instance for both databases
-                    artInfo = opasSolrLoadSupport.ArticleInfo(sourceDB.sourceData, parsed_xml=parsed_xml, art_id=artID, filename_base=base, logger=logger)
+                    artInfo = opasArticleIDSupport.ArticleInfo(sourceDB.sourceData, parsed_xml=parsed_xml, art_id=artID, filename_base=base, fullfilename=input_filespec, logger=logger)
                     artInfo.filedatetime = input_fileinfo.timestamp_str
                     # artInfo.filename = base # now done in articleInfo
                     # get artinfo per filename, to see if this is an issue coded with volume suffix
@@ -808,11 +813,14 @@ def main():
                         if opasDataLoaderIJPOpenSupport.is_removed_version(ocd, art_id=artInfo.art_id):
                             continue # skip this file
                         else:
-                            version_history_unit = opasDataLoaderIJPOpenSupport.version_history_processing(artInfo,
-                                                                                                           solrdocs=solr_docs2, solrauth=solr_authors2,
-                                                                                                           file_xml_contents=fileXMLContents,
-                                                                                                           filename=inputfilename,
-                                                                                                           verbose=options.display_verbose)
+                            # TBD - Might revise to use internal manuscript date in the version_section when there is one.
+                            #       Currently uses input file's date.
+                            version_history_unit = \
+                                opasDataLoaderIJPOpenSupport.version_history_processing(artInfo,
+                                                                                        solrdocs=solr_docs2, solrauth=solr_authors2,
+                                                                                        file_xml_contents=fileXMLContents,
+                                                                                        full_filename_with_path=inputfilename,
+                                                                                        verbose=options.display_verbose)
 
                     parsed_xml, ret_status = opasXMLProcessor.xml_update(parsed_xml,
                                                                          artInfo,
@@ -824,7 +832,10 @@ def main():
                     
                     # if there's a version history to be appended, do it so it's written to output file!
                     if version_history_unit is not None:
-                        parsed_xml.append(version_history_unit)
+                        if version_history_unit["version_section"] is not None:
+                            if options.display_verbose:
+                                print("\t...Adding PEP-Web Manuscript history unit to compiled XML")
+                            parsed_xml.append(version_history_unit["version_section"])
                     
                     # impx_count = int(pepxml.xpath('count(//impx[@type="TERM2"])'))
                     # write output file
@@ -884,7 +895,7 @@ def main():
                 #root = pepxml.getroottree()
         
                 # save common document (article) field values into artInfo instance for both databases
-                artInfo = opasSolrLoadSupport.ArticleInfo(sourceDB.sourceData, parsed_xml=parsed_xml, art_id=artID, filename_base=base, logger=logger)
+                artInfo = opasArticleIDSupport.ArticleInfo(sourceDB.sourceData, parsed_xml=parsed_xml, art_id=artID, filename_base=base, fullfilename=final_xml_filename, logger=logger)
                 artInfo.filedatetime = final_fileinfo.timestamp_str
                 # artInfo.filename = base
                 artInfo.file_size = final_fileinfo.filesize
@@ -1169,7 +1180,7 @@ if __name__ == "__main__":
                       help="Force reloads to Solr whether changed or not.")
     parser.add_option("--after", dest="created_after", default=None,
                       help="Load files created or modifed after this datetime (use YYYY-MM-DD format). (May not work on S3)")
-    parser.add_option("-d", "--dataroot", dest="rootFolder", default=localsecrets.XML_ORIGINALS_PATH,
+    parser.add_option("-d", "--dataroot", dest="rootFolder", default=localsecrets.FILESYSTEM_ROOT,
                       help="Bucket (Required S3) or Root folder path where input data is located")
     parser.add_option("--key", dest="file_key", default=None,
                       help="Key for a single file to load, e.g., AIM.076.0269A.  Use in conjunction with --sub for faster processing of single files on AWS")

@@ -22,20 +22,19 @@ import dateutil
 # from datetime import datetime
 from pathlib import Path
 
-import lxml
-from lxml import etree
+# import lxml
+# from lxml import etree
 import lxml.etree as ET
-parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=False)
+parser = ET.XMLParser(encoding='utf-8', recover=True, resolve_entities=False)
 
-from configLib.opasIJPConfig import IJPOPENISSUES
 import opasConfig
 
 import localsecrets
 import opasFileSupport
-import opasArticleIDSupport
+#import opasArticleIDSupport
 #import opasSolrLoadSupport
-import opasGenSupportLib as opasgenlib
-import opasXMLHelper as opasxmllib
+#import opasGenSupportLib as opasgenlib
+#import opasXMLHelper as opasxmllib
 import logging
 logger = logging.getLogger(__name__)
 
@@ -47,6 +46,7 @@ ocd =  opasCentralDBLib.opasCentralDB()
 fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root=localsecrets.FILESYSTEM_ROOT)
 start_folder = localsecrets.XML_ORIGINALS_PATH + "/IJPOPEN"
 DOCUMENT_UNIT_NAME = "PEP-Web Manuscript Version History"
+import copy
 
 def is_removed_version(ocd, art_id, verbose=None):
     """
@@ -63,11 +63,25 @@ def is_removed_version(ocd, art_id, verbose=None):
         
     return ret_val
     
-def version_history_processing(artInfo, solrdocs, solrauth, file_xml_contents, filename, testmode=False, verbose=False):
+def version_history_processing(artInfo, solrdocs, solrauth,
+                               file_xml_contents,
+                               full_filename_with_path,
+                               testmode=False,
+                               verbose=False):
     """
-        - This is designed for IJPOpen
-        - The server will perform version process on these, and return an XML unit that can be appended to the compiled (processed) XML file.
-        - This IJPOPEN preprocessor will:
+        This is designed for IJPOpen to store old (replaced) versions of manuscripts.
+        The server will perform version process on these, and return an XML unit that can be appended to the compiled (processed) XML file.
+        
+        Parameters:
+        artinfo  - is the artInfo object created by opasDataLoader
+        solrdocs - is the opened, authorized pysolr object for the docs core
+        solrauth - is the opened, authorized pysolr object for the authors core
+        file_xml_contents - is not currently needed
+        filename - should be the full name of the file, **including path**
+        testmode - does the copying part of the action but does not do the deletions, so the tests may be repeated
+        verbose - shows more messages during processing
+        
+        - The process works like this.  This IJPOPEN preprocessor will:
            - look for the most recent version of the file that's described in artInfo.  
            - For all the older files, it will: 
                - copy the api_articles table info for each to api_articles_removed.
@@ -129,98 +143,145 @@ def version_history_processing(artInfo, solrdocs, solrauth, file_xml_contents, f
        - The code now also parses the meta/adldata fields and adds all the fields to the artInfo structure for later use if needed.
     
     """
-    ret_val = None
+    
+    def criteria(fileinfoobj):
+        return fileinfoobj.basename
+    
+    def get_root_ver(name):
+        ret_val = {}
+        m = re.match("(?P<artid>(?P<root>.*?)(?P<ver>.))[\(].*", name)
+        if m is not None:
+            ret_val = {
+                "root": m.group("root"),
+                "version": m.group("ver"),
+                "art_id": m.group("artid")
+            }
+        return ret_val
+    
+    ret_val = {
+        "is_newest": False, 
+        "newest_version": "A",
+        "version_section": None, 
+        "errors": False,
+    }
+    
+    VERSION_STR_DTIME_FMT = "%Y/%m/%d %H:%M:%S"
     caller_name = "update_latest_version_info"
-    manuscript_id = artInfo.publisher_ms_id
     target_article_id = artInfo.art_id
-    if artInfo.art_id[-1] != "A":
-        # this is a new version
-        
-        path = Path(filename)
-        file_path = path.parent
+    art_id_no_suffix = target_article_id[:-1]
+    filespec_regex = f"{art_id_no_suffix}.*\(bKBD3\).*"
+    path = Path(full_filename_with_path)
+    file_path = path.parent
+    filenames = fs.get_matching_filelist(filespec_regex=filespec_regex, path=file_path)
+    filenames_reversed = copy.copy(filenames)
+    # figure out newest suffix
+    filenames_reversed.sort(key=criteria, reverse=True) # ascending order
+    newest_filename = filenames_reversed[0]
+    newest_filename_info = get_root_ver(newest_filename.basename.upper())
+    newest_version = newest_filename_info.get("version")
+    ret_val["newest_version"] = newest_version
+    old_version_article_info = retrieve_removed_versions_info(ocd, art_id_no_suffix, verbose=verbose)
+    
+    if artInfo.art_id[-1] == newest_version:
+        ret_val["is_newest"] = True
+        # this is the newest version       
         if verbose:
             print(80*"-")
-            print ("\t...Updating IJPOpen version references")
-            
-        target_article = opasArticleIDSupport.ArticleID(articleID=target_article_id)
-        art_id_no_suffix = target_article.articleID[:-1]
-        
+            print (f"\t...Updating IJPOpen old version references for {newest_filename.basename}")
+
+    if len(filenames_reversed) > 1:
         print (f"\t...Checking for old versions from {start_folder}...")
-        filespec_regex = f"{art_id_no_suffix}.*\(bKBD3\).*"
-        #article_ids_in_target_folder = ""
-        filenames = fs.get_matching_filelist(filespec_regex=filespec_regex, path=file_path)
-        for n in filenames:
-            nm = n.basename
-            nroot = nm[:nm.find('(')]
-            prior_version_art_id = nroot.upper()
-            # rename article KBD3
-            #  TBD LATER - easier for testing this way
-            # rename article EXP_ARCH1
-            #  TBD LATER - easier for testing this way
-            # remove other common articles from articles_id
-            if target_article_id == prior_version_art_id:
-                # this is the new article...skip it.
+        # go through prior versions
+        for n in filenames: # not reverse order
+            nm = get_root_ver(n.basename.upper())
+            ver = nm.get("version")
+            base = nm.get("root")
+            art_id = nm.get("art_id")
+            
+            if ver == newest_version:
                 continue
-            success = copy_to_articles_removed(ocd, prior_version_art_id)
-            if success:
-                #this is not needed now, can delete xml field!
-                #success = add_removed_article_xml(ocd, prior_version_art_id, file_xml_contents, verbose=None)
+
+            prior_version_art_id = art_id
+            # remove other common articles from articles_id
+            
+            if retrieve_specific_version_info(ocd, art_id, table="api_articles") != []:
+                # still in api_articles
+                if retrieve_specific_version_info(ocd, art_id, table="api_articles_removed") == []:
+                    # not in removed table
+                    success = copy_to_articles_removed(ocd, prior_version_art_id)
+                    success = add_removed_article_filename_with_path(ocd, prior_version_art_id, full_filename_with_path, verbose=None)
+                else:
+                    if verbose:
+                        print (f"\t...{art_id} has already been removed.")
+                # in either case, need to remove from articles
                 success = remove_from_articles(ocd, prior_version_art_id)
+                
+                # now remove from solr
                 success = solrdocs.delete(q=f"art_id:{prior_version_art_id}")
                 success = solrauth.delete(q=f"art_id:{prior_version_art_id}")
+                if not testmode:
+                    try:
+                        solrdocs.commit()
+                        solrauth.commit()
                     
-            if success and not testmode: # success:
-                try:
-                    solrdocs.commit()
-                    solrauth.commit()
-                    
-                except mysql.connector.Error as e:
-                    errStr = f"{caller_name}: Commit failed! {e}"
-                    logger.error(errStr)
-                    if opasConfig.LOCAL_TRACE: print (errStr)
-                    ret_val = False
+                    except Exception as e:
+                        errStr = f"{caller_name}: Commit failed! {e}"
+                        logger.error(errStr)
+                        if opasConfig.LOCAL_TRACE: print (errStr)
+                        ret_val["errors"] = True
 
-        # TBD - remove prior article version from Solr
+    # now get the version history unit to return
+    list_of_items = ""
+    list_of_items_count = 0
+    # Perhaps the internal file date stored in the tables would be better.
+    for n in old_version_article_info:
+        tmz = dateutil.parser.isoparse(n["filedatetime"])
+        tmz_str = tmz.strftime(VERSION_STR_DTIME_FMT)
+        ver_art_id = n["art_id"]
+        if ver_art_id[-1] == artInfo.art_id[-1]:
+            add_note = " (This Version)"
+        else:
+            add_note = ""
 
-        # now get the version history unit to return
-        old_version_article_info = retrieve_removed_versions_info(ocd, art_id_no_suffix, verbose=verbose)
-        list_of_items = ""
-        for n in old_version_article_info:
-            tmz = dateutil.parser.isoparse(n["filedatetime"])
-            tmz_str = tmz.strftime("%Y/%m/%d")
-            ver_art_id = n["art_id"]
-            list_item = f'{ver_art_id}: {tmz_str} {manuscript_id}'
-            list_of_items += f"""<li><p><impx type='RVDOC' rx='{ver_art_id}'>{list_item}</impx></p></li>"""
+        list_item = f'Manuscript Date: {tmz_str}'
+        list_of_items_count += 1
+        list_of_items += f"""<li><p><impx type='RVDOC' rx='{ver_art_id}'>{list_item}</impx>{add_note}</p></li>"""
 
-        if list_of_items != "": 
-            ijpopen_addon = f"""
-               <unit type="previousversions">
-                    <h1>{DOCUMENT_UNIT_NAME}</h1>
-                    <list>
-                    {list_of_items}
-                    </list>
-                </unit>
-            """
-            ret_val = ET.fromstring(ijpopen_addon, parser)
-            if verbose:
-                print("\t...Added PEP-Web Manuscript history unit to compiled XML")
+    # Option to indicate newest version
+    if list_of_items_count > 0:
+        newest_art_id = art_id_no_suffix + newest_version
+        tmz = dateutil.parser.isoparse(newest_filename.fileinfo["LastModified"])
+        tmz_str = tmz.strftime(VERSION_STR_DTIME_FMT)
 
-        # query solr for all records with this artid base
-        # figure out the most recent one
-        # update all of the artquals to point to the most recent one, except the most recent one. [maybe]
-        # no need to touch the files or other fields
+        if artInfo.art_id[-1] != newest_version:
+            # add note with link to newst version
+            add_note = " (Newest Version)"
+        else:
+            add_note = " (This Version -- Newest Version)"
+    
+        list_item = f'Manuscript Date: {tmz_str}'
+        list_of_items += f"""<li><p><impx type='RVDOC' rx='{newest_art_id}'>{list_item}</impx>{add_note}</p></li>"""
         
-        # query Solr, get other document records...or maybe just write them?
-        # update other record art_qual with this art_id
-        print((80*"-"))
+
+    if list_of_items != "": 
+        ijpopen_addon = f"""
+           <unit type="previousversions">
+                <h1>{DOCUMENT_UNIT_NAME}</h1>
+                <list type="BUL1">
+                {list_of_items}
+                </list>
+            </unit>
+        """
+        ret_val["version_section"] = ET.fromstring(ijpopen_addon, parser)
+
     # Return None, or the new ET_Val unit to be appended
     return ret_val
 
-def add_removed_article_xml(ocd, art_id, xml_filecontents, verbose=None):
+def add_removed_article_xml(ocd, art_id, xml_filecontents, verbose=False):
     """
     Adds the XML data from the file to the articles_removed table
     
-    Not needed or used at the moment
+    Not currently used or needed
     
     """
     ret_val = False
@@ -251,13 +312,59 @@ def add_removed_article_xml(ocd, art_id, xml_filecontents, verbose=None):
     
     return ret_val  # return True for success
 
+def add_removed_article_filename_with_path(ocd, art_id, filename_with_path, verbose=False):
+    """
+    Adds the XML data from the file to the articles_removed table.  The field which
+     normally, in api_articles, has only the filename, is updated to have the complete file path.
+     This is needed to facilitate reloading the file upon the archival endpoint call for
+     that id.
+    
+    """
+    ret_val = False
+    caller_name = "addRemovedArticleFilename"
+    msg = f"\t...Updating record to add full file path to api_articles_removed."
+    logger.info(msg)
+    if verbose:
+        print (msg)
+    
+    ocd.open_connection(caller_name=caller_name)
+    sqlcpy = f"""
+                UPDATE api_articles_removed
+                    SET filename = %s
+                    WHERE art_id = %s
+              """
+    
+    query_params = (filename_with_path, art_id )
+
+    try:
+        res = ocd.do_action_query(querytxt=sqlcpy, queryparams=query_params)
+    except Exception as e:
+        errStr = f"{caller_name}: update error {e}"
+        logger.error(errStr)
+        if opasConfig.LOCAL_TRACE: print (errStr)
+    else:
+        ret_val = True
+
+    
+    return ret_val  # return True for success
+
+def retrieve_specific_version_info(ocd, art_id, table="api_articles_removed", verbose=False):
+    """
+    Return a list of removed records
+    """
+    ret_val = []
+    select_old = f"""SELECT * from {table}
+                    WHERE art_id = '{art_id}'
+                  """
+
+    ret_val = ocd.get_select_as_list_of_dicts(sqlSelect=select_old)
+    return ret_val
+
 def retrieve_removed_versions_info(ocd, art_id_no_suffix, verbose=False):
     """
     Return a list of removed records
     """
     ret_val = []
-    caller_name = "fetchOldVersions"
-        
     select_old = f"""SELECT * from api_articles_removed
                     WHERE art_id RLIKE '{art_id_no_suffix}.'
                   """
@@ -267,18 +374,18 @@ def retrieve_removed_versions_info(ocd, art_id_no_suffix, verbose=False):
 
 def copy_to_articles_removed(ocd, art_id, verbose=None):
     """
-    Removes the article data for a single document from the api_articles table in mysql database opascentral
+    Removes the article data for a single document from the api_articles table 
       and copies it to the api_articles_removed table
     
     """
     ret_val = False
-    caller_name = "removeArticle"
+    caller_name = "copyArticle"
     msg = f"\t...Copying api_articles record to api_articles_removed."
     logger.info(msg)
     if verbose:
         print (msg)
     
-    ocd.open_connection(caller_name=caller_name)
+    # ocd.open_connection(caller_name=caller_name)
     sqlcpy = f"""
                 insert into api_articles_removed
                     select * from api_articles where art_id='{art_id}'
@@ -287,14 +394,10 @@ def copy_to_articles_removed(ocd, art_id, verbose=None):
     try:
         res = ocd.do_action_query(querytxt=sqlcpy, log_integrity_errors=False)
     except Exception as e:
-        sql_error_nbr = str(e.msg)[0:4]
-        if sql_error_nbr == "1062":
-            pass # duplicate, integrity error.  Ok.
-            ret_val = True
-        else:
-            errStr = f"AddToArticlesDBError: insert error {e}"
-            logger.error(errStr)
-            if opasConfig.LOCAL_TRACE: print (errStr)
+        errStr = f"AddToArticlesDBError: insert error {e}"
+        logger.error(errStr)
+        if opasConfig.LOCAL_TRACE:
+            print (errStr)
     else:
         ret_val = True
    
@@ -302,13 +405,12 @@ def copy_to_articles_removed(ocd, art_id, verbose=None):
     
 def remove_from_articles(ocd, art_id, verbose=None):
     """
-    Removes the article data for a single document from the api_articles table in mysql database opascentral
-      and copies it to the api_articles_removed table
+    Removes the article data for a single document from the api_articles table
     
     """
     ret_val = False
     caller_name = "removeArticle"
-    msg = f"\t...Copying api_articles record to api_articles_removed."
+    msg = f"\t...Removing api_articles record."
     logger.info(msg)
     if verbose:
         print (msg)
@@ -321,7 +423,7 @@ def remove_from_articles(ocd, art_id, verbose=None):
     try:
         res = ocd.do_action_query(querytxt=sqldel)
     except Exception as e:
-        errStr = f"AddToArticlesDBError: delete error {e}"
+        errStr = f"DeleteArticlesDBError: delete error {e}"
         logger.error(errStr)
         if opasConfig.LOCAL_TRACE: print (errStr)
     else:

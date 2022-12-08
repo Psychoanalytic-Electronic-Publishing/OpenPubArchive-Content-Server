@@ -16,7 +16,7 @@ import opasCentralDBLib
 import opasXMLHelper as opasxmllib
 import PEPGlossaryRecognitionEngine
 import opasXMLProcessor
-import opasSolrLoadSupport
+import opasArticleIDSupport
 import opasProductLib
 import opasCentralDBLib
 
@@ -231,7 +231,7 @@ class TestXMLProcessing(unittest.TestCase):
         parser = etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True)
         pepxml = etree.fromstring(test_data3, parser)
         sourceDB = opasProductLib.SourceInfoDB()
-        artInfo = opasSolrLoadSupport.ArticleInfo(sourceDB.sourceData, parsed_xml=pepxml, art_id="CPS.058.0138A", filename_base="CPS.058.0138A", logger=logger) # , art_id=artID, filename_base=base, 
+        artInfo = opasArticleIDSupport.ArticleInfo(sourceDB.sourceData, parsed_xml=pepxml, art_id="CPS.058.0138A", filename_base="CPS.058.0138A", logger=logger) # , art_id=artID, filename_base=base, 
         #root = pepxml.getroottree()
         p1a = opasxmllib.xml_elem_or_str_to_xmlstring(pepxml.xpath("//body/p")[0])
         p2a = opasxmllib.xml_elem_or_str_to_xmlstring(pepxml.xpath("//body/p")[1])
@@ -263,7 +263,7 @@ class TestXMLProcessing(unittest.TestCase):
         parser = etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True)
         pepxml = etree.fromstring(test_data3, parser)
         sourceDB = opasProductLib.SourceInfoDB()
-        artInfo = opasSolrLoadSupport.ArticleInfo(sourceDB.sourceData, parsed_xml=pepxml, art_id="CPS.058.0138A", filename_base="CPS.058.0138A", logger=logger) # , art_id=artID, filename_base=base, 
+        artInfo = opasArticleIDSupport.ArticleInfo(sourceDB.sourceData, parsed_xml=pepxml, art_id="CPS.058.0138A", filename_base="CPS.058.0138A", logger=logger) # , art_id=artID, filename_base=base, 
         #root = pepxml.getroottree()
         p1a = opasxmllib.xml_elem_or_str_to_xmlstring(pepxml.xpath("//body/p")[0])
         p2a = opasxmllib.xml_elem_or_str_to_xmlstring(pepxml.xpath("//body/p")[1])

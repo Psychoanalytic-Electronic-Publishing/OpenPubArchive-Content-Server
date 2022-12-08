@@ -31,6 +31,8 @@ import email.utils
 import opasConfig
 # import roman
 import difflib
+from lxml import etree
+
 
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
@@ -511,6 +513,48 @@ def in_quotes(arg):
     except Exception as e:
         logger.error(f"Exception {e}")
         return False
+
+#-----------------------------------------------------------------------------
+def force_string_return_from_various_return_types(text_str, min_length=5):
+    """
+    Sometimes the return isn't a string (it seems to often be "bytes") 
+      and depending on the schema, from Solr it can be a list.  And when it
+      involves lxml, it could even be an Element node or tree.
+
+    This checks the type and returns a string, converting as necessary.
+
+    >>> force_string_return_from_various_return_types(["this is really a list",], min_length=5)
+    'this is really a list'
+
+    """
+    ret_val = None
+    if text_str is not None:
+        if isinstance(text_str, str):
+            if len(text_str) > min_length:
+                # we have an abstract
+                ret_val = text_str
+        elif isinstance(text_str, list):
+            if text_str == []:
+                ret_val = None
+            else:
+                ret_val = text_str[0]
+                if ret_val == [] or ret_val == '[]':
+                    ret_val = None
+        else:
+            logger.error("Type mismatch on Solr Data. forceStringReturn ERROR: %s", type(ret_val))
+
+        try:
+            if isinstance(ret_val, etree._Element):
+                ret_val = etree.tostring(ret_val)
+
+            if isinstance(ret_val, bytes) or isinstance(ret_val, bytearray):
+                logger.error("Byte Data")
+                ret_val = ret_val.decode("utf8")
+        except Exception as e:
+            err = "forceStringReturn Error forcing conversion to string: %s / %s" % (type(ret_val), e)
+            logger.error(err)
+
+    return ret_val        
 
 def in_brackets(arg):
     """

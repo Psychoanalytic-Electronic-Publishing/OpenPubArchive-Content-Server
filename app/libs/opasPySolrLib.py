@@ -388,7 +388,7 @@ def authors_get_author_publications(author_partial,
     author_pub_list_items = []
     for result in results.docs:
         citeas = result.get("art_citeas_xml", None)
-        citeas = opasQueryHelper.force_string_return_from_various_return_types(citeas)
+        citeas = opasgenlib.force_string_return_from_various_return_types(citeas)
 
         item = models.AuthorPubListItem( authorID = result.get("art_author_id", None), 
                                          documentID = result.get("art_id", None),
@@ -1998,7 +1998,7 @@ def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
             else:
                 pgStart, pgEnd = (0, 0)
             citeAs = result.get("art_citeas_xml", None)  
-            citeAs = opasQueryHelper.force_string_return_from_various_return_types(citeAs)
+            citeAs = opasgenlib.force_string_return_from_various_return_types(citeAs)
             vol = result.get("art_vol", None)
             issue = result.get("art_iss", None)
             issue_title = result.get("art_iss_title", None)
@@ -2222,7 +2222,7 @@ def search_stats_for_download(solr_query_spec: models.SolrQuerySpec,
                     documentListItem = models.DocumentListItem()
                     #documentListItem = get_base_article_info_from_search_result(result, documentListItem)
                     citeas = result.get("art_citeas_xml", None)
-                    citeas = opasQueryHelper.force_string_return_from_various_return_types(citeas)
+                    citeas = opasgenlib.force_string_return_from_various_return_types(citeas)
                     
                     documentListItem.score = result.get("score", None)               
                     # see if this article is an offsite article
@@ -3156,7 +3156,7 @@ def get_fulltext_from_search_results(result,
     documentListItem.docPagingInfo["page_offset"] = page_offset
 
     fullText = result.get("text_xml", None)
-    text_xml = opasQueryHelper.force_string_return_from_various_return_types(text_xml)
+    text_xml = opasgenlib.force_string_return_from_various_return_types(text_xml)
     if text_xml is None:  # no highlights, so get it from the main area
         try:
             text_xml = fullText

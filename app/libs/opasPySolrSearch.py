@@ -155,7 +155,7 @@ def get_fulltext_from_search_results(result,
     documentListItem.docPagingInfo["page_offset"] = page_offset
 
     fullText = result.get("text_xml", None)
-    text_xml = opasQueryHelper.force_string_return_from_various_return_types(text_xml)
+    text_xml = opasgenlib.force_string_return_from_various_return_types(text_xml)
     if text_xml is None:  # no highlights, so get it from the main area
         try:
             text_xml = fullText
@@ -391,7 +391,7 @@ def search_stats_for_download(solr_query_spec: models.SolrQuerySpec,
                     documentListItem = models.DocumentListItem()
                     #documentListItem = get_base_article_info_from_search_result(result, documentListItem)
                     citeas = result.get("art_citeas_xml", None)
-                    citeas = opasQueryHelper.force_string_return_from_various_return_types(citeas)
+                    citeas = opasgenlib.force_string_return_from_various_return_types(citeas)
                     
                     documentListItem.score = result.get("score", None)               
                     # see if this article is an offsite article

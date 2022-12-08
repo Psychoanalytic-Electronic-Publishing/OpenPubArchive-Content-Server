@@ -2215,7 +2215,8 @@ class opasCentralDB(object):
             except mysql.connector.IntegrityError as e:
                 if log_integrity_errors:
                     logger.error(f"DBError: Art: {contextStr}. DB Integrity Error {e} ({querytxt})")
-                raise mysql.connector.IntegrityError(e)
+                else:
+                    raise Exception(e)
             except mysql.connector.InternalError as e:
                 logger.error(f"DBError: Art: {contextStr}. DB Internal Error {e} ({querytxt})")
                 raise mysql.connector.InternalError(e)
