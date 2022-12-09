@@ -325,6 +325,7 @@ class FlexFileSystem(object):
             if delete_existing:
                 os.remove(fullfilespec)
         except Exception as e:
+            logger.info(f"Delete existing selected but file {fullfilespec} was not found, so no change there (not an error).  Exception: {e}")
             pass # ok
             
         try:

@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.1208/v2.0.028"   # semver versioning after date.
+__version__     = "2022.1209/v2.0.029"   # semver versioning after date.
 __status__      = "Development"
 
 programNameShort = "opasDataLoader"
@@ -701,7 +701,7 @@ def main():
             print (f"{pre_action_verb} started ({time.ctime()}).  Examining files.")
             glossary_file_skip_pattern=r"ZBK.069(.*)"
             rc_skip_glossary_kbd3_files = re.compile(glossary_file_skip_pattern, re.IGNORECASE)
-            
+            archived_files_not_loaded = 0
             for n in filenames:
                 fileTimeStart = time.time()
                 input_file_was_updated = False
@@ -713,6 +713,8 @@ def main():
                 m = re.match(r"([^ ]*).*\(.*\)", artID)
                 artID = m.group(1)
                 artID = artID.upper()
+                m = re.match(r"(.*?)\.", artID)
+                art_source = m.group(1)
                 
                 try:
                     inputfilename = n.fileinfo["name"]
@@ -809,8 +811,11 @@ def main():
                     # check if IJPOpen Article and look for older versions
                     version_history_unit = None
                     if artInfo.src_code == "IJPOPEN":
-                        # get manuscript id
+                        # Check if it's removed
                         if opasDataLoaderIJPOpenSupport.is_removed_version(ocd, art_id=artInfo.art_id):
+                            print ("\t...This version has already been archived/removed.  Skipping")
+                            skipped_files += 1
+                            archived_files_not_loaded += 1
                             continue # skip this file
                         else:
                             # TBD - Might revise to use internal manuscript date in the version_section when there is one.
@@ -861,6 +866,14 @@ def main():
                         msg = f"\t...There was a problem writing {fname}."
                         logger.error(msg)
                         print (msg)
+
+                # Check if it's removed
+                if art_source == "IJPOPEN":
+                    if opasDataLoaderIJPOpenSupport.is_removed_version(ocd, art_id=artID):
+                        print ("\t...This version has been archived/removed.  Skipping")
+                        skipped_files += 1
+                        archived_files_not_loaded += 1
+                        continue # skip this file
 
                 # make sure the file we read is the processed file.  Should be the output/processed build.
                 # note: if input build is same as processed (output build), then this won't change and the input file/build
@@ -1093,10 +1106,10 @@ def main():
             # write database_updated.txt
             try:
                 fname = f"{localsecrets.DATA_UPDATE_LOG_DIR}/database_updated.txt"
-                success = fs.create_local_text_file(fname, data='data loaded!\n', delete_existing=True)
+                success = fs.create_local_text_file(fname, data='data loaded!\n', delete_existing=False)
                 msg = f"Database was updated with {files_found - skipped_files} articles! Wrote {fname} in order to flag changes."
                 if success:
-                    if options.display_verbose:
+                    if 1: # options.display_verbose:
                         print (msg)
                     logger.warning(msg)
                 
@@ -1106,6 +1119,10 @@ def main():
             
         # for logging
         if 1: # (options.biblio_update or options.fulltext_core_update) == True:
+            # account for archive files skipped
+            processed_files_count -= archived_files_not_loaded
+            reload_count -= archived_files_not_loaded
+            
             elapsed_seconds = timeEnd-cumulative_file_time_start # actual processing time going through files
             elapsed_minutes = elapsed_seconds / 60
             print (80 * "-")

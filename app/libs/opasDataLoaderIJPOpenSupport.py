@@ -55,7 +55,7 @@ def is_removed_version(ocd, art_id, verbose=None):
     ret_val = False
         
     select_old = f"""SELECT * from api_articles_removed
-                    WHERE art_id RLIKE '{art_id}.'
+                    WHERE art_id RLIKE '{art_id}.?'
                   """
     vals = ocd.get_select_as_list_of_dicts(sqlSelect=select_old)
     if vals != []:
@@ -180,8 +180,6 @@ def version_history_processing(artInfo, solrdocs, solrauth,
     newest_filename_info = get_root_ver(newest_filename.basename.upper())
     newest_version = newest_filename_info.get("version")
     ret_val["newest_version"] = newest_version
-    old_version_article_info = retrieve_removed_versions_info(ocd, art_id_no_suffix, verbose=verbose)
-    
     if artInfo.art_id[-1] == newest_version:
         ret_val["is_newest"] = True
         # this is the newest version       
@@ -213,8 +211,9 @@ def version_history_processing(artInfo, solrdocs, solrauth,
                 else:
                     if verbose:
                         print (f"\t...{art_id} has already been removed.")
-                # in either case, need to remove from articles
-                success = remove_from_articles(ocd, prior_version_art_id)
+                
+                # in either case, need to remove from articles and the bibliotable
+                ocd.delete_specific_article_data(prior_version_art_id)
                 
                 # now remove from solr
                 success = solrdocs.delete(q=f"art_id:{prior_version_art_id}")
@@ -233,6 +232,8 @@ def version_history_processing(artInfo, solrdocs, solrauth,
     # now get the version history unit to return
     list_of_items = ""
     list_of_items_count = 0
+    old_version_article_info = retrieve_removed_versions_info(ocd, art_id_no_suffix, verbose=verbose)
+    
     # Perhaps the internal file date stored in the tables would be better.
     for n in old_version_article_info:
         tmz = dateutil.parser.isoparse(n["filedatetime"])
@@ -250,8 +251,10 @@ def version_history_processing(artInfo, solrdocs, solrauth,
     # Option to indicate newest version
     if list_of_items_count > 0:
         newest_art_id = art_id_no_suffix + newest_version
-        tmz = dateutil.parser.isoparse(newest_filename.fileinfo["LastModified"])
-        tmz_str = tmz.strftime(VERSION_STR_DTIME_FMT)
+        lastmod = newest_filename.fileinfo["LastModified"]
+        tmz_str = lastmod.strftime(VERSION_STR_DTIME_FMT)
+        list_item = f'Manuscript Date: {tmz_str}'
+        list_of_items_count += 1
 
         if artInfo.art_id[-1] != newest_version:
             # add note with link to newst version
