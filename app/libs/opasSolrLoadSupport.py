@@ -956,6 +956,7 @@ def add_article_to_api_articles_table(ocd, artInfo, verbose=None):
                                     art_citeas_text,
                                     ref_count,
                                     fullfilename,
+                                    manuscript_date_str,
                                     filename,
                                     filedatetime
                                     )
@@ -987,6 +988,7 @@ def add_article_to_api_articles_table(ocd, artInfo, verbose=None):
                                         %(art_citeas_text)s,
                                         %(ref_count)s,
                                         %(fullfilename)s,
+                                        %(manuscript_date_str)s,
                                         %(filename)s,
                                         %(filedatetime)s
                                         );
@@ -1021,6 +1023,7 @@ def add_article_to_api_articles_table(ocd, artInfo, verbose=None):
         "ref_count":  artInfo.ref_count,
         "fullfilename" : artInfo.fullfilename,
         "filename":  artInfo.filename,
+        "manuscript_date_str" : artInfo.manuscript_date_str,
         "filedatetime": artInfo.filedatetime
     }
 

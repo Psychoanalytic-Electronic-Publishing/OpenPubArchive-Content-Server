@@ -812,7 +812,14 @@ def documents_get_document_from_file(document_id,
     artInfo = opasArticleIDSupport.ArticleInfo(sourceDB.sourceData, parsed_xml=parsed_xml, art_id=document_id, filename_base=filenamebase, fullfilename=fullfilename, logger=logger)
     generic_document_id = document_id[:-1] + "?"
     # query the latest version of this document to get the documentListItem info
-    result = documents_get_abstracts(generic_document_id)
+    #result = documents_get_document(generic_document_id, session_info)
+    # have to call abstracts to get whatever matching root document is in solr
+    result = documents_get_abstracts(generic_document_id, 
+                                     ret_format=ret_format,
+                                     req_url=req_url, 
+                                     session_info=session_info,
+                                     request=request
+                                     )
 
     if result.documents.responseInfo.count == 1:
         # change fields as needed
@@ -833,11 +840,6 @@ def documents_get_document_from_file(document_id,
         if result.documents.responseSet[0].accessChecked and result.documents.responseSet[0].accessLimited == False:
             document_list_item.document = fileXMLContents
             
-        # REMOVE IN FINAL **********************************************************************
-        # TEMP - Go ahead and fill fileXMLContents since this only applies to archival documents.
-        document_list_item.document = fileXMLContents
-        # REMOVE IN FINAL **********************************************************************
-        
             
         ret_val = result
 

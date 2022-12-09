@@ -22,15 +22,17 @@ import dateutil
 # from datetime import datetime
 from pathlib import Path
 
-# import lxml
-# from lxml import etree
-import lxml.etree as ET
-parser = ET.XMLParser(encoding='utf-8', recover=True, resolve_entities=False)
-
-import opasConfig
-
 import localsecrets
 import opasFileSupport
+import opasConfig
+
+import lxml
+from lxml import etree
+import lxml.etree as ET
+parser = ET.XMLParser(encoding='utf-8', recover=True, resolve_entities=False)
+import opasXMLHelper as opasxmllib
+
+
 #import opasArticleIDSupport
 #import opasSolrLoadSupport
 #import opasGenSupportLib as opasgenlib
@@ -41,6 +43,7 @@ logger = logging.getLogger(__name__)
 # new for processing code
 import opasCentralDBLib
 import PEPJournalData
+
 jrnlData = PEPJournalData.PEPJournalData()
 ocd =  opasCentralDBLib.opasCentralDB()
 fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root=localsecrets.FILESYSTEM_ROOT)
@@ -158,6 +161,19 @@ def version_history_processing(artInfo, solrdocs, solrauth,
             }
         return ret_val
     
+    def get_metadata_dict(fullfilename):
+        fileXMLContents, input_fileinfo = fs.get_file_contents(fullfilename)
+        parsed_xml = etree.fromstring(opasxmllib.remove_encoding_string(fileXMLContents), parser)
+        root = parsed_xml.getroottree()
+        ret_val = {}
+        adldata_list = root.findall('meta/adldata')
+        for adldata in adldata_list:
+            fieldname = adldata[0].text
+            fieldvalue = adldata[1].text
+            ret_val[fieldname] = fieldvalue 
+
+        return ret_val # metadata dict
+        
     ret_val = {
         "is_newest": False, 
         "newest_version": "A",
@@ -165,117 +181,115 @@ def version_history_processing(artInfo, solrdocs, solrauth,
         "errors": False,
     }
     
-    VERSION_STR_DTIME_FMT = "%Y/%m/%d %H:%M:%S"
     caller_name = "update_latest_version_info"
-    target_article_id = artInfo.art_id
-    art_id_no_suffix = target_article_id[:-1]
-    filespec_regex = f"{art_id_no_suffix}.*\(bKBD3\).*"
+    this_article_id = artInfo.art_id
+    this_version = artInfo.art_id[-1]
+    this_article_id_no_suffix = this_article_id[:-1]
+    filespec_regex = f"{this_article_id_no_suffix}.*\(bKBD3\).*"
     path = Path(full_filename_with_path)
     file_path = path.parent
     filenames = fs.get_matching_filelist(filespec_regex=filespec_regex, path=file_path)
-    filenames_reversed = copy.copy(filenames)
-    # figure out newest suffix
-    filenames_reversed.sort(key=criteria, reverse=True) # ascending order
-    newest_filename = filenames_reversed[0]
-    newest_filename_info = get_root_ver(newest_filename.basename.upper())
-    newest_version = newest_filename_info.get("version")
-    ret_val["newest_version"] = newest_version
-    if artInfo.art_id[-1] == newest_version:
+    
+    # if there's only one file, there's no older versions.  So we can skip this.
+    if len(filenames) <= 1:
         ret_val["is_newest"] = True
-        # this is the newest version       
-        if verbose:
-            print(80*"-")
-            print (f"\t...Updating IJPOpen old version references for {newest_filename.basename}")
-
-    if len(filenames_reversed) > 1:
+    else:
         print (f"\t...Checking for old versions from {start_folder}...")
-        # go through prior versions
-        for n in filenames: # not reverse order
-            nm = get_root_ver(n.basename.upper())
-            ver = nm.get("version")
-            base = nm.get("root")
-            art_id = nm.get("art_id")
-            
-            if ver == newest_version:
-                continue
+        filenames_reversed = copy.copy(filenames)
+        filenames_reversed.sort(key=criteria, reverse=True) # ascending order
+        newest_filename = filenames_reversed[0]
+        newest_version_info = get_root_ver(newest_filename.basename.upper())
+        newest_version_info["fullfilename"] = newest_filename.filespec
+        ret_val["newest_version"] = newest_version_info["version"]
+        if newest_version_info.get("version") != this_version:
+            # get newest manuscript date to put in this version
+            metadata_dict = get_metadata_dict(newest_filename.filespec)
+            publisher_ms_id = metadata_dict.get("manuscript-id", "")
+            newest_manuscript_date_str = metadata_dict.get("submission-date", "")
+            # newest_version_info = retrieve_specific_version_info(ocd, newest_art_id, table="api_articles")
 
-            prior_version_art_id = art_id
-            # remove other common articles from articles_id
-            
-            if retrieve_specific_version_info(ocd, art_id, table="api_articles") != []:
-                # still in api_articles
-                if retrieve_specific_version_info(ocd, art_id, table="api_articles_removed") == []:
-                    # not in removed table
-                    success = copy_to_articles_removed(ocd, prior_version_art_id)
-                    success = add_removed_article_filename_with_path(ocd, prior_version_art_id, full_filename_with_path, verbose=None)
-                else:
-                    if verbose:
-                        print (f"\t...{art_id} has already been removed.")
+        if 1:
+            if this_version == newest_version_info["version"]:
+                ret_val["is_newest"] = True
+                # this is the newest version       
+                if verbose:
+                    print(80*"-")
+                    print (f"\t...Updating IJPOpen old version references for {newest_filename.basename}")
+    
+            # go through all versions
+            for removed_ver in filenames: # not reverse order
+                nm = get_root_ver(removed_ver.basename.upper())
+                current_file_ver = nm.get("version")
+                base = nm.get("root")
+                art_id = nm.get("art_id")
                 
-                # in either case, need to remove from articles and the bibliotable
-                ocd.delete_specific_article_data(prior_version_art_id)
+                if current_file_ver == newest_version_info["version"]:
+                    continue
+    
+                prior_version_art_id = art_id
                 
-                # now remove from solr
-                success = solrdocs.delete(q=f"art_id:{prior_version_art_id}")
-                success = solrauth.delete(q=f"art_id:{prior_version_art_id}")
-                if not testmode:
-                    try:
-                        solrdocs.commit()
-                        solrauth.commit()
+                # if still in api_articles, move to api_articles_removed, and delete from solr
+                if retrieve_specific_version_info(ocd, art_id, table="api_articles") != []:
+                    # still in api_articles
+                    if retrieve_specific_version_info(ocd, art_id, table="api_articles_removed") == []:
+                        # not in removed table
+                        success = copy_to_articles_removed(ocd, prior_version_art_id)
+                        success = add_removed_article_filename_with_path(ocd, prior_version_art_id, full_filename_with_path, verbose=None)
+                    else:
+                        if verbose:
+                            print (f"\t...{art_id} has already been removed.")
                     
-                    except Exception as e:
-                        errStr = f"{caller_name}: Commit failed! {e}"
-                        logger.error(errStr)
-                        if opasConfig.LOCAL_TRACE: print (errStr)
-                        ret_val["errors"] = True
-
-    # now get the version history unit to return
-    list_of_items = ""
-    list_of_items_count = 0
-    old_version_article_info = retrieve_removed_versions_info(ocd, art_id_no_suffix, verbose=verbose)
+                    # in either case, need to remove from articles and the bibliotable
+                    ocd.delete_specific_article_data(prior_version_art_id)
+                    
+                    # now remove from solr
+                    success = solrdocs.delete(q=f"art_id:{prior_version_art_id}")
+                    success = solrauth.delete(q=f"art_id:{prior_version_art_id}")
+                    if not testmode:
+                        try:
+                            solrdocs.commit()
+                            solrauth.commit()
+                        
+                        except Exception as e:
+                            errStr = f"{caller_name}: Commit failed! {e}"
+                            logger.error(errStr)
+                            if opasConfig.LOCAL_TRACE: print (errStr)
+                            ret_val["errors"] = True
     
-    # Perhaps the internal file date stored in the tables would be better.
-    for n in old_version_article_info:
-        tmz = dateutil.parser.isoparse(n["filedatetime"])
-        tmz_str = tmz.strftime(VERSION_STR_DTIME_FMT)
-        ver_art_id = n["art_id"]
-        if ver_art_id[-1] == artInfo.art_id[-1]:
-            add_note = " (This Version)"
-        else:
-            add_note = ""
-
-        list_item = f'Manuscript Date: {tmz_str}'
-        list_of_items_count += 1
-        list_of_items += f"""<li><p><impx type='RVDOC' rx='{ver_art_id}'>{list_item}</impx>{add_note}</p></li>"""
-
-    # Option to indicate newest version
-    if list_of_items_count > 0:
-        newest_art_id = art_id_no_suffix + newest_version
-        lastmod = newest_filename.fileinfo["LastModified"]
-        tmz_str = lastmod.strftime(VERSION_STR_DTIME_FMT)
-        list_item = f'Manuscript Date: {tmz_str}'
-        list_of_items_count += 1
-
-        if artInfo.art_id[-1] != newest_version:
-            # add note with link to newst version
-            add_note = " (Newest Version)"
-        else:
-            add_note = " (This Version -- Newest Version)"
-    
-        list_item = f'Manuscript Date: {tmz_str}'
-        list_of_items += f"""<li><p><impx type='RVDOC' rx='{newest_art_id}'>{list_item}</impx>{add_note}</p></li>"""
+        #  ###############################################
+        #  build version history for end of file
+        #  ###############################################
+        if 1:
+            # now get the version history unit to return
+            list_of_items = ""
+            list_of_items_count = 0
+            # get all the known removed versions
+            known_removed_version_info = retrieve_removed_versions_info(ocd, this_article_id_no_suffix, verbose=verbose)
+            
+            # Perhaps the internal file date stored in the tables would be better.
+            for removed_ver in known_removed_version_info:
+                list_of_items_count += 1
+                list_of_items += f"""<li><p><impx type='RVDOC' rx='{removed_ver["art_id"]}'>{removed_ver["manuscript_date_str"]}</impx></p></li>"""
         
-
-    if list_of_items != "": 
-        ijpopen_addon = f"""
-           <unit type="previousversions">
-                <h1>{DOCUMENT_UNIT_NAME}</h1>
-                <list type="BUL1">
-                {list_of_items}
-                </list>
-            </unit>
-        """
-        ret_val["version_section"] = ET.fromstring(ijpopen_addon, parser)
+            # Option to indicate newest version, but only if there's more than one version
+            if list_of_items_count > 0:
+                if artInfo.art_id[-1] != newest_version_info["version"]:
+                    # add note with link to newst version
+                    newest_art_id = newest_version_info["art_id"]
+                    list_of_items_count += 1
+                    list_of_items += f"""<li><p><impx type='RVDOC' rx='{newest_art_id}'>{newest_manuscript_date_str}</impx></p></li>"""
+                
+        
+            if list_of_items != "": 
+                ijpopen_addon = f"""
+                   <unit type="previousversions">
+                        <h1>{DOCUMENT_UNIT_NAME}</h1>
+                        <list type="BUL1">
+                        {list_of_items}
+                        </list>
+                    </unit>
+                """
+                ret_val["version_section"] = ET.fromstring(ijpopen_addon, parser)
 
     # Return None, or the new ET_Val unit to be appended
     return ret_val

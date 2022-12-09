@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.1208/v2.1.196"   # semver versioning after date.
+__version__     = "2022.1209/v2.1.197"   # semver versioning after date.
 __status__      = "Development/Libs/Loader"  
 
 """
@@ -5351,16 +5351,16 @@ def documents_archival_fetch(response: Response,
                                                                                   option_flags=specialoptions,
                                                                                   request=request
                                                                                   )
-    
-                try:
-                    supplemental = opasPySolrLib.metadata_get_next_and_prev_articles(art_id=documentID)
-                    if supplemental[0] != {}:
-                        ret_val.documents.responseSet[0].sourcePrevious = supplemental[0]["art_id"]
-                    if supplemental[2] != {}:
-                        ret_val.documents.responseSet[0].sourceNext = supplemental[2]["art_id"]
-                except Exception as e:
-                    logger.debug(f"No next/prev data to return ({e})")
-        
+
+                    try:
+                        supplemental = opasPySolrLib.metadata_get_next_and_prev_articles(art_id=documentID)
+                        if supplemental[0] != {}:
+                            ret_val.documents.responseSet[0].sourcePrevious = supplemental[0]["art_id"]
+                        if supplemental[2] != {}:
+                            ret_val.documents.responseSet[0].sourceNext = supplemental[2]["art_id"]
+                    except Exception as e:
+                        logger.debug(f"No next/prev data to return ({e})")
+          
         except Exception as e:
             response.status_code=httpCodes.HTTP_400_BAD_REQUEST
             status_message = f"DocumentFetchError: {client_id}/{session_id}: {e}"

@@ -345,6 +345,7 @@ class ArticleInfo(object):
             self.metadata_dict[fieldname] = fieldvalue 
     
         self.publisher_ms_id = self.metadata_dict.get("manuscript-id", "")
+        self.manuscript_date_str = self.metadata_dict.get("submission-date", "")
         
         if 1: # vol info (just if'd for folding purposes)
             vol_actual = opasxmllib.xml_xpath_return_textsingleton(parsed_xml, '//artinfo/artvol/@actual', default_return=None)
