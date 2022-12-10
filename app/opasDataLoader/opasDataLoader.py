@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.1210/v2.0.030"   # semver versioning after date.
+__version__     = "2022.1210/v2.0.031"   # semver versioning after date.
 __status__      = "Development"
 
 programNameShort = "opasDataLoader"
@@ -783,6 +783,7 @@ def main():
                 separated_input_output = final_xml_filename != n.filespec
 
                 # smart rebuild should not rebuild glossary files, so skip those
+                skip_archived_solr_load = False
                 if (smart_file_rebuild or options.forceRebuildAllFiles) and not rc_skip_glossary_kbd3_files.match(n.basename):
                         
                     # make changes to the XML
@@ -810,7 +811,6 @@ def main():
                     #artInfo.publisher_ms_id = artInfo.metadata_dict["manuscript-id"]
                     # check if IJPOpen Article and look for older versions
                     version_history_unit = None
-                    skip_archived_solr_load = False
                     if artInfo.src_code == "IJPOPEN":
                         # Check if it's removed.
                         # **LATER**: Might just delete version history each time and process anew. 
