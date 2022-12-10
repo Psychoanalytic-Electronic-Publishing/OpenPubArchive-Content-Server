@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.1209/v2.1.197"   # semver versioning after date.
+__version__     = "2022.1210/v2.1.198"   # semver versioning after date.
 __status__      = "Development/Libs/Loader"  
 
 """
@@ -1765,6 +1765,7 @@ async def session_status(response: Response,
                                     "pydantic": pydantic.version.VERSION,
                                     "starlette": starlette.__version__,
                                     "lxml":lxml.__version__,
+                                    "uvicorn": uvicorn.__version__, 
                                    }
                 server_status_item.library_versions = library_versions
                 server_status_item.cors_regex = localsecrets.CORS_REGEX

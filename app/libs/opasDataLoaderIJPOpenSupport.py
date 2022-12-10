@@ -42,6 +42,7 @@ logger = logging.getLogger(__name__)
 
 # new for processing code
 import opasCentralDBLib
+import opasArticleIDSupport
 import PEPJournalData
 
 jrnlData = PEPJournalData.PEPJournalData()
@@ -160,6 +161,7 @@ def version_history_processing(artInfo, solrdocs, solrauth,
                 "art_id": m.group("artid")
             }
         return ret_val
+
     
     def get_metadata_dict(fullfilename):
         fileXMLContents, input_fileinfo = fs.get_file_contents(fullfilename)
@@ -204,7 +206,7 @@ def version_history_processing(artInfo, solrdocs, solrauth,
         if newest_version_info.get("version") != this_version:
             # get newest manuscript date to put in this version
             metadata_dict = get_metadata_dict(newest_filename.filespec)
-            publisher_ms_id = metadata_dict.get("manuscript-id", "")
+            #publisher_ms_id = metadata_dict.get("manuscript-id", "")
             newest_manuscript_date_str = metadata_dict.get("submission-date", "")
             # newest_version_info = retrieve_specific_version_info(ocd, newest_art_id, table="api_articles")
 
@@ -213,8 +215,7 @@ def version_history_processing(artInfo, solrdocs, solrauth,
                 ret_val["is_newest"] = True
                 # this is the newest version       
                 if verbose:
-                    print(80*"-")
-                    print (f"\t...Updating IJPOpen old version references for {newest_filename.basename}")
+                    print (f"\t...Newest Version. Updating IJPOpen old version references for {newest_filename.basename}")
     
             # go through all versions
             for removed_ver in filenames: # not reverse order
@@ -230,14 +231,20 @@ def version_history_processing(artInfo, solrdocs, solrauth,
                 
                 # if still in api_articles, move to api_articles_removed, and delete from solr
                 if retrieve_specific_version_info(ocd, art_id, table="api_articles") != []:
-                    # still in api_articles
+                    # in artinfo table, so copy and remove
+                    success = copy_to_articles_removed(ocd, prior_version_art_id)
+                    #success = add_removed_article_filename_with_path(ocd, prior_version_art_id, full_filename_with_path, verbose=None)
+                else:
+                    # not in api_articles. Add it manually to removed
                     if retrieve_specific_version_info(ocd, art_id, table="api_articles_removed") == []:
-                        # not in removed table
-                        success = copy_to_articles_removed(ocd, prior_version_art_id)
-                        success = add_removed_article_filename_with_path(ocd, prior_version_art_id, full_filename_with_path, verbose=None)
-                    else:
-                        if verbose:
-                            print (f"\t...{art_id} has already been removed.")
+                        # not in removed table, add the basic info we need
+                        removed_ver.artInfo = get_article_info(art_id, removed_ver.basename, removed_ver.filespec)
+                        success = add_to_articles_removed_table_fullinfo(ocd, artInfo)
+                        # metadata_dict = get_metadata_dict(removed_ver.filespec)
+                        #publisher_ms_id = metadata_dict.get("manuscript-id", "")
+                        # newest_manuscript_date_str = metadata_dict.get("submission-date", "")
+                    else:    
+                        if verbose: print (f"\t...{art_id} has already been removed.")
                     
                     # in either case, need to remove from articles and the bibliotable
                     ocd.delete_specific_article_data(prior_version_art_id)
@@ -256,76 +263,222 @@ def version_history_processing(artInfo, solrdocs, solrauth,
                             if opasConfig.LOCAL_TRACE: print (errStr)
                             ret_val["errors"] = True
     
-        #  ###############################################
-        #  build version history for end of file
-        #  ###############################################
-        if 1:
-            # now get the version history unit to return
-            list_of_items = ""
-            list_of_items_count = 0
-            # get all the known removed versions
-            known_removed_version_info = retrieve_removed_versions_info(ocd, this_article_id_no_suffix, verbose=verbose)
-            
-            # Perhaps the internal file date stored in the tables would be better.
-            for removed_ver in known_removed_version_info:
-                list_of_items_count += 1
-                list_of_items += f"""<li><p><impx type='RVDOC' rx='{removed_ver["art_id"]}'>{removed_ver["manuscript_date_str"]}</impx></p></li>"""
-        
-            # Option to indicate newest version, but only if there's more than one version
-            if list_of_items_count > 0:
-                if artInfo.art_id[-1] != newest_version_info["version"]:
-                    # add note with link to newst version
-                    newest_art_id = newest_version_info["art_id"]
-                    list_of_items_count += 1
-                    list_of_items += f"""<li><p><impx type='RVDOC' rx='{newest_art_id}'>{newest_manuscript_date_str}</impx></p></li>"""
-                
-        
-            if list_of_items != "": 
-                ijpopen_addon = f"""
-                   <unit type="previousversions">
-                        <h1>{DOCUMENT_UNIT_NAME}</h1>
-                        <list type="BUL1">
-                        {list_of_items}
-                        </list>
-                    </unit>
-                """
-                ret_val["version_section"] = ET.fromstring(ijpopen_addon, parser)
+        #  ##############################################################################################
+        #  build version history for end of file, include all versions
+        #  ##############################################################################################
+        parsed_version_section = build_version_history_section(ocd, this_article_id_no_suffix, verbose)
+        ret_val["version_section"] = parsed_version_section
 
     # Return None, or the new ET_Val unit to be appended
     return ret_val
 
-def add_removed_article_xml(ocd, art_id, xml_filecontents, verbose=False):
+def add_removed_article_xml(ocd, artInfo, verbose=False):
     """
     Adds the XML data from the file to the articles_removed table
-    
-    Not currently used or needed
-    
     """
     ret_val = False
     caller_name = "addRemovedArticleXML"
-    msg = f"\t...Copying api_articles record to api_articles_removed."
+    msg = f"\t...Adding api_articles record to api_articles_removed."
     logger.info(msg)
     if verbose:
         print (msg)
     
     ocd.open_connection(caller_name=caller_name)
-    sqlcpy = f"""
-                UPDATE api_articles_removed
-                    SET art_xml = %s
-                    WHERE art_id = %s
-              """
-    
-    query_params = (xml_filecontents, art_id )
+    insert_if_not_exists = r"""REPLACE
+                               INTO api_articles (
+                                    art_id,
+                                    fullfilename,
+                                    manuscript_date_str,
+                                    filename,
+                                    filedatetime
+                                    )
+                                values (
+                                        %(art_id)s,
+                                        %(fullfilename)s,
+                                        %(manuscript_date_str)s,
+                                        %(filename)s,
+                                        %(filedatetime)s
+                                        );
+                            """
 
+    query_params = {
+        "art_id": artInfo.art_id,
+        "fullfilename" : artInfo.fullfilename,
+        "filename":  artInfo.filename,
+        "manuscript_date_str" : artInfo.manuscript_date_str,
+        "filedatetime": artInfo.filedatetime
+    }
+
+    # string entries above must match an attr of the art_info instance.
+    #query_param_dict = art_info.__dict__.copy()
+    # the element objects in the author_xml_list cause an error in the action query 
+    # even though that dict entry is not used.  So removed in a copy.
+    #query_param_dict["author_xml_list"] = None
+        
     try:
-        res = ocd.do_action_query(querytxt=sqlcpy, queryparams=query_params)
+        res = ocd.do_action_query(querytxt=insert_if_not_exists, queryparams=query_params)
     except Exception as e:
-        errStr = f"{caller_name}: update error {e}"
+        errStr = f"AddToArticlesDBError: insert error {e}"
         logger.error(errStr)
         if opasConfig.LOCAL_TRACE: print (errStr)
     else:
         ret_val = True
+        
+    try:
+        ocd.db.commit()
+        ocd.close_connection(caller_name="processArticles")
+    except mysql.connector.Error as e:
+        errStr = f"SQLDatabaseError: Commit failed! {e}"
+        logger.error(errStr)
+        if opasConfig.LOCAL_TRACE: print (errStr)
+        ret_val = False
+    
+    return ret_val  # return True for success
 
+def add_to_articles_removed_table_fullinfo(ocd, artInfo, verbose=None):
+    """
+    Adds the article data from a single document to the api_articles table in mysql database opascentral.
+    
+    This database table is used as the basis for
+     
+    Note: This data is in addition to the Solr pepwebdocs core which is added elsewhere.  The SQL table is
+          currently primarily used for the crosstabs rather than API queries, since the Solr core is more
+          easily joined with other Solr cores in queries.  (TODO: Could later experiment with bridging Solr/SQL.)
+      
+    """
+    ret_val = False
+    msg = f"\t...Loading metadata to Articles Removed."
+    logger.info(msg)
+    if verbose:
+        print (msg)
+    
+    ocd.open_connection(caller_name="add_to_articles_removed_table")
+    
+    # reduce object
+  
+    insert_if_not_exists = r"""REPLACE
+                               INTO api_articles_removed (
+                                    art_id,
+                                    art_doi,
+                                    art_type,
+                                    art_lang,
+                                    art_kwds,
+                                    art_auth_mast,
+                                    art_auth_citation,
+                                    art_title,
+                                    src_title_abbr,
+                                    src_code,
+                                    art_year,
+                                    art_vol,
+                                    art_vol_str,
+                                    art_vol_suffix,
+                                    art_issue,
+                                    art_pgrg,
+                                    art_pgstart,
+                                    art_pgend,
+                                    main_toc_id,
+                                    start_sectname,
+                                    bk_info_xml,
+                                    bk_title,
+                                    bk_publisher,
+                                    art_citeas_xml,
+                                    art_citeas_text,
+                                    ref_count,
+                                    fullfilename,
+                                    manuscript_date_str,
+                                    filename,
+                                    filedatetime
+                                    )
+                                values (
+                                        %(art_id)s,
+                                        %(art_doi)s,
+                                        %(art_type)s,
+                                        %(art_lang)s,
+                                        %(art_kwds)s,
+                                        %(art_auth_mast)s,
+                                        %(art_auth_citation)s,
+                                        %(art_title)s,
+                                        %(src_title_abbr)s,
+                                        %(src_code)s,
+                                        %(art_year)s,
+                                        %(art_vol_int)s,
+                                        %(art_vol_str)s,
+                                        %(art_vol_suffix)s,
+                                        %(art_issue)s,
+                                        %(art_pgrg)s,
+                                        %(art_pgstart)s,
+                                        %(art_pgend)s,
+                                        %(main_toc_id)s,
+                                        %(start_sectname)s,
+                                        %(bk_info_xml)s,
+                                        %(bk_title)s,
+                                        %(bk_publisher)s,
+                                        %(art_citeas_xml)s,
+                                        %(art_citeas_text)s,
+                                        %(ref_count)s,
+                                        %(fullfilename)s,
+                                        %(manuscript_date_str)s,
+                                        %(filename)s,
+                                        %(filedatetime)s
+                                        );
+                            """
+
+    query_params = {
+        "art_id": artInfo.art_id,
+        "art_doi": artInfo.art_doi,
+        "art_type": artInfo.art_type,
+        "art_lang":  artInfo.art_lang,
+        "art_kwds":  artInfo.art_kwds,
+        "art_auth_mast":  artInfo.art_auth_mast,
+        "art_auth_citation": artInfo.art_auth_citation, 
+        "art_title":  artInfo.art_title,
+        "src_title_abbr":  artInfo.src_title_abbr,  
+        "src_code":  artInfo.src_code,  
+        "art_year":  artInfo.art_year,
+        "art_vol_int":  artInfo.art_vol_int,
+        "art_vol_str":  artInfo.art_vol_str,
+        "art_vol_suffix":  artInfo.art_vol_suffix,
+        "art_issue":  artInfo.art_issue,
+        "art_pgrg":  artInfo.art_pgrg,
+        "art_pgstart":  artInfo.art_pgstart,
+        "art_pgend":  artInfo.art_pgend,
+        "main_toc_id":  artInfo.main_toc_id,
+        "start_sectname":  artInfo.start_sectname,
+        "bk_info_xml":  artInfo.bk_info_xml,
+        "bk_title":  artInfo.bk_title,
+        "bk_publisher":  artInfo.bk_publisher,
+        "art_citeas_xml":  artInfo.art_citeas_xml,
+        "art_citeas_text":  artInfo.art_citeas_text,
+        "ref_count":  artInfo.ref_count,
+        "fullfilename" : artInfo.fullfilename,
+        "filename":  artInfo.filename,
+        "manuscript_date_str" : artInfo.manuscript_date_str,
+        "filedatetime": artInfo.filedatetime
+    }
+
+    # string entries above must match an attr of the art_info instance.
+    #query_param_dict = art_info.__dict__.copy()
+    # the element objects in the author_xml_list cause an error in the action query 
+    # even though that dict entry is not used.  So removed in a copy.
+    #query_param_dict["author_xml_list"] = None
+        
+    try:
+        res = ocd.do_action_query(querytxt=insert_if_not_exists, queryparams=query_params)
+    except Exception as e:
+        errStr = f"AddToArticlesDBError: insert error {e}"
+        logger.error(errStr)
+        if opasConfig.LOCAL_TRACE: print (errStr)
+    else:
+        ret_val = True
+        
+    try:
+        ocd.db.commit()
+        ocd.close_connection(caller_name="processArticles")
+    except mysql.connector.Error as e:
+        errStr = f"SQLDatabaseError: Commit failed! {e}"
+        logger.error(errStr)
+        if opasConfig.LOCAL_TRACE: print (errStr)
+        ret_val = False
     
     return ret_val  # return True for success
 
@@ -365,6 +518,48 @@ def add_removed_article_filename_with_path(ocd, art_id, filename_with_path, verb
     
     return ret_val  # return True for success
 
+def build_version_history_section(ocd, common_name, verbose=False):
+    """
+    build version history for end of file
+    """
+    ret_val = None
+
+    # get the addon version history unit to return
+    list_of_items = ""
+
+    # get all the known removed versions
+    known_version_info = retrieve_all_versions_info(ocd, common_name, verbose=verbose)
+    
+    for known_ver in known_version_info:
+        list_of_items += f"""\t<li><p><impx type='RVDOC' rx='{known_ver["art_id"]}'>{known_ver["manuscript_date_str"]}</impx></p></li>\n"""
+
+    if list_of_items != "": 
+        addon_section = f"""
+           <unit type="previousversions">
+                <h1>{DOCUMENT_UNIT_NAME}</h1>
+                <list type="BUL1">
+                {list_of_items}
+                </list>
+            </unit>
+        """
+
+    ret_val = ET.fromstring(addon_section, parser)
+    return ret_val
+
+def get_article_info(art_id, filename_base, fullfilename):
+    fileXMLContents, input_fileinfo = fs.get_file_contents(fullfilename)
+    parsed_xml = etree.fromstring(opasxmllib.remove_encoding_string(fileXMLContents), parser)
+    #root = parsed_xml.getroottree()
+    ret_val = opasArticleIDSupport.ArticleInfo(parsed_xml=parsed_xml, art_id=art_id, filename_base=filename_base, fullfilename=fullfilename, logger=logger)
+    
+    #adldata_list = root.findall('meta/adldata')
+    #for adldata in adldata_list:
+        #fieldname = adldata[0].text
+        #fieldvalue = adldata[1].text
+        #ret_val[fieldname] = fieldvalue 
+
+    return ret_val # artInfo
+
 def retrieve_specific_version_info(ocd, art_id, table="api_articles_removed", verbose=False):
     """
     Return a list of removed records
@@ -387,6 +582,21 @@ def retrieve_removed_versions_info(ocd, art_id_no_suffix, verbose=False):
                   """
 
     ret_val = ocd.get_select_as_list_of_dicts(sqlSelect=select_old)
+    return ret_val
+
+def retrieve_all_versions_info(ocd, art_id_no_suffix, verbose=False):
+    """
+    Return a list of removed records and current records
+    """
+    ret_val = []
+    select_all = f"""SELECT * from api_articles_removed
+                    WHERE art_id RLIKE '{art_id_no_suffix}.'
+                    UNION
+                    SELECT * from api_articles
+                    WHERE art_id RLIKE '{art_id_no_suffix}.'
+                  """
+
+    ret_val = ocd.get_select_as_list_of_dicts(sqlSelect=select_all)
     return ret_val
 
 def copy_to_articles_removed(ocd, art_id, verbose=None):

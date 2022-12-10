@@ -22,6 +22,9 @@ SUPPLEMENT_ISSUE_SEARCH_STR = "Supplement" # this is what will be searched in "a
 # The following four functions moved from opasConfig - 2022-06-05
 from pydantic import BaseModel, Field
 
+import opasProductLib
+sourceDB = opasProductLib.SourceInfoDB()
+
 def parse_volume_code(vol_code: str, source_code: str=None): 
     """
     PEP Volume numbers in IDS can be numbers or suffixed by an issue code--we use them after a volume number when a journal repeats pagination
@@ -280,7 +283,7 @@ class ArticleInfo(object):
        client searches.
 
     """
-    def __init__(self, sourceinfodb_data, parsed_xml, art_id, logger, filename_base, fullfilename=None, verbose=None):
+    def __init__(self, parsed_xml, art_id, logger, filename_base, fullfilename=None, verbose=None):
         # let's just double check artid!
         self.art_id = None
         self.art_id_from_filename = art_id # file name will always already be uppercase (from caller)
@@ -392,16 +395,16 @@ class ArticleInfo(object):
                 self.src_prodkey = pepsrccode = f"{self.src_code}"
                 self.src_is_book = False
 
-            self.src_title_abbr = sourceinfodb_data[pepsrccode].get("sourcetitleabbr", None)
-            self.src_title_full = sourceinfodb_data[pepsrccode].get("sourcetitlefull", None)
-            self.src_code_active = sourceinfodb_data[pepsrccode].get("active", 0)
+            self.src_title_abbr = sourceDB.sourceData[pepsrccode].get("sourcetitleabbr", None)
+            self.src_title_full = sourceDB.sourceData[pepsrccode].get("sourcetitlefull", None)
+            self.src_code_active = sourceDB.sourceData[pepsrccode].get("active", 0)
                 
             # remove '*New*'  prefix if it's there
             if self.src_title_full is not None:
                 self.src_title_full = self.src_title_full.replace(opasConfig.JOURNALNEWFLAG, "")
             
-            self.src_embargo = sourceinfodb_data[pepsrccode].get("wall", None)
-            product_type = sourceinfodb_data[pepsrccode].get("product_type", None)  # journal, book, video...
+            self.src_embargo = sourceDB.sourceData[pepsrccode].get("wall", None)
+            product_type = sourceDB.sourceData[pepsrccode].get("product_type", None)  # journal, book, video...
                 
             if self.src_code in ["GW", "SE"]:
                 self.src_type = "book"

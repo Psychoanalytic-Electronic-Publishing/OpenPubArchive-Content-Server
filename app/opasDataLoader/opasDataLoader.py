@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.1209/v2.0.029"   # semver versioning after date.
+__version__     = "2022.1210/v2.0.030"   # semver versioning after date.
 __status__      = "Development"
 
 programNameShort = "opasDataLoader"
@@ -792,7 +792,7 @@ def main():
                     parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True)
                     parsed_xml = etree.fromstring(opasxmllib.remove_encoding_string(fileXMLContents), parser)
                     # save common document (article) field values into artInfo instance for both databases
-                    artInfo = opasArticleIDSupport.ArticleInfo(sourceDB.sourceData, parsed_xml=parsed_xml, art_id=artID, filename_base=base, fullfilename=input_filespec, logger=logger)
+                    artInfo = opasArticleIDSupport.ArticleInfo(parsed_xml=parsed_xml, art_id=artID, filename_base=base, fullfilename=input_filespec, logger=logger)
                     artInfo.filedatetime = input_fileinfo.timestamp_str
                     # artInfo.filename = base # now done in articleInfo
                     # get artinfo per filename, to see if this is an issue coded with volume suffix
@@ -810,13 +810,18 @@ def main():
                     #artInfo.publisher_ms_id = artInfo.metadata_dict["manuscript-id"]
                     # check if IJPOpen Article and look for older versions
                     version_history_unit = None
+                    skip_archived_solr_load = False
                     if artInfo.src_code == "IJPOPEN":
-                        # Check if it's removed
+                        # Check if it's removed.
+                        # **LATER**: Might just delete version history each time and process anew. 
+                        # Since it has to read the file for older versions, it's sSlower but it would 
+                        # allow us to delete a version and have the history repaired.
                         if opasDataLoaderIJPOpenSupport.is_removed_version(ocd, art_id=artInfo.art_id):
-                            print ("\t...This version has already been archived/removed.  Skipping")
-                            skipped_files += 1
-                            archived_files_not_loaded += 1
-                            continue # skip this file
+                            print ("\t...This version has already been archived/removed.")
+                            parsed_version_history_unit = opasDataLoaderIJPOpenSupport.build_version_history_section(ocd,
+                                                                                                                     artInfo.art_id[:-1],
+                                                                                                                     verbose=options.display_verbose)
+                            skip_archived_solr_load = True
                         else:
                             # TBD - Might revise to use internal manuscript date in the version_section when there is one.
                             #       Currently uses input file's date.
@@ -826,6 +831,7 @@ def main():
                                                                                         file_xml_contents=fileXMLContents,
                                                                                         full_filename_with_path=inputfilename,
                                                                                         verbose=options.display_verbose)
+                            parsed_version_history_unit = version_history_unit["version_section"]
 
                     parsed_xml, ret_status = opasXMLProcessor.xml_update(parsed_xml,
                                                                          artInfo,
@@ -836,11 +842,10 @@ def main():
                                                                          verbose=options.display_verbose)
                     
                     # if there's a version history to be appended, do it so it's written to output file!
-                    if version_history_unit is not None:
-                        if version_history_unit["version_section"] is not None:
-                            if options.display_verbose:
-                                print("\t...Adding PEP-Web Manuscript history unit to compiled XML")
-                            parsed_xml.append(version_history_unit["version_section"])
+                    if parsed_version_history_unit is not None:
+                        if options.display_verbose:
+                            print("\t...Adding PEP-Web Manuscript history unit to compiled XML")
+                        parsed_xml.append(parsed_version_history_unit)
                     
                     # impx_count = int(pepxml.xpath('count(//impx[@type="TERM2"])'))
                     # write output file
@@ -868,12 +873,11 @@ def main():
                         print (msg)
 
                 # Check if it's removed
-                if art_source == "IJPOPEN":
-                    if opasDataLoaderIJPOpenSupport.is_removed_version(ocd, art_id=artID):
-                        print ("\t...This version has been archived/removed.  Skipping")
-                        skipped_files += 1
-                        archived_files_not_loaded += 1
-                        continue # skip this file
+                if skip_archived_solr_load:
+                    print ("\t...This version has been archived/removed.  Skipping load")
+                    skipped_files += 1
+                    archived_files_not_loaded += 1
+                    continue # skip this file
 
                 # make sure the file we read is the processed file.  Should be the output/processed build.
                 # note: if input build is same as processed (output build), then this won't change and the input file/build
@@ -908,7 +912,7 @@ def main():
                 #root = pepxml.getroottree()
         
                 # save common document (article) field values into artInfo instance for both databases
-                artInfo = opasArticleIDSupport.ArticleInfo(sourceDB.sourceData, parsed_xml=parsed_xml, art_id=artID, filename_base=base, fullfilename=final_xml_filename, logger=logger)
+                artInfo = opasArticleIDSupport.ArticleInfo(parsed_xml=parsed_xml, art_id=artID, filename_base=base, fullfilename=final_xml_filename, logger=logger)
                 artInfo.filedatetime = final_fileinfo.timestamp_str
                 # artInfo.filename = base
                 artInfo.file_size = final_fileinfo.filesize

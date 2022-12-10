@@ -808,8 +808,8 @@ def documents_get_document_from_file(document_id,
     abstract = opasxmllib.xml_xpath_return_textsingleton(parsed_xml, '//abs', default_return=None)
     pgrg = opasxmllib.xml_xpath_return_textsingleton(parsed_xml, '//artpgrg', default_return=None)
     # save common document (article) field values into artInfo instance for both databases
-    sourceDB = opasProductLib.SourceInfoDB()
-    artInfo = opasArticleIDSupport.ArticleInfo(sourceDB.sourceData, parsed_xml=parsed_xml, art_id=document_id, filename_base=filenamebase, fullfilename=fullfilename, logger=logger)
+    #sourceDB = opasProductLib.SourceInfoDB()
+    artInfo = opasArticleIDSupport.ArticleInfo(parsed_xml=parsed_xml, art_id=document_id, filename_base=filenamebase, fullfilename=fullfilename, logger=logger)
     generic_document_id = document_id[:-1] + "?"
     # query the latest version of this document to get the documentListItem info
     #result = documents_get_document(generic_document_id, session_info)
