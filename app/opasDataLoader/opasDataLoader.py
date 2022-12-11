@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.1210/v2.0.031"   # semver versioning after date.
+__version__     = "2022.1211/v2.0.032"   # semver versioning after date.
 __status__      = "Development"
 
 programNameShort = "opasDataLoader"
@@ -706,7 +706,6 @@ def main():
                 fileTimeStart = time.time()
                 input_file_was_updated = False
                 output_file_newer_than_solr = False
-                file_was_updated = False
                 smart_file_rebuild = False
                 base = n.basename
                 artID = os.path.splitext(base)[0]
@@ -714,7 +713,6 @@ def main():
                 artID = m.group(1)
                 artID = artID.upper()
                 m = re.match(r"(.*?)\.", artID)
-                art_source = m.group(1)
                 
                 try:
                     inputfilename = n.fileinfo["name"]
@@ -723,11 +721,6 @@ def main():
                 
                 outputfilename = inputfilename.replace(loaderConfig.DEFAULT_INPUT_BUILD, selected_output_build) # was loaderConfig.DEFAULT_OUTPUT_BUILD)
 
-                #if inputfilename != outputfilename:
-                    #output_recompile = \
-                       #input_file_was_updated = False                    
-                #else:
-                    # does output build need to be regenerated?
                 file_status_tuple = output_file_needs_rebuilding(inputfilespec=n,
                                                                  inputfilename=inputfilename,
                                                                  outputfilename=outputfilename)
@@ -783,9 +776,7 @@ def main():
                 separated_input_output = final_xml_filename != n.filespec
 
                 # smart rebuild should not rebuild glossary files, so skip those
-                skip_archived_solr_load = False
                 if (smart_file_rebuild or options.forceRebuildAllFiles) and not rc_skip_glossary_kbd3_files.match(n.basename):
-                        
                     # make changes to the XML
                     input_filespec = n.filespec
                     fileXMLContents, input_fileinfo = fs.get_file_contents(input_filespec)
@@ -800,39 +791,24 @@ def main():
                     artInfo.file_size = input_fileinfo.filesize
                     artInfo.file_updated = input_file_was_updated
                     artInfo.file_create_time = input_fileinfo.create_time
-                    #artInfo.metadata_dict = {}
-                    #root = parsed_xml.getroottree()
-                    #adldata_list = root.findall('meta/adldata')
-                    #for adldata in adldata_list:
-                        #fieldname = adldata[0].text
-                        #fieldvalue = adldata[1].text
-                        #artInfo.metadata_dict[fieldname] = fieldvalue 
 
-                    #artInfo.publisher_ms_id = artInfo.metadata_dict["manuscript-id"]
-                    # check if IJPOpen Article and look for older versions
+                    # ##########################################################################################################
+                    # Special IJPOpen Version Processing Part 1
+                    parsed_version_history_unit = None
                     version_history_unit = None
                     if artInfo.src_code == "IJPOPEN":
-                        # Check if it's removed.
-                        # **LATER**: Might just delete version history each time and process anew. 
-                        # Since it has to read the file for older versions, it's sSlower but it would 
-                        # allow us to delete a version and have the history repaired.
-                        if opasDataLoaderIJPOpenSupport.is_removed_version(ocd, art_id=artInfo.art_id):
-                            print ("\t...This version has already been archived/removed.")
-                            parsed_version_history_unit = opasDataLoaderIJPOpenSupport.build_version_history_section(ocd,
-                                                                                                                     artInfo.art_id[:-1],
-                                                                                                                     verbose=options.display_verbose)
-                            skip_archived_solr_load = True
-                        else:
-                            # TBD - Might revise to use internal manuscript date in the version_section when there is one.
-                            #       Currently uses input file's date.
-                            version_history_unit = \
-                                opasDataLoaderIJPOpenSupport.version_history_processing(artInfo,
-                                                                                        solrdocs=solr_docs2, solrauth=solr_authors2,
-                                                                                        file_xml_contents=fileXMLContents,
-                                                                                        full_filename_with_path=inputfilename,
-                                                                                        verbose=options.display_verbose)
+                        # Check if there are multiple versions, remove old versions, and add version history to each
+                        version_history_unit = \
+                            opasDataLoaderIJPOpenSupport.version_history_processing(artInfo,
+                                                                                    solrdocs=solr_docs2, solrauth=solr_authors2,
+                                                                                    file_xml_contents=fileXMLContents,
+                                                                                    full_filename_with_path=inputfilename,
+                                                                                    options=options, 
+                                                                                    verbose=options.display_verbose)
+                        if version_history_unit is not None:
                             parsed_version_history_unit = version_history_unit["version_section"]
-
+                    # ##########################################################################################################
+                    # Process XML to create output (compiled and marked up version)
                     parsed_xml, ret_status = opasXMLProcessor.xml_update(parsed_xml,
                                                                          artInfo,
                                                                          ocd,
@@ -841,26 +817,25 @@ def main():
                                                                          add_glossary_list=options.add_glossary_term_dict, 
                                                                          verbose=options.display_verbose)
                     
+                    # ##########################################################################################################
+                    # Special IJPOpen Version Processing Part 2 (Post conversion)
                     # if there's a version history to be appended, do it so it's written to output file!
-                    if parsed_version_history_unit is not None:
+                    if version_history_unit is not None and parsed_version_history_unit is not None:
                         if options.display_verbose:
                             print("\t...Adding PEP-Web Manuscript history unit to compiled XML")
                         parsed_xml.append(parsed_version_history_unit)
-                    
+                    # ##########################################################################################################
+
                     # impx_count = int(pepxml.xpath('count(//impx[@type="TERM2"])'))
                     # write output file
                     fname = str(n.filespec)
                     fname = re.sub("\(b.*\)", options.output_build, fname)
-
-                    # root = parsed_xml.getroottree()
-                    # this only works on a local file system...using 
-                    # root.write(fname, encoding="utf-8", method="xml", pretty_print=True, xml_declaration=True, doctype=options.output_doctype)
                     file_prefix = f"""{loaderConfig.DEFAULT_XML_DECLARATION}\n{options.output_doctype}\n"""
                     # xml_text version, not reconverted to tree
                     file_text = lxml.etree.tostring(parsed_xml, pretty_print=options.pretty_printed, encoding="utf8").decode("utf-8")
                     file_text = file_prefix + file_text
                     # this is required if running on S3
-                    msg = f"\t...Compiling {n.basename} to precompiled XML"
+                    msg = f"\t...Compiling {n.basename} to precompiled (fully marked-up) XML"
                     success = fs.create_text_file(fname, data=file_text, delete_existing=True)
                     if success:
                         rebuild_count += 1
@@ -872,12 +847,15 @@ def main():
                         logger.error(msg)
                         print (msg)
 
-                # Check if it's removed
-                if skip_archived_solr_load:
-                    print ("\t...This version has been archived/removed.  Skipping load")
+                # ##########################################################################################################
+                # Special IJPOpen Version Processing Part 3 (Post conversion)
+                # Check if it's removed (need to check database, not variable because it may be a load, not a build)
+                if opasDataLoaderIJPOpenSupport.is_removed_version(ocd, art_id=artID):
+                    print ("\t...This version has been archived/removed.  No need to load to Solr.")
                     skipped_files += 1
                     archived_files_not_loaded += 1
                     continue # skip this file
+                # ##########################################################################################################
 
                 # make sure the file we read is the processed file.  Should be the output/processed build.
                 # note: if input build is same as processed (output build), then this won't change and the input file/build

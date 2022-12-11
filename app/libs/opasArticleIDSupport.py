@@ -346,7 +346,8 @@ class ArticleInfo(object):
             fieldname = adldata[0].text
             fieldvalue = adldata[1].text
             self.metadata_dict[fieldname] = fieldvalue 
-    
+        
+        # Currently, 2022/12, these are only used by IJPOpen
         self.publisher_ms_id = self.metadata_dict.get("manuscript-id", "")
         self.manuscript_date_str = self.metadata_dict.get("submission-date", "")
         
