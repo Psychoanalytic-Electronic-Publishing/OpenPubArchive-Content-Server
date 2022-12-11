@@ -95,7 +95,7 @@ def version_history_processing(artInfo, solrdocs, solrauth,
                    - impx around each item in the list to a special API function to retrieve the contents of "removed versions"
                      such that the client could present each if the user clicks.
 
-           - Use the server endpoint v2/documents/archived to retrieve the XML for the archived versions
+           - Use the server endpoint v2/documents/archival to retrieve the XML for the archived versions
            - The more current document will be indexed in solr and is returned via the normal api endpoints
     
     Database and Solr Change Requirements:
@@ -138,7 +138,7 @@ def version_history_processing(artInfo, solrdocs, solrauth,
           including all known versions
         - When the second version is added, the first version will be removed from api_articles and Solr and api_articles
           so it won't appear in searches but will still be in the filesystem, which will be accessible via the
-          documents/archived endpoint
+          documents/archival endpoint
         - When the Nth version is added, any previous versions will be removed from database locations per the second version
           note above
         - When a new version is added, all older versions have their version history updated.
@@ -668,12 +668,12 @@ def remove_from_articles(ocd, art_id, verbose=None):
     
     return ret_val  # return True for success
 
-def replace_build(filename, new_build="(bEXP_ARCH1)"):
+def replace_build(filename, new_build=opasConfig.DEFAULT_OUTPUT_BUILD):
     fname = str(filename)
     ret_val = re.sub("\(b.*\)", new_build, fname)
     return ret_val
     
-def update_removed_article_outfiles(filenames_reversed, version_history_unit, options, output_build="(bEXP_ARCH1)"):
+def update_removed_article_outfiles(filenames_reversed, version_history_unit, options, output_build=opasConfig.DEFAULT_OUTPUT_BUILD):
     # update older filenames
     count = len(filenames_reversed)
     doctype_declaration = options.output_doctype

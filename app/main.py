@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.1210/v2.1.198"   # semver versioning after date.
+__version__     = "2022.1211/v2.1.199"   # semver versioning after date.
 __status__      = "Development/Libs/Loader"  
 
 """
@@ -5341,10 +5341,12 @@ def documents_archival_fetch(response: Response,
                     logger.error("There are more than one matching row")
                 else:
                     document_record = rows[0]
-                    filename = document_record.get("filename", None)
+                    # filename = document_record.get("filename", None)
                     fullfilename = document_record.get("fullfilename", None)
-                    art_id = document_record.get("art_id", None)
-                    title = document_record.get("art_title", None)
+                    # Get the output file name
+                    fullfilename = re.sub("\(b.*\)", opasConfig.DEFAULT_OUTPUT_BUILD, fullfilename)
+                    # art_id = document_record.get("art_id", None)
+                    # title = document_record.get("art_title", None)
                     ret_val = opasAPISupportLib.documents_get_document_from_file( documentID, 
                                                                                   req_url=req_url,
                                                                                   fullfilename=fullfilename, 

@@ -14,6 +14,8 @@ programNameShort = "opasDataLoader"
 
 import lxml
 import sys
+import opasConfig
+
 if sys.version_info[0] < 3:
     raise Exception("Must be using Python 3")
 
@@ -185,7 +187,7 @@ def find_all(name_pat, path):
                 result.append(os.path.join(root, filename))
     return result
 
-def derive_output_filename(input_filename, input_build=loaderConfig.DEFAULT_INPUT_BUILD, output_build=loaderConfig.DEFAULT_OUTPUT_BUILD):
+def derive_output_filename(input_filename, input_build=opasConfig.DEFAULT_INPUT_BUILD, output_build=opasConfig.DEFAULT_OUTPUT_BUILD):
     
     filename = str(input_filename)
     ret_val = filename.replace(input_build, output_build)
@@ -289,8 +291,8 @@ def output_file_needs_rebuilding(outputfilename, inputfilename=None, inputfilesp
 
 #------------------------------------------------------------------------------------------------------
 def file_needs_reloading_to_solr(solrcore, art_id, timestamp_str, filename=None, fs=None, filespec=None, smartload=False,
-                                 input_build=loaderConfig.DEFAULT_INPUT_BUILD,
-                                 output_build=loaderConfig.DEFAULT_OUTPUT_BUILD):
+                                 input_build=opasConfig.DEFAULT_INPUT_BUILD,
+                                 output_build=opasConfig.DEFAULT_OUTPUT_BUILD):
     """
     Now, since Solr may have EXP_ARCH1 and the load 'candidate' may be KBD3, the one in Solr
       can be the same or NEWER, and it's ok, no need to reprocess.
@@ -338,7 +340,7 @@ def file_needs_reloading_to_solr(solrcore, art_id, timestamp_str, filename=None,
 
 
 #------------------------------------------------------------------------------------------------------
-def file_is_same_or_newer_in_solr_by_artid(solrcore, art_id, timestamp_str, filename=None, fs=None, filespec=None, smartload=False, input_build=loaderConfig.DEFAULT_INPUT_BUILD, output_build=loaderConfig.DEFAULT_OUTPUT_BUILD):
+def file_is_same_or_newer_in_solr_by_artid(solrcore, art_id, timestamp_str, filename=None, fs=None, filespec=None, smartload=False, input_build=opasConfig.DEFAULT_INPUT_BUILD, output_build=opasConfig.DEFAULT_OUTPUT_BUILD):
     """
     Now, since Solr may have EXP_ARCH1 and the load 'candidate' may be KBD3, the one in Solr
       can be the same or NEWER, and it's ok, no need to reprocess.
@@ -486,7 +488,7 @@ def main():
             print("Input data Root: ", start_folder)
             print("Input data Subfolder: ", options.subFolder)
 
-            selected_output_build = loaderConfig.DEFAULT_OUTPUT_BUILD
+            selected_output_build = opasConfig.DEFAULT_OUTPUT_BUILD
 
                 
             if options.forceReloadAllFiles == True:
@@ -498,9 +500,9 @@ def main():
             if options.forceRebuildAllFiles == True:
                 input_build_pattern, selected_input_build = get_defaults(options,
                                                                          default_build_pattern=loaderConfig.DEFAULT_INPUT_BUILD_PATTERN,
-                                                                         default_build=loaderConfig.DEFAULT_INPUT_BUILD)
+                                                                         default_build=opasConfig.DEFAULT_INPUT_BUILD)
                 selected_output_build = get_output_defaults(options,
-                                                            default_build=loaderConfig.DEFAULT_OUTPUT_BUILD)
+                                                            default_build=opasConfig.DEFAULT_OUTPUT_BUILD)
                 pre_action_verb = "Compile, save and load"
                 post_action_verb = "Compiled, saved and loaded"
                 msg = f"Forced Rebuild - All specified files of build {input_build_pattern} recompiled from source XML to precompiled XML {selected_output_build} and loaded."
@@ -510,7 +512,7 @@ def main():
             elif options.loadprecompiled and not options.smartload:
                 input_build_pattern, selected_input_build = get_defaults(options,
                                                                          default_build_pattern=loaderConfig.DEFAULT_PRECOMPILED_INPUT_BUILD_PATTERN,
-                                                                         default_build=loaderConfig.DEFAULT_PRECOMPILED_INPUT_BUILD)
+                                                                         default_build=opasConfig.DEFAULT_OUTPUT_BUILD)
                 print(f"Precompiled XML of build {selected_input_build} will be loaded to the databases if newer tan Solr, without examining source and compiling.")
                 pre_action_verb = "Load"
                 post_action_verb = "Loaded"
@@ -519,9 +521,9 @@ def main():
                 # compiled and loaded if input file is newer than output written file or if there's no output file
                 input_build_pattern, selected_input_build = get_defaults(options,
                                                                          default_build_pattern=loaderConfig.DEFAULT_INPUT_BUILD_PATTERN,
-                                                                         default_build=loaderConfig.DEFAULT_INPUT_BUILD)
+                                                                         default_build=opasConfig.DEFAULT_INPUT_BUILD)
                 selected_output_build = get_output_defaults(options,
-                                                            default_build=loaderConfig.DEFAULT_OUTPUT_BUILD)
+                                                            default_build=opasConfig.DEFAULT_OUTPUT_BUILD)
                 print(f"Smartload. XML of build {input_build_pattern} will be compiled and saved and loaded if newer than compiled build {selected_output_build}")
                 pre_action_verb = "Smart compile, save and load"
                 post_action_verb = "Smart compiled, saved and loaded"
@@ -719,7 +721,7 @@ def main():
                 except KeyError as e:
                     inputfilename = str(n.filespec)
                 
-                outputfilename = inputfilename.replace(loaderConfig.DEFAULT_INPUT_BUILD, selected_output_build) # was loaderConfig.DEFAULT_OUTPUT_BUILD)
+                outputfilename = inputfilename.replace(opasConfig.DEFAULT_INPUT_BUILD, selected_output_build) # was opasConfig.DEFAULT_OUTPUT_BUILD)
 
                 file_status_tuple = output_file_needs_rebuilding(inputfilespec=n,
                                                                  inputfilename=inputfilename,
@@ -1225,11 +1227,11 @@ if __name__ == "__main__":
     parser.add_option("--inputbuildpattern", dest="input_build_pattern", default=None,
                       help="Pattern of the build specifier to load (input), e.g., (bEXP_ARCH1|bSeriesTOC), or (bKBD3|bSeriesTOC)")
     
-    parser.add_option("--inputbuild", dest="input_build", default=None,
+    parser.add_option("--inputbuild", dest="input_build", default=opasConfig.DEFAULT_INPUT_BUILD,
                       help=f"Build specifier to load (input), e.g., (bKBD3) or just bKBD3")
     
-    parser.add_option("--outputbuild", dest="output_build", default=loaderConfig.DEFAULT_OUTPUT_BUILD,
-                      help=f"Specific output build specification, default='{loaderConfig.DEFAULT_OUTPUT_BUILD}'. e.g., (bEXP_ARCH1) or just bEXP_ARCH1.")
+    parser.add_option("--outputbuild", dest="output_build", default=opasConfig.DEFAULT_OUTPUT_BUILD,
+                      help=f"Specific output build specification, default='{opasConfig.DEFAULT_OUTPUT_BUILD}'. e.g., (bEXP_ARCH1) or just bEXP_ARCH1.")
     
     # --load option still the default.  Need to keep for backwards compatibility, at least for now (7/2022)
     parser.add_option("--load", "--loadxml", action="store_true", dest="loadprecompiled", default=True,
@@ -1275,7 +1277,7 @@ if __name__ == "__main__":
 
     if len(options.output_build) < 2:
         logger.error("Bad output buildname. Using default.")
-        options.output_build = loaderConfig.DEFAULT_OUTPUT_BUILD
+        options.output_build = opasConfig.DEFAULT_OUTPUT_BUILD
         
     if options.output_build is not None and (options.output_build[0] != "(" or options.output_build[-1] != ")"):
         print ("Warning: output build should have parenthesized format like (bEXP_ARCH1). Adding () as needed.")

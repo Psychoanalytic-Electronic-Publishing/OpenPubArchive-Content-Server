@@ -37,6 +37,9 @@ FORMAT = '%(asctime)s %(name)s/%(funcName)s(%(lineno)d): %(levelname)s %(message
 logging.basicConfig(format=FORMAT, level=logging.WARNING, datefmt='%Y-%m-%d %H:%M:%S')
 logger = logging.getLogger(__name__)
 
+DEFAULT_INPUT_BUILD = "(bKBD3)"
+DEFAULT_OUTPUT_BUILD = "(bEXP_ARCH1)"
+
 # Various switches for information/debugging
 DEBUG_TRACE = False
 LOG_CALL_TIMING = True

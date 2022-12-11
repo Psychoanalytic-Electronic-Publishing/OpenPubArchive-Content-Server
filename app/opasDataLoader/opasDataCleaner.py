@@ -53,6 +53,7 @@ sys.path.append('../libs/configLib')
 import time
 import pysolr
 import localsecrets
+import opasConfig
 import re
 import os
 import os.path
@@ -66,7 +67,6 @@ logger = logging.getLogger(programNameShort)
 from optparse import OptionParser
 
 import configLib.opasCoreConfig
-import loaderConfig
 import opasCentralDBLib
 import opasFileSupport
 
@@ -243,8 +243,8 @@ if __name__ == "__main__":
     parser.add_option("--verbose", action="store_true", dest="display_verbose", default=False,
                       help="Display status and operational timing info as load progresses.")
     # New OpasLoader2 Options
-    parser.add_option("--outputbuild", dest="output_build", default=loaderConfig.DEFAULT_OUTPUT_BUILD,
-                      help=f"Specific output build specification, default='{loaderConfig.DEFAULT_OUTPUT_BUILD}'. e.g., (bEXP_ARCH1) or just bEXP_ARCH1.")
+    parser.add_option("--outputbuild", dest="output_build", default=opasConfig.DEFAULT_OUTPUT_BUILD,
+                      help=f"Specific output build specification, default='{opasConfig.DEFAULT_OUTPUT_BUILD}'. e.g., (bEXP_ARCH1) or just bEXP_ARCH1.")
     
     # --load option still the default.  Need to keep for backwards compatibility, at least for now (7/2022)
     parser.add_option("--nohelp", action="store_true", dest="no_help", default=False,
@@ -258,7 +258,7 @@ if __name__ == "__main__":
 
     if len(options.output_build) < 2:
         logger.error("Bad output buildname. Using default.")
-        options.output_build = loaderConfig.DEFAULT_OUTPUT_BUILD
+        options.output_build = opasConfig.DEFAULT_OUTPUT_BUILD
         
     if options.output_build is not None and (options.output_build[0] != "(" or options.output_build[-1] != ")"):
         print ("Warning: output build should have parenthesized format like (bEXP_ARCH1). Adding () as needed.")
