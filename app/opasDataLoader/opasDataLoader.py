@@ -7,17 +7,10 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.1211/v2.0.032"   # semver versioning after date.
+__version__     = "2022.1212/v2.0.033"   # semver versioning after date.
 __status__      = "Development"
 
 programNameShort = "opasDataLoader"
-
-import lxml
-import sys
-import opasConfig
-
-if sys.version_info[0] < 3:
-    raise Exception("Must be using Python 3")
 
 border = 80 * "*"
 print (f"""\n
@@ -129,6 +122,7 @@ logger = logging.getLogger(programNameShort)
 
 from optparse import OptionParser
 
+import lxml
 from lxml import etree
 import mysql.connector
 
@@ -137,6 +131,7 @@ from configLib.opasCoreConfig import solr_authors2, solr_gloss2
 import loaderConfig
 import opasSolrLoadSupport
 import opasArticleIDSupport
+import opasConfig
 
 import opasXMLHelper as opasxmllib
 import opasCentralDBLib
@@ -144,6 +139,9 @@ import opasProductLib
 import opasFileSupport
 import opasAPISupportLib
 import opasDataLoaderIJPOpenSupport
+
+if sys.version_info[0] < 3:
+    raise Exception("Must be using Python 3")
 
 #detect data is on *nix or windows system
 if "AWS" in localsecrets.CONFIG or re.search("/", localsecrets.IMAGE_SOURCE_PATH) is not None:
