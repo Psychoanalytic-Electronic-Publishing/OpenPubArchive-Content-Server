@@ -24,7 +24,7 @@ from starlette.testclient import TestClient
 import unittest
 from localsecrets import CONFIG
 import subprocess
-TESTLOCATION = r"../tests/testdatasource/_PEPSpecial/IJPOpen"
+TESTLOCATION = r"_PEPTests/IJPOpen"
 
 class TestOpasLoaderProgram(unittest.TestCase):
     """
@@ -38,35 +38,14 @@ class TestOpasLoaderProgram(unittest.TestCase):
     """
 
     def test_recompile_docs(self):
-        filespec = fr"{TESTLOCATION}/IJPOPEN.008.0100A(bKBD3).xml"
-        result = subprocess.run([sys.executable, '../opasDataLoader/opasDataLoader.py', fr'--only={filespec}', f'--dataroot=""', '--nocheck', '--nohelp', '--smartload', '--rebuild', '--verbose'], capture_output=True)
+        result = subprocess.run([sys.executable, '../opasDataLoader/opasDataLoader.py', fr'--sub={TESTLOCATION}', '--nocheck', '--nohelp', '--smartload', '--rebuild', '--verbose'], capture_output=True)
         out = result.stdout.decode("UTF-8")
         err = result.stderr.decode("UTF-8")
         print ("Stdout:")
-        print (out[-2240:])
+        print (out[-3240:])
         print ("Stderr:")
         print (err[-1400:])
         #self.assertIn(b'Load process complete', result.stdout)
-
-    def test_recompile_docs_B(self):
-        filespec = fr"{TESTLOCATION}/IJPOPEN.008.0100B(bKBD3).xml"
-        result = subprocess.run([sys.executable, '../opasDataLoader/opasDataLoader.py', fr'--only={filespec}', f'--dataroot=""', '--nocheck', '--nohelp', '--smartload', '--rebuild', '--verbose'], capture_output=True)
-        out = result.stdout.decode("UTF-8")
-        err = result.stderr.decode("UTF-8")
-        print ("Stdout:")
-        print (out[-2240:])
-        print ("Stderr:")
-        print (err[-1400:])
-
-    def test_recompile_docs_C(self):
-        filespec = fr"{TESTLOCATION}/IJPOPEN.008.0100C(bKBD3).xml"
-        result = subprocess.run([sys.executable, '../opasDataLoader/opasDataLoader.py', fr'--only={filespec}', f'--dataroot=""', '--nocheck', '--nohelp', '--smartload', '--rebuild', '--verbose'], capture_output=True)
-        out = result.stdout.decode("UTF-8")
-        err = result.stderr.decode("UTF-8")
-        print ("Stdout:")
-        print (out[-2240:])
-        print ("Stderr:")
-        print (err[-1400:])
 
 if __name__ == '__main__':
     unittest.main()

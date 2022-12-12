@@ -175,25 +175,23 @@ def version_history_processing(artInfo, solrdocs, solrauth,
         newest_version_info = get_root_ver(newest_filename.basename.upper())
         newest_version_info["fullfilename"] = newest_filename.filespec
         version_info["newest_version"] = newest_version_info["version"]
-        #if newest_version_info.get("version") != this_version:
-            # get newest manuscript date to put in this version
-            #metadata_dict = get_metadata_dict(newest_filename.filespec)
-            #publisher_ms_id = metadata_dict.get("manuscript-id", "")
-            #newest_manuscript_date_str = metadata_dict.get("submission-date", "")
-            # newest_version_info = retrieve_specific_version_info(ocd, newest_art_id, table="api_articles")
+        version_info["version_count"] = len(filenames)
     
         if 1:
             if this_version == newest_version_info["version"]:
                 version_info["is_newest"] = True
+                version_info["newest_artinfo"] = artInfo
                 # this is the newest version       
                 if verbose:
                     print (f"\t...Newest Version. Updating IJPOpen old version references for {newest_filename.basename}")
-    
+            else:
+                version_info["is_newest"] = False
+                version_info["newest_artinfo"] = None
+                
             # go through all versions
             for removed_ver in filenames: # not reverse order
                 nm = get_root_ver(removed_ver.basename.upper())
                 current_file_ver = nm.get("version")
-                #base = nm.get("root")
                 art_id = nm.get("art_id")
                 
                 if current_file_ver == newest_version_info["version"]:
@@ -206,16 +204,12 @@ def version_history_processing(artInfo, solrdocs, solrauth,
                     # in artinfo table, so copy and remove
                     success = copy_to_articles_removed(ocd, prior_version_art_id)
                     ocd.delete_specific_article_data(prior_version_art_id)
-                    #success = add_removed_article_filename_with_path(ocd, prior_version_art_id, full_filename_with_path, verbose=None)
                 else:
                     # not in api_articles. Add it manually to removed
                     if retrieve_specific_version_info(ocd, art_id, table="api_articles_removed") == []:
                         # not in removed table, add the basic info we need
                         removed_ver.artInfo = get_article_info(art_id, removed_ver.basename, removed_ver.filespec)
                         success = add_to_articles_removed_table_fullinfo(ocd, artInfo)
-                        # metadata_dict = get_metadata_dict(removed_ver.filespec)
-                        #publisher_ms_id = metadata_dict.get("manuscript-id", "")
-                        # newest_manuscript_date_str = metadata_dict.get("submission-date", "")
                     else:    
                         if verbose: print (f"\t...{art_id} has already been removed.")
                     
@@ -502,20 +496,34 @@ def build_version_history_section(ocd, common_name, version_info, verbose=False)
     """
     
     # get the addon version history unit to return
-    list_of_items = ""
+    list_of_items_str = ""
 
     # get all the known removed versions
     version_info["known_version_info"] = retrieve_all_versions_info(ocd, common_name, verbose=verbose)
+    newest_artInfo = version_info["newest_artinfo"]
     
     for known_ver in version_info["known_version_info"]:
-        list_of_items += f"""\t<li><p><impx type='RVDOC' rx='{known_ver["art_id"]}'>{known_ver["manuscript_date_str"]}</impx></p></li>\n"""
+        manuscript_date_str = known_ver["manuscript_date_str"]
+        if newest_artInfo is not None and newest_artInfo.art_id == known_ver["art_id"]:
+            # if this is newest, take this version of the date, in case it's changed!
+            manuscript_date_str = newest_artInfo.manuscript_date_str
+        # add to list of items (str)
+        list_of_items_str += f"""\t<li><p><impx type='RVDOC' rx='{known_ver["art_id"]}'>{manuscript_date_str}</impx></p></li>\n"""
 
-    if list_of_items != "": 
+    if version_info["version_count"] > len(version_info["known_version_info"]):
+        # this means the newest version was not seen before so wasn't returned in "retrieve_all_versions_info"
+        #   because it won't be added until after IJPOpen version processing is done and the build continues.
+        #   So we add it manually here.
+        if version_info["is_newest"] and version_info["newest_artinfo"] is not None:
+            newest_artInfo = version_info["newest_artinfo"]
+            list_of_items_str += f"""\t<li><p><impx type='RVDOC' rx='{newest_artInfo.art_id}'>{newest_artInfo.manuscript_date_str}</impx></p></li>\n"""
+        
+    if list_of_items_str != "": 
         addon_section = f"""
            <unit type="previousversions">
                 <h1>{DOCUMENT_UNIT_NAME}</h1>
                 <list type="BUL1">
-                {list_of_items}
+                {list_of_items_str}
                 </list>
             </unit>
         """

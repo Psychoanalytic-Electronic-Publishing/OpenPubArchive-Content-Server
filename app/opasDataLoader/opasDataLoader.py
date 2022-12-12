@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.1212/v2.0.033"   # semver versioning after date.
+__version__     = "2022.1212/v2.0.035"   # semver versioning after date.
 __status__      = "Development"
 
 programNameShort = "opasDataLoader"
@@ -625,7 +625,8 @@ def main():
 
     # record time in case options.nofiles is true
     timeStart = time.time()
-
+    archived_files_not_loaded = 0
+    
     if options.no_files == False: # process and/or load files (no_files just generates a whats_new list, no processing or loading)
         print (f"Locating files for processing at {start_folder} with build pattern {input_build_pattern}. Started at ({time.ctime()}).")
         print (f"Smartbuild exceptions: Files matching {loaderConfig.SMARTBUILD_EXCEPTIONS} are load only, no recompile.  Will load from output format {selected_output_build}")
@@ -701,7 +702,6 @@ def main():
             print (f"{pre_action_verb} started ({time.ctime()}).  Examining files.")
             glossary_file_skip_pattern=r"ZBK.069(.*)"
             rc_skip_glossary_kbd3_files = re.compile(glossary_file_skip_pattern, re.IGNORECASE)
-            archived_files_not_loaded = 0
             for n in filenames:
                 fileTimeStart = time.time()
                 input_file_was_updated = False
@@ -1023,9 +1023,10 @@ def main():
                     art_issue = artInfoSolr.documents.responseSet[0].issue
                     issue_id_str = f"<issue_id><src>{src_code}</src><yr>{art_year}</yr><vol>{art_vol_str}</vol><iss>{art_issue}</iss></issue_id>"
                 except IndexError:
-                    logger.error(f"Error: can't find article info for: {art_id}")
+                    if re.search("IJPOPEN", art_id, re.IGNORECASE) is None: # IJPOPEN is more dynamic and has archive/removed articles, no need to log these
+                        logger.error(f"WhatNewList IndexError: can't find article info for: {art_id}")
                 except Exception as e:
-                    logger.error(f"Error: can't find article info for: {art_id} {e}")
+                    logger.error(f"WhatNewList Exception for: {art_id} {e}")
                 else:   
                     if src_code not in loaderConfig.DATA_UPDATE_PREPUBLICATION_CODES_TO_IGNORE:
                         art = f"<article id='{art_id}'>{art_citeas_xml}</article>"
