@@ -316,17 +316,22 @@ def pgx_add_rx_jump_via_biblio_entry(parsed_xml, ocd, artInfo, split_book_data=N
         r_attr = pgx.attrib.get("r", None)
         if r_attr is not None:
             pg_num = pgx.text
-            pg_numeric = pg_num.isnumeric()
-            if opasgenlib.not_empty(r_attr) and pg_numeric:
-                if r_attr[0] == "B":
-                    # bib...get linked rx, if there is one
-                    bib_node = parsed_xml.xpath(f'//be[@id="{r_attr}"]')
-                    if len(bib_node) == 1:
-                        rx = bib_node[0].attrib.get("rx", None)
-                        if rx is not None:
-                            pgx.attrib["rx"] = rx + f".P{pg_num}"
-                            pgx.attrib["type"] = pgxlink_type
-                            ret_val += 1
+            if pg_num is not None:
+                pg_numeric = pg_num.isnumeric()
+                if opasgenlib.not_empty(r_attr) and pg_numeric:
+                    if r_attr[0] == "B":
+                        # bib...get linked rx, if there is one
+                        bib_node = parsed_xml.xpath(f'//be[@id="{r_attr}"]')
+                        if len(bib_node) == 1:
+                            rx = bib_node[0].attrib.get("rx", None)
+                            if rx is not None:
+                                pgx.attrib["rx"] = rx + f".P{pg_num}"
+                                pgx.attrib["type"] = pgxlink_type
+                                ret_val += 1
+            else:
+                logger.warning("pgx does not have a page number reference.")
+        else:
+            logger.warning("pgx does not have link information.")
                     
     if verbose and ret_val:
         print(f"\t...Found biblo based page links. {ret_val} external pgx links added.")

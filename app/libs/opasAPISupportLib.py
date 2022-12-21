@@ -66,6 +66,8 @@ import opasConfig
 import localsecrets
 
 import opasFileSupport
+import PEPGlossaryRecognitionEngine
+glossEngine = PEPGlossaryRecognitionEngine.GlossaryRecognitionEngine(gather=False)
 
 # from configLib.opasCoreConfig import solr_docs2, solr_authors2, solr_gloss2
 # from configLib.opasCoreConfig import EXTENDED_CORES
@@ -839,7 +841,9 @@ def documents_get_document_from_file(document_id,
         
         if result.documents.responseSet[0].accessChecked and result.documents.responseSet[0].accessLimited == False:
             document_list_item.document = fileXMLContents
-            
+            # replace facet_counts with new dict
+            term_dict = glossEngine.getGlossaryLists(fileXMLContents, verbose=False)
+            result.documents.responseInfo.facetCounts = {"facet_fields": {"glossary_group_terms": term_dict}}           
             
         ret_val = result
 
@@ -1014,6 +1018,11 @@ def documents_get_document(document_id,
             # is user authorized?
             if document_list.documentList.responseSet[0].accessLimited or document_list.documentList.responseSet[0].accessChecked == False or document_list.documentList.responseSet[0].accessLimited is None:
                 document_list.documentList.responseSet[0].document = document_list.documentList.responseSet[0].abstract
+            else: # yes
+                # replace facet_counts with new dict
+                pepxml = document_list.documentList.responseSet[0].document
+                term_dict = glossEngine.getGlossaryLists(pepxml, verbose=False)
+                response_info.facetCounts = {"facet_fields": {"glossary_group_terms": term_dict}}
                 
             document_list_struct = models.DocumentListStruct( responseInfo = response_info, 
                                                               responseSet = [document_list_item]

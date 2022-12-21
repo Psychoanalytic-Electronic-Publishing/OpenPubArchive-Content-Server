@@ -48,6 +48,7 @@ PADS_INFO_TRACE = False
 
 # Special feature switches
 SMARTQUOTE_EXTENSION = True  # Turn on temporary smartQuote (apos) feature.  Won't be needed if we load only smartquotes.
+MIN_TERM_LENGTH_MATCH = 4 # smallest length term to match from glossary (i.e., eliminate 'M')
 
 # Cache controls
 WHATS_NEW_EXPIRES_DAYS = 0
@@ -288,6 +289,8 @@ def normalize_val(val, val_dict, default=None):
 
 # Special relatedrx field name from Solr schema
 RELATED_RX_FIELDNAME = "art_qual"
+# OR'd list RE of terms to not match in the documents for glossary items
+GLOSSARY_TERM_SKIP_REGEX = "(stage|feeling)"
 
 # Special Options flag map:
 OPTION_1_NO_GLOSSARY_TERM_MARKUP = 1

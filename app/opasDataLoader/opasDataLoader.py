@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.1212/v2.0.035"   # semver versioning after date.
+__version__     = "2022.1221/v2.0.037"   # semver versioning after date.
 __status__      = "Development"
 
 programNameShort = "opasDataLoader"
@@ -549,19 +549,25 @@ def main():
                     print ("Paragraphs only stored for sources indicated in loaderConfig.")
     
             if options.halfway:
-                print ("--halfway option selected.  Including approximately one-half of the files that match.")
+                print ("--halfway option selected. Including approximately one-half of the files that match.")
                 
             if options.run_in_reverse:
-                print ("--reverse option selected.  Running the files found in reverse order.")
+                print ("--reverse option selected. Running the files found in reverse order.")
 
             if options.file_key:
                 print (f"--key supplied.  Including files matching the article id {options.file_key}.\n   ...Automatically implies force rebuild (--smartload) and/or reload (--load) of files.")
 
+            if options.glossary_term_tagging:
+                print ("--termtags option selected. Glossary terms will be marked up with impx for compiled XML.")
+
+            if not options.add_glossary_term_dict:
+                print ("--termdictoff option selected. The glossary_term_dict unit will not be added to compiled XML.")
+
             print(80*"*")
             if not options.no_check:
-                cont = input ("The above databases will be updated.  Do you want to continue (y/n)?")
+                cont = input ("The above databases will be updated. Do you want to continue (y/n)?")
                 if cont.lower() == "n":
-                    print ("User requested exit.  No data changed.")
+                    print ("User requested exit. No data changed.")
                     sys.exit(0)
                 
         except Exception as e:
@@ -642,7 +648,7 @@ def main():
                 print (msg)
                 exit(0)
             else:
-                options.forceRebuildAllFiles = True
+                # options.forceRebuildAllFiles = True
                 options.forceReloadAllFiles = True
         elif options.file_only is not None: # File spec for a single file to process.
             fileinfo = FileInfo()
@@ -1248,11 +1254,11 @@ if __name__ == "__main__":
     parser.add_option("--doctype", dest="output_doctype", default=loaderConfig.DEFAULT_DOCTYPE,
                       help=f"""For output files, default={loaderConfig.DEFAULT_DOCTYPE}.""")
 
-    parser.add_option("--term_tags_off", action="store_false", dest="glossary_term_tagging", default=True,
-                      help=f"""Do not markup glossary terms in paragraphs when compiling xml""")
+    parser.add_option("--termtags", action="store_true", dest="glossary_term_tagging", default=False,
+                      help=f"""Markup glossary terms in paragraphs when compiling XML""")
 
-    parser.add_option("--term_dict", action="store_true", dest="add_glossary_term_dict", default=False,
-                      help=f"""Add the glossary term/count dictionary when compiling xml""")
+    parser.add_option("--termdictoff", action="store_false", dest="add_glossary_term_dict", default=True,
+                      help=f"""Do not add the glossary term/count dictionary when compiling XML""")
 
     #parser.add_option("-w", "--writexml", "--writeprocessed", action="store_true", dest="write_processed", default=False,
                       #help="Write the processed data to files, using the output build (e.g., (bEXP_ARCH1).")

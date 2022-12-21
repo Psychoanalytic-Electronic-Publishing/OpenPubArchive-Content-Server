@@ -32,6 +32,7 @@ from lxml import etree
 parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=False)
 # import html
 import mysql.connector
+import json
 
 import localsecrets
 import opasConfig
@@ -50,6 +51,9 @@ logger = logging.getLogger(__name__)
 import PEPJournalData
 jrnlData = PEPJournalData.PEPJournalData()
 # import modelsOpasCentralPydantic
+
+import PEPGlossaryRecognitionEngine
+glossEngine = PEPGlossaryRecognitionEngine.GlossaryRecognitionEngine(gather=False)
 
 def read_stopwords(): 
     with open(localsecrets.HIGHLIGHT_STOP_WORDS_FILE) as f:
@@ -103,7 +107,6 @@ def remove_values_from_terms_highlighted_list(the_list, remove_stop_words=True, 
         return [strip_tags(value, compiled_tag_pattern = cStripPattern) for value in the_list if not rc_stopword_match.match(value)]
     else:
         return [strip_tags(value, compiled_tag_pattern = cStripPattern) for value in the_list]
-
 
 class BiblioEntry(object):
     """
@@ -474,16 +477,16 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents, in
     terms_highlighted = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//body/*/b|//body/*/i|//body/*/bi|//body/*/bui")
                         #opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//body/*/i") 
     terms_highlighted = remove_values_from_terms_highlighted_list(terms_highlighted)
-    # include pep dictionary marked words
-    glossary_terms_list = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//body/*/impx")
-    # strip the tags, but keep stop words
-    glossary_terms_list = remove_values_from_terms_highlighted_list(glossary_terms_list, remove_stop_words=False)
-    
-    glossary_group_terms = pepxml.xpath("//body/*/impx/@grpname")
-    glossary_group_terms_list = []
-    if glossary_group_terms is not None:
-        for n in glossary_group_terms:
-            glossary_group_terms_list += opasgenlib.string_to_list(n, sep=";")
+    # get counts dynamically, or from file
+    glossary_terms_dict = glossEngine.getGlossaryLists(pepxml, verbose=verbose)
+    glossary_terms_list = [(k, v) for k, v in glossary_terms_dict.items()]
+    # 
+    # After much testing, and contemplating which is best: **Always use terms rather than groups.**
+    # 
+    glossary_group_terms_list = glossary_terms_list
+    #glossary_group_terms = pepxml.xpath("//body/*/impx/@grpname")
+    #glossary_group_terms_list = PEPGlossaryRecognitionEngine.split_glossary_group_terms(glossary_group_terms)
+
     freuds_italics = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//body/*/fi", default_return=None)
     if freuds_italics is not None:
         freuds_italics = remove_values_from_terms_highlighted_list(freuds_italics)
