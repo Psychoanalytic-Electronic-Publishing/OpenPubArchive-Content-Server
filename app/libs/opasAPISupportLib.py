@@ -842,8 +842,12 @@ def documents_get_document_from_file(document_id,
         if result.documents.responseSet[0].accessChecked and result.documents.responseSet[0].accessLimited == False:
             document_list_item.document = fileXMLContents
             # replace facet_counts with new dict
-            term_dict = glossEngine.getGlossaryLists(fileXMLContents, verbose=False)
-            result.documents.responseInfo.facetCounts = {"facet_fields": {"glossary_group_terms": term_dict}}           
+            try:
+                term_dict = glossEngine.getGlossaryLists(fileXMLContents, verbose=False)
+                result.documents.responseInfo.facetCounts = {"facet_fields": {"glossary_group_terms": term_dict}}
+            except Exception as e:
+                status_message = f"FacetReplacementError: {e}"
+                logger.error(status_message)
             
         ret_val = result
 
