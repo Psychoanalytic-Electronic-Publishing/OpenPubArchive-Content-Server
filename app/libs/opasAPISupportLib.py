@@ -788,7 +788,7 @@ def documents_get_document_from_file(document_id,
     Load an article into the document_list_item directly from a file in order to return
       **archived** articles (such as used by IJPOPen) which have been removed from Solr
     """
-    # caller_name = "documents_get_document_from_file"
+    caller_name = "documents_get_document_from_file"
     ret_val = None
     # document_list = None
     import opasXMLHelper as opasxmllib
@@ -846,7 +846,7 @@ def documents_get_document_from_file(document_id,
                 term_dict = glossEngine.getGlossaryLists(fileXMLContents, verbose=False)
                 result.documents.responseInfo.facetCounts = {"facet_fields": {"glossary_group_terms": term_dict}}
             except Exception as e:
-                status_message = f"FacetReplacementError: {e}"
+                status_message = f"{caller_name}: {e}"
                 logger.error(status_message)
             
         ret_val = result
@@ -1024,9 +1024,12 @@ def documents_get_document(document_id,
                 document_list.documentList.responseSet[0].document = document_list.documentList.responseSet[0].abstract
             else: # yes
                 # replace facet_counts with new dict
-                pepxml = document_list.documentList.responseSet[0].document
-                term_dict = glossEngine.getGlossaryLists(pepxml, verbose=False)
-                response_info.facetCounts = {"facet_fields": {"glossary_group_terms": term_dict}}
+                try:
+                    pepxml = document_list.documentList.responseSet[0].document
+                    term_dict = glossEngine.getGlossaryLists(pepxml, verbose=False)
+                    response_info.facetCounts = {"facet_fields": {"glossary_group_terms": term_dict}}
+                except Exception as e:
+                    logger.error(f"{caller_name}: Error replacing term_dict {e}")
                 
             document_list_struct = models.DocumentListStruct( responseInfo = response_info, 
                                                               responseSet = [document_list_item]

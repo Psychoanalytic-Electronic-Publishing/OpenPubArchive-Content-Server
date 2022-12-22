@@ -345,7 +345,7 @@ def authors_get_author_publications(author_partial,
     authorPubList=AuthorPubListStruct(responseInfo=ResponseInfo(count=15
     >>> ret_val=authors_get_author_publications(author_partial="Levinson, Nadine A.")
     >>> print (f"{ret_val}"[0:67])
-    authorPubList=AuthorPubListStruct(responseInfo=ResponseInfo(count=8
+    authorPubList=AuthorPubListStruct(responseInfo=ResponseInfo(count=6
     """
     ret_val = {}
     query = "art_author_id:/{}/".format(author_partial)
@@ -2291,7 +2291,7 @@ def metadata_get_document_statistics(session_info=None):
     """
     Return counts for the annual summary (or load checks)
 
-    >>> results = metadata_get_database_statistics()
+    >>> results = metadata_get_document_statistics()
     >>> results.article_count > 135000
     True
     """
@@ -2852,10 +2852,11 @@ def prep_document_download(document_id,
            - If access not permitted, this returns an error (and None for the filename)
            - If access allowed, it returns with the document itself
 
-    >>> a = prep_document_download("BIP.001.0342A", ret_format="html") 
-
-    >>> a = prep_document_download("BIP.001.0342A", ret_format="epub") 
-
+    >>> import localsecrets, opasDocPermissions
+    >>> pads_session_info = opasDocPermissions.authserver_login(username=localsecrets.PADS_TEST_ARCHIVEONLY, password=localsecrets.PADS_TEST_ARCHIVEONLY_PW)
+    >>> session_info = opasDocPermissions.get_authserver_session_info(pads_session_info.SessionId, client_id=4, pads_session_info=pads_session_info)
+    >>> a = prep_document_download("BIP.001.0342A", ret_format="html", session_info=session_info) 
+    >>> a = prep_document_download("BIP.001.0342A", ret_format="epub", session_info=session_info) 
 
     """
     def add_epub_elements(str):

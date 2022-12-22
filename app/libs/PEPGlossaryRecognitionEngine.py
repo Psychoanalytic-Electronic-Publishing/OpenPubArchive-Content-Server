@@ -31,12 +31,11 @@ ocd = opasCentralDBLib.opasCentralDB()
 
 gDbg1 = 0 # general info
 gDbg2 = 0 # high level
-gDbg4 = 0
-gDbg7 = 0 # debug details
+gDbg7 = 0 # extreme debug details
 
 __version__=".90"
 
-gDemarc = u"#"
+import PEPMungeLibrary as munger
 
 #--------------------------------------------------------------------------------
 def split_glossary_group_terms(glossary_group_terms):
@@ -49,67 +48,6 @@ def split_glossary_group_terms(glossary_group_terms):
         ret_val = sorted(ret_val)
     
     return ret_val
-    
-#--------------------------------------------------------------------------------
-def unMungeToTermList(mungedTerm, demarcPattern=gDemarc):
-    """
-    unMunge the term so it can be searched different ways
-    Returns a list of terms
-
-    	>>> unMungeToTermList("#dog##eat##dog#")
-    	[u'dog', u'eat', u'dog']
-    	>>> unMungeToTermList("#dog## eat ##dog#")
-    	[u'dog', u'eat', u'dog']
-        >>> termL = unMungeToTermList("#DÉJÀ VU##Déjà Raconté#".decode("utf8"))
-        >>> print termL[0].encode("utf8")
-        DÉJÀ VU
-    """
-
-    retVal = filter(None, [x.strip() for x in mungedTerm.split(demarcPattern)])
-
-    return retVal
-
-#--------------------------------------------------------------------------------
-def unMungeTerm(mungedTerm, demarcPattern=gDemarc):
-    """
-    unMunge the term so it can be searched different ways
-    Returns a unicode string where terms are separated by ";"
-
-        >>> originalStr = r"#MAHLER, MARGARET S##MARGARET S MAHLER#"
-        >>> umT = unMungeTerm(originalStr)
-        >>> umT
-        u'MAHLER, MARGARET S; MARGARET S MAHLER'
-        >>> mungeStr(umT)
-        u'#MAHLER, MARGARET S##MARGARET S MAHLER#'
-        >>> unMungeTerm("#dog##eat##dog#")
-        u'dog; eat; dog'
-
-        >>> unMungeTerm("#dog## eat ##dog#")
-        u'dog; eat; dog'
-
-        >>> unMungeTerm("dog eat dog")
-        u'dog eat dog'
-
-    """
-
-    #retVal = [x.strip() for x in mungedTerm.split(demarcPattern)]
-    retVal = unMungeToTermList(mungedTerm, demarcPattern)
-    retVal = u"; ".join(retVal)
-
-    return retVal
-
-
-#----------------------------------------------------------------------------------------
-def	doQuoteEscapes(data, hasEscapes=0):
-    retVal = data
-    if retVal is not None:
-        if re.search(r'"',	retVal)	is not None:
-            retVal = re.sub(r'(?P<pre>([^\\]|\A))"', r'\1\\"', retVal)
-        if re.search(r"''", retVal) is not None:
-            retVal = re.sub(r"''",	r"'\\'", retVal)
-        if re.search(r"'", retVal) is not None:
-            retVal = re.sub(r"(?P<pre>([^\\]|\A))'", r"\1\\'", retVal)
-    return retVal
 
 #--------------------------------------------------------------------------------
 class GlossaryRecognitionEngine(UserDict):
@@ -136,7 +74,7 @@ class GlossaryRecognitionEngine(UserDict):
     rightTag = '</impx>'
     
     #--------------------------------------------------------------------------------
-    def __init__(self, gather=True):
+    def __init__(self, gather=True, diagnostics=False, verbose=False):
         """
         Initialize the instance.  Load the glossary terms.
         If gather is true, search regex's are combined for faster recognition.  However,
@@ -145,8 +83,10 @@ class GlossaryRecognitionEngine(UserDict):
 
         UserDict.__init__(self)
         self.gather = gather
-        #if gather != True:
-            #print ("Gathering regex patterns is off.")
+        self.verbose = verbose
+        self.diagnostics = diagnostics
+        if gather != True and verbose:
+            print ("Gathering regex patterns is off.")
         self.data = {}
         if self.__class__.matchList == None:
             self.__class__.matchList = self.__loadGlossaryTerms()
@@ -162,6 +102,9 @@ class GlossaryRecognitionEngine(UserDict):
     def __loadGlossaryTerms(self):
         """
         Load the glossary terms into the matchList.  Combine terms so more terms are recognized per row.
+        
+        Glossary group terms are 'munged' to combine forms and terms representing the group
+          (see PEPMungeLibrary)
 
         """
         retVal = []
@@ -174,10 +117,11 @@ class GlossaryRecognitionEngine(UserDict):
         match_list = ocd.get_select_as_list(sqlSelect=selTerms)
         gatherPattern = ""
         #count = 0
+        msg_str = "Loading regex patterns.  Gathering regex patterns is "
         if self.gather:
-            logger.info("Loading regex patterns.  Gathering regex patterns is ON.")
+            logger.info(msg_str + "ON")
         else:
-            logger.info("Loading regex patterns.  Gathering regex patterns is OFF.")
+            logger.info(msg_str + "OFF")
 
         for n in match_list:
             if gDbg1:
@@ -221,7 +165,7 @@ class GlossaryRecognitionEngine(UserDict):
                 # compile the combined terms -- ready for searching
                 rc = re.compile(rcpattern, re.IGNORECASE|re.VERBOSE)
                 nlist = list(n)
-                nlist[2] = unMungeTerm(n[2])
+                nlist[2] = munger.unMungeTerm(n[2])
                 if re.match(f"^({opasConfig.GLOSSARY_TERM_SKIP_REGEX})$", nlist[2], re.IGNORECASE) is None:
                     retVal.append((rc, nlist))
 
@@ -231,7 +175,7 @@ class GlossaryRecognitionEngine(UserDict):
 
     #--------------------------------------------------------------------------------
     def doGlossaryMarkup(self, parsed_xml, skipIfHasAncestorRegx=default_ancestor_list, preface=None,
-                         theGroupName=None, pretty_print=False, markup_terms=True, diagnostics=False, verbose=False):
+                         theGroupName=None, pretty_print=False, markup_terms=True, verbose=False):
         """
         Markup any glossary entries in paragraphs (only).
 
@@ -240,29 +184,26 @@ class GlossaryRecognitionEngine(UserDict):
 
         Returns the number of changed terms, and a dictionary of terms and counts
 
-        >>> glossEngine = GlossaryRecognitionEngine(gather=False)
+        >>> glossEngine = GlossaryRecognitionEngine(gather=False, verbose=True)
         Gathering regex patterns is off.
-        1481 input patterns loaded into 1480 regex patterns.
-        >>> testXML= u'<body><p>My belief is that, διαφέρει although Freud was a revolutionary, most of his followers were more conventional. As is true of most institutions, as psychoanalysis aged, a conservatism overtook it. Foreground analytic theory incorporated the background cultural pathologizing of nonheterosexuality. Thus, the few articles written about lesbians rigidly followed narrow reductionistic explanations. Initially, these explanations followed classical theory, and then as psychoanalysis expanded into ego psychology and object relations, lesbian pathologizing was fit into these theories <bx r="B006">(Deutsch, 1995)</bx>.</p><p>For example, Adrienne Applegarth&apos;s 1984 American Psychoanalytic panel on homosexual women, used ego psychology to explain lesbianism. Applegarth viewed it (according to <bx r="B020">Wolfson, 1984</bx>), as a complicated structure of gratification and defense (p. <pgx r="B020">166</pgx>). She felt that if the steps in the usual positive and negative oedipal phases or if a girls wish for a baby arising out of penis envy become distorted, a range of outcomes, including homosexuality, could occur (Wolfson, <bx r="B020">1984</bx>, p. <pgx r="B020">166</pgx>).</p></body>'
+        >>> testXML= '<body><p>My belief is that, διαφέρει although Freud was a revolutionary, most of his followers were more conventional. As is true of most institutions, as psychoanalysis aged, a conservatism overtook it. Foreground analytic theory incorporated the background cultural pathologizing of nonheterosexuality. Thus, the few articles written about lesbians rigidly followed narrow reductionistic explanations. Initially, these explanations followed classical theory, and then as psychoanalysis expanded into ego psychology and object relations, lesbian pathologizing was fit into these theories <bx r="B006">(Deutsch, 1995)</bx>.</p><p>For example, Adrienne Applegarth&apos;s 1984 American Psychoanalytic panel on homosexual women, used ego psychology to explain lesbianism. Applegarth viewed it (according to <bx r="B020">Wolfson, 1984</bx>), as a complicated structure of gratification and defense (p. <pgx r="B020">166</pgx>). She felt that if the steps in the usual positive and negative oedipal phases or if a girls wish for a baby arising out of penis envy become distorted, a range of outcomes, including homosexuality, could occur (Wolfson, <bx r="B020">1984</bx>, p. <pgx r="B020">166</pgx>).</p></body>'
         >>> parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True)
         >>> pepxml = etree.fromstring(testXML, parser)
         >>> root = pepxml.getroottree()
-
-        >>> glossEngine.doGlossaryMarkup(root)
-        0 impx elements in non-allowed locations removed.
-        15
+        >>> count, marked_term_list = glossEngine.doGlossaryMarkup(root)
+        >>> print (count)
+        25
 
         >>> testXML= '<body><p> forces. Brenner has suggested that the familiar  of the id, ego, and superego as agencies of <b id="10">the</b> mind.</p></body>'
         >>> parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True)
         >>> pepxml = etree.fromstring(testXML, parser)
         >>> root = pepxml.getroottree()
-        >>> print (glossEngine.doGlossaryMarkup(root))
-        0 impx elements in non-allowed locations removed.
-        3
-
+        >>> count, marked_term_list = glossEngine.doGlossaryMarkup(root)
+        >>> print (count)
+        4
         """
         
-        ret_status = True
+        ret_status = 0
         if gDbg2: print (f"\t...Starting Glossary Markup")
         #preface="""<?xml version='1.0' encoding='UTF-8' ?><!DOCTYPE %s SYSTEM '%s'>""" % ("p", gDefaultDTD) + "\n"
         preface = """<?xml version='1.0' encoding='UTF-8' ?>""" # TRY THIS TEST CODE 2017-04-02, without named entities, we should not need a DTD loaded (much quicker)
@@ -280,13 +221,13 @@ class GlossaryRecognitionEngine(UserDict):
             # ancestors = opasxmllib.xml_node_list_ancestor_names(para_working)
             ancestor_match = opasxmllib.xml_node_regx_ancestors(para_working, regx=skipIfHasAncestorRegx)
             if ancestor_match:
-                if diagnostics: print (f"\t\t...Skipped para {para_count} (due to ancestor)")
+                if self.diagnostics: print (f"\t\t...Skipped para {para_count} (due to ancestor)")
                 continue
 
             # unicode opt returns string inst of bytes, which is for compat w py2 (http://makble.com/python-why-lxml-etree-tostring-method-returns-bytes)
             node_text = lxml.etree.tostring(para_working, encoding="unicode")
-            len_node_text = len(node_text)
-            if gDbg7: print (node_text)
+            # len_node_text = len(node_text)
+            if self.diagnostics: print (node_text)
             changes = False # reset
             for rcrow in self.matchList:
                 # replacement pattern...if we need to add an ID, it probably needs to be done in a second pass (because
@@ -294,8 +235,6 @@ class GlossaryRecognitionEngine(UserDict):
                 term_data = rcrow[1]
                 grpnm = term_data[2]
                 rx = term_data[3]
-                #if diagnostics:
-                    #print (f"\t\t\t...Groupname: {grpnm} Term Data: {term_data}")
                 if theGroupName == grpnm:
                     continue # skip per parameter def [TBD: Needs to be checked for glossary build]
                 
@@ -332,8 +271,7 @@ class GlossaryRecognitionEngine(UserDict):
                         if gDbg1: print ("\t..Error: Double nested impx detected. Skipping markup for para")
                         continue
                     else:
-                        # sciSupport.trace("%s%sMarked Abbr %s in %s: " % (60*"-","\n", rc.pattern, nodeText2), outlineLevel=1, debugVar=gDbg7)
-                        if diagnostics: print (f"\t\t...Para {para_count}: Marked Glossary Term: {grpnm} ID: {rx}")
+                        if self.diagnostics: print (f"\t\t...Para {para_count}: Marked Glossary Term: {grpnm} ID: {rx}")
                         changes = True
                         node_text = node_text2
 
@@ -342,7 +280,7 @@ class GlossaryRecognitionEngine(UserDict):
                     new_node = lxml.etree.XML(node_text)
                     parent_node = para_working.getparent()
                     parent_node.replace(para_working, new_node)
-                    if diagnostics:
+                    if self.diagnostics:
                         print (f"\t\t...Para {para_count}: Final markup: {node_text}")
                         print (f"\t\t...Para {para_count}: {count_in_doc} glossary terms recognized.")
                 except Exception as e:
@@ -360,15 +298,15 @@ class GlossaryRecognitionEngine(UserDict):
 
         # option: should we return count of changed paragraphs?
         ret_status = count_in_doc
-        sorted_term_dict = sorted(found_term_dict.items(), key=lambda item: item[1], reverse=True)
-        
-        return ret_status, sorted_term_dict
+        sorted_term_list = sorted(found_term_dict.items(), key=lambda item: item[1], reverse=True)
+
+        # returns count of changes and list of tuples with (term, count)
+        return ret_status, sorted_term_list
 
     #--------------------------------------------------------------------------------
     def getGlossaryLists(self,
                          parsed_xml,
                          skipIfHasAncestorRegx=default_ancestor_list,
-                         diagnostics=False,
                          verbose=True):
         """
         Get glossary term lists from document without marking any up.
@@ -379,6 +317,7 @@ class GlossaryRecognitionEngine(UserDict):
         
         ret_val = {}
         startTime = time.time()
+        caller_name = "getGlossaryLists"
         count_in_doc = 0
         total_changes = 0
         if isinstance(parsed_xml, str):
@@ -392,7 +331,7 @@ class GlossaryRecognitionEngine(UserDict):
             for para_working in allParas:
                 ancestor_match = opasxmllib.xml_node_regx_ancestors(para_working, regx=skipIfHasAncestorRegx)
                 if ancestor_match:
-                    if diagnostics: print (f"\t\t...Skipped para {para_count} (due to ancestor)")
+                    if self.diagnostics: print (f"\t\t...Skipped para {para_count} (due to ancestor)")
                     continue
                 node_text = lxml.etree.tostring(para_working, encoding="unicode")
                 for rcrow in self.matchList:
@@ -432,9 +371,12 @@ class GlossaryRecognitionEngine(UserDict):
             ret_val = dict(sorted(found_term_dict.items(), key=lambda item: item[1], reverse=True))
             
         else: # use the precompiled dictionary
-            glossary_term_dict_str = lxml.html.tostring(glossary_term_dict[0][0], method="text").strip()
-            glossary_dict_list = json.loads(glossary_term_dict_str)
-            ret_val = {k: v for k, v in glossary_dict_list}
+            try:
+                glossary_term_dict_str = lxml.html.tostring(glossary_term_dict[0][0], method="text").strip()
+                glossary_dict_list = json.loads(glossary_term_dict_str)
+                ret_val = {k: v for k, v in glossary_dict_list}
+            except Exception as e:
+                logger.error(f"{caller_name}: Error loading precompiled term_dict {e}")
                     
         #ret_status = count_in_doc
         if verbose: 
@@ -459,4 +401,5 @@ if __name__ == "__main__":
 
     import doctest
     doctest.testmod()
+    print ("Fini. Tests complete.")
     sys.exit()

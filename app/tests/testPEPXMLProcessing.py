@@ -4,31 +4,16 @@
 #2022.1129 # Added tests for turning of glossary tags and returning dictionary (as comment in end "unit")
 import unittest
 import re
-#from unitTestConfig import base_api, base_plus_endpoint_encoded, headers
-#import opasAPISupportLib
-#import opasConfig
-#import opasQueryHelper
 import opasCentralDBLib
-#import opasGenSupportLib
-#import models
-#import opasPySolrLib
-#from opasPySolrLib import search_text
 import opasXMLHelper as opasxmllib
 import PEPGlossaryRecognitionEngine
 import opasXMLProcessor
 import opasArticleIDSupport
-import opasProductLib
 import opasCentralDBLib
-
-# import lxml
 from lxml import etree
-# from pathlib import Path
 
 import logging
 logger = logging.getLogger()
-
-
-
 
 ocd = opasCentralDBLib.opasCentralDB()
 test_data = """
@@ -169,7 +154,7 @@ class TestXMLProcessing(unittest.TestCase):
         root = pepxml.getroottree()
         p1a = opasxmllib.xml_elem_or_str_to_xmlstring(pepxml.xpath("//body/p")[0])
         p2a = opasxmllib.xml_elem_or_str_to_xmlstring(pepxml.xpath("//body/p")[1])
-        total_count, term_dict = glossEngine.doGlossaryMarkup(pepxml, pretty_print=False, diagnostics=True)
+        total_count, marked_term_list = glossEngine.doGlossaryMarkup(pepxml, pretty_print=False)
         p1b = opasxmllib.xml_elem_or_str_to_xmlstring(pepxml.xpath("//body/p")[0])
         p2b = opasxmllib.xml_elem_or_str_to_xmlstring(pepxml.xpath("//body/p")[1])
         print(p1a)
@@ -190,7 +175,7 @@ class TestXMLProcessing(unittest.TestCase):
         root = pepxml.getroottree()
         p1a = opasxmllib.xml_elem_or_str_to_xmlstring(pepxml.xpath("//body/p")[0])
         p2a = opasxmllib.xml_elem_or_str_to_xmlstring(pepxml.xpath("//body/p")[1])
-        total_count, term_dict = glossEngine.doGlossaryMarkup(pepxml, pretty_print=False, diagnostics=True, markup_terms=True)
+        total_count, marked_term_list = glossEngine.doGlossaryMarkup(pepxml, pretty_print=False, markup_terms=True)
         p1b = opasxmllib.xml_elem_or_str_to_xmlstring(pepxml.xpath("//body/p")[0])
         p2b = opasxmllib.xml_elem_or_str_to_xmlstring(pepxml.xpath("//body/p")[1])
         print(p1a)
@@ -211,7 +196,7 @@ class TestXMLProcessing(unittest.TestCase):
         root = pepxml.getroottree()
         p1a = opasxmllib.xml_elem_or_str_to_xmlstring(pepxml.xpath("//body/p")[0])
         p2a = opasxmllib.xml_elem_or_str_to_xmlstring(pepxml.xpath("//body/p")[1])
-        total_count, term_dict = glossEngine.doGlossaryMarkup(pepxml, pretty_print=False, diagnostics=True, markup_terms=False)
+        total_count, marked_term_list = glossEngine.doGlossaryMarkup(pepxml, pretty_print=False, markup_terms=False)
         p1b = opasxmllib.xml_elem_or_str_to_xmlstring(pepxml.xpath("//body/p")[0])
         p2b = opasxmllib.xml_elem_or_str_to_xmlstring(pepxml.xpath("//body/p")[1])
         print(p1a)

@@ -17,8 +17,6 @@ import opasCentralDBLib
 #import opasPySolrLib
 #from opasPySolrLib import search_text
 
-import PEPGlossaryRecognitionEngine
-import lxml
 from lxml import etree
 from pathlib import Path
 

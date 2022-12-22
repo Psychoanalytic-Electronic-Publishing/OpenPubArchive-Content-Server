@@ -249,7 +249,7 @@ def add_removed_article_xml(ocd, artInfo, verbose=False):
     Adds the XML data from the file to the articles_removed table
     """
     ret_val = False
-    caller_name = "addRemovedArticleXML"
+    caller_name = "add_removed_article_xml"
     msg = f"\t...Adding api_articles record to api_articles_removed."
     logger.info(msg)
     if verbose:
@@ -463,7 +463,7 @@ def add_removed_article_filename_with_path(ocd, art_id, filename_with_path, verb
     
     """
     ret_val = False
-    caller_name = "addRemovedArticleFilename"
+    caller_name = "add_removed_article_filename_with_path"
     msg = f"\t...Updating record to add full file path to api_articles_removed."
     logger.info(msg)
     if verbose:
@@ -614,7 +614,7 @@ def copy_to_articles_removed(ocd, art_id, verbose=None):
     
     """
     ret_val = False
-    caller_name = "copyArticle"
+    caller_name = "copy_to_articles_removed"
     msg = f"\t...Copying api_articles record to api_articles_removed."
     logger.info(msg)
     if verbose:
@@ -644,7 +644,7 @@ def remove_from_articles(ocd, art_id, verbose=None):
     
     """
     ret_val = False
-    caller_name = "removeArticle"
+    caller_name = "remove_from_articles"
     msg = f"\t...Removing api_articles record."
     logger.info(msg)
     if verbose:
