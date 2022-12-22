@@ -773,10 +773,10 @@ def xml_update(parsed_xml, artInfo, ocd, add_glossary_list=False, markup_terms=T
     
     # now the doGlossaryMarkup returns a dictionary of terms and counts, so potentially a term list could be appended to
     #  the xml rather than, or in addition to, marking up the terms within.
-    total_count, term_list = glossEngine.doGlossaryMarkup(parsed_xml, pretty_print=pretty_print, markup_terms=markup_terms, verbose=verbose)
+    total_count, term_dict = glossEngine.doGlossaryMarkup(parsed_xml, pretty_print=pretty_print, markup_terms=markup_terms, verbose=verbose)
     if add_glossary_list:
         parser = ET.XMLParser(encoding='utf-8', recover=True, resolve_entities=False, load_dtd=False)
-        term_json = json.dumps(term_list)
+        term_json = json.dumps(term_dict)
         pep_addon = f'<unit type="glossary_term_dict"><!-- {term_json} --></unit>'
         new_unit = ET.fromstring(pep_addon, parser)
         parsed_xml.append(new_unit)

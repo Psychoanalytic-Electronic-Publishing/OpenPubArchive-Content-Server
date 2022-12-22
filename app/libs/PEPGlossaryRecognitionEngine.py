@@ -298,10 +298,10 @@ class GlossaryRecognitionEngine(UserDict):
 
         # option: should we return count of changed paragraphs?
         ret_status = count_in_doc
-        sorted_term_list = sorted(found_term_dict.items(), key=lambda item: item[1], reverse=True)
+        sorted_term_dict = dict(sorted(found_term_dict.items(), key=lambda item: item[1], reverse=True))
 
         # returns count of changes and list of tuples with (term, count)
-        return ret_status, sorted_term_list
+        return ret_status, sorted_term_dict
 
     #--------------------------------------------------------------------------------
     def getGlossaryLists(self,
@@ -373,8 +373,13 @@ class GlossaryRecognitionEngine(UserDict):
         else: # use the precompiled dictionary
             try:
                 glossary_term_dict_str = lxml.html.tostring(glossary_term_dict[0][0], method="text").strip()
-                glossary_dict_list = json.loads(glossary_term_dict_str)
-                ret_val = {k: v for k, v in glossary_dict_list}
+                glossary_dict = json.loads(glossary_term_dict_str)
+                # for historical reasons it's a list sometimes, but now it should always be a dict.  Handle either here.
+                # convert to dict if it's a list
+                if isinstance(glossary_dict, list):
+                    ret_val = {k: v for k, v in glossary_dict}
+                elif isinstance(glossary_dict, dict):
+                    ret_val = glossary_dict
             except Exception as e:
                 logger.error(f"{caller_name}: Error loading precompiled term_dict {e}")
                     
