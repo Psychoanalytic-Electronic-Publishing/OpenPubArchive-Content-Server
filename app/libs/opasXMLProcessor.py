@@ -56,6 +56,7 @@ import opasConfig
 import opasDocuments
 import PEPJournalData
 import opasXMLParaLanguageConcordance
+import opasXMLPageConcordance
 
 global gJrnlData
 try:  # see if it's been defined.
@@ -793,6 +794,10 @@ def xml_update(parsed_xml, artInfo, ocd, add_glossary_list=False, markup_terms=T
         if verbose: print (f"\t...Starting SE/GW Concordance Tagging")
         paraGWSEConcordance = opasXMLParaLanguageConcordance.PEPGWSEParaConcordance(ocd=ocd)
         paraGWSEConcordance.addRelatedIDs(parsed_xml=parsed_xml, artInfo=artInfo, verbose=verbose) # pass in database instance
+
+        GWPageConcordance = opasXMLPageConcordance.PageConcordance()
+        GWPageConcordance.insert_page_translations(parsed_xml, artInfo.art_id)
+
     
     ret_val = parsed_xml
 

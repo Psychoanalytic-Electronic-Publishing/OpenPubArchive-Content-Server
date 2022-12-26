@@ -1148,6 +1148,8 @@ def isRoman(roman_str):
     # returning the boolean value
     if isinstance(roman_str, str):
         ret_val = bool(re.search(r"^M{0,3}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})$", roman_str.upper()))
+    elif isinstance(roman_str, int):
+        ret_val = roman_str < 0 #  true if negative
     else:
         ret_val = False
 

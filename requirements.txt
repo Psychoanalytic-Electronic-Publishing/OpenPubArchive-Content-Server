@@ -7,12 +7,13 @@
 # Updated 2022-06-07 added roman support library from pypi for XML processing code
 # Updated 2022-07-15 xhtml2pdf, weasyprint, pydantic
 # Updated 2022-08-29 Changed protobuf version req per ERROR in online process: mysql-connector-python 8.0.30 has requirement protobuf<=3.20.1,>=3.11.0, but you'll have protobuf 4.21.5 which is incompatible.
-#
+# Updated 2022-12-09 Botocore/Boto3/s3transfer updated
+
 aiofiles==0.5.0
 #
 bcrypt==3.1.7
-boto3==1.17.31        # updated 2021-03-18
-botocore==1.20.31     # updated 2021-03-18
+boto3~=1.26.26                  # updated 2022-12-09 for s3
+botocore~=1.29.26               # updated 2022-12-09 for s3 (boto3 required)
 certifi==2020.6.20
 cffi~=1.14.1
 chardet==3.0.4
@@ -71,7 +72,7 @@ roman==3.3
 reportlab==3.6.6
 requests~=2.26.0
 s3fs==0.4.2
-s3transfer~=0.3.3
+s3transfer~=0.6                # updated 2022-12-09 for s3 (boto3 required)
 six~=1.15.0
 #
 #
