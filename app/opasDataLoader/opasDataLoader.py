@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.1222/v2.0.038"   # semver versioning after date.
+__version__     = "2022.1229/v2.0.039"   # semver versioning after date.
 __status__      = "Development"
 
 programNameShort = "opasDataLoader"
@@ -805,7 +805,8 @@ def main():
                     if artInfo.src_code == "IJPOPEN":
                         # Check if there are multiple versions, remove old versions, and add version history to each
                         version_history_unit = \
-                            opasDataLoaderIJPOpenSupport.version_history_processing(artInfo,
+                            opasDataLoaderIJPOpenSupport.version_history_processing(ocd,
+                                                                                    artInfo,
                                                                                     solrdocs=solr_docs2, solrauth=solr_authors2,
                                                                                     file_xml_contents=fileXMLContents,
                                                                                     full_filename_with_path=inputfilename,
@@ -841,7 +842,7 @@ def main():
                     file_text = lxml.etree.tostring(parsed_xml, pretty_print=options.pretty_printed, encoding="utf8").decode("utf-8")
                     file_text = file_prefix + file_text
                     # this is required if running on S3
-                    msg = f"\t...Compiling {n.basename} to precompiled (fully marked-up) XML"
+                    msg = f"\t...Compiled {n.basename} to precompiled (fully marked-up) XML in {fname}"
                     success = fs.create_text_file(fname, data=file_text, delete_existing=True)
                     if success:
                         rebuild_count += 1
@@ -989,16 +990,15 @@ def main():
                         ocd.close_connection(caller_name="processBibliographies")
     
                 # close the file, and do the next
-                if options.display_verbose: print(("\t...Time: %s seconds." % (time.time() - fileTimeStart)))
+                if options.display_verbose: print(f"\t...Time: {time.time() - fileTimeStart:.4f} seconds.")
         
-            print (f"{pre_action_verb} process complete ({time.ctime()} ). Time: {time.time() - fileTimeStart} seconds.")
+            print (f"{pre_action_verb} process complete ({time.ctime()} ). Time: {time.time() - fileTimeStart:.4f} seconds.")
             if processed_files_count > 0:
                 try:
                     print ("Performing final commit.")
                     if not options.glossary_only: # options.fulltext_core_update:
                         solr_docs2.commit()
                         solr_authors2.commit()
-                        # fileTracker.commit()
                     if 1: # options.glossary_core_update:
                         solr_gloss2.commit()
                 except Exception as e:

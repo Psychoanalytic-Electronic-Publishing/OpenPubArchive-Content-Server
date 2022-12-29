@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.1225/v2.1.204"   # semver versioning after date.
+__version__     = "2022.1229/v2.1.205"   # semver versioning after date.
 __status__      = "Development/Libs/Loader"  
 
 """
@@ -1762,7 +1762,8 @@ async def session_status(response: Response,
                 import pysolr
                 import fastapi
                 import lxml
-                library_versions = {"mysql.connector": ocd.library_version,
+                sql_library_version = ocd.get_mysql_version()
+                library_versions = {"mysql.connector": sql_library_version,
                                     "fastapi": fastapi.__version__,
                                     "pysolr": pysolr.__version__,
                                     "pydantic": pydantic.version.VERSION,

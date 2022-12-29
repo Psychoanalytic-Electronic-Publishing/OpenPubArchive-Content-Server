@@ -41,7 +41,7 @@ import opasXMLHelper as opasxmllib
 import opasCentralDBLib
 import opasArticleIDSupport
 
-ocd =  opasCentralDBLib.opasCentralDB()
+# ocd =  opasCentralDBLib.opasCentralDB()
 fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root=localsecrets.FILESYSTEM_ROOT)
 DOCUMENT_UNIT_NAME = "PEP-Web Manuscript Version History"
 
@@ -60,7 +60,8 @@ def is_removed_version(ocd, art_id, verbose=None):
         
     return ret_val
     
-def version_history_processing(artInfo, solrdocs, solrauth,
+def version_history_processing(ocd,
+                               artInfo, solrdocs, solrauth,
                                file_xml_contents,
                                full_filename_with_path,
                                options, 

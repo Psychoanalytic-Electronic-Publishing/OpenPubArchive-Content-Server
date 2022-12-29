@@ -323,8 +323,6 @@ def writePublisherFile(path=None, fs=None, online_link_location="http://peparchi
         #fileTime = filename.create_time
             
         year, month, day, hour, minute, second, weekday, day360, dst = time.localtime(filename.timestamp.timestamp())
-        #print "File Date/Time: ", fileTime, fileTimeAlt
-        #print year, month, day, hour, minute, second, weekday, day, dst
         filenameplusloc = online_link_location + filename.basename
         tplPublisherFile = f"""
                             <!-- Information about one file. -->

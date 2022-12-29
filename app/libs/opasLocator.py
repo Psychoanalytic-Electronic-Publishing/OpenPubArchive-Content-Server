@@ -1047,7 +1047,9 @@ class Locator:
                     if self.isSplitBook():
                         # lookup where this page is found!
                         newLoc = Locator(self.forceArticleID(forcePgStart=self.__localIDRef.localIDVal), art_info=self.art_info)
-                        splitArticleID = split_book_data.get_splitbook_page_instance(book_code=newLoc.jrnlCode, vol=str(newLoc.jrnlVol), page_id=retValSuffix[1:])
+                        splitArticleID = split_book_data.get_splitbook_page_instance(book_code=newLoc.jrnlCode,
+                                                                                     vol=str(newLoc.jrnlVol),
+                                                                                     page_id=retValSuffix[1:])
                         #splitArticleID = checkSplitInThisBiblioDB.splitPageData.getSplitBookInstance(newLoc.jrnlCode, newLoc.jrnlVol, retValSuffix[1:])
                         if splitArticleID is not None:
                             retVal = Locator(splitArticleID).articleID() + retValSep + str(retValSuffix)

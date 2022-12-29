@@ -292,9 +292,9 @@ class GlossaryRecognitionEngine(UserDict):
             timeDiff = endTime - startTime
             #print (80*"-")
             if markup_terms:
-                print (f"\t...{total_changes} glossary term markups for {count_in_doc} paragraphs in {timeDiff} secs")
+                print (f"\t...{total_changes} glossary term markups for {count_in_doc} paragraphs in {timeDiff:.4f} secs")
             else:  
-                print (f"\t...{total_changes} glossary terms recognized in {timeDiff} secs")
+                print (f"\t...{total_changes} glossary terms recognized in {timeDiff:.4f} secs")
 
         # option: should we return count of changed paragraphs?
         ret_status = count_in_doc
@@ -388,9 +388,9 @@ class GlossaryRecognitionEngine(UserDict):
             endTime = time.time()
             timeDiff = endTime - startTime
             if count_in_doc > 0:
-                print (f"\t...{count_in_doc} glossary terms recognized in {timeDiff} secs")
+                print (f"\t...{count_in_doc} glossary terms recognized in {timeDiff:.4f} secs")
             else:
-                print (f"\t...Glossary terms loaded from compiled XML in {timeDiff} secs")
+                print (f"\t...Glossary terms loaded from compiled XML in {timeDiff:.4f} secs")
             
         return ret_val
 

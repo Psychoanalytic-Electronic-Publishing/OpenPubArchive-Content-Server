@@ -148,8 +148,8 @@ class TestOpasFileSupport(unittest.TestCase):
         testsubpath = "_PEPCurrent/IJP/"
         testfullpath = root / testsubpath
         # two weeks to today
-        four_weeks_ago = dt.date.today() - dt.timedelta(days=28)
-        matchlist = fs.get_matching_filelist(path=testfullpath, filespec_regex=pat, revised_after_date=str(four_weeks_ago))
+        many_weeks_ago = dt.date.today() - dt.timedelta(days=99)
+        matchlist = fs.get_matching_filelist(path=testfullpath, filespec_regex=pat, revised_after_date=str(many_weeks_ago))
         #print (len(matchlist))
         assert len(matchlist) >= 1, len(matchlist) 
 

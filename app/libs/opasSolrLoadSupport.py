@@ -466,9 +466,9 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents, in
 
         child_list = children.child_list
         # indented status
-        msg = f"\t\t\t\t-->Adding children, tags/counts: {children.tag_counts}"
+        msg = f"\t\t-->Adding children, tags/counts: {children.tag_counts}"
         logger.info(msg)
-        if verbose:
+        if opasConfig.LOCAL_TRACE:
             print (msg)
     else:
         child_list = None
