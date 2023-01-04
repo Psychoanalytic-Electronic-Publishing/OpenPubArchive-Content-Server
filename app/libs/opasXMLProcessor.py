@@ -387,6 +387,29 @@ def pgx_add_rx_book_links(parsed_xml, ocd, artInfo, split_book_data=None, verbos
 
     return ret_val
 #------------------------------------------------------------------------------------------------------
+def remove_author_pretitles(parsed_xml, verbose=False):
+    """
+    Get rid of author pretitles (e.g., Dr), per note from David T. 2019-01-02
+    """
+
+    # Walk through page number "n" elements, and record page number sequence
+    n_nodes = parsed_xml.xpath("//npreti")
+    count = len(n_nodes)
+    # walk through the nodes backwards.
+    for node in n_nodes: # backwards
+        pretitle = node.text
+        if not opasgenlib.is_empty(pretitle):
+            count += 1
+            node.attrib["oldnpreti"] = pretitle
+            node.attrib["type"] = "TITLE"
+            node.text = ""
+            if verbose:
+                log_everywhere_if(gDbg2, level="info", msg=f"Pretitle: {preTitle} removed!")
+                logger.info()
+    return count
+    
+
+#------------------------------------------------------------------------------------------------------
 def update_biblio(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
     """
     Walk through the biblio records and update rx and rxcf links in the XML, using heuristics if necessary. 
@@ -568,6 +591,7 @@ def update_biblio(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
                         msg = f"\t\t\t...Skipped: {bib_entry.ref_entry_text}"
                         log_everywhere_if(gDbg2, level="debug", msg=msg)
 
+#------------------------------------------------------------------------------------------------------
 def update_bincs(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
     """
     Walk through the content looking for binc update rx and rxcf links in the XML, using heuristics if necessary. 
@@ -575,9 +599,10 @@ def update_bincs(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
     known_books = PEPBookInfo.PEPBookInfo()
     
     # add links to biblio entries, rx to be
-    bibReferences = parsed_xml.xpath("/pepkbd3//binc")  
-    if len(bibReferences) > 0:
-        if verbose: print("\t...Examining %s references for links (rx) and related titles (rxcf)." % (artInfo.ref_count))
+    bibReferences = parsed_xml.xpath("/pepkbd3//binc")
+    count = len(bibReferences)
+    if count > 0:
+        if verbose: print(f"\t...Examining {count} inclusion refs (binc) for links (rx) and related titles (rxcf).")
         #processedFilesCount += 1
         bib_total_reference_count = 0
         for ref in bibReferences:
@@ -808,6 +833,7 @@ def tag_keywords(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
             if count > 0:
                 keyword_str = "".join(markedup_list)
                 keywords = f"<artkwds>{keyword_str}</artkwds>"
+                keywords = keywords.replace(" & ", " &amp; ")
                 newnode = ET.XML(keywords)
                 try:
                     node.getparent().replace(node, newnode)
@@ -897,6 +923,8 @@ def update_artinfo_in_instance(parsed_xml, artInfo, ocd, pretty_print=False, ver
             # set default attributes if not seet
             aut.set("listed", aut.get("listed", "true"))
             aut.set("role", aut.get("role", "author"))
+            
+    remove_author_pretitles(parsed_xml, verbose=verbose)
         
 #------------------------------------------------------------------------------------------------------
 def xml_update(parsed_xml, artInfo, ocd, add_glossary_list=False, markup_terms=True,

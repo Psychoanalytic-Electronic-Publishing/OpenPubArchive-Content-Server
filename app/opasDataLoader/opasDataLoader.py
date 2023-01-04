@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.1229/v2.0.039"   # semver versioning after date.
+__version__     = "2023.0103/v2.0.040"   # semver versioning after date.
 __status__      = "Development"
 
 programNameShort = "opasDataLoader"
