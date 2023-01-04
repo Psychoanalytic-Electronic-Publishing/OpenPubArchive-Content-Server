@@ -57,7 +57,7 @@ import opasDocuments
 import PEPJournalData
 import opasXMLParaLanguageConcordance
 import opasXMLPageConcordance
-import opasSpecialEmbargoSupport
+import opasEmbargoContent
 
 global gJrnlData
 try:  # see if it's been defined.
@@ -949,7 +949,7 @@ def xml_update(parsed_xml, artInfo, ocd, add_glossary_list=False, markup_terms=T
     
     tag_keywords(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False)
     
-    opasSpecialEmbargoSupport.embargo_check(parsed_xml=parsed_xml, artInfo=artInfo)
+    opasEmbargoContent.embargo_check(parsed_xml=parsed_xml, artInfo=artInfo)
     
     # normalize local ids by adding base id to local ids.
     #     Not needed with current client for some impx rx values:
