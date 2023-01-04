@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2023.0103/v2.0.040"   # semver versioning after date.
+__version__     = "2023.0104/v2.0.041"   # semver versioning after date.
 __status__      = "Development"
 
 programNameShort = "opasDataLoader"
@@ -718,6 +718,7 @@ def main():
                 m = re.match(r"([^ ]*).*\(.*\)", artID)
                 artID = m.group(1)
                 artID = artID.upper()
+                artID = artID.replace(".EMBARGOED", "")
                 m = re.match(r"(.*?)\.", artID)
                 
                 try:

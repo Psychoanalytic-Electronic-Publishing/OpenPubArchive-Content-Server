@@ -57,6 +57,7 @@ import opasDocuments
 import PEPJournalData
 import opasXMLParaLanguageConcordance
 import opasXMLPageConcordance
+import opasSpecialEmbargoSupport
 
 global gJrnlData
 try:  # see if it's been defined.
@@ -834,8 +835,8 @@ def tag_keywords(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
                 keyword_str = "".join(markedup_list)
                 keywords = f"<artkwds>{keyword_str}</artkwds>"
                 keywords = keywords.replace(" & ", " &amp; ")
-                newnode = ET.XML(keywords)
                 try:
+                    newnode = ET.XML(keywords)
                     node.getparent().replace(node, newnode)
                 except Exception as e:
                     logger.warning(f"Can't replace artkwds node {e}")
@@ -947,6 +948,8 @@ def xml_update(parsed_xml, artInfo, ocd, add_glossary_list=False, markup_terms=T
     update_artinfo_in_instance(parsed_xml, artInfo, ocd)
     
     tag_keywords(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False)
+    
+    opasSpecialEmbargoSupport.embargo_check(parsed_xml=parsed_xml, artInfo=artInfo)
     
     # normalize local ids by adding base id to local ids.
     #     Not needed with current client for some impx rx values:
