@@ -37,12 +37,12 @@ def embargo_check(artInfo, parsed_xml, verbose=False):
             
             node = parsed_xml.xpath("//bib")
             if node:
-                parent = node.getparent()
+                parent = node[0].getparent()
                 parent.replace(node[0], ET.fromstring("<bib/>"))
             
             node = parsed_xml.xpath("//appxs")
             if node:
-                parent = node.getparent()
+                parent = node[0].getparent()
                 parent.replace(node[0], ET.fromstring("<appxs/>"))
 
             ET.strip_elements(parsed_xml, 'ftnx')

@@ -819,7 +819,7 @@ def tag_keywords(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
             keywords = node.text.split(",")
         except Exception as e:
             if node.text is None:
-                msg = f"Keyword list may already be marked up with impx. Leaving as is: {ET.tostring(node)}"
+                msg = f"\t...Keyword list may already be marked up with impx. Leaving as is: {ET.tostring(node)}"
                 print (msg)
             else:
                 logger.warning(f"Error handling Keyword list {e}. Leaving as is.")
