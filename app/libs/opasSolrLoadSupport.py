@@ -169,7 +169,7 @@ class BiblioEntry(object):
             self.year_of_publication = opasxmllib.xml_get_subelement_textsingleton(ref, "y")
             sourcecode, dummy, dummy = jrnlData.getPEPJournalCode(self.source_title)
             if sourcecode is not None:
-                self.sourcecode = sourcecode[0]
+                self.sourcecode = sourcecode
                 if self.rx_sourcecode is None and self.sourcecode is not None:
                     self.rx_sourcecode = self.sourcecode
                 if self.rx_sourcecode != self.sourcecode:
