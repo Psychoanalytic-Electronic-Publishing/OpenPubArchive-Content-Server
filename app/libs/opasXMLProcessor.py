@@ -14,7 +14,7 @@ Can optionally
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.1227/v.1.0.104"  # recorded in xml processed pepkbd3 procby
+__version__     = "2023.0105/v.1.0.105"  # recorded in xml processed pepkbd3 procby, keep up to date!
 __status__      = "Development"
 
 programNameShort = "opasXMLProcessor"
