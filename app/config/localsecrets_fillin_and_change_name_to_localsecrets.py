@@ -36,7 +36,7 @@ SERVER_START_DATE = datetime.today().strftime('%Y-%m-%d')
 # Three configs now of importance.  
 # Set use_server for the one to use for current server run:
 # *******************************************************************
-use_server = 0
+use_server = 4
 if use_server == 0:   # http://development.org
     CONFIG = "Local"
 elif use_server == 1: # http://23.21.145.16/solr
@@ -45,6 +45,8 @@ elif use_server == 2:
     CONFIG = "Stage" 
 elif use_server == 3:  
     CONFIG = "Production" 
+elif use_server == 4:  
+    CONFIG = "Docker" 
 
 PADS_TEST_ID = "padstestid"
 PADS_TEST_PW = "padstestpw"
@@ -119,6 +121,38 @@ if CONFIG == "Local":
     XML_ORIGINALS_PATH = r"localpath"
     PATH_SEPARATOR = "\\"
     XML_CATALOG_NAME = r"localpath"
+
+elif CONFIG == "Docker":
+    # MySQL database configuration
+    DBHOST = "host.docker.internal"
+    DBPORT = 3306 # default
+    DBUSER = "root"
+    DBPW = "password"
+    DBVER = 5 # 8.04 and later use different REXP libs (8 implies 8.04 or newer)
+    DBNAME = "pep_content_server"
+
+    # Solr configuration
+    SOLRURL = "http://host.docker.internal:8983/solr/"
+    SOLRUSER = None
+    SOLRPW = None
+
+    # API configuration
+    BASEURL = "localhost:80"
+    APIURL = "http://localhost:80"
+    COOKIE_DOMAIN = ".localhost"
+
+    # Path configuration
+    # Path configuration
+    PATH_SEPARATOR = "/"
+    IMAGE_SOURCE_PATH = r"/app/web-images"
+    XML_ORIGINALS_PATH = r"/app/xml-originals"
+    FILESYSTEM_ROOT = XML_ORIGINALS_PATH 
+    SITEMAP_PATH = r"localpath"
+    IMAGE_EXPERT_PICKS_PATH = r"/app/expert-picks"
+    PDF_ORIGINALS_PATH = r"/app/pdf-originals"
+    XML_CATALOG_NAME = r"localpath"
+    PDF_ORIGINALS_EXTENSION = ".pdf" #  PDF originals extension
+
     
 elif CONFIG == "Production":
     # as local above, but site specific defs

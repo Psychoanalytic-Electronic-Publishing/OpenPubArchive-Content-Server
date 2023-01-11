@@ -44,7 +44,7 @@ class TestOpasLoaderProgram(unittest.TestCase):
         self.assertIn(b'Load process complete', result.stdout)
 
     def test_process_newroot(self):
-        if CONFIG == "Local":
+        if CONFIG == "Local" or localsecrets.CONFIG == "Docker":
             #--nocheck -d X:\_PEPA1\_PEPa1v --sub=_PEPFree
             print (os.getcwd())
             result = subprocess.run([sys.executable, '../opasDataLoader/opasDataLoader.py', '-de:/usr3/GitHub/openpubarchive/app/tests/testdatasource/_PEPFree', '--nocheck', '--verbose', '--smartload', '--rebuild'], capture_output=True)

@@ -973,7 +973,7 @@ def fetch_resources(uri, rel):
             image_source_path = DEFAULT_IMAGE_SOURCE_PATH
             logger.error(f"IMAGE_SOURCE_PATH needs to be set ({e}) in localsecrets. Using opasConfig.DEFAULT_IMAGE_SOURCE_PATH {image_source_path} for resilience") # added for setup error notice 2022-06-06
         
-        if localsecrets.CONFIG == "Local":
+        if localsecrets.CONFIG == "Local" or localsecrets.CONFIG == "Docker":
             a = urlparse(uri)
             m = re.search(".*/Documents/Image/(.*)[/\"\']?", a.path)
             try:

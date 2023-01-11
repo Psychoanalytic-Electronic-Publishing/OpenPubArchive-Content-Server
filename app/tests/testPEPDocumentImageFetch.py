@@ -56,7 +56,7 @@ class TestDocumentImageFetch(unittest.TestCase):
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Image/ApA44202.JPG?insensitive=False')
         response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully if Windows and fails for Unix.
-        if CONFIG != "Local":
+        if CONFIG != "Local" or localsecrets.CONFIG == "Docker":
             assert(response.ok == False)
         else:
             assert(response.ok == True) # no getting around it on windows
