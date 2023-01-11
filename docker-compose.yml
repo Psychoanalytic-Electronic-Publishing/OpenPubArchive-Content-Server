@@ -25,6 +25,9 @@ services:
         ports: 
         - 3306:3306
         - 33060:33060
+        volumes:
+            - ./sql/schemas:/docker-entrypoint-initdb.d/:ro
+
 
     dbeaver:
         image: dbeaver/cloudbeaver:latest
@@ -38,7 +41,6 @@ services:
         build: .
         ports:
             - 80:80
-
 # Names our volume
 volumes:
   solrdata:
