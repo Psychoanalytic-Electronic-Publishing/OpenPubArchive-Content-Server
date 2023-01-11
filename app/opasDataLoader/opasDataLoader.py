@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2023, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2023.0111/v2.0.046"   # semver versioning after date.
+__version__     = "2023.0111/v2.0.047"   # semver versioning after date.
 __status__      = "Development"
 
 programNameShort = "opasDataLoader"
@@ -652,7 +652,7 @@ def main():
     
     if options.no_files == False: # process and/or load files (no_files just generates a whats_new list, no processing or loading)
         print (f"Locating files for processing at {start_folder} with build pattern {input_build_pattern}. Started at ({time.ctime()}).")
-        print (f"Smartbuild exceptions: Files matching {loaderConfig.SMARTBUILD_EXCEPTIONS} are load only, no recompile.  Will load from output format {selected_output_build}")
+        print (f"Smartbuild Notes: Files matching {loaderConfig.SMARTBUILD_EXCEPTIONS} are load only, no recompile.  Will load from output format {selected_output_build}")
         if options.file_key is not None:  
             # print (f"File Key Specified: {options.file_key}")
             # Changed from opasDataLoader (reading in bKBD3 files rather than EXP_ARCH1)
@@ -783,6 +783,8 @@ def main():
 
                     insert_date = datetime.today() - dtime.timedelta(days = opasConfig.CONTINUE_PROCESSING_DAYS)
                     if file_was_loaded_to_solr_after(solr_docs2, insert_date, art_id=artID):
+                        msg = f"{80*'-'}\nExamining file #%s of %s: %s (%s bytes). **Already processed.**" % (processed_files_count + skipped_files, files_found, n.basename, n.filesize)
+                        log_everywhere_if(options.display_verbose, level="info", msg=msg)
                         skipped_files += 1
                         continue
                     
@@ -989,8 +991,15 @@ def main():
                     
                     if precommit_file_count > configLib.opasCoreConfig.COMMITLIMIT:
                         precommit_file_count = 0
-                        solr_docs2.commit()
-                        solr_authors2.commit()
+                        try:
+                            solr_docs2.commit()
+                        except Exception as e:
+                            log_everywhere_if(True, "error", f"Docs Core Commit error - Solr internal issue, perhaps lock issue? {e}")
+                        
+                        try:
+                            solr_authors2.commit()
+                        except Exception as e:
+                            log_everywhere_if(True, "error", f"Authors Core Commit error - Solr internal issue: perhaps lock issue? {e}")
                     
                 # Add to the references table
                 if not options.no_bibdbupdate:
