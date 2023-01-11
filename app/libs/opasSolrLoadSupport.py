@@ -20,7 +20,7 @@ sys.path.append('../libs/configLib')
 
 import os
 from datetime import datetime
-import time
+# import time
 import string
 import re
 import urllib.request, urllib.parse, urllib.error
@@ -32,7 +32,7 @@ from lxml import etree
 parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=False)
 # import html
 import mysql.connector
-import json
+# import json
 
 import localsecrets
 import opasConfig
@@ -46,6 +46,7 @@ import loaderConfig
 # import opasArticleIDSupport
 import logging
 logger = logging.getLogger(__name__)
+from loggingDebugStream import log_everywhere_if    # log as usual, but if first arg is true, also put to stdout for watching what's happening
 
 # new for processing code
 import PEPJournalData
@@ -315,9 +316,7 @@ def process_article_for_glossary_core(pepxml, artInfo, solr_gloss, fileXMLConten
     glossary_groups = pepxml.xpath("/pepkbd3//dictentrygrp")  
     group_count = len(glossary_groups)
     msg = f"\t...Processing XML for Glossary Core. File has {group_count} groups."
-    logger.info(msg)
-    if verbose:
-        print (msg)
+    log_everywhere_if(verbose, "info", msg)
 
     # processedFilesCount += 1
 
@@ -402,9 +401,7 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents, in
     """
     ret_val = False
     msg = f"\t...Loading XML to Docs Core."
-    logger.info(msg)
-    if verbose:
-        print (msg)
+    log_everywhere_if(verbose, "info", msg)
 
     art_lang = pepxml.xpath('//@lang')
     if art_lang == []:
@@ -797,9 +794,7 @@ def process_info_for_author_core(pepxml, artInfo, solrAuthor, verbose=None):
     
     ret_val = False
     msg = f"\t...Loading XML to Author Core."
-    logger.info(msg)
-    if verbose:
-        print (msg)
+    log_everywhere_if(verbose, "info", msg)
     
     try:
         # Save author info in database
@@ -989,18 +984,12 @@ def add_article_to_api_articles_table(ocd, artInfo, verbose=None):
     """
     Adds the article data from a single document to the api_articles table in mysql database opascentral.
     
-    This database table is used as the basis for
+    This database table is used as the basis for linking articles.
      
-    Note: This data is in addition to the Solr pepwebdocs core which is added elsewhere.  The SQL table is
-          currently primarily used for the crosstabs rather than API queries, since the Solr core is more
-          easily joined with other Solr cores in queries.  (TODO: Could later experiment with bridging Solr/SQL.)
-      
     """
     ret_val = False
-    msg = f"\t...Loading metadata to Articles DB."
-    logger.info(msg)
-    if verbose:
-        print (msg)
+    msg = f"\t...Saving metadata to Articles DB."
+    log_everywhere_if(verbose, "info", msg)
     
     ocd.open_connection(caller_name="processArticles")
     
@@ -1251,10 +1240,8 @@ def add_to_artstat_table(ocd, artInfo, verbose=None):
     """
     ret_val = False
     procname = "AddToArtStatDB"
-    msg = f"\t...Loading statistics to artStat table."
-    logger.info(msg)
-    if verbose:
-        print (msg)
+    msg = f"\t...Saving statistics to artStat table."
+    log_everywhere_if(verbose, "info", msg)
     
     ocd.open_connection(caller_name=procname)
     

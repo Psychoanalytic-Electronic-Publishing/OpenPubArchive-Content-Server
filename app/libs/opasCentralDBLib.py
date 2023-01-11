@@ -1053,7 +1053,10 @@ class opasCentralDB(object):
         return ret_val
 
     #------------------------------------------------------------------------------------------------------
-    def get_artstat(self, document_id, default=[]):
+    def get_artstat(self, document_id, default={}):
+        """
+        Return a dict of the artstat record matching document_id
+        """
 
         ret_val = default
         # try to get it from the artstat table
@@ -1062,6 +1065,8 @@ class opasCentralDB(object):
             ret_val = self.get_select_as_list_of_dicts(sql_select)
             if ret_val:
                 ret_val = ret_val[0]
+            else:
+                ret_val = default
         except Exception as e:
             log_everywhere_if(True, "warning", f"Error getting artstat {e}")
         
