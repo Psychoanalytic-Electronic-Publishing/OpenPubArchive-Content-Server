@@ -34,6 +34,11 @@ services:
         depends_on: 
             - mysql
 
+    app:
+        build: .
+        ports:
+            - 80:80
+
 # Names our volume
 volumes:
   solrdata:
