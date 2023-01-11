@@ -978,6 +978,36 @@ class opasCentralDB(object):
         # return session model object
         return ret_val # List of records or empty list
 
+    def get_last_record_insertion_date(self):
+        """
+        Return list of articles newer than the current date - days_back.
+       
+        >>> ocd = opasCentralDB()
+        >>> articles = ocd.get_last_record_insertion_date() 
+        >>> len(articles) > 1
+        True
+
+        """
+        fname = "get_last_record_insertion_date"
+        self.open_connection(caller_name=fname) # make sure connection is open
+        if self.db is not None:
+            try:
+                cursor = self.db.cursor()
+                sql = """
+                        SELECT max(last_update) FROM api_articles;
+                      """
+                cursor.execute(sql)
+                result = cursor.fetchone()
+                ret_val = result[0]
+                cursor.close()
+                    
+            except mysql.connector.InternalError as error:
+                code, message = error.args
+                logger.error(code, message)
+
+        self.close_connection(caller_name=fname) # make sure connection is closed
+        return ret_val 
+    
     def get_min_max_volumes(self, source_code):
         sel = f"""
                 SELECT `api_articles`.`src_code` AS `src_code`,
@@ -1022,6 +1052,22 @@ class opasCentralDB(object):
             
         return ret_val
 
+    #------------------------------------------------------------------------------------------------------
+    def get_artstat(self, document_id, default=[]):
+
+        ret_val = default
+        # try to get it from the artstat table
+        sql_select = f"select * from artstat where articleID='{document_id}'"
+        try:
+            ret_val = self.get_select_as_list_of_dicts(sql_select)
+            if ret_val:
+                ret_val = ret_val[0]
+        except Exception as e:
+            log_everywhere_if(True, "warning", f"Error getting artstat {e}")
+        
+        return ret_val
+        
+    #------------------------------------------------------------------------------------------------------
     def get_select_as_list_of_dicts(self, sqlSelect: str):
         """
         Generic retrieval from database, into dict

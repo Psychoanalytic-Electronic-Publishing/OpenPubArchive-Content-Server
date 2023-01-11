@@ -831,6 +831,14 @@ class ArticleInfo(object):
             if self.src_code == "GW":
                 self.bk_seriestoc = "GW.000.0000A"               
 
+        glossary_terms_dict = parsed_xml.xpath("//unit[@type='glossary_term_dict']")
+        if glossary_terms_dict:
+            glossary_terms_dict = glossary_terms_dict[0]
+            if glossary_terms_dict is not None:
+                self.glossary_terms_dict = etree.tostring(glossary_terms_dict).decode("utf8")
+        else:
+            self.glossary_terms_dict = None       
+
         # check art_id's against the standard, old system of locators.
         try:
             self.art_locator = opasLocator.Locator(self.art_id)
