@@ -11,7 +11,7 @@ import opasGenSupportLib as opasgenlib
 import opasLocator
 import opasDocuments
 import opasFileSupport
-import loggingDebugStream
+from loggingDebugStream import log_everywhere_if
 import opasCentralDBLib
 
 DBGSTDOUT = False
@@ -88,7 +88,7 @@ class SplitBookData:
         else:
             toc_query =  ""
 
-        # loggingDebugStream.log_everywhere_if(DBGSTDOUT, level="debug", msg=f"GetSplitBookInstance: {art_base} {page_id_str}")
+        # log_everywhere_if(DBGSTDOUT, level="debug", msg=f"GetSplitBookInstance: {art_base} {page_id_str}")
 
         page_qry = fr"""select articleID,
                         bibliopage,
@@ -133,7 +133,7 @@ class SplitBookData:
         """
         count = 0
         fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root=localsecrets.IMAGE_SOURCE_PATH)
-        loggingDebugStream.log_everywhere_if(DBGSTDOUT, level="debug", msg=f"Garbage Collect. Deleting records {SPLIT_BOOK_TABLE} where the XML file no longer exists.")
+        log_everywhere_if(DBGSTDOUT, level="debug", msg=f"Garbage Collect. Deleting records {SPLIT_BOOK_TABLE} where the XML file no longer exists.")
         
         art_id_addon = ""
         if art_id_pattern is not None:
@@ -156,13 +156,13 @@ class SplitBookData:
                         count = count + 1
                         delqry = f"delete from {SPLIT_BOOK_TABLE} where articleID = '{articleID}'"
                         self.ocd.do_action_query(delqry, queryparams=None, contextStr=f"({SPLIT_BOOK_TABLE} %s)" % articleID)
-                        loggingDebugStream.log_everywhere_if(DBGSTDOUT, level="debug", msg=f"Deleted from {SPLIT_BOOK_TABLE} ArticleID: {articleID}")
+                        log_everywhere_if(DBGSTDOUT, level="debug", msg=f"Deleted from {SPLIT_BOOK_TABLE} ArticleID: {articleID}")
                         
         except Exception as e:
-            loggingDebugStream.log_everywhere_if(DBGSTDOUT, level="error", msg=f"Error: {articleID} {e}")
+            log_everywhere_if(DBGSTDOUT, level="error", msg=f"Error: {articleID} {e}")
             ret_val = False
         else:
-            loggingDebugStream.log_everywhere_if(DBGSTDOUT, level="info", msg=f"Finished cleaning records.  {count} records deleted.")
+            log_everywhere_if(DBGSTDOUT, level="info", msg=f"Finished cleaning records.  {count} records deleted.")
             ret_val = True
             
         return ret_val
@@ -199,7 +199,7 @@ class SplitBookData:
             add_filename_pattern = ""
             
         prequery = f"delete from {SPLIT_BOOK_TABLE} where articleID = '{art_id}' {add_page_pattern} {add_filename_pattern}"
-        loggingDebugStream.log_everywhere_if(DBGSTDOUT, level="debug", msg=prequery)
+        log_everywhere_if(DBGSTDOUT, level="debug", msg=prequery)
         
         ret_val = self.ocd.do_action_query(prequery, queryparams=None, contextStr=f"(SplitBookPages Removed for {art_id})")
         return ret_val

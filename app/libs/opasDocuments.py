@@ -630,7 +630,7 @@ class PageNumber:
         if pgNumber == None:
             retVal = 0
         else:
-            if self.pgPrefix == "R":
+            if self.pgPrefix == "R" and pgNumber > 0:
                 # return int
                 retVal = -pgNumber
             else:
@@ -717,6 +717,8 @@ class PageNumber:
 
     #--------------------------------------------------------------------------------
     def pageID(self):
+        if self.pgNumber < 0:
+            self.pgNumber = -self.pgNumber
         retVal = "%s%04d%s" % (self.pgPrefix, self.pgNumber, self.pgSuffix)
         return retVal
 

@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.1118/v2.1.193"   # semver versioning after date.
+__version__     = "2022.1229/v2.1.205"   # semver versioning after date.
 __status__      = "Development/Libs/Loader"  
 
 """
@@ -21,7 +21,7 @@ To Install (at least in windows)
   rem python 3.7 required
   python -m venv .\env
   .\venv\Scripts\activate.bat
-  pip install --trusted-host pypi.python.org -r /app/requirements.txt
+  pip install --trusted-host pypi.python.org -r requirements.txt
   rem if it complains pip is not up to date
   python -m pip install --upgrade pip
 
@@ -520,7 +520,7 @@ async def admin_set_loglevel(response: Response,
     
     """
     ## Function
-       <b>Change the logging level of the server to DEBUG, INFO, WARNING, or ERROR.</b>
+       ### Change the logging level of the server to DEBUG, INFO, WARNING, or ERROR.
        
        If level is not supplied, just report current level.
 
@@ -529,6 +529,9 @@ async def admin_set_loglevel(response: Response,
 
     ## Status
        This endpoint is working.
+
+    ## Sample Call
+         /v2/Admin/LogLevel/
 
     ## Notes
        ### Requires API key.
@@ -615,7 +618,7 @@ async def admin_reports(response: Response,
                        ):
     """
     ## Function
-      <b>Returns a report in JSON per the Reports</b>
+       ### Returns a report in JSON per the Reports
 
     ## Return Type
        models.Report
@@ -624,7 +627,7 @@ async def admin_reports(response: Response,
        This endpoint is working.
 
     ## Sample Call
-       #/v2/Reports/
+         /v2/Admin/Reports/
 
     ## Notes
        ### Requires API key.
@@ -949,7 +952,7 @@ async def admin_sitemap(response: Response,
        This endpoint is working.
 
     ## Sample Call
-       /v2/Admin/Sitemap/?size=100&max_records=500
+         /v2/Admin/Sitemap/?size=100&max_records=500
 
     ## Notes
        ### Requires API key
@@ -1013,7 +1016,7 @@ async def api_live_doc(api_key: APIKey = Depends(get_api_key)):
        This endpoint is working.
 
     ## Sample Call
-       /v2/Api/LiveDoc/
+         /v2/Api/LiveDoc/
 
     ## Notes
        ### Requires API key.
@@ -1044,7 +1047,7 @@ async def api_openapi_spec(api_key: APIKey = Depends(get_api_key)):
        This endpoint is working.
 
     ## Sample Call
-       /v2/Api/OpenapiSpec/
+         /v2/Api/OpenapiSpec/
 
     ## Notes
        ### Requires API key
@@ -1070,7 +1073,7 @@ async def api_status(response: Response,
     ## Function
        ### Return the status of the API to check if it's online/available.
        
-       <b>This is a low overhead function and suitable as a heartbeat check.</b>
+       This is a low overhead function and suitable as a heartbeat check.
 
     ## Return Type
        models.APIStatusItem
@@ -1164,7 +1167,7 @@ async def client_save_configuration(response: Response,
        This endpoint is working.
 
     ## Sample Call
-        /v2/Client/Configuration/
+         /v2/Client/Configuration/
 
     ## Notes
        ### Requires API key
@@ -1315,14 +1318,14 @@ async def client_get_configuration(response: Response,
 
     """
     ## Function
-       <b>Return saved configuration settings for the client_id (use 'client-id' in call header)</b>
+       ### Return saved configuration settings for the client_id (use 'client-id' in call header)
 
        Client-specific Administrative function to store the global settings for the client app.
        A client can store multiple settings under different names.
 
        TODO: Consider whether to require logging in as an admin to use this feature.
-        (first need to consider whether the app would also be logged into the central auth (e.g., PaDS)
-        is made, since the only admin login is local login!)
+       (first need to consider whether the app would also be logged into the central auth (e.g., PaDS)
+       is made, since the only admin login is local login!)
 
     ## Return Type
        models.ClientConfigList (one or more configs)
@@ -1330,11 +1333,11 @@ async def client_get_configuration(response: Response,
     ## Status
        This endpoint is working.
 
-    ## Sample Calls
-        Return a single config
+    ## Sample Call
+       Return a single config
          /v2/Client/Configuration/?configname="test_client_test_1"
 
-        Return multiple configs
+       Return multiple configs
          /v2/Client/Configuration/?configname="test_client_test_1, test_client_test_2"
 
     ## Notes
@@ -1401,10 +1404,10 @@ async def client_del_configuration(response: Response,
 
     ## Sample Call
         Delete a single config
-         /v2/Client/Configuration/?configname="test_client_test_1"
+          /v2/Client/Configuration/?configname="test_client_test_1"
 
         Delete multiple configs
-         /v2/Client/Configuration/?configname="test_client_test_1, test_client_test_2"
+          /v2/Client/Configuration/?configname="test_client_test_1, test_client_test_2"
 
     ## Notes
        ### Requires API key
@@ -1461,7 +1464,7 @@ def session_login_basic(response: Response,
        This endpoint is working.
 
     ## Sample Call
-        /v2/Session/BasicLogin/
+         /v2/Session/BasicLogin/
 
     ## Notes
        N/A
@@ -1512,7 +1515,7 @@ def session_login(response: Response,
                   ):
     """
     ## Function
-       <b>Insecure login Authentication.</b>
+       ### Insecure login Authentication.
     
        Supply username and password.
     
@@ -1523,7 +1526,7 @@ def session_login(response: Response,
        This endpoint is working.
     
     ## Sample Call
-        /v2/Session/BasicLogin/
+         /v2/Session/BasicLogin/
 
     ## Notes
        N/A
@@ -1602,7 +1605,7 @@ def session_logout_user(response: Response,
                         ):  
     """
     ## Function
-       <b>Close the user's session, and log them out.</b>
+       ### Close the user's session, and log them out.
        
     ## Return Type
        models.SessionInfo
@@ -1650,7 +1653,7 @@ async def session_status(response: Response,
                          ):
     """
     ## Function
-       <b>Return the status of the database and text server.  Some field returns depend on the user's security level.</b>
+       ### Return the status of the database and text server.  Some field returns depend on the user's security level.
 
     ## Return Type
        models.ServerStatusItem (includes extra fields for admins)
@@ -1759,12 +1762,14 @@ async def session_status(response: Response,
                 import pysolr
                 import fastapi
                 import lxml
-                library_versions = {"mysql.connector": ocd.library_version,
+                sql_library_version = ocd.get_mysql_version()
+                library_versions = {"mysql.connector": sql_library_version,
                                     "fastapi": fastapi.__version__,
                                     "pysolr": pysolr.__version__,
                                     "pydantic": pydantic.version.VERSION,
                                     "starlette": starlette.__version__,
                                     "lxml":lxml.__version__,
+                                    "uvicorn": uvicorn.__version__, 
                                    }
                 server_status_item.library_versions = library_versions
                 server_status_item.cors_regex = localsecrets.CORS_REGEX
@@ -1818,9 +1823,7 @@ async def session_whoami(response: Response,
                          ):
     """
     ## Function
-       All authentication processing is to be done in PaDS as planned
-       (though it may be this stays conditionally for future iteration of local development TBD)
-
+       ### Return data about the session
 
     ## Return Type
        models.SessionInfo
@@ -1878,33 +1881,33 @@ async def database_advanced_search(response: Response,
                                    ):
     """
     ## Function
-    <b>Advanced search in Solr query syntax.</b>
+    ### Advanced search in Solr query syntax.
 
     IMPORTANT NOTE: This endpoint is intended for client (user interface) developers to take advantage of the
     full Solr query functionality, while still returning the usual OPAS DocumentList return model, including conversion
     from XML to HTML.  If the developer wishes to specify the fields for return data, endpoint /v2/ExtendedSearch should be used.  
-
+    
     This endpoint is not used, for example, in PEP-Easy because it isn't needed for basic query and retrieval operations which are built in
     to other endpoints.  PEP-Easy uses the v1 API exclusively (and not the Solr API or the v2 API).
-
+    
     The documentation below on how to use the advanced query is intimately tied to the schemas (data structure based on the PEP DTDs).
     But it's not possible to provide query examples and sample data returns without tying them to a schema.  
-
+    
     Currently, this endpoint only queries the Docs core (database), which is the main content database. Other cores include the Glossary core, the Authors core,
     and the References core.  Endpoint /v2/ExtendedSearch should be used to query other cores.
-
+    
     ### Nested document search.
-
+    
     Nested document search is used with the PEP Solr Schemas to search with paragraphs
     (or bibliographic entries--references) being the "atomic" unit of search (the record, in common database terms),
     while also using the context of the parent element and whole document metadata to filter.  So for example, you can find matches
     in paragraphs in "dreams", and the scope of the boolean logic of word searches must fall within
     a single paragraph (or reference).
-
+    
     Per the Solr API, a nested document search must ensure that the matches for the different levels don't overlap or an error will occur.
     To prevent this, and to provide selectivity of the different child types, the art_level and parent_tag fields are included, which
     can be used to select the child (art_level:2), and the parent (art_level:1) and parent_tag (see below).
-
+    
     For example, these PEP DTD elements (tags) are indexed as nested, art_level:2 documents in the pepwebdocs core
     with their parent tags as field <i>parent_tag</i>.
 
@@ -2163,12 +2166,13 @@ async def database_extendedsearch(response: Response,
     ## Sample Call
          /v2/Database/ExtendedSearch/
          
-           with body parameters:
+       with body parameters:
            
-           Related query without main document IJP.078.0335A example
-           (Added this example since the NOT within a field spec doesn't work in the regular
-            query endpoints, but works here. The problem appears to be within the
-            pysolr/solrpy library)
+       Related query without main document IJP.078.0335A example
+       (Added this example since the NOT within a field spec doesn't work in the regular
+       query endpoints, but works here. The problem appears to be within the
+       pysolr/solrpy library)
+
            {
              "solrcore": "pepwebdocs",
              "solrquery": "art_qual:(IJP.076.0019A)", 
@@ -2443,7 +2447,7 @@ async def database_glossary_search_v2(response: Response,
                                       ):
     """
     ## Function
-       <b>Search the glossary records in the doc core (not the glossary core -- it doesn't support sub paras important for full-text search).</b>
+       ### Search the glossary records in the doc core (not the glossary core -- it doesn't support sub paras important for full-text search).
 
        This is just a convenience function to search a specific book, the glossary (ZBK.069), in the doc core (pepwebdoc).
 
@@ -2615,7 +2619,7 @@ async def database_search(response: Response,
          /v2/Database/Search/?author=Blum&sourcecode=AOP&fulltext1=transference
 
     ## Notes
-          - 2020-09-10 removed returnFields...covered in querySpec for POST version
+       - 2020-09-10 removed returnFields...covered in querySpec for POST version
 
     ## Limitations
        When using GET and the interactive documentation to try out this endpoint, you must clear the "Request Body" field before submitting.
@@ -2805,7 +2809,7 @@ def database_searchanalysis(response: Response,
                             ):
     """
     ## Function
-       <b>Mirror function to search to request an analysis of the search parameters.</b>
+       ### Mirror function to search to request an analysis of the search parameters.
 
     ## Return Type
        models.TermIndex (for v2)
@@ -2814,7 +2818,8 @@ def database_searchanalysis(response: Response,
        Status: Working, but in perpetual development to improve
 
     ## Sample Call
-
+         /v2/Database/SearchAnalysis/
+         
     ## Notes
        6/2020 - The returnfields parameter was removed as not useful here.
 
@@ -2926,11 +2931,13 @@ async def database_smartsearch(response: Response,
     """
     ## Function
 
-    Convenience function for testing the smarttext searching (smartsearch).  With fewer parameters, it's easier to
-    test and experiment with in the OpenAPI interface.  The results would be the same calling the Search endpoint and providing the
-    same argument to smarttext, but if this is all you need, use it directly.
+    ### Convenience function for testing the smarttext searching (smartsearch).
+    
+       With fewer parameters, it's easier to
+       test and experiment with in the OpenAPI interface.  The results would be the same calling the Search endpoint and providing the
+       same argument to smarttext, but if this is all you need, use it directly.
 
-    Also, this endpoint provides an easier way to isolate and document the types of calls interpreted by smarttext.
+       Also, this endpoint provides an easier way to isolate and document the types of calls interpreted by smarttext.
 
     ## Return Type
        models.DocumentList
@@ -2939,21 +2946,20 @@ async def database_smartsearch(response: Response,
        Status: Working, but in perpetual development to improve
 
     ## Sample Call
+         /v2/Database/SmartSearch/
+         
+       Below, here are some values and the style you can submit in parameter smarttext.  To see what they
+       are interpreted to in Solr syntax, see the scopeQuery field of ResponseInfo in the response, where the first
+       value is Solr q and the second is fq.
 
-    Below, here are some values and the style you can submit in parameter smarttext.  To see what they
-    are interpreted to in Solr syntax, see the scopeQuery field of ResponseInfo in the response, where the first
-    value is Solr q and the second is fq.
+            "scopeQuery": [
+                [
+                  "*:*",
+                  "art_id:(NLP.001.0001A)"
+                ]
+            ]
 
-    "scopeQuery": [
-
-        [
-          "*:*",
-
-          "art_id:(NLP.001.0001A)"
-
-        ]
-
-    1a) Author Names and dates (best detection to use standard form, parentheses around the date.)
+    1) Author Names and dates (best detection to use standard form, parentheses around the date.)
         Last names should be initial capitalized without first initials, e.g.,
 
        Shapiro, Shapiro, Zinner and Berkowitz (1977)   --> 1 hit
@@ -2962,27 +2968,26 @@ async def database_smartsearch(response: Response,
 
        Kohut, H. & Wolf, E. S. (1978)                  --> 1 hit
 
-    1b) Author names without dates, e.g.,
+    2) Author names without dates, e.g.,
 
        Shapiro, Shapiro, Zinner and Berkowitz          --> 3 hits
 
-    2) Special IDs
+    3) Special IDs
 
-    2a) DOIs, e.g., (all 1 hit each)
+       a) DOIs, e.g., (all 1 hit each)
 
-        10.1111/j.1745-8315.2012.00606.x
+          10.1111/j.1745-8315.2012.00606.x
 
-        10.3280/PU2019-004002
+          10.3280/PU2019-004002
 
-    2b) PEP Locators (IDs)
+       b) PEP Locators (IDs)
 
-        AOP.033.0079A
+          AOP.033.0079A
 
-        PEP/AOP.033.0079A
+          PEP/AOP.033.0079A
 
-
-    2) Search any schema field, use Solr type notation, but one schema field per entry. 
-    art_type: ART or COM
+    4) Search any schema field, use Solr type notation, but one schema field per entry. 
+       art_type: ART or COM
 
     ## Notes
        N/A
@@ -3050,13 +3055,13 @@ async def database_morelikethis(response: Response,
     """
     ## Function
 
-    Convenience function for sending a single article ID and returning similarcount entries.  
+    ### Convenience function for sending a single article ID and returning similarcount entries.  
 
     ## Return Type
        models.DocumentList
 
     ## Status
-       Status: Working, but in perpetual development to improve
+       Working, but in perpetual development to improve
 
     ## Sample Call
        N/A
@@ -3126,12 +3131,13 @@ async def database_related_to_this(response: Response,
     """
     ## Function
 
-    Find all related documents as recorded in the Solr schema by a field with a commmon ID value.
-    The document ID of the main document of interest is specified in the relatedTothis parameter, and the endpoint looks up the value
-    in that document's relatedrx field (defined in opasConfig as RELATED_RX_FIELDNAME), and returns all matching documents,
-    EXCEPT the main document you specify.
+    ### Find all related documents as recorded in the Solr schema by a field with a commmon ID value.
+
+       The document ID of the main document of interest is specified in the relatedTothis parameter, and the endpoint looks up the value
+       in that document's relatedrx field (defined in opasConfig as RELATED_RX_FIELDNAME), and returns all matching documents,
+       EXCEPT the main document you specify.
     
-    Returns 0 documentList records if there are no related documents or there's no data in the relatedrx field is the relatedToThis document.
+       Returns 0 documentList records if there are no related documents or there's no data in the relatedrx field is the relatedToThis document.
 
     ## Return Type
        models.DocumentList
@@ -3140,7 +3146,7 @@ async def database_related_to_this(response: Response,
        Status: Working
 
     ## Sample Call
-       https://api.pep-web.org/v2/Database/RelatedToThis/?relatedToThis=IJP.078.0335A
+          https://api.pep-web.org/v2/Database/RelatedToThis/?relatedToThis=IJP.078.0335A
 
     ## Notes
        N/A
@@ -3255,14 +3261,14 @@ def database_mostviewed(response: Response,
                         ):
     """
     ## Function
-       <b>Return a list of documents which are the most downloaded (viewed)</b>
+    ### Return a list of documents which are the most downloaded (viewed)
 
-            viewperiod = 0: lastcalendaryear (also 5, preferred)
-                         1: lastweek
-                         2: lastmonth
-                         3: last6months
-                         4: last12months
-                         5: lastcalendaryear
+        viewperiod = 0: lastcalendaryear (also 5, preferred)
+                     1: lastweek
+                     2: lastmonth
+                     3: last6months
+                     4: last12months
+                     5: lastcalendaryear
 
     ## Return Type
        models.DocumentList (or returns response if a download is requested )
@@ -3434,17 +3440,14 @@ def database_mostcited(response: Response,
                        ):
     """
     ## Function
-       <b>Return a list of documents for a SourceCode source (and optional year specified in query params).</b>
+       ### Return a list of documents for a SourceCode source (and optional year specified in query params).
 
        If you don't request abstracts returned, document permissions will not be checked or returned.
        This is intended to speed up retrieval, especially for returning large numbers of
        articles (e.g., for downloads.)
-
+   
        MoreLikeThese, controlled by similarcount, is set to be off by default (0)
-
-       Note: The GVPi implementation does not appear to support the limit and offset parameter
-
-
+   
     ## Return Type
        models.DocumentList
 
@@ -3606,7 +3609,7 @@ async def database_open_url(response: Response,
                             ):
     """
     ## Function
-       <b>Search the database per OpenURL 0.1 paramaters.</b>
+       ### Search the database per OpenURL 0.1 paramaters.
 
     ## Return Type
        models.DocumentList
@@ -3768,7 +3771,7 @@ async def database_term_counts(response: Response,
                                ):
     """
     ## Function
-    <b>Get a list of term frequency counts (# of times term occurs across documents)</b>
+       ### Get a list of term frequency counts (# of times term occurs across documents)
 
     Can specify a field per the docs schema to limit it. e.g.,
 
@@ -3793,40 +3796,40 @@ async def database_term_counts(response: Response,
 
     ## Sample Call
             
-            /v2/Database/TermCounts/?termlist=dog%2C%20cat%2C%20mouse&termfield=text
+         /v2/Database/TermCounts/?termlist=dog%2C%20cat%2C%20mouse&termfield=text
             
-            Response:
-            {
-                 "termIndex": {
-                 "responseInfo": {
-                   "count": 3,
-                   "fullCountComplete": true,
-                   "listType": "termindex",
-                   "scopeQuery": [
-                     "Terms: dog, cat, mouse"
-                   ],
-                   "request": "http://development.org:9100/v2/Database/TermCounts/?termlist=dog%2C%20cat%2C%20mouse&termfield=text",
-                   "dataSource": "OPAS.Local.2021-05-26"
-                 },
-                 "responseSet": [
-                   {
-                     "field": "text",
-                     "term": "dog",
-                     "termCount": 4256
-                   },
-                   {
-                     "field": "text",
-                     "term": "cat",
-                     "termCount": 2431
-                   },
-                   {
-                     "field": "text",
-                     "term": "mouse",
-                     "termCount": 744
-                   }
-                 ]
+        Response:
+        {
+             "termIndex": {
+             "responseInfo": {
+               "count": 3,
+               "fullCountComplete": true,
+               "listType": "termindex",
+               "scopeQuery": [
+                 "Terms: dog, cat, mouse"
+               ],
+               "request": "http://development.org:9100/v2/Database/TermCounts/?termlist=dog%2C%20cat%2C%20mouse&termfield=text",
+               "dataSource": "OPAS.Local.2021-05-26"
+             },
+             "responseSet": [
+               {
+                 "field": "text",
+                 "term": "dog",
+                 "termCount": 4256
+               },
+               {
+                 "field": "text",
+                 "term": "cat",
+                 "termCount": 2431
+               },
+               {
+                 "field": "text",
+                 "term": "mouse",
+                 "termCount": 744
                }
-             }
+             ]
+           }
+         }
 
     ## Example Calls
        N/A
@@ -3964,7 +3967,7 @@ def database_who_cited_this(response: Response,
                             ):
     """
     ## Function
-       <b>Return a list of documents citing the document specified by citedid.</b>
+    ### Return a list of documents citing the document specified by citedid.
 
        If you don't request abstracts returned, document permissions will not be checked or returned.
        This is intended to speed up retrieval, especially for returning large numbers of
@@ -4052,7 +4055,7 @@ def database_whatsnew(response: Response,
                       ):  
     """
     ## Function
-       <b>Return a list of issues for journals modified in the days_back period).</b>  
+       ### Return a list of issues for journals modified in the days_back period).
 
 
     ## Return Type
@@ -4124,13 +4127,13 @@ def database_word_wheel(response: Response,
                         ):
     """
     ## Function
-       <b>Return a list (termIndex) of words for the field matching the prefix.</b>
+       ### Return a list (termIndex) of words for the field matching the prefix.
 
        Implement a word wheel function in the calling app.
 
        The field must be a derivative of class solr.TextField. In the PEP implementation,  that includes:
-            text, text_general, text_simple, text_general_syn
-            string_ci (case insensitive string, TextField based)
+       text, text_general, text_simple, text_general_syn
+       string_ci (case insensitive string, TextField based)
 
        The field does not need to be one that's actually "stored".
 
@@ -4161,7 +4164,7 @@ def database_word_wheel(response: Response,
        This endpoint is working.
 
     ## Sample Call
-       http://localhost:9100/v2/WordWheel?phleb
+         http://localhost:9100/v2/WordWheel?phleb
 
     ## Notes
        N/A
@@ -4274,7 +4277,7 @@ def metadata_books(response: Response,
                    ):
     """
     ## Function
-       <b>Get a list of Book names equivalent to what is displayed on the original PEP-Web in the books tab.</b>
+    ### Get a list of Book names equivalent to what is displayed on the original PEP-Web in the books tab.
 
        The data is pulled from the database api_productbase table.  Subvolumes of a book series (e.g., GW, SE) are not returned, nor is any volume
        marked with multivolumesubbok in the src_type_qualifier column.  This is exactly what's currently in PEP-Web's
@@ -4332,7 +4335,7 @@ def metadata_contents_sourcecode(response: Response,
                                  ):
     """
     ## Function
-       <b>Return a list of documents for a SourceCode (and optional year specified in query params).</b>  
+       ### Return a list of documents for a SourceCode (and optional year specified in query params).
 
        Note: The GVPi implementation does not appear to support the limit and offset parameter
 
@@ -4404,7 +4407,7 @@ def metadata_contents(SourceCode: str,
                       ):
     """
     ## Function
-       <b>Return a list of documents for a SourceCode and Source Volume (required).</b>  
+       ### Return a list of documents for a SourceCode and Source Volume (required).
 
        Year can also be optionally specified in query params.  
 
@@ -4478,7 +4481,7 @@ def metadata_journals(response: Response,
                       ):
     """
     ## Function
-    <b>Get a list of of journal names and metadata equivalent to what is displayed on the original PEP-Web in the journals tab.</b>
+    ### Get a list of of journal names and metadata equivalent to what is displayed on the original PEP-Web in the journals tab.
     
     To get information on a specific journal, set the sourcecode query parameter to one of the standard PEP journal
     codes (the first part of the three part document ID for articles (e.g., AJRPP, IJP, PAQ).  Case is not treated signficantly.
@@ -4490,7 +4493,7 @@ def metadata_journals(response: Response,
        This endpoint is working.
 
     ## Sample Call
-       /v2/Metadata/Journals/
+         /v2/Metadata/Journals/
 
     ## Notes
        N/A
@@ -4526,7 +4529,7 @@ def metadata_videos(response: Response,
                     ):
     """
     ## Function
-    <b>Get a complete list of video names</b>
+    ### Get a complete list of video names
 
     Query parameter sourcecode is the short abbreviation of the videostream (by publisher) used as part of the DocumentIDs. (e.g., for PEP in 2020, this includes:
       IPSAVS, PEPVS, PEPTOPAUTHVS, BPSIVS, IJPVS, PCVS, SFCPVS, UCLVS, PEPGRANTVS, AFCVS, NYPSIVS, SPIVS).
@@ -4581,7 +4584,7 @@ def metadata_volumes(response: Response,
                      ):
     """
     ## Function
-       <b>Return a list of volumes for a SourceCode (aka, PEPCode (e.g., IJP)) per the limit and offset parameters</b> 
+    ### Return a list of volumes for a SourceCode (aka, PEPCode (e.g., IJP)) per the limit and offset parameters
 
     ## Return Type
        models.VolumeList
@@ -4653,7 +4656,7 @@ def metadata_by_sourcetype_sourcecode(response: Response,
     """
 
     ## Function
-       <b>Return a list of information about a source type, e.g., journal names</b>
+       ### Return a list of information about a source type, e.g., journal names
 
        The data is pulled from the database ISSN table.  Subvolumes, of SE and GW are not returned, nor is any volume
        marked with multivolumesubbok in the src_type_qualifier column.  This is exactly what's currently in PEP-Web's
@@ -4668,7 +4671,7 @@ def metadata_by_sourcetype_sourcecode(response: Response,
        In v2, the endpoint uses a param for sourcecode rather than the path variable.
 
     ## Sample Call
-        http://localhost:9100/v1/Metadata/Books/IPL
+         http://localhost:9100/v1/Metadata/Books/IPL
 
     ## Notes
         Depends on:
@@ -4719,7 +4722,7 @@ def authors_index(response: Response,
                   ):
     """
     ## Function
-       <b>Return a list (index) of authors.  The list shows the author IDs, which are a normalized form of an authors name.</b>
+       ### Return a list (index) of authors.  The list shows the author IDs, which are a normalized form of an authors name.
 
     ## Return Type
        models.AuthorIndex
@@ -4728,7 +4731,7 @@ def authors_index(response: Response,
        This endpoint is working.
 
     ## Sample Call
-       http://localhost:9100/v2/Authors/Index/Tuck/
+         http://localhost:9100/v2/Authors/Index/Tuck/
 
     ## Notes
        N/A
@@ -4788,7 +4791,7 @@ def authors_publications(response: Response,
                          ):
     """
     ## Function
-       <b>Return a list of the author's publications.</b>  
+       ### Return a list of the author's publications.
        regex style wildcards are permitted.
 
     ## Return Type
@@ -4798,8 +4801,8 @@ def authors_publications(response: Response,
        This endpoint is working.
 
     ## Sample Call
-       http://localhost:8000/v2/Authors/Publications/Tuck/
-       http://localhost:8000/v2/Authors/Publications/maslow, a.*/
+         http://localhost:8000/v2/Authors/Publications/Tuck/
+         http://localhost:8000/v2/Authors/Publications/maslow, a.*/
 
     ## Notes
        N/A
@@ -4856,8 +4859,7 @@ def documents_abstracts(response: Response,
                         ):
     """
     ## Function
-       <b>Return an abstract for the requested documentID (e.g., IJP.077.0001A, or multiple abstracts
-          for a partial ID (e.g., IJP.077)</b>
+       ### Return an abstract for the requested documentID (e.g., IJP.077.0001A, or multiple abstracts for a partial ID, e.g., IJP.077)
 
     ## Return Type
        models.Documents
@@ -4866,14 +4868,13 @@ def documents_abstracts(response: Response,
        This endpoint is working.
 
     ## Sample Call
-         /v2/Documents/Abstracts/IJP.001.0203A/
          http://localhost:9100/v2/Documents/Abstracts/IJP.001.0203A/
 
     ## Notes
-        PEP Easy 1.03Beta expects HTML abstract return (it doesn't specify a format)
+       PEP Easy 1.03Beta expects HTML abstract return (it doesn't specify a format)
 
     ## Potential Errors
-        N/A
+       N/A
 
     """
     caller_name = "[v2/Documents/Abstracts]"
@@ -4964,7 +4965,7 @@ def documents_concordance(response: Response,
                           ):
     """
     ## Function
-        <b>Returns the translation paragraph identified by the unique para ID(s) .</b>
+       ### Returns the translation paragraph identified by the unique para ID(s)
 
     ## Return Type
        models.Documents
@@ -5063,17 +5064,17 @@ def documents_document_fetch(response: Response,
                              ):
     """
     ## Function
-        <b>Returns the Document information, document summary (absract) and full-text - but conditionally.</b>
+       ### Returns the Document information, document summary (absract) and full-text - but conditionally.
 
-        Returns only the summary (abstract) if non-authorized for that document via the authorization/license server (e.g., PaDS)
+       Returns only the summary (abstract) if non-authorized for that document via the authorization/license server (e.g., PaDS)
         
-        Restricted to a single document return (partial documentID not permitted).
+       Restricted to a single document return (partial documentID not permitted).
 
-        To have hits marked in the full-text context, you can include a search, matching the /v2/Database/Search parameters,
-           in the search parameter.  For example:
-               search: fulltext1="philosophical differences"
+       To have hits marked in the full-text context, you can include a search, matching the /v2/Database/Search parameters,
+       in the search parameter.  For example:
+            search: fulltext1="philosophical differences"
 
-        Parameter Additonal information
+       Parameter Additonal information
             - A Page component to the documentID, e.g., PCT.011.0171A.P0172 _is ignored_.
               This should be used by a client to jump to a page number instead.
             - limit, offset have been renamed to pagelimit, pageoffset to avoid confusion with the equivalent search parameters
@@ -5203,14 +5204,166 @@ def documents_document_fetch(response: Response,
                                                                 )
 
             try:
-                supplemental = opasPySolrLib.metadata_get_next_and_prev_articles(art_id=documentID)
-                if supplemental[0] != {}:
-                    ret_val.documents.responseSet[0].sourcePrevious = supplemental[0]["art_id"]
-                if supplemental[2] != {}:
-                    ret_val.documents.responseSet[0].sourceNext = supplemental[2]["art_id"]
+                prev_art, match_art, next_art = opasPySolrLib.metadata_get_next_and_prev_articles(art_id=documentID)
+                if prev_art != {}:
+                    ret_val.documents.responseSet[0].sourcePrevious = prev_art["art_id"]
+                if next_art != {}:
+                    ret_val.documents.responseSet[0].sourceNext = next_art["art_id"]
             except Exception as e:
                 logger.debug(f"No next/prev data to return ({e})")
         
+        except Exception as e:
+            response.status_code=httpCodes.HTTP_400_BAD_REQUEST
+            status_message = f"DocumentFetchError: {client_id}/{session_id}: {e}"
+            logger.error(status_message)
+            ret_val = None
+            raise HTTPException(
+                status_code=response.status_code,
+                detail=status_message
+            )
+        else:
+            if ret_val is not None and ret_val != {}:
+                response.status_code = httpCodes.HTTP_200_OK
+                status_message = opasCentralDBLib.API_STATUS_SUCCESS
+                try:
+                    access = ret_val.documents.responseSet[0].accessChecked == True and ret_val.documents.responseSet[0].accessLimited == False
+                    doc_len = len(ret_val.documents.responseSet[0].document)
+                except Exception as e:
+                    access = False
+                    doc_len = 0
+                    status_message = f"{client_id}:{session_id}: Document fetch Error {e}"
+                    logger.info(status_message)
+                else:
+                    if access == False:
+                        status_message = f"{client_id}:{session_id}: Document (Abstract only) fetch (access: {access}; doc length: {doc_len}"
+                    else:
+                        status_message = f"{client_id}:{session_id}: Document fetch (access: {access}; doc length: {doc_len}"
+                    
+                    logger.info(status_message)
+
+            else:
+                # make sure we specify an error in the session log
+                # not sure this is the best return code, but for now...
+                status_message = msgdb.get_user_message(opasConfig.ERROR_404_DOCUMENT_NOT_FOUND) + request_qualifier_text 
+                response.status_code = httpCodes.HTTP_404_NOT_FOUND
+                # record session endpoint in any case   
+
+            ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DOCUMENTS,
+                                        session_info=session_info, 
+                                        params=req_url,
+                                        item_of_interest=documentID, 
+                                        return_status_code = response.status_code,
+                                        status_message=status_message
+                                        )
+
+            if ret_val is None or ret_val == {}:
+                logger.error(status_message)
+                raise HTTPException(
+                    status_code=response.status_code,
+                    detail=status_message
+                )           
+            else:
+                ret_val.documents.responseInfo.request = req_url
+                if access == False:
+                    #  abstract returned...we don't count those currently.
+                    logger.info("Full-text access not allowed--Abstract only." + request_qualifier_text)
+                else:
+                    if ret_val.documents.responseInfo.count > 0:
+                        #  record document view if found
+                        ocd.record_document_view(document_id=documentID,
+                                                 session_info=session_info,
+                                                 view_type="Document")
+                    else:
+                        logger.error("No document available." + request_qualifier_text)
+
+    log_endpoint_time(request, ts=ts, level="debug")
+    return ret_val
+
+@app.get("/v2/Documents/Archival/{documentID}/", response_model=models.Documents, tags=["Documents"], summary=opasConfig.ENDPOINT_SUMMARY_DOCUMENT_VIEW, response_model_exclude_unset=True) # more consistent with the model grouping
+def documents_archival_fetch(response: Response,
+                             request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
+                             documentID: str=Path(..., title=opasConfig.TITLE_DOCUMENT_ID, description=opasConfig.DESCRIPTION_DOCIDSINGLE), # return controls 
+                             specialoptions:int=Query(0, title=opasConfig.TITLE_SPECIALOPTIONS, description=opasConfig.DESCRIPTION_SPECIALOPTIONS), 
+                             client_id:int=Depends(get_client_id), 
+                             client_session:str= Depends(get_client_session)
+                             ):
+    """
+    ## Function
+       ### Returns the Document information, abstract and full-text, for ARCHIVAL documents only.
+
+       Restricted to a single document return (partial documentID not permitted).
+        
+       Client session must be authenticated and have access permissions.
+
+    ## Return Type
+       models.Documents
+
+    ## Status
+       This endpoint is working but under review.
+
+    ## Notes
+
+    ## Potential Errors
+       THE USER NEEDS TO BE AUTHENTICATED to return a document.  Otherwise an abstract/excerpt will be returned.
+
+    """
+    # NOTE: Calls the code for the Glossary endpoint via function view_a_glossary_entry)
+    ret_val = None
+    ts = time.time()
+    caller_name = "[v2/Documents/Archival]"
+    if opasConfig.DEBUG_TRACE:
+        print(f"{datetime.now().time().isoformat()}: {caller_name} {client_session}: ")
+
+    session_id = client_session
+    document_id = documentID
+    opasDocPermissions.verify_header(request, "archival_fetch") # for debugging client call
+    log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
+    ocd, session_info = opasDocPermissions.get_session_info(request, response, session_id=client_session, client_id=client_id, caller_name=caller_name)
+    # for qualifying any errors:
+    request_qualifier_text = f" Request: {documentID}. Session {session_info.session_id}."
+
+    if 1:    
+        try:
+            # documents_get_document handles the view authorization and returns abstract if not authenticated.
+            req_url=urllib.parse.unquote(request.url._url)
+            req_url_params = dict(parse.parse_qsl(parse.urlsplit(req_url).query))
+            # param_search = req_url_params.get("search", None)
+            
+            # let's see about loading it directly.
+            # See if it's in the api_articles_removed table
+            sqlSelect = f"SELECT * from api_articles_removed WHERE art_id='{documentID}'"
+            rows = ocd.get_select_as_list_of_dicts(sqlSelect)
+            # if not, it's an error
+            if rows == []:
+                logger.error("Archival Document not found")
+            else:
+                if len(rows) > 1: #this is an error
+                    logger.error("There are more than one matching row")
+                else:
+                    document_record = rows[0]
+                    # filename = document_record.get("filename", None)
+                    fullfilename = document_record.get("fullfilename", None)
+                    # Get the output file name
+                    fullfilename = re.sub("\(b.*\)", opasConfig.DEFAULT_OUTPUT_BUILD, fullfilename)
+                    # art_id = document_record.get("art_id", None)
+                    # title = document_record.get("art_title", None)
+                    ret_val = opasAPISupportLib.documents_get_document_from_file( documentID, 
+                                                                                  req_url=req_url,
+                                                                                  fullfilename=fullfilename, 
+                                                                                  session_info=session_info,
+                                                                                  option_flags=specialoptions,
+                                                                                  request=request
+                                                                                  )
+
+                    try:
+                        prev_art, match_art, next_art = opasPySolrLib.metadata_get_next_and_prev_articles(art_id=documentID)
+                        if prev_art != {}:
+                            ret_val.documents.responseSet[0].sourcePrevious = prev_art["art_id"]
+                        if next_art != {}:
+                            ret_val.documents.responseSet[0].sourceNext = next_art["art_id"]
+                    except Exception as e:
+                        logger.debug(f"No next/prev data to return ({e})")
+          
         except Exception as e:
             response.status_code=httpCodes.HTTP_400_BAD_REQUEST
             status_message = f"DocumentFetchError: {client_id}/{session_id}: {e}"
@@ -5289,7 +5442,7 @@ def documents_downloads(response: Response,
                         ):
     """
     ## Function
-       <b>Initiates download of the document in EPUB or PDF format (if authenticated)</b>
+       ### Initiates download of the document in EPUB or PDF format (if authenticated)
 
     ## Return Type
        initiates a download of the requested document type
@@ -5524,7 +5677,7 @@ def documents_glossary_term(response: Response,
                             ): # Note this is called by the Document endpoint if it detects a term_id in the DocumentID
     """
     ## Function
-       <b>Return a glossary entry for the specified {termIdentifier} if authenticated with permission.  If not, returns error.</b>
+       ### Return a glossary entry for the specified {termIdentifier} if authenticated with permission.  If not, returns error.
 
     ## Return Type
        models.Documents
@@ -5638,7 +5791,7 @@ async def documents_image_fetch(response: Response,
                                 ):
     """
     ## Function
-       <b>Returns image data - see return type for options</b>
+       ### Returns image data - see return type for options
           
        Use * to return a random image each day.  The first fetch may take 7 or so seconds.  The rest of the day
          it will be instantaneous.

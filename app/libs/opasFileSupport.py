@@ -198,9 +198,9 @@ class FlexFileSystem(object):
                     if m is None:
                         ret_val = localsecrets.PATH_SEPARATOR.join((self.root, ret_val)) # "pep-graphics/embedded-graphics"
         else:
-            if path is None:
+            if path is None or path in ['""', "''"]:
                 path = ""
-            if self.root is None:
+            if self.root is None or self.root in ['""', "''"]:
                 root = ""
             else:
                 root = self.root
@@ -208,8 +208,8 @@ class FlexFileSystem(object):
             if filespec is None:
                 info = f"No filespec supplied! {filespec} root: {root}, path:{path} "
                 raise FileNotFoundError(info)
-            
             ret_val = os.path.join(root, path, filespec)
+            # print (f"Root: {root}, Path: {path} Filespec: {filespec} ret_val: {ret_val}")
 
         if localsecrets.PATH_SEPARATOR == "/":
             ret_val = ret_val.replace("\\", localsecrets.PATH_SEPARATOR)
@@ -306,6 +306,35 @@ class FlexFileSystem(object):
                     
         except Exception as e:
             logger.error(f"FlexFileSystemError: File access error: ({e})")
+        
+        return ret_val        
+
+    #-----------------------------------------------------------------------------
+    def create_local_text_file(self, filespec, path="", data=" ", encoding="utf-8", delete_existing=True):
+        """
+        Provide a means to write a file using local file system access, even when running on AWS s3 where self.key is defined.
+        
+         >>> fs = FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root=localsecrets.XML_ORIGINALS_PATH)
+         >>> fs.create_local_text_file('test-delete.txt', delete_existing=True)
+         True
+        """
+        #  see if the file exists
+        ret_val = False
+        fullfilespec = os.path.join(path, filespec)
+        try:
+            if delete_existing:
+                os.remove(fullfilespec)
+        except Exception as e:
+            logger.info(f"Delete existing selected but file {fullfilespec} was not found, so no change there (not an error).  Exception: {e}")
+            pass # ok
+            
+        try:
+            with open(fullfilespec, 'w', encoding=encoding) as out:
+                out.write(data)
+        except Exception as e:
+            logger.error(f"FlexFileSystemError: Local File System write/access error: ({e})")
+        else:
+            ret_val = True
         
         return ret_val        
 
@@ -582,6 +611,7 @@ class FlexFileSystem(object):
             fileinfoout.mapFS(filespec, path)
                 
             fullfilespec = self.fullfilespec(filespec=filespec, path=path, path_is_root_bucket=path_is_root_bucket)
+            # print (f"Fullfilespec: {fullfilespec}")
             if fullfilespec is not None:
                 try:
                     if self.fs is not None:
@@ -590,14 +620,14 @@ class FlexFileSystem(object):
                         f = open(fullfilespec, "r", encoding="utf-8")
                 except Exception as e:
                     logger.error("GetFileError: Open: %s", e)
-                    
-                try:
-                    ret_val = f.read()
-                    f.close()    
-                except OSError as e:
-                    logger.error("GetFileError: Read: %s", e)
-                except Exception as e:
-                    logger.error("GetFileError: Exception: %s", e)
+                else:    
+                    try:
+                        ret_val = f.read()
+                        f.close()    
+                    except OSError as e:
+                        logger.error("GetFileError: Read: %s", e)
+                    except Exception as e:
+                        logger.error("GetFileError: Exception: %s", e)
             else:
                 logger.error("GetFileError: File %s not found", fullfilespec)
       

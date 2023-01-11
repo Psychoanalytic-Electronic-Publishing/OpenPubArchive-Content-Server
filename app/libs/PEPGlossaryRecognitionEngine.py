@@ -16,8 +16,14 @@ logger = logging.getLogger(__name__)
 
 from collections import UserDict
 import opasCentralDBLib
+import opasGenSupportLib as opasgenlib
 import lxml
+from lxml import etree
+parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True)
+import json
+
 import opasXMLHelper as opasxmllib
+import opasConfig
 
 # no glossary link/markup if under these ancestoral tags
 default_ancestor_list = r"\b(abbr|abs|artinfo|artkwds|bkpubandloc|be|h[1-9]|cgrp|figx|frac|impx|ln|pgx|url|tbl|table|a|bx|bxe|webx)\b"
@@ -25,73 +31,23 @@ ocd = opasCentralDBLib.opasCentralDB()
 
 gDbg1 = 0 # general info
 gDbg2 = 0 # high level
-gDbg4 = 0
-gDbg7 = 0 # debug details
+gDbg7 = 0 # extreme debug details
 
 __version__=".90"
 
-gDemarc = u"#"
+import PEPMungeLibrary as munger
 
 #--------------------------------------------------------------------------------
-def unMungeToTermList(mungedTerm, demarcPattern=gDemarc):
-    """
-    unMunge the term so it can be searched different ways
-    Returns a list of terms
+def split_glossary_group_terms(glossary_group_terms):
+    ret_val = []
+    if glossary_group_terms is not None:
+        for n in glossary_group_terms:
+            ret_val += opasgenlib.string_to_list(n, sep=";")
 
-    	>>> unMungeToTermList("#dog##eat##dog#")
-    	[u'dog', u'eat', u'dog']
-    	>>> unMungeToTermList("#dog## eat ##dog#")
-    	[u'dog', u'eat', u'dog']
-        >>> termL = unMungeToTermList("#DÉJÀ VU##Déjà Raconté#".decode("utf8"))
-        >>> print termL[0].encode("utf8")
-        DÉJÀ VU
-    """
-
-    retVal = filter(None, [x.strip() for x in mungedTerm.split(demarcPattern)])
-
-    return retVal
-
-#--------------------------------------------------------------------------------
-def unMungeTerm(mungedTerm, demarcPattern=gDemarc):
-    """
-    unMunge the term so it can be searched different ways
-    Returns a unicode string where terms are separated by ";"
-
-        >>> originalStr = r"#MAHLER, MARGARET S##MARGARET S MAHLER#"
-        >>> umT = unMungeTerm(originalStr)
-        >>> umT
-        u'MAHLER, MARGARET S; MARGARET S MAHLER'
-        >>> mungeStr(umT)
-        u'#MAHLER, MARGARET S##MARGARET S MAHLER#'
-        >>> unMungeTerm("#dog##eat##dog#")
-        u'dog; eat; dog'
-
-        >>> unMungeTerm("#dog## eat ##dog#")
-        u'dog; eat; dog'
-
-        >>> unMungeTerm("dog eat dog")
-        u'dog eat dog'
-
-    """
-
-    #retVal = [x.strip() for x in mungedTerm.split(demarcPattern)]
-    retVal = unMungeToTermList(mungedTerm, demarcPattern)
-    retVal = u"; ".join(retVal)
-
-    return retVal
-
-
-#----------------------------------------------------------------------------------------
-def	doQuoteEscapes(data, hasEscapes=0):
-    retVal = data
-    if retVal is not None:
-        if re.search(r'"',	retVal)	is not None:
-            retVal = re.sub(r'(?P<pre>([^\\]|\A))"', r'\1\\"', retVal)
-        if re.search(r"''", retVal) is not None:
-            retVal = re.sub(r"''",	r"'\\'", retVal)
-        if re.search(r"'", retVal) is not None:
-            retVal = re.sub(r"(?P<pre>([^\\]|\A))'", r"\1\\'", retVal)
-    return retVal
+        ret_val = [item.lower() for item in ret_val]
+        ret_val = sorted(ret_val)
+    
+    return ret_val
 
 #--------------------------------------------------------------------------------
 class GlossaryRecognitionEngine(UserDict):
@@ -118,7 +74,7 @@ class GlossaryRecognitionEngine(UserDict):
     rightTag = '</impx>'
     
     #--------------------------------------------------------------------------------
-    def __init__(self, gather=True):
+    def __init__(self, gather=True, diagnostics=False, verbose=False):
         """
         Initialize the instance.  Load the glossary terms.
         If gather is true, search regex's are combined for faster recognition.  However,
@@ -127,8 +83,10 @@ class GlossaryRecognitionEngine(UserDict):
 
         UserDict.__init__(self)
         self.gather = gather
-        #if gather != True:
-            #print ("Gathering regex patterns is off.")
+        self.verbose = verbose
+        self.diagnostics = diagnostics
+        if gather != True and verbose:
+            print ("Gathering regex patterns is off.")
         self.data = {}
         if self.__class__.matchList == None:
             self.__class__.matchList = self.__loadGlossaryTerms()
@@ -140,30 +98,13 @@ class GlossaryRecognitionEngine(UserDict):
         #else:
             #self.impxList = self.__class__.impxList
 
-    ##-----------------------------------------------------------------------------
-    #def loadImpxMatchList(self):
-        #selTerms = r"""SELECT DISTINCT lower(regex), length(regex)
-            #FROM
-            #opasloader_glossary_details
-            #where `regex_ignore` is NULL order by length(regex) DESC
-            #"""
-
-        #match_list = ocd.get_select_as_list(sqlSelect=selTerms)
-        #retVal = []
-        #for n in match_list:
-            ## compile the regex:
-            #pat = f"\b{n[0]}\b"
-            #cRegx = re.compile(pat, re.IGNORECASE)
-            #patternRow = [cRegx, pat]
-            #retVal.append(patternRow)
-
-        #print ("%d patterns loaded." % len(retVal))
-        #return retVal
-
     #--------------------------------------------------------------------------------
     def __loadGlossaryTerms(self):
         """
         Load the glossary terms into the matchList.  Combine terms so more terms are recognized per row.
+        
+        Glossary group terms are 'munged' to combine forms and terms representing the group
+          (see PEPMungeLibrary)
 
         """
         retVal = []
@@ -176,10 +117,11 @@ class GlossaryRecognitionEngine(UserDict):
         match_list = ocd.get_select_as_list(sqlSelect=selTerms)
         gatherPattern = ""
         #count = 0
+        msg_str = "Loading regex patterns.  Gathering regex patterns is "
         if self.gather:
-            logger.info("Loading regex patterns.  Gathering regex patterns is ON.")
+            logger.info(msg_str + "ON")
         else:
-            logger.info("Loading regex patterns.  Gathering regex patterns is OFF.")
+            logger.info(msg_str + "OFF")
 
         for n in match_list:
             if gDbg1:
@@ -211,6 +153,9 @@ class GlossaryRecognitionEngine(UserDict):
                 if n[0] == None:
                     if gDbg1: logger.debug("Warning: Glossary match patterns contain Null pattern: ", n)
                     continue
+                if n[1] < opasConfig.MIN_TERM_LENGTH_MATCH:
+                    if gDbg1: logger.debug("Warning: Glossary match too short: ", n)
+                    continue
                 if self.recognitionMethod == 2: # new way
                     rcpattern = r"\b[^/](?<!\u2a65)(?P<whole>" + n[0] + r")(?!\s*=)(?!\u2a64)\b"
                 else: #  old way, seems to work better
@@ -220,365 +165,55 @@ class GlossaryRecognitionEngine(UserDict):
                 # compile the combined terms -- ready for searching
                 rc = re.compile(rcpattern, re.IGNORECASE|re.VERBOSE)
                 nlist = list(n)
-                nlist[2] = unMungeTerm(n[2])
-                retVal.append((rc, nlist))
+                nlist[2] = munger.unMungeTerm(n[2])
+                if re.match(f"^({opasConfig.GLOSSARY_TERM_SKIP_REGEX})$", nlist[2], re.IGNORECASE) is None:
+                    retVal.append((rc, nlist))
 
         # load main data
         logger.info ("%d glossary input patterns loaded into %d regex patterns." % (len(match_list), len(retVal)))
         return retVal
 
-    ##--------------------------------------------------------------------------------
-    #def fixGlossaryTerms(self):
-        #"""
-        #Fix bad escapes in the glossary term regex
-
-                #>>> #glossEngine = GlossaryRecognitionEngine(gather=False)
-                #>>> #glossEngine.fixGlossaryTerms()
-
-        #"""
-
-        #self.__initDB__()
-        #selRegex = r"select regex, term from glossary_tuned_regex"
-        #updateRegex = r"update glossary_tuned_regex set regex = '%s' where term='%s'"
-        #dbc = self.db.cursor()
-        #dbo = self.db.cursor()
-        #dbc.execute(selRegex)
-        #dbo.execute("set autocommit = 1")
-        #count = 0
-        #for n in dbc:
-            #pattern = n[0]
-            #term = n[1]
-            #if "\\[" in pattern:
-                #pattern = pattern.replace("\[", "[")
-                #if "\\]" in pattern:
-                    #pattern = pattern.replace("\]", "]")
-                #updateSel = updateRegex % (doQuoteEscapes(pattern), doQuoteEscapes(term))
-                #print (updateSel) #pattern, term
-                #dbo.execute(updateSel)
-
-        #dbc.close()
-
-    ##--------------------------------------------------------------------------------
-    #def removeSelfReferencesInGlossaries(self, tree, theGroupName):
-        #"""
-        #Remove impx from terms in glossary  within the same definition.
-
-        #>>> #glossEngine = GlossaryRecognitionEngine(gather=False)
-        #>>> #testXML= '<glossary><dictentrygrp id="YP0003312268840"><term>CANADA</term><dictentry><src>Skelton, R. (Ed.). (2006). The Edinburgh International Encyclopaedia of Psychoanalysis.</src><def><p>Although Ernest *Jones lived and worked in Toronto from 1908 to 1913, interest in psychoanalysis in <impx rx="ZBK.069.0001c.YP0003312268840" grpname="CANADA" type="TERM2">Canada</impx> remained sporadic and individual until after World War II. In 1945 Miguel Prados, a Spanish neuropathologist without formal psychoanalytic <impx rx="ZBK.069.0001t.YN0019043981580" grpname="TRAINING" type="TERM2">training</impx> but with strong psychoanalytic interests, established the Montreal Psychoanalytic Club, leadership of which was assumed in 1948 by Theodore Chentrier, a lay member of the Paris Society who had obtained an appointment to the Department of Psychology of the <i>Universit&eacute; de Montr&eacute;al.</i> In 1950, Eric Wittkower became the first psychoanalyst to be appointed to the faculty of Montreals McGill University.</p></def><defrest><p>As several members of the Montreal group received psychoanalytic <impx rx="ZBK.069.0001t.YN0019043981580" grpname="TRAINING" type="TERM2">training</impx> in the United States, there was an attempt to obtain official Study Group status in the International Psychoanalytic Association through sponsorship by the Detroit affiliate of the American Psychoanalytic Association. In the face of some opposition by the APA, the group decided instead to seek sponsorship from the British Society to which two of its members (Eric Wittkower and Alastair MacLeod) belonged. This led to protests by the Americans who, as they had done in the debate over <impx rx="ZBK.069.0001l.YP0012185582400" grpname="LAY ANALYSIS" type="TERM2">lay analysis</impx>, raised the spectre of their withdrawal from the International, this time over the threat to American hegemony over psychoanalysis in North America that this autonomous application from <impx rx="ZBK.069.0001c.YP0003312268840" grpname="CANADA" type="TERM2">Canada</impx> represented to them.</p></defrest></dictentry></dictentrygrp></glossary>'
-        #>>> #myt = hlString2xTree (testXML)
-        #>>> #glossEngine.removeSelfReferencesInGlossaries(myt, theGroupName="Canada")
-
-        #"""
-
-        ## Check if this a glossary TBD
-        ## get all the dictentry terms
-        #tree.Home()
-        #theGroupList = re.split("[ ]*;[ ]*", theGroupName)
-        #if gDbg4: print ("RemoveSelfReferences looking for terms in list: ", theGroupList)
-        #allImpxs = tree.getElements(ALL, elemSpec=E("impx", {"type":"TERM2"}), parentSpec=E("dictalso"), notParent=True)
-        #for impx in allImpxs:
-            #tree.Seek(impx)
-            #term = tree.getCurrElementText()
-            #if term.upper() in theGroupList:
-                ## matched...so unwrap it
-                #if gDbg4: print ("unwrapping...", term, " %s matched" % (term))
-                #tree.unwrapNode(impx)
-            ##else:
-            ##   print "No match: ", term
-
-
-    ##--------------------------------------------------------------------------------
-    #def addImpxIDs(self, tree):
-        #"""
-        #Markup any glossary entries in paragraphs (only)
-
-        #Uses the preloaded impxList used to mark up terms to get the IDs, so these are
-            #based on whatever is in the table (not regenerated as a hash).  This means
-            #the hash can be overrided by editing the table in case the group name has changed
-            #and we don't want to rebuild all the instances.
-
-        #"""
-
-        #notMatched = []
-
-        ##-----------------------------------------------------------------------------
-
-        #patternList = self.impxList
-        #allImpxs = tree.getElements(ALL, elemSpec=E("impx", {"type":"TERM2"}))
-        #count = 0
-        #skip = 0
-        #impList = {}
-        #notFoundTerms = {}
-        #for impx in allImpxs:
-            #tree.Seek(impx)
-            #count += 1
-            ## get the term
-            #term = tree.getCurrElementText()
-            #term = term.strip()
-            ## default
-            #tree.setCurrAttrVal("type", "UNKT")
-            #found = False
-            #for patternTuple in patternList:
-                #if patternTuple[0].match(term):
-                    ## found it, now we just save the ID
-                    #found = True
-                    #groupName = patternTuple[1]
-                    #groupID = patternTuple[2]
-
-                    #groupTerm = PEPGlossaryTermList.PEPGlossaryTermList(groupName)
-                    #useGroupID = groupTerm[groupTerm.FULLNAMEID]
-                    #groupPrettyName = groupTerm[groupTerm.PRETTYPRINTTERMLIST]
-
-                    ##print sciUnicode.unicode2Console(groupPrettyName), useGroupID, groupID
-
-                    ##raise Exception,  "No group matched! '%s'" % selTerms
-                    #tree.setCurrAttrVal("type", "TERM2")
-                    #tree.setCurrAttrVal("rx", useGroupID )
-                    #tree.setCurrAttrVal("grpname", PEPGlossaryTermCommon.unMungeTerm(groupName) )
-                    #break  # go to the next impx
-
-            #if not found:
-                #try:
-                    #notFoundTerms[term] += 1
-                #except:
-                    #notFoundTerms[term] = 1
-
-        #for term, theCount in notFoundTerms.items():
-            #print ("%s instances of '%s' not found." % (theCount, sciUnicode.unicode2Console(term)))
-
-        #print ("Glossary Terms found - Added impx to %s terms" % count)
-        #return
-
-    ##--------------------------------------------------------------------------------
-    #def checkImpxs(self, tree):
-        #"""
-        #Find any nested impx's and remove them.
-
-        #"""
-
-        ## unwrap all impx in impx or i
-        #count = tree.unwrapElements(ALL, elemSpec=E("impx"), parentSpec=E("impx"))
-        #if gDbg1: print ("%d nested impx elements removed." % count)
-        ## unwrap all impx in significant elements
-        #count2 = tree.unwrapElements(ALL, elemSpec=E("impx", {"type":"TERM2|UNKT"}), parentSpec=E("a|l|abbr|artinfo|be|h[1-9]|bp|bx|bxe|bst|binc|cgrp|num|denom|pgx|spkr|hdex|figx|tblx|webx|i|ln|j|url|t|v"))
-        #if 1: print ("%d impx elements in non-allowed locations removed." % count2)
-        #retVal = count + count2
-        #return retVal
-
     #--------------------------------------------------------------------------------
-    def doGlossaryMarkupTextMethod_Now_Deprecated(self, parsed_xml, skipIfHasAncestor=default_ancestor_list, preface=None, theGroupName=None, pretty_print=False):
-        """
-        ------
-        Function is deprecated by a better method -- below
-        ------
-        Markup any glossary entries in paragraphs (only).
-
-        If theGroupName is supplied, it means we are marking up the glossary itself, and any impxs that match
-        theGroupName will be removed (as self referential)
-
-        Returns the number of changed terms.
-
-        >>> glossEngine = GlossaryRecognitionEngine(gather=False)
-        Gathering regex patterns is off.
-        1481 input patterns loaded into 1480 regex patterns.
-        >>> testXML= u'<body><p>My belief is that, διαφέρει although Freud was a revolutionary, most of his followers were more conventional. As is true of most institutions, as psychoanalysis aged, a conservatism overtook it. Foreground analytic theory incorporated the background cultural pathologizing of nonheterosexuality. Thus, the few articles written about lesbians rigidly followed narrow reductionistic explanations. Initially, these explanations followed classical theory, and then as psychoanalysis expanded into ego psychology and object relations, lesbian pathologizing was fit into these theories <bx r="B006">(Deutsch, 1995)</bx>.</p><p>For example, Adrienne Applegarth&apos;s 1984 American Psychoanalytic panel on homosexual women, used ego psychology to explain lesbianism. Applegarth viewed it (according to <bx r="B020">Wolfson, 1984</bx>), as a complicated structure of gratification and defense (p. <pgx r="B020">166</pgx>). She felt that if the steps in the usual positive and negative oedipal phases or if a girls wish for a baby arising out of penis envy become distorted, a range of outcomes, including homosexuality, could occur (Wolfson, <bx r="B020">1984</bx>, p. <pgx r="B020">166</pgx>).</p></body>'
-        >>> parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True)
-        >>> pepxml = etree.fromstring(testXML, parser)
-        >>> root = pepxml.getroottree()
-
-        >>> glossEngine.doGlossaryMarkup(root)
-        0 impx elements in non-allowed locations removed.
-        15
-
-        >>> testXML= '<body><p> forces. Brenner has suggested that the familiar  of the id, ego, and superego as agencies of <b id="10">the</b> mind.</p></body>'
-        >>> parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True)
-        >>> pepxml = etree.fromstring(testXML, parser)
-        >>> root = pepxml.getroottree()
-        >>> print (glossEngine.doGlossaryMarkup(root))
-        0 impx elements in non-allowed locations removed.
-        3
-
-        """
-
-        if gDbg2:
-            print ("***** Do Glossary Markup *****")
-        ret_val = parsed_xml # default - if error, return original parse
-        ret_status = False
-        
-        count = 0
-        #preface = """<?xml version='1.0' encoding='UTF-8' ?>""" # TRY THIS TEST CODE 2017-04-02, without named entities, we should not need a DTD loaded (much quicker)
-
-        startTime = time.time()
-        # create a string to do replace
-        node_text = lxml.etree.tostring(parsed_xml, pretty_print=pretty_print, encoding="utf8").decode("utf-8")
-        len_orig_node_text = len(node_text)
-        
-        # replacement pattern...if we need to add an ID, it probably needs to be done in a second pass (because
-        #       we are combining patterns.
-        
-        changes = False # reset
-        # sep2 = 'u22E1'
-        idx = -1
-        for rcrow in self.matchList: # mark terms
-            idx += 1
-            if rcrow[1][1] <= 3: # skip single letter markup like '(M)'. rcrow[1][0]='(m)', [1][1] = 3, [1][2] = 'M', [1][3] = 'YP0008007699320'
-                continue
-
-            subStrCxt = f"{self.leftMarker}\g<0>{self.midSeparator}{idx}{self.rightMarker}"
-            # Match at the start, at the end, the whole, and in the middle, delineated
-            rc = rcrow[0]
-            try:
-                nodeText2 = node_text # temp
-                m = rc.search(node_text)
-                if m is not None:
-                    #match = m.group(0)
-                    #logger.debug(match)
-                    nodeText2 = rc.sub(subStrCxt, node_text)
-            except Exception as e:
-                logger.error(f"Error matching glossary data {e}")
-
-            if 1: # Check for issues before saving node
-                if nodeText2 != node_text:
-                    # if the markup is within quotes, don't keep it.
-                    if re.search(f"\u201C[^\u2019]*?{self.leftMarker}.*?{self.rightMarker}[^201C]*?\u2019", nodeText2, flags=re.IGNORECASE):
-                        logger.debug("impx in quoted passage detected. Skipping markup")
-                        continue
-                    # or double impx
-                    elif re.search(f"<[^>]*?{self.leftMarker}.*?{self.rightMarker}[^>]*?>", nodeText2, flags=re.IGNORECASE):
-                        logger.debug("impx in tag detected. Skipping markup")
-                        continue
-                    elif re.search(f"{self.leftMarker}{self.leftMarker}(.*?){self.rightMarker}{self.rightMarker}", nodeText2, flags=re.IGNORECASE):
-                        logger.debug("Double impx detected. Skipping markup")
-                        continue
-                    #  or if nested impx, don't keep it
-                    elif re.search(f"{self.leftMarker}[^{self.rightMarker}]*?{self.leftMarker}", nodeText2, flags=re.IGNORECASE):
-                        logger.debug("Double nested impx detected. Skipping markup")
-                        continue
-                    # Can skip words in tags, but in current method, if found, skips everywhere in that document. 
-                    # ...So perhaps not worth the processing time for a rare find.
-                    # ...Later, try to remove from specific locations if found?  
-                    # ...Otherwise, go back to walking the tree by tag rather than the whole file at once.
-                    #elif re.search(f"<(nfirst|nlast)[^>]*?>[^<]*?{self.leftMarker}.*?{self.rightMarker}[^<]*?<", nodeText2, flags=re.IGNORECASE):
-                        #logger.debug("impx in special tags detected. Skipping markup")
-                        #continue
-                    else:
-                        # #sciSupport\.trace("%s%sMarked Abbr %s in %s: " % (60*"-","\n", rc.pattern, nodeText2), outlineLevel=1, debugVar=gDbg7)
-                        changes = True
-                        count += 1
-                        node_text = nodeText2
-
-        # now add new markup, change back markers, and reparse datanode to check if all is well
-        if changes:
-            glossary_nodes = re.findall(f"{self.leftMarker}[^{self.leftMarker}{self.rightMarker}]+?{self.rightMarker}", node_text)
-            if glossary_nodes is not None:
-                for term in glossary_nodes:
-                    if gDbg7: print (term)
-                    #lookup term
-                    term_set_item = re.split(f"{self.leftMarker}|{self.midSeparator}|{self.rightMarker}", term)
-                    term_index = int(term_set_item[2])
-                    term_data = self.__class__.matchList[term_index][1]
-                    replacement_text = self.leftTag.replace("$grpnm$", term_data[2])
-                    replacement_text = replacement_text.replace("$rx$", term_data[3])
-                    if gDbg7: print (replacement_text)
-                    node_text = re.sub(term, f"{replacement_text}{term_set_item[1]}</impx>", node_text)
-               
-            try:
-                parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True)
-                reparsed_xml = lxml.etree.fromstring(node_text, parser)
-                # don't do impx in biblios
-                root = reparsed_xml.getroottree()
-                #lxml.etree.strip_tags(root.find("bib"), "impx")
-                tags = ("//bib", "//arttitle", "//h?", "//binc")
-                for tag in tags:
-                    locations = root.findall(tag)
-                    for location in locations:
-                        lxml.etree.strip_tags(location, "impx")
-                
-            except Exception as e:
-                detail = "Skipped:$%s$ " % node_text.encode("utf-8")
-                logger.warning(f"Glossary Replacement makes this section unparseable. {detail}")
-            else:
-                # done, check new_node
-                #new_node_text = opasxmllib.xml_xpath_return_xmlstringlist(reparsed_xml, "//*", default_return=None)[0]
-                new_node_text = lxml.etree.tostring(reparsed_xml, pretty_print=pretty_print, encoding="utf8").decode("utf-8")
-                len_new_node_text = len(new_node_text)
-
-                if len_new_node_text < len_orig_node_text:
-                    logger.error(f"GlossaryRecognition. OrigLen:{len_orig_node_text} > TaggedLen:{len_new_node_text}.  Tagging Skipped.")
-        
-                    # ret_val = parsed_xml # return original parsed xml (default)
-                    # ret_status = False (default)
-                else:
-                    # keep it
-                    ret_val = reparsed_xml # return reparsed xml with tagging
-                    ret_status = True
-               
-        # change impx's of TERM1 to TERM2 -- should be in L&P only
-        #count = tree.unwrapElements(ALL, elemSpec=E("impx", {"type":"TERM1"}))
-        #count2 = tree.replaceAttrText("type", "TERM1", "TERM2", ALL, E("impx"))
-        #if count2 > 0:
-            #print ("*********************************************************************")
-            #print ("***** Implied Links to L&P redirected to the PEP Glossary")
-            #print ("*********************************************************************")
-        # return count of changed paragraphs
-
-        endTime = time.time()
-        timeDiff = endTime - startTime
-        if gDbg1: print (f"Time to do glossary markup: {timeDiff}")
-        
-        return ret_val, ret_status # return new reparsed_xml if ret_status is true, orig parsed_xml if not.
-
-    #--------------------------------------------------------------------------------
-    def doGlossaryMarkup(self, parsed_xml, skipIfHasAncestorRegx=default_ancestor_list, preface=None, theGroupName=None, pretty_print=False, diagnostics=False, verbose=False):
+    def doGlossaryMarkup(self, parsed_xml, skipIfHasAncestorRegx=default_ancestor_list, preface=None,
+                         theGroupName=None, pretty_print=False, markup_terms=True, verbose=False):
         """
         Markup any glossary entries in paragraphs (only).
 
         If theGroupName is supplied, it means we are marking up the glossary itself, and any impxs that match
         theGroupName will be removed (as self referential)
 
-        Returns the number of changed terms.
+        Returns the number of changed terms, and a dictionary of terms and counts
 
-        >>> glossEngine = GlossaryRecognitionEngine(gather=False)
+        >>> glossEngine = GlossaryRecognitionEngine(gather=False, verbose=True)
         Gathering regex patterns is off.
-        1481 input patterns loaded into 1480 regex patterns.
-        >>> testXML= u'<body><p>My belief is that, διαφέρει although Freud was a revolutionary, most of his followers were more conventional. As is true of most institutions, as psychoanalysis aged, a conservatism overtook it. Foreground analytic theory incorporated the background cultural pathologizing of nonheterosexuality. Thus, the few articles written about lesbians rigidly followed narrow reductionistic explanations. Initially, these explanations followed classical theory, and then as psychoanalysis expanded into ego psychology and object relations, lesbian pathologizing was fit into these theories <bx r="B006">(Deutsch, 1995)</bx>.</p><p>For example, Adrienne Applegarth&apos;s 1984 American Psychoanalytic panel on homosexual women, used ego psychology to explain lesbianism. Applegarth viewed it (according to <bx r="B020">Wolfson, 1984</bx>), as a complicated structure of gratification and defense (p. <pgx r="B020">166</pgx>). She felt that if the steps in the usual positive and negative oedipal phases or if a girls wish for a baby arising out of penis envy become distorted, a range of outcomes, including homosexuality, could occur (Wolfson, <bx r="B020">1984</bx>, p. <pgx r="B020">166</pgx>).</p></body>'
+        >>> testXML= '<body><p>My belief is that, διαφέρει although Freud was a revolutionary, most of his followers were more conventional. As is true of most institutions, as psychoanalysis aged, a conservatism overtook it. Foreground analytic theory incorporated the background cultural pathologizing of nonheterosexuality. Thus, the few articles written about lesbians rigidly followed narrow reductionistic explanations. Initially, these explanations followed classical theory, and then as psychoanalysis expanded into ego psychology and object relations, lesbian pathologizing was fit into these theories <bx r="B006">(Deutsch, 1995)</bx>.</p><p>For example, Adrienne Applegarth&apos;s 1984 American Psychoanalytic panel on homosexual women, used ego psychology to explain lesbianism. Applegarth viewed it (according to <bx r="B020">Wolfson, 1984</bx>), as a complicated structure of gratification and defense (p. <pgx r="B020">166</pgx>). She felt that if the steps in the usual positive and negative oedipal phases or if a girls wish for a baby arising out of penis envy become distorted, a range of outcomes, including homosexuality, could occur (Wolfson, <bx r="B020">1984</bx>, p. <pgx r="B020">166</pgx>).</p></body>'
         >>> parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True)
         >>> pepxml = etree.fromstring(testXML, parser)
         >>> root = pepxml.getroottree()
-
-        >>> glossEngine.doGlossaryMarkup(root)
-        0 impx elements in non-allowed locations removed.
-        15
+        >>> count, marked_term_list = glossEngine.doGlossaryMarkup(root)
+        >>> print (count)
+        25
 
         >>> testXML= '<body><p> forces. Brenner has suggested that the familiar  of the id, ego, and superego as agencies of <b id="10">the</b> mind.</p></body>'
         >>> parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True)
         >>> pepxml = etree.fromstring(testXML, parser)
         >>> root = pepxml.getroottree()
-        >>> print (glossEngine.doGlossaryMarkup(root))
-        0 impx elements in non-allowed locations removed.
-        3
-
+        >>> count, marked_term_list = glossEngine.doGlossaryMarkup(root)
+        >>> print (count)
+        4
         """
         
-        ret_status = True
+        ret_status = 0
         if gDbg2: print (f"\t...Starting Glossary Markup")
-        count = 0
         #preface="""<?xml version='1.0' encoding='UTF-8' ?><!DOCTYPE %s SYSTEM '%s'>""" % ("p", gDefaultDTD) + "\n"
         preface = """<?xml version='1.0' encoding='UTF-8' ?>""" # TRY THIS TEST CODE 2017-04-02, without named entities, we should not need a DTD loaded (much quicker)
-
         startTime = time.time()
-
-        # strText = ""
-
-        # Replace altdata so it doesn't match - Better still, just delete it
-        # BUT NOTE: the altdata attribute in L&P is actually "alternate terms"! (not a display, altdata thing...).  That's why it matches sometimes.
-        #count = tree.replaceAttrText("altdata", "(.*)", "XXX\0", ALL, E("impx", {"type":"TERM1"}))
-        # tree.deleteAttributes(ALL, elemSpec=E("impx", {"type":"TERM1"}), attrNamePtn="altdata")
-        countInDoc = 0
+        count_in_doc = 0
         total_changes = 0
         # get all paragraphs
         allParas = parsed_xml.xpath(".//p|.//p2")
         para_count = 0
+        found_term_dict = {}
         for para_working in allParas:
             para_count += 1
             #para_working = para
@@ -586,13 +221,13 @@ class GlossaryRecognitionEngine(UserDict):
             # ancestors = opasxmllib.xml_node_list_ancestor_names(para_working)
             ancestor_match = opasxmllib.xml_node_regx_ancestors(para_working, regx=skipIfHasAncestorRegx)
             if ancestor_match:
-                if diagnostics: print (f"\t\t...Skipped para {para_count} (due to ancestor)")
+                if self.diagnostics: print (f"\t\t...Skipped para {para_count} (due to ancestor)")
                 continue
 
             # unicode opt returns string inst of bytes, which is for compat w py2 (http://makble.com/python-why-lxml-etree-tostring-method-returns-bytes)
             node_text = lxml.etree.tostring(para_working, encoding="unicode")
-            len_node_text = len(node_text)
-            if gDbg7: print (node_text)
+            # len_node_text = len(node_text)
+            if self.diagnostics: print (node_text)
             changes = False # reset
             for rcrow in self.matchList:
                 # replacement pattern...if we need to add an ID, it probably needs to be done in a second pass (because
@@ -600,50 +235,54 @@ class GlossaryRecognitionEngine(UserDict):
                 term_data = rcrow[1]
                 grpnm = term_data[2]
                 rx = term_data[3]
-                #if grpnm == "Attachment Theory":
-                    #print (grpnm)
-                #if diagnostics:
-                    #print (f"\t\t\t...Groupname: {grpnm} Term Data: {term_data}")
                 if theGroupName == grpnm:
                     continue # skip per parameter def [TBD: Needs to be checked for glossary build]
                 
                 subStrCxt = f'<impx type="TERM2" rx="{rx}" grpname="{grpnm}">\g<whole></impx>'
-                # count changes
                 # Match at the start, at the end, the whole, and in the middle, delineated
                 rc = rcrow[0]
                 try:
-                    change_count = len(rc.findall(node_text))
+                    found = rc.findall(node_text)
+                    change_count = len(found)
                     total_changes += change_count
                     if change_count:
-                        node_text2 = rc.sub(subStrCxt, node_text)
+                        term = found[0][0]
+                        term = term.lower().strip()
+                        term_count = found_term_dict.get(term, 0)
+                        term_count += change_count
+                        count_in_doc += change_count
+                        found_term_dict[term] = term_count
+                        if markup_terms:
+                            node_text2 = rc.sub(subStrCxt, node_text)
                 except Exception as e:
                     print (e)
 
-                if change_count: 
+                if change_count and markup_terms: 
+                    #  or if within one of these tags within a paragraph, don't keep it
+                    if re.search("<(j|pb|t)>.*?<impx.*?</(j|pb)>", node_text2, flags=re.IGNORECASE):
+                        if gDbg1: print ("\t..Error: Nested in forbidden tag. Skipping markup for para")
+                        continue
                     # if the markup is within quotes, don't keep it.
-                    if re.search("\".*?<impx.*</impx>.*?\"", node_text2, flags=re.IGNORECASE):
-                        if gDbg1: print ("\t..Error: impx in quoted passage detected. Skipping markup")
+                    elif re.search("\".*?<impx.*</impx>.*?\"", node_text2, flags=re.IGNORECASE):
+                        if gDbg1: print ("\t..Error: impx in quoted passage detected. Skipping markup for para")
                         continue
                     #  or if nested impx, don't keep it
                     elif re.search("<impx type=\"TERM2\"><impx", node_text2, flags=re.IGNORECASE):
-                        print ("\t..Error: Double nested impx detected. Skipping markup")
+                        if gDbg1: print ("\t..Error: Double nested impx detected. Skipping markup for para")
                         continue
                     else:
-                        # sciSupport.trace("%s%sMarked Abbr %s in %s: " % (60*"-","\n", rc.pattern, nodeText2), outlineLevel=1, debugVar=gDbg7)
-                        if diagnostics: print (f"\t\t...Para {para_count}: Marked Glossary Term: {grpnm} ID: {rx}")
+                        if self.diagnostics: print (f"\t\t...Para {para_count}: Marked Glossary Term: {grpnm} ID: {rx}")
                         changes = True
-                        count += 1
-                        countInDoc += 1
                         node_text = node_text2
 
-            if changes:
+            if changes and markup_terms:
                 try:
                     new_node = lxml.etree.XML(node_text)
                     parent_node = para_working.getparent()
                     parent_node.replace(para_working, new_node)
-                    if diagnostics:
+                    if self.diagnostics:
                         print (f"\t\t...Para {para_count}: Final markup: {node_text}")
-                        print (f"\t\t...Para {para_count}: {countInDoc} glossary terms recognized.")
+                        print (f"\t\t...Para {para_count}: {count_in_doc} glossary terms recognized.")
                 except Exception as e:
                     # skip this change and log
                     logger.error(f"Could not save node change (skipped) {e}.")
@@ -652,12 +291,108 @@ class GlossaryRecognitionEngine(UserDict):
             endTime = time.time()
             timeDiff = endTime - startTime
             #print (80*"-")
-            print (f"\t...{total_changes} glossary term markups for {countInDoc} paragraphs in {timeDiff} secs")
+            if markup_terms:
+                print (f"\t...{total_changes} glossary term markups for {count_in_doc} paragraphs in {timeDiff:.4f} secs")
+            else:  
+                print (f"\t...{total_changes} glossary terms recognized in {timeDiff:.4f} secs")
 
         # option: should we return count of changed paragraphs?
-        ret_status = count
+        ret_status = count_in_doc
+        sorted_term_dict = dict(sorted(found_term_dict.items(), key=lambda item: item[1], reverse=True))
+
+        # returns count of changes and list of tuples with (term, count)
+        return ret_status, sorted_term_dict
+
+    #--------------------------------------------------------------------------------
+    def getGlossaryLists(self,
+                         parsed_xml,
+                         skipIfHasAncestorRegx=default_ancestor_list,
+                         verbose=True):
+        """
+        Get glossary term lists from document without marking any up.
+    
+        Returns the number of changed terms, and a dictionary of terms and counts
+    
+        """
         
-        return parsed_xml, ret_status
+        ret_val = {}
+        startTime = time.time()
+        caller_name = "getGlossaryLists"
+        count_in_doc = 0
+        total_changes = 0
+        if isinstance(parsed_xml, str):
+            parsed_xml = etree.fromstring(opasxmllib.remove_encoding_string(parsed_xml), parser)
+        
+        # see if the precompiled version is present
+        glossary_term_dict = parsed_xml.xpath("//unit[@type='glossary_term_dict']")
+        if glossary_term_dict == []: # if empty
+            allParas = parsed_xml.xpath(".//p|.//p2")  # get all paragraphs
+            found_term_dict = {}
+            for para_working in allParas:
+                ancestor_match = opasxmllib.xml_node_regx_ancestors(para_working, regx=skipIfHasAncestorRegx)
+                if ancestor_match:
+                    if self.diagnostics: print (f"\t\t...Skipped para {para_count} (due to ancestor)")
+                    continue
+                node_text = lxml.etree.tostring(para_working, encoding="unicode")
+                for rcrow in self.matchList:
+                    term_data = rcrow[1]
+                    grpnm = term_data[2]
+                    # rx = term_data[3]
+                    # Match at the start, at the end, the whole, and in the middle, delineated
+                    rc = rcrow[0]
+                    try:
+                        found = rc.findall(node_text)
+                        found_count = len(found)
+                        total_changes += found_count
+                        # use terms, not groups.  Groups are compound, and the
+                        # multiple terms do not reflect what was found in the specific document
+                        if 1: # terms
+                            if found_count:
+                                term = found[0][0]
+                                term = term.lower().strip()
+                                term_count = found_term_dict.get(term, 0)
+                                term_count += found_count
+                                count_in_doc += found_count
+                                found_term_dict[term] = term_count
+                                if 0: print (f"\t\t\tTerm: {term} / {grpnm}")
+                        else: # groups
+                            if found_count:
+                                term = found[0][0]
+                                term_grp = grpnm.lower().strip()
+                                term_count = found_term_dict.get(term_grp, 0)
+                                term_count += found_count
+                                count_in_doc += found_count
+                                found_term_dict[term_grp] = term_count
+                                if 1: print (f"\t\t\tTerm: {term} / {grpnm}")
+                            
+                    except Exception as e:
+                        print (e)
+            
+            ret_val = dict(sorted(found_term_dict.items(), key=lambda item: item[1], reverse=True))
+            
+        else: # use the precompiled dictionary
+            try:
+                glossary_term_dict_str = lxml.html.tostring(glossary_term_dict[0][0], method="text").strip()
+                glossary_dict = json.loads(glossary_term_dict_str)
+                # for historical reasons it's a list sometimes, but now it should always be a dict.  Handle either here.
+                # convert to dict if it's a list
+                if isinstance(glossary_dict, list):
+                    ret_val = {k: v for k, v in glossary_dict}
+                elif isinstance(glossary_dict, dict):
+                    ret_val = glossary_dict
+            except Exception as e:
+                logger.error(f"{caller_name}: Error loading precompiled term_dict {e}")
+                    
+        #ret_status = count_in_doc
+        if verbose: 
+            endTime = time.time()
+            timeDiff = endTime - startTime
+            if count_in_doc > 0:
+                print (f"\t...{count_in_doc} glossary terms recognized in {timeDiff:.4f} secs")
+            else:
+                print (f"\t...Glossary terms loaded from compiled XML in {timeDiff:.4f} secs")
+            
+        return ret_val
 
 
 #==================================================================================================
@@ -671,4 +406,5 @@ if __name__ == "__main__":
 
     import doctest
     doctest.testmod()
+    print ("Fini. Tests complete.")
     sys.exit()

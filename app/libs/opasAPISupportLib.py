@@ -66,6 +66,8 @@ import opasConfig
 import localsecrets
 
 import opasFileSupport
+import PEPGlossaryRecognitionEngine
+glossEngine = PEPGlossaryRecognitionEngine.GlossaryRecognitionEngine(gather=False)
 
 # from configLib.opasCoreConfig import solr_docs2, solr_authors2, solr_gloss2
 # from configLib.opasCoreConfig import EXTENDED_CORES
@@ -89,6 +91,8 @@ import opasCentralDBLib
 # import opasDocPermissions as opasDocPerm
 import opasPySolrLib
 from opasPySolrLib import search_text, search_text_qs
+import opasProductLib
+import opasArticleIDSupport
 
 # count_anchors = 0
 
@@ -224,7 +228,7 @@ def extract_abstract_from_html(html_str, xpath_to_extract=opasConfig.HTML_XPATH_
         if ret_val != []:
             ret_val = htree.xpath(opasConfig.HTML_XPATH_DOC_BODY) # e.g., "//div[@class='body']"
     # make sure it's a string
-    ret_val = opasQueryHelper.force_string_return_from_various_return_types(ret_val)
+    ret_val = opasgenlib.force_string_return_from_various_return_types(ret_val)
 
     return ret_val
 
@@ -713,12 +717,16 @@ def documents_get_abstracts(document_id,
 
     if document_id is not None:
         # new document ID object provides precision and case normalization
-        document_id_obj = opasgenlib.DocumentID(document_id)
-        document_id = document_id_obj.document_id
-        if document_id is None:
-            document_id = document_id_obj.jrnlvol_id
+        if re.search("[\?\*]", document_id) is None:
+            # fix it, or add a wildcard if needed
+            document_id_obj = opasgenlib.DocumentID(document_id)
+            document_id = document_id_obj.document_id
             if document_id is None:
-                document_id = document_id_obj.journal_code          
+                document_id = document_id_obj.jrnlvol_id
+                if document_id is None:
+                    document_id = document_id_obj.journal_code          
+        #else:
+            #document_id = document_id # leave it alone, it has wildcards
 
         if sort is None:
             sort="art_citeas_xml asc"
@@ -763,6 +771,85 @@ def documents_get_abstracts(document_id,
             )                
         
         ret_val = documents
+
+    return ret_val
+
+#-----------------------------------------------------------------------------
+def documents_get_document_from_file(document_id,
+                                     ret_format="XML",
+                                     req_url:str=None,
+                                     fullfilename=None, 
+                                     authenticated=True,
+                                     session_info=None, 
+                                     option_flags=0,
+                                     request=None
+                                     ):
+    """
+    Load an article into the document_list_item directly from a file in order to return
+      **archived** articles (such as used by IJPOPen) which have been removed from Solr
+    """
+    caller_name = "documents_get_document_from_file"
+    ret_val = None
+    # document_list = None
+    import opasXMLHelper as opasxmllib
+    # from opasSolrLoadSupport import ArticleInfo
+    
+    # new document ID object provides precision and case normalization
+    document_id_obj = opasgenlib.DocumentID(document_id)
+    document_id = document_id_obj.document_id
+    filenamebase = os.path.basename(fullfilename)
+    fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root=localsecrets.FILESYSTEM_ROOT)
+    #temp for testing
+    #if not fs.exists(fullfilename, localsecrets.FILESYSTEM_ROOT):
+        #fullfilename = fs.find(fullfilename, path_root="X:\AWS_S3\AWS PEP-Web-Live-Data\_PEPTests")
+    
+    fileXMLContents, input_fileinfo = fs.get_file_contents(fullfilename)
+    parser = etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True)
+    parsed_xml = etree.fromstring(opasxmllib.remove_encoding_string(fileXMLContents), parser)
+    title = opasxmllib.xml_xpath_return_textsingleton(parsed_xml, '//arttitle', default_return=None)
+    abstract = opasxmllib.xml_xpath_return_textsingleton(parsed_xml, '//abs', default_return=None)
+    pgrg = opasxmllib.xml_xpath_return_textsingleton(parsed_xml, '//artpgrg', default_return=None)
+    # save common document (article) field values into artInfo instance for both databases
+    #sourceDB = opasProductLib.SourceInfoDB()
+    artInfo = opasArticleIDSupport.ArticleInfo(parsed_xml=parsed_xml, art_id=document_id, filename_base=filenamebase, fullfilename=fullfilename, logger=logger)
+    generic_document_id = document_id[:-1] + "?"
+    # query the latest version of this document to get the documentListItem info
+    #result = documents_get_document(generic_document_id, session_info)
+    # have to call abstracts to get whatever matching root document is in solr
+    result = documents_get_abstracts(generic_document_id, 
+                                     ret_format=ret_format,
+                                     req_url=req_url, 
+                                     session_info=session_info,
+                                     request=request
+                                     )
+
+    if result.documents.responseInfo.count == 1:
+        # change fields as needed
+        document_list_item = result.documents.responseSet[0]
+        document_list_item.documentID = document_id
+        document_list_item.title = title
+        document_list_item.abstract = abstract
+        document_list_item.pgRg = pgrg
+        document_list_item.pgStart = artInfo.art_pgstart
+        document_list_item.pgEnd = artInfo.art_pgend
+        document_list_item.stat = None
+        document_list_item.documentRef = artInfo.art_citeas_text 
+        # for reference, art_citeas_xml is both legal xml and html
+        document_list_item.documentRefXML = artInfo.art_citeas_xml 
+        document_list_item.documentRefHTML = artInfo.art_citeas_xml
+        document_list_item.documentMetaXML = opasxmllib.xml_xpath_return_textsingleton(parsed_xml, '//meta', default_return=None)
+        
+        if result.documents.responseSet[0].accessChecked and result.documents.responseSet[0].accessLimited == False:
+            document_list_item.document = fileXMLContents
+            # replace facet_counts with new dict
+            try:
+                term_dict = glossEngine.getGlossaryLists(fileXMLContents, verbose=False)
+                result.documents.responseInfo.facetCounts = {"facet_fields": {"glossary_group_terms": term_dict}}
+            except Exception as e:
+                status_message = f"{caller_name}: {e}"
+                logger.error(status_message)
+            
+        ret_val = result
 
     return ret_val
 
@@ -935,6 +1022,14 @@ def documents_get_document(document_id,
             # is user authorized?
             if document_list.documentList.responseSet[0].accessLimited or document_list.documentList.responseSet[0].accessChecked == False or document_list.documentList.responseSet[0].accessLimited is None:
                 document_list.documentList.responseSet[0].document = document_list.documentList.responseSet[0].abstract
+            else: # yes
+                # replace facet_counts with new dict
+                try:
+                    pepxml = document_list.documentList.responseSet[0].document
+                    term_dict = glossEngine.getGlossaryLists(pepxml, verbose=False)
+                    response_info.facetCounts = {"facet_fields": {"glossary_group_terms": term_dict}}
+                except Exception as e:
+                    logger.error(f"{caller_name}: Error replacing term_dict {e}")
                 
             document_list_struct = models.DocumentListStruct( responseInfo = response_info, 
                                                               responseSet = [document_list_item]

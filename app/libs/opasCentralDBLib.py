@@ -66,8 +66,10 @@ import localsecrets
 
 import logging
 logger = logging.getLogger(__name__)
-import starlette.status as httpCodes
+from loggingDebugStream import log_everywhere_if
+DBGSTDOUT = False
 
+import starlette.status as httpCodes
 import datetime as dtime
 from datetime import datetime # , timedelta
 import time
@@ -78,17 +80,11 @@ from passlib.context import CryptContext
 # from pydantic import ValidationError
 
 import mysql.connector
-# import pymysql
-# import jwt
 import json
 
-#import opasAuthBasic
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# import requests
 import xml.etree.ElementTree as ET
-
-import models
 
 # All opasCentral Database Models here
 import models
@@ -236,7 +232,7 @@ class opasCentralDB(object):
         self.database = database
         self.connected = False
         self.db = None
-        self.library_version = self.get_mysql_version()
+        # self.library_version = self.get_mysql_version() # Removed since it's rarely needed and yet requires a db call to get
         self.session_id = session_id # deprecate?
 
     def __del__(self):
@@ -252,6 +248,7 @@ class opasCentralDB(object):
         True
         >>> ocd.close_connection("my name")
         """
+        pause_len = 30
         try:
             opasCentralDB.connection_count += 1
             self.db = mysql.connector.connect(user=self.user, password=self.password, database=self.database, host=self.host)
@@ -261,24 +258,35 @@ class opasCentralDB(object):
         except Exception as e:
             self.connected = False
             opasCentralDB.connection_count -= 1
-            logger.error(f"Database connection could not be opened ({caller_name}) ({e}). Opening connection number: {opasCentralDB.connection_count}")
-            self.db = None
+            logger.error(f"Database connection could not be opened ({caller_name}) ({e}). Opening connection number: {opasCentralDB.connection_count}. Will retry after {pause_len} seconds")
+            try:
+                time.sleep(pause_len)
+                self.db = mysql.connector.connect(user=self.user, password=self.password, database=self.database, host=self.host)
+            except Exception as e:
+                log_everywhere_if(DBGSTDOUT, level="warning", msg=f"open_connection: retrying connection failed ({caller_name}) ({e}). Connection number: {opasCentralDB.connection_count}")
+            else:
+                log_everywhere_if(DBGSTDOUT, level="debug", msg=f"open_connection: retrying connection succeeded: {opasCentralDB.connection_count}")
+                
         
+        # if 1: print (f"Connection_count: {opasCentralDB.connection_count}")
         return self.connected
 
     def close_connection(self, caller_name=""):
+        ret_val = False # failed, or not open
         try:
+            # 1: print (f"Connection_count: {opasCentralDB.connection_count}")
             opasCentralDB.connection_count -= 1
-            self.db.close()
-            self.db = None
-            # logger.debug(f"Database closed by ({caller_name})")
+            if self.db is not None:
+                self.db.close()
+                self.db = None
+                ret_val = True # success
                 
         except Exception as e:
             opasCentralDB.connection_count = 0
-            logger.info(f"caller: {caller_name} the db is not open ({e}).")
+            log_everywhere_if(DBGSTDOUT, level="debug", msg=f"caller: {caller_name} the db is not open ({e}).")
 
         self.connected = False
-        return self.connected
+        return ret_val
 
     def end_session(self, session_id, session_end=datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')):
         """
@@ -1122,7 +1130,7 @@ class opasCentralDB(object):
         """
         fname = "get_selection_as_list"
         self.open_connection(caller_name=fname) # make sure connection is open
-        ret_val = None
+        ret_val = []
         if self.db is not None:
             # don't use dicts here
             # ret_val = self.SQLSelectGenerator(sqlSelect, use_dict=False)
@@ -2191,7 +2199,7 @@ class opasCentralDB(object):
         self.do_action_query(querytxt="DELETE FROM api_articles WHERE art_id=%(art_id)s;", queryparams=query_param_dict)
 
     #----------------------------------------------------------------------------------------
-    def do_action_query(self, querytxt, queryparams, contextStr=None):
+    def do_action_query(self, querytxt, queryparams=None, contextStr=None, log_integrity_errors=True):
     
         fname = "do_action_query"
         ret_val = False
@@ -2202,7 +2210,10 @@ class opasCentralDB(object):
             
         with closing(self.db.cursor(buffered=True, dictionary=True)) as dbc:
             try:
-                dbc.execute(querytxt, queryparams)
+                if queryparams is not None:
+                    dbc.execute(querytxt, queryparams)
+                else:
+                    dbc.execute(querytxt)
             except mysql.connector.DataError as e:
                 logger.error(f"DBError: Art: {contextStr}. DB Data Error {e} ({querytxt})")
                 # raise self.db.DataError(e)
@@ -2210,8 +2221,10 @@ class opasCentralDB(object):
                 logger.error(f"DBError: Art: {contextStr}. DB Operation Error {e} ({querytxt})")
                 raise mysql.connector.OperationalError(e)
             except mysql.connector.IntegrityError as e:
-                logger.error(f"DBError: Art: {contextStr}. DB Integrity Error {e} ({querytxt})")
-                raise mysql.connector.IntegrityError(e)
+                if log_integrity_errors:
+                    logger.error(f"DBError: Art: {contextStr}. DB Integrity Error {e} ({querytxt})")
+                else:
+                    raise Exception(e)
             except mysql.connector.InternalError as e:
                 logger.error(f"DBError: Art: {contextStr}. DB Internal Error {e} ({querytxt})")
                 raise mysql.connector.InternalError(e)

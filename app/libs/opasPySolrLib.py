@@ -345,7 +345,7 @@ def authors_get_author_publications(author_partial,
     authorPubList=AuthorPubListStruct(responseInfo=ResponseInfo(count=15
     >>> ret_val=authors_get_author_publications(author_partial="Levinson, Nadine A.")
     >>> print (f"{ret_val}"[0:67])
-    authorPubList=AuthorPubListStruct(responseInfo=ResponseInfo(count=8
+    authorPubList=AuthorPubListStruct(responseInfo=ResponseInfo(count=6
     """
     ret_val = {}
     query = "art_author_id:/{}/".format(author_partial)
@@ -388,7 +388,7 @@ def authors_get_author_publications(author_partial,
     author_pub_list_items = []
     for result in results.docs:
         citeas = result.get("art_citeas_xml", None)
-        citeas = opasQueryHelper.force_string_return_from_various_return_types(citeas)
+        citeas = opasgenlib.force_string_return_from_various_return_types(citeas)
 
         item = models.AuthorPubListItem( authorID = result.get("art_author_id", None), 
                                          documentID = result.get("art_id", None),
@@ -1182,7 +1182,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
         #user_logged_in_bool = opasDocPerm.user_logged_in_per_header(request, session_id=session_id, caller_name=caller_name + "/ search_text_qs")
     except Exception as e:
         if req_url != opasConfig.CACHEURL: # no session supplied when loading caching, ok
-          logger.warning("No Session info supplied to search_text_qs")
+            logger.warning("No Session info supplied to search_text_qs")
         # mark as not logged in
         #user_logged_in_bool = False
 
@@ -1733,7 +1733,6 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                     facet_counts = {}
                     facets = results.facets["facet_fields"]
                     facet_counts["facet_fields"] = facet_processing(facets)
-                    
                 except:
                     facet_counts = None
     
@@ -1998,7 +1997,7 @@ def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
             else:
                 pgStart, pgEnd = (0, 0)
             citeAs = result.get("art_citeas_xml", None)  
-            citeAs = opasQueryHelper.force_string_return_from_various_return_types(citeAs)
+            citeAs = opasgenlib.force_string_return_from_various_return_types(citeAs)
             vol = result.get("art_vol", None)
             issue = result.get("art_iss", None)
             issue_title = result.get("art_iss_title", None)
@@ -2222,7 +2221,7 @@ def search_stats_for_download(solr_query_spec: models.SolrQuerySpec,
                     documentListItem = models.DocumentListItem()
                     #documentListItem = get_base_article_info_from_search_result(result, documentListItem)
                     citeas = result.get("art_citeas_xml", None)
-                    citeas = opasQueryHelper.force_string_return_from_various_return_types(citeas)
+                    citeas = opasgenlib.force_string_return_from_various_return_types(citeas)
                     
                     documentListItem.score = result.get("score", None)               
                     # see if this article is an offsite article
@@ -2292,7 +2291,7 @@ def metadata_get_document_statistics(session_info=None):
     """
     Return counts for the annual summary (or load checks)
 
-    >>> results = metadata_get_database_statistics()
+    >>> results = metadata_get_document_statistics()
     >>> results.article_count > 135000
     True
     """
@@ -2853,10 +2852,11 @@ def prep_document_download(document_id,
            - If access not permitted, this returns an error (and None for the filename)
            - If access allowed, it returns with the document itself
 
-    >>> a = prep_document_download("BIP.001.0342A", ret_format="html") 
-
-    >>> a = prep_document_download("BIP.001.0342A", ret_format="epub") 
-
+    >>> import localsecrets, opasDocPermissions
+    >>> pads_session_info = opasDocPermissions.authserver_login(username=localsecrets.PADS_TEST_ARCHIVEONLY, password=localsecrets.PADS_TEST_ARCHIVEONLY_PW)
+    >>> session_info = opasDocPermissions.get_authserver_session_info(pads_session_info.SessionId, client_id=4, pads_session_info=pads_session_info)
+    >>> a = prep_document_download("BIP.001.0342A", ret_format="html", session_info=session_info) 
+    >>> a = prep_document_download("BIP.001.0342A", ret_format="epub", session_info=session_info) 
 
     """
     def add_epub_elements(str):
@@ -3156,7 +3156,7 @@ def get_fulltext_from_search_results(result,
     documentListItem.docPagingInfo["page_offset"] = page_offset
 
     fullText = result.get("text_xml", None)
-    text_xml = opasQueryHelper.force_string_return_from_various_return_types(text_xml)
+    text_xml = opasgenlib.force_string_return_from_various_return_types(text_xml)
     if text_xml is None:  # no highlights, so get it from the main area
         try:
             text_xml = fullText

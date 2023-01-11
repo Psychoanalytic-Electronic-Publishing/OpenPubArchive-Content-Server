@@ -2027,7 +2027,7 @@ def get_base_article_info_from_search_result(result: dict, documentListItem: mod
             # <p class="citeas"><span class="authors">%s</span> (<span class="year">%s</span>) <span class="title">%s</span>. 
             #          <span class="sourcetitle">%s</span> <span class="vol">%s</span>:<span class="pgrg">%s</span></p>""" \
             citeas = result.get("art_citeas_xml", None)
-            citeas = force_string_return_from_various_return_types(citeas)
+            citeas = opasgenlib.force_string_return_from_various_return_types(citeas)
             documentListItem.documentRef = opasxmllib.xml_elem_or_str_to_text(citeas, default_return="")
             documentListItem.documentRefXML = citeas
             documentListItem.documentRefHTML = citeas
@@ -2122,47 +2122,48 @@ def merge_documentListItems(old, new):
 
     return old
 
-#-----------------------------------------------------------------------------
-def force_string_return_from_various_return_types(text_str, min_length=5):
-    """
-    Sometimes the return isn't a string (it seems to often be "bytes") 
-      and depending on the schema, from Solr it can be a list.  And when it
-      involves lxml, it could even be an Element node or tree.
+##-----------------------------------------------------------------------------
+# Moved to opasgenlib
+# def force_string_return_from_various_return_types(text_str, min_length=5):
+    #"""
+    #Sometimes the return isn't a string (it seems to often be "bytes") 
+      #and depending on the schema, from Solr it can be a list.  And when it
+      #involves lxml, it could even be an Element node or tree.
 
-    This checks the type and returns a string, converting as necessary.
+    #This checks the type and returns a string, converting as necessary.
 
-    >>> force_string_return_from_various_return_types(["this is really a list",], min_length=5)
-    'this is really a list'
+    #>>> force_string_return_from_various_return_types(["this is really a list",], min_length=5)
+    #'this is really a list'
 
-    """
-    ret_val = None
-    if text_str is not None:
-        if isinstance(text_str, str):
-            if len(text_str) > min_length:
-                # we have an abstract
-                ret_val = text_str
-        elif isinstance(text_str, list):
-            if text_str == []:
-                ret_val = None
-            else:
-                ret_val = text_str[0]
-                if ret_val == [] or ret_val == '[]':
-                    ret_val = None
-        else:
-            logger.error("Type mismatch on Solr Data. forceStringReturn ERROR: %s", type(ret_val))
+    #"""
+    #ret_val = None
+    #if text_str is not None:
+        #if isinstance(text_str, str):
+            #if len(text_str) > min_length:
+                ## we have an abstract
+                #ret_val = text_str
+        #elif isinstance(text_str, list):
+            #if text_str == []:
+                #ret_val = None
+            #else:
+                #ret_val = text_str[0]
+                #if ret_val == [] or ret_val == '[]':
+                    #ret_val = None
+        #else:
+            #logger.error("Type mismatch on Solr Data. forceStringReturn ERROR: %s", type(ret_val))
 
-        try:
-            if isinstance(ret_val, lxml.etree._Element):
-                ret_val = etree.tostring(ret_val)
+        #try:
+            #if isinstance(ret_val, lxml.etree._Element):
+                #ret_val = lxml.etree.tostring(ret_val)
 
-            if isinstance(ret_val, bytes) or isinstance(ret_val, bytearray):
-                logger.error("Byte Data")
-                ret_val = ret_val.decode("utf8")
-        except Exception as e:
-            err = "forceStringReturn Error forcing conversion to string: %s / %s" % (type(ret_val), e)
-            logger.error(err)
+            #if isinstance(ret_val, bytes) or isinstance(ret_val, bytearray):
+                #logger.error("Byte Data")
+                #ret_val = ret_val.decode("utf8")
+        #except Exception as e:
+            #err = "forceStringReturn Error forcing conversion to string: %s / %s" % (type(ret_val), e)
+            #logger.error(err)
 
-    return ret_val        
+    #return ret_val        
 
 # -------------------------------------------------------------------------------------------------------
 # run it!

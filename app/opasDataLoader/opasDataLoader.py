@@ -5,17 +5,12 @@
 # yes, in my code I'm caught between two worlds of snake_case and camelCase (transitioning to snake_case).
 
 __author__      = "Neil R. Shapiro"
-__copyright__   = "Copyright 2022, Psychoanalytic Electronic Publishing"
+__copyright__   = "Copyright 2023, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.1128/v2.0.024"   # semver versioning after date.
+__version__     = "2023.0104/v2.0.044"   # semver versioning after date.
 __status__      = "Development"
 
 programNameShort = "opasDataLoader"
-
-import lxml
-import sys
-if sys.version_info[0] < 3:
-    raise Exception("Must be using Python 3")
 
 border = 80 * "*"
 print (f"""\n
@@ -127,6 +122,7 @@ logger = logging.getLogger(programNameShort)
 
 from optparse import OptionParser
 
+import lxml
 from lxml import etree
 import mysql.connector
 
@@ -134,12 +130,18 @@ import configLib.opasCoreConfig
 from configLib.opasCoreConfig import solr_authors2, solr_gloss2
 import loaderConfig
 import opasSolrLoadSupport
+import opasArticleIDSupport
+import opasConfig
 
 import opasXMLHelper as opasxmllib
 import opasCentralDBLib
 import opasProductLib
 import opasFileSupport
 import opasAPISupportLib
+import opasDataLoaderIJPOpenSupport
+
+if sys.version_info[0] < 3:
+    raise Exception("Must be using Python 3")
 
 #detect data is on *nix or windows system
 if "AWS" in localsecrets.CONFIG or re.search("/", localsecrets.IMAGE_SOURCE_PATH) is not None:
@@ -183,7 +185,7 @@ def find_all(name_pat, path):
                 result.append(os.path.join(root, filename))
     return result
 
-def derive_output_filename(input_filename, input_build=loaderConfig.DEFAULT_INPUT_BUILD, output_build=loaderConfig.DEFAULT_OUTPUT_BUILD):
+def derive_output_filename(input_filename, input_build=opasConfig.DEFAULT_INPUT_BUILD, output_build=opasConfig.DEFAULT_OUTPUT_BUILD):
     
     filename = str(input_filename)
     ret_val = filename.replace(input_build, output_build)
@@ -287,8 +289,8 @@ def output_file_needs_rebuilding(outputfilename, inputfilename=None, inputfilesp
 
 #------------------------------------------------------------------------------------------------------
 def file_needs_reloading_to_solr(solrcore, art_id, timestamp_str, filename=None, fs=None, filespec=None, smartload=False,
-                                 input_build=loaderConfig.DEFAULT_INPUT_BUILD,
-                                 output_build=loaderConfig.DEFAULT_OUTPUT_BUILD):
+                                 input_build=opasConfig.DEFAULT_INPUT_BUILD,
+                                 output_build=opasConfig.DEFAULT_OUTPUT_BUILD):
     """
     Now, since Solr may have EXP_ARCH1 and the load 'candidate' may be KBD3, the one in Solr
       can be the same or NEWER, and it's ok, no need to reprocess.
@@ -336,7 +338,7 @@ def file_needs_reloading_to_solr(solrcore, art_id, timestamp_str, filename=None,
 
 
 #------------------------------------------------------------------------------------------------------
-def file_is_same_or_newer_in_solr_by_artid(solrcore, art_id, timestamp_str, filename=None, fs=None, filespec=None, smartload=False, input_build=loaderConfig.DEFAULT_INPUT_BUILD, output_build=loaderConfig.DEFAULT_OUTPUT_BUILD):
+def file_is_same_or_newer_in_solr_by_artid(solrcore, art_id, timestamp_str, filename=None, fs=None, filespec=None, smartload=False, input_build=opasConfig.DEFAULT_INPUT_BUILD, output_build=opasConfig.DEFAULT_OUTPUT_BUILD):
     """
     Now, since Solr may have EXP_ARCH1 and the load 'candidate' may be KBD3, the one in Solr
       can be the same or NEWER, and it's ok, no need to reprocess.
@@ -450,7 +452,10 @@ def main():
     rebuild_count = 0
     reload_count = 0
     ocd =  opasCentralDBLib.opasCentralDB()
-    fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root=localsecrets.FILESYSTEM_ROOT)
+    # options.rootFolder defaults to localsecrets.FILESYSTEM_ROOT, unless option is specified otherwise
+    # this allows relative paths, by specifying dataroot="", example:
+    #       --dataroot="" --only "./../tests/testdatasource/_PEPSpecial/IJPOpen/IJPOPEN.008.0100A(bKBD3).xml"
+    fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root=options.rootFolder)
 
     # set toplevel logger to specified loglevel
     logger = logging.getLogger()
@@ -481,7 +486,7 @@ def main():
             print("Input data Root: ", start_folder)
             print("Input data Subfolder: ", options.subFolder)
 
-            selected_output_build = loaderConfig.DEFAULT_OUTPUT_BUILD
+            selected_output_build = opasConfig.DEFAULT_OUTPUT_BUILD
 
                 
             if options.forceReloadAllFiles == True:
@@ -493,9 +498,9 @@ def main():
             if options.forceRebuildAllFiles == True:
                 input_build_pattern, selected_input_build = get_defaults(options,
                                                                          default_build_pattern=loaderConfig.DEFAULT_INPUT_BUILD_PATTERN,
-                                                                         default_build=loaderConfig.DEFAULT_INPUT_BUILD)
+                                                                         default_build=opasConfig.DEFAULT_INPUT_BUILD)
                 selected_output_build = get_output_defaults(options,
-                                                            default_build=loaderConfig.DEFAULT_OUTPUT_BUILD)
+                                                            default_build=opasConfig.DEFAULT_OUTPUT_BUILD)
                 pre_action_verb = "Compile, save and load"
                 post_action_verb = "Compiled, saved and loaded"
                 msg = f"Forced Rebuild - All specified files of build {input_build_pattern} recompiled from source XML to precompiled XML {selected_output_build} and loaded."
@@ -505,7 +510,7 @@ def main():
             elif options.loadprecompiled and not options.smartload:
                 input_build_pattern, selected_input_build = get_defaults(options,
                                                                          default_build_pattern=loaderConfig.DEFAULT_PRECOMPILED_INPUT_BUILD_PATTERN,
-                                                                         default_build=loaderConfig.DEFAULT_PRECOMPILED_INPUT_BUILD)
+                                                                         default_build=opasConfig.DEFAULT_OUTPUT_BUILD)
                 print(f"Precompiled XML of build {selected_input_build} will be loaded to the databases if newer tan Solr, without examining source and compiling.")
                 pre_action_verb = "Load"
                 post_action_verb = "Loaded"
@@ -514,9 +519,9 @@ def main():
                 # compiled and loaded if input file is newer than output written file or if there's no output file
                 input_build_pattern, selected_input_build = get_defaults(options,
                                                                          default_build_pattern=loaderConfig.DEFAULT_INPUT_BUILD_PATTERN,
-                                                                         default_build=loaderConfig.DEFAULT_INPUT_BUILD)
+                                                                         default_build=opasConfig.DEFAULT_INPUT_BUILD)
                 selected_output_build = get_output_defaults(options,
-                                                            default_build=loaderConfig.DEFAULT_OUTPUT_BUILD)
+                                                            default_build=opasConfig.DEFAULT_OUTPUT_BUILD)
                 print(f"Smartload. XML of build {input_build_pattern} will be compiled and saved and loaded if newer than compiled build {selected_output_build}")
                 pre_action_verb = "Smart compile, save and load"
                 post_action_verb = "Smart compiled, saved and loaded"
@@ -544,19 +549,25 @@ def main():
                     print ("Paragraphs only stored for sources indicated in loaderConfig.")
     
             if options.halfway:
-                print ("--halfway option selected.  Including approximately one-half of the files that match.")
+                print ("--halfway option selected. Including approximately one-half of the files that match.")
                 
             if options.run_in_reverse:
-                print ("--reverse option selected.  Running the files found in reverse order.")
+                print ("--reverse option selected. Running the files found in reverse order.")
 
             if options.file_key:
                 print (f"--key supplied.  Including files matching the article id {options.file_key}.\n   ...Automatically implies force rebuild (--smartload) and/or reload (--load) of files.")
 
+            if options.glossary_term_tagging:
+                print ("--termtags option selected. Glossary terms will be marked up with impx for compiled XML.")
+
+            if not options.add_glossary_term_dict:
+                print ("--termdictoff option selected. The glossary_term_dict unit will not be added to compiled XML.")
+
             print(80*"*")
             if not options.no_check:
-                cont = input ("The above databases will be updated.  Do you want to continue (y/n)?")
+                cont = input ("The above databases will be updated. Do you want to continue (y/n)?")
                 if cont.lower() == "n":
-                    print ("User requested exit.  No data changed.")
+                    print ("User requested exit. No data changed.")
                     sys.exit(0)
                 
         except Exception as e:
@@ -620,7 +631,8 @@ def main():
 
     # record time in case options.nofiles is true
     timeStart = time.time()
-
+    archived_files_not_loaded = 0
+    
     if options.no_files == False: # process and/or load files (no_files just generates a whats_new list, no processing or loading)
         print (f"Locating files for processing at {start_folder} with build pattern {input_build_pattern}. Started at ({time.ctime()}).")
         print (f"Smartbuild exceptions: Files matching {loaderConfig.SMARTBUILD_EXCEPTIONS} are load only, no recompile.  Will load from output format {selected_output_build}")
@@ -636,14 +648,14 @@ def main():
                 print (msg)
                 exit(0)
             else:
-                options.forceRebuildAllFiles = True
+                # options.forceRebuildAllFiles = True
                 options.forceReloadAllFiles = True
         elif options.file_only is not None: # File spec for a single file to process.
             fileinfo = FileInfo()
             filespec = options.file_only
             exists = fileinfo.mapFS(filespec)
             if not exists:
-                msg = f"File {filespec} not found.  Exiting."
+                msg = f"File {filespec} not found.  Exiting. {os.getcwd()}"
                 logger.warning(msg)
                 print (msg)
                 exit(0)
@@ -696,31 +708,26 @@ def main():
             print (f"{pre_action_verb} started ({time.ctime()}).  Examining files.")
             glossary_file_skip_pattern=r"ZBK.069(.*)"
             rc_skip_glossary_kbd3_files = re.compile(glossary_file_skip_pattern, re.IGNORECASE)
-            
             for n in filenames:
                 fileTimeStart = time.time()
                 input_file_was_updated = False
                 output_file_newer_than_solr = False
-                file_was_updated = False
                 smart_file_rebuild = False
                 base = n.basename
                 artID = os.path.splitext(base)[0]
                 m = re.match(r"([^ ]*).*\(.*\)", artID)
                 artID = m.group(1)
                 artID = artID.upper()
+                artID = artID.replace(".EMBARGOED", "")
+                m = re.match(r"(.*?)\.", artID)
                 
                 try:
                     inputfilename = n.fileinfo["name"]
                 except KeyError as e:
                     inputfilename = str(n.filespec)
                 
-                outputfilename = inputfilename.replace(loaderConfig.DEFAULT_INPUT_BUILD, selected_output_build) # was loaderConfig.DEFAULT_OUTPUT_BUILD)
+                outputfilename = inputfilename.replace(opasConfig.DEFAULT_INPUT_BUILD, selected_output_build) # was opasConfig.DEFAULT_OUTPUT_BUILD)
 
-                #if inputfilename != outputfilename:
-                    #output_recompile = \
-                       #input_file_was_updated = False                    
-                #else:
-                    # does output build need to be regenerated?
                 file_status_tuple = output_file_needs_rebuilding(inputfilespec=n,
                                                                  inputfilename=inputfilename,
                                                                  outputfilename=outputfilename)
@@ -780,35 +787,63 @@ def main():
                     # make changes to the XML
                     input_filespec = n.filespec
                     fileXMLContents, input_fileinfo = fs.get_file_contents(input_filespec)
+                    # print (f"Filespec: {input_filespec}")
                     parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True)
                     parsed_xml = etree.fromstring(opasxmllib.remove_encoding_string(fileXMLContents), parser)
                     # save common document (article) field values into artInfo instance for both databases
-                    artInfo = opasSolrLoadSupport.ArticleInfo(sourceDB.sourceData, parsed_xml=parsed_xml, art_id=artID, filename_base=base, logger=logger)
+                    artInfo = opasArticleIDSupport.ArticleInfo(parsed_xml=parsed_xml, art_id=artID, filename_base=base, fullfilename=input_filespec, logger=logger)
                     artInfo.filedatetime = input_fileinfo.timestamp_str
                     # artInfo.filename = base # now done in articleInfo
                     # get artinfo per filename, to see if this is an issue coded with volume suffix
                     artInfo.file_size = input_fileinfo.filesize
                     artInfo.file_updated = input_file_was_updated
                     artInfo.file_create_time = input_fileinfo.create_time
+
+                    # ##########################################################################################################
+                    # Special IJPOpen Version Processing Part 1
+                    parsed_version_history_unit = None
+                    version_history_unit = None
+                    if artInfo.src_code == "IJPOPEN":
+                        # Check if there are multiple versions, remove old versions, and add version history to each
+                        version_history_unit = \
+                            opasDataLoaderIJPOpenSupport.version_history_processing(ocd,
+                                                                                    artInfo,
+                                                                                    solrdocs=solr_docs2, solrauth=solr_authors2,
+                                                                                    file_xml_contents=fileXMLContents,
+                                                                                    full_filename_with_path=inputfilename,
+                                                                                    options=options, 
+                                                                                    verbose=options.display_verbose)
+                        if version_history_unit is not None:
+                            parsed_version_history_unit = version_history_unit["version_section"]
+                    # ##########################################################################################################
+                    # Process XML to create output (compiled and marked up version)
                     parsed_xml, ret_status = opasXMLProcessor.xml_update(parsed_xml,
                                                                          artInfo,
                                                                          ocd,
                                                                          pretty_print=options.pretty_printed,
+                                                                         markup_terms=options.glossary_term_tagging,
+                                                                         add_glossary_list=options.add_glossary_term_dict, 
                                                                          verbose=options.display_verbose)
+                    
+                    # ##########################################################################################################
+                    # Special IJPOpen Version Processing Part 2 (Post conversion)
+                    # if there's a version history to be appended, do it so it's written to output file!
+                    if version_history_unit is not None and parsed_version_history_unit is not None:
+                        if options.display_verbose:
+                            print("\t...Adding PEP-Web Manuscript history unit to compiled XML")
+                        parsed_xml.append(parsed_version_history_unit)
+                    # ##########################################################################################################
+
                     # impx_count = int(pepxml.xpath('count(//impx[@type="TERM2"])'))
                     # write output file
                     fname = str(n.filespec)
                     fname = re.sub("\(b.*\)", options.output_build, fname)
-
-                    # root = parsed_xml.getroottree()
-                    # this only works on a local file system...using 
-                    # root.write(fname, encoding="utf-8", method="xml", pretty_print=True, xml_declaration=True, doctype=options.output_doctype)
-                    file_prefix = f"""{options.output_doctype}\n"""
+                    file_prefix = f"""{loaderConfig.DEFAULT_XML_DECLARATION}\n{options.output_doctype}\n"""
                     # xml_text version, not reconverted to tree
                     file_text = lxml.etree.tostring(parsed_xml, pretty_print=options.pretty_printed, encoding="utf8").decode("utf-8")
-                    # file_text = file_prefix + file_text
+                    file_text = file_prefix + file_text
                     # this is required if running on S3
-                    msg = f"\t...Compiling {n.basename} to precompiled XML"
+                    msg = f"\t...Compiled {n.basename} to precompiled (fully marked-up) XML in {fname}"
                     success = fs.create_text_file(fname, data=file_text, delete_existing=True)
                     if success:
                         rebuild_count += 1
@@ -819,6 +854,16 @@ def main():
                         msg = f"\t...There was a problem writing {fname}."
                         logger.error(msg)
                         print (msg)
+
+                # ##########################################################################################################
+                # Special IJPOpen Version Processing Part 3 (Post conversion)
+                # Check if it's removed (need to check database, not variable because it may be a load, not a build)
+                if opasDataLoaderIJPOpenSupport.is_removed_version(ocd, art_id=artID):
+                    print ("\t...This version has been archived/removed.  No need to load to Solr.")
+                    skipped_files += 1
+                    archived_files_not_loaded += 1
+                    continue # skip this file
+                # ##########################################################################################################
 
                 # make sure the file we read is the processed file.  Should be the output/processed build.
                 # note: if input build is same as processed (output build), then this won't change and the input file/build
@@ -853,7 +898,7 @@ def main():
                 #root = pepxml.getroottree()
         
                 # save common document (article) field values into artInfo instance for both databases
-                artInfo = opasSolrLoadSupport.ArticleInfo(sourceDB.sourceData, parsed_xml=parsed_xml, art_id=artID, filename_base=base, logger=logger)
+                artInfo = opasArticleIDSupport.ArticleInfo(parsed_xml=parsed_xml, art_id=artID, filename_base=base, fullfilename=final_xml_filename, logger=logger)
                 artInfo.filedatetime = final_fileinfo.timestamp_str
                 # artInfo.filename = base
                 artInfo.file_size = final_fileinfo.filesize
@@ -946,16 +991,15 @@ def main():
                         ocd.close_connection(caller_name="processBibliographies")
     
                 # close the file, and do the next
-                if options.display_verbose: print(("\t...Time: %s seconds." % (time.time() - fileTimeStart)))
+                if options.display_verbose: print(f"\t...Time: {time.time() - fileTimeStart:.4f} seconds.")
         
-            print (f"{pre_action_verb} process complete ({time.ctime()} ). Time: {time.time() - fileTimeStart} seconds.")
+            print (f"{pre_action_verb} process complete ({time.ctime()} ). Time: {time.time() - fileTimeStart:.4f} seconds.")
             if processed_files_count > 0:
                 try:
                     print ("Performing final commit.")
                     if not options.glossary_only: # options.fulltext_core_update:
                         solr_docs2.commit()
                         solr_authors2.commit()
-                        # fileTracker.commit()
                     if 1: # options.glossary_core_update:
                         solr_gloss2.commit()
                 except Exception as e:
@@ -986,9 +1030,10 @@ def main():
                     art_issue = artInfoSolr.documents.responseSet[0].issue
                     issue_id_str = f"<issue_id><src>{src_code}</src><yr>{art_year}</yr><vol>{art_vol_str}</vol><iss>{art_issue}</iss></issue_id>"
                 except IndexError:
-                    logger.error(f"Error: can't find article info for: {art_id}")
+                    if re.search("IJPOPEN", art_id, re.IGNORECASE) is None: # IJPOPEN is more dynamic and has archive/removed articles, no need to log these
+                        logger.error(f"WhatNewList IndexError: can't find article info for: {art_id}")
                 except Exception as e:
-                    logger.error(f"Error: can't find article info for: {art_id} {e}")
+                    logger.error(f"WhatNewList Exception for: {art_id} {e}")
                 else:   
                     if src_code not in loaderConfig.DATA_UPDATE_PREPUBLICATION_CODES_TO_IGNORE:
                         art = f"<article id='{art_id}'>{art_citeas_xml}</article>"
@@ -1009,25 +1054,29 @@ def main():
             msg = f"Writing Issue updates.  Writing to file {fname}"
             print (msg)
             logger.info(msg)
-            with open(fname, 'w', encoding="utf8") as fo:
-                fo.write( f'<?xml version="1.0" encoding="UTF-8"?>\n')
-                fo.write('<issue_updates>\n')
-                count_records = 0
-                for k, a in issue_updates.items():
-                    fo.write(f"\n\t<issue>\n\t\t{str(k)}\n\t\t<articles>\n")
-                    count_records += 1
-                    for ref in a:
-                        try:
-                            fo.write(f"\t\t\t{ref}\n")
-                        except Exception as e:
-                            logger.error(f"Issue Update Article Write Error: ({e})")
-                    fo.write("\t\t</articles>\n\t</issue>")
-                fo.write('\n</issue_updates>')
-            if count_records > 0:
-                print (f"{count_records} issue updates written to whatsnew log file.")
+            filedata =  f'<?xml version="1.0" encoding="UTF-8"?>\n<issue_updates>\n'
+            count_records = 0
+            for k, a in issue_updates.items():
+                filedata +=  f"\n\t<issue>\n\t\t{str(k)}\n\t\t<articles>\n"
+                count_records += 1
+                for ref in a:
+                    try:
+                        filedata +=  f"\t\t\t{ref}\n"
+                    except Exception as e:
+                        logger.error(f"Issue Update Article Write Error: ({e})")
+                filedata +=  "\t\t</articles>\n\t</issue>"
+            filedata +=  '\n</issue_updates>'
+
+            success = fs.create_local_text_file(fname, data=filedata, delete_existing=True)            
+
+            if count_records > 0 and success:
+                msg = f"{count_records} issue updates written to whatsnew log file."
+                print (msg)
+                logger.info(msg)
 
         except Exception as e:
             logger.error(f"Issue Update File Write Error: ({e})")
+            
     else: # if issue_updates != {}
         if options.daysback is not None:
             msg = f"Note: There was nothing in the whats new request to output for days back == {options.daysback}."
@@ -1047,12 +1096,12 @@ def main():
             # write database_updated.txt
             try:
                 fname = f"{localsecrets.DATA_UPDATE_LOG_DIR}/database_updated.txt"
-                with open(fname, 'a', encoding="utf8") as fo:
-                    fo.write('data loaded!\n')
-                msg = f"Database was updated with {files_found - skipped_files} articles! Wrote {fname} written in order to flag changes."
-                if options.display_verbose:
-                    print (msg)
-                logger.warning(msg)
+                success = fs.create_local_text_file(fname, data='data loaded!\n', delete_existing=False)
+                msg = f"Database was updated with {files_found - skipped_files} articles! Wrote {fname} in order to flag changes."
+                if success:
+                    if 1: # options.display_verbose:
+                        print (msg)
+                    logger.warning(msg)
                 
             except Exception as e:
                 # just in case there's a collision of several processes writing, ignore the error
@@ -1060,6 +1109,10 @@ def main():
             
         # for logging
         if 1: # (options.biblio_update or options.fulltext_core_update) == True:
+            # account for archive files skipped
+            processed_files_count -= archived_files_not_loaded
+            reload_count -= archived_files_not_loaded
+            
             elapsed_seconds = timeEnd-cumulative_file_time_start # actual processing time going through files
             elapsed_minutes = elapsed_seconds / 60
             print (80 * "-")
@@ -1134,7 +1187,7 @@ if __name__ == "__main__":
                       help="Force reloads to Solr whether changed or not.")
     parser.add_option("--after", dest="created_after", default=None,
                       help="Load files created or modifed after this datetime (use YYYY-MM-DD format). (May not work on S3)")
-    parser.add_option("-d", "--dataroot", dest="rootFolder", default=localsecrets.XML_ORIGINALS_PATH,
+    parser.add_option("-d", "--dataroot", dest="rootFolder", default=localsecrets.FILESYSTEM_ROOT,
                       help="Bucket (Required S3) or Root folder path where input data is located")
     parser.add_option("--key", dest="file_key", default=None,
                       help="Key for a single file to load, e.g., AIM.076.0269A.  Use in conjunction with --sub for faster processing of single files on AWS")
@@ -1180,11 +1233,11 @@ if __name__ == "__main__":
     parser.add_option("--inputbuildpattern", dest="input_build_pattern", default=None,
                       help="Pattern of the build specifier to load (input), e.g., (bEXP_ARCH1|bSeriesTOC), or (bKBD3|bSeriesTOC)")
     
-    parser.add_option("--inputbuild", dest="input_build", default=None,
+    parser.add_option("--inputbuild", dest="input_build", default=opasConfig.DEFAULT_INPUT_BUILD,
                       help=f"Build specifier to load (input), e.g., (bKBD3) or just bKBD3")
     
-    parser.add_option("--outputbuild", dest="output_build", default=loaderConfig.DEFAULT_OUTPUT_BUILD,
-                      help=f"Specific output build specification, default='{loaderConfig.DEFAULT_OUTPUT_BUILD}'. e.g., (bEXP_ARCH1) or just bEXP_ARCH1.")
+    parser.add_option("--outputbuild", dest="output_build", default=opasConfig.DEFAULT_OUTPUT_BUILD,
+                      help=f"Specific output build specification, default='{opasConfig.DEFAULT_OUTPUT_BUILD}'. e.g., (bEXP_ARCH1) or just bEXP_ARCH1.")
     
     # --load option still the default.  Need to keep for backwards compatibility, at least for now (7/2022)
     parser.add_option("--load", "--loadxml", action="store_true", dest="loadprecompiled", default=True,
@@ -1193,7 +1246,7 @@ if __name__ == "__main__":
     parser.add_option("--smartload", "--smartbuild", action="store_true", dest="smartload", default=False,
                       help="Load precompiled XML (e.g., bEXP_ARCH1), or if needed, precompile keyboarded XML (e.g., bKBD3) and load into database.")
 
-    parser.add_option("--prettyprint", action="store_true", dest="pretty_printed", default=True,
+    parser.add_option("--prettyprint", action="store_true", dest="pretty_printed", default=False,
                       help="Pretty format the compiled XML.")
 
     parser.add_option("--nohelp", action="store_true", dest="no_help", default=False,
@@ -1201,6 +1254,12 @@ if __name__ == "__main__":
 
     parser.add_option("--doctype", dest="output_doctype", default=loaderConfig.DEFAULT_DOCTYPE,
                       help=f"""For output files, default={loaderConfig.DEFAULT_DOCTYPE}.""")
+
+    parser.add_option("--termtags", action="store_true", dest="glossary_term_tagging", default=False,
+                      help=f"""Markup glossary terms in paragraphs when compiling XML""")
+
+    parser.add_option("--termdictoff", action="store_false", dest="add_glossary_term_dict", default=True,
+                      help=f"""Do not add the glossary term/count dictionary when compiling XML""")
 
     #parser.add_option("-w", "--writexml", "--writeprocessed", action="store_true", dest="write_processed", default=False,
                       #help="Write the processed data to files, using the output build (e.g., (bEXP_ARCH1).")
@@ -1215,12 +1274,16 @@ if __name__ == "__main__":
     if not (options.loadprecompiled):
         options.smartload = True
     
+    # if you turn off term tagging, always add the term dict.
+    if options.glossary_term_tagging:
+        options.add_glossary_term_dict = True
+    
     if not options.no_help:
         print (help_text)
 
     if len(options.output_build) < 2:
         logger.error("Bad output buildname. Using default.")
-        options.output_build = loaderConfig.DEFAULT_OUTPUT_BUILD
+        options.output_build = opasConfig.DEFAULT_OUTPUT_BUILD
         
     if options.output_build is not None and (options.output_build[0] != "(" or options.output_build[-1] != ")"):
         print ("Warning: output build should have parenthesized format like (bEXP_ARCH1). Adding () as needed.")

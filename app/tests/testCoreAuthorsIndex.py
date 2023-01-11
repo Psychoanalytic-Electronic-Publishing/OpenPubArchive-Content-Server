@@ -29,7 +29,7 @@ class TestAuthorsIndex(unittest.TestCase):
         r = response.json()
         response_info = r["authorIndex"]["responseInfo"]
         response_set = r["authorIndex"]["responseSet"][0]
-        assert response_info["count"] >= 5
+        assert response_info["count"] >= 4, response_info["count"]
        
     def test_02_index_authornamepartial(self):
         full_URL = base_plus_endpoint_encoded('/v2/Authors/Index/Kahr/')

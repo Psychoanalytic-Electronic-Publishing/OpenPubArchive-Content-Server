@@ -40,6 +40,7 @@ import opasGenSupportLib as opasgenlib
 import opasDocuments
 import opasLocalID
 import opasDocuments
+import opasCentralDBLib
 
 # set to 1 for doctests only
 
@@ -197,7 +198,10 @@ class Locator:
 
         self.__reset()
         self.filename = filename
-        self.ocd = ocd
+        if ocd is None:
+            self.ocd = opasCentralDBLib.opasCentralDB()
+        else:
+            self.ocd = ocd
         # self_copy = copy.copy(self)
         
         self.art_info = art_info # provide full information about the xml of the article we're dealing with
@@ -550,12 +554,12 @@ class Locator:
                     errStr = "Incomplete/Invalid ID: %s/v%s/p%s" % (self.jrnlCode, self.jrnlVol.volID(), self.pgStart)
                 else:
                     errStr = "Incomplete/Invalid ID: %s/v%s/p%s" % (self.jrnlCode, self.jrnlVol, self.pgStart)
-
-                logger.warning("Validating ID: %s/v%s/p%s" % (self.jrnlCode, self.jrnlVol.volID(), self.pgStart))
-
+                
                 self.validError = errStr
+                logger.warning(errStr)
                 self.valid = 0
             else:
+                
                 #if gDbg1: print "Locator is valid."
                 self.valid = 1
         except Exception as e:
@@ -978,7 +982,7 @@ class Locator:
             return None
 
     #--------------------------------------------------------------------------------
-    def localID(self, localIDRef=None, saveLocalID=0, noArticleID=False, ocd=None):
+    def localID(self, localIDRef=None, saveLocalID=1, noArticleID=False, ocd=None):
         """
         Return a string that is a standard locator and/or local id (current article ID + localID)
 
@@ -1027,7 +1031,7 @@ class Locator:
             # no local ID, none stored
             retVal = None
         else:
-            if self.articleID(notFatal=True) != None and noArticleID == False:
+            if self.articleID(notFatal=True) is not None and noArticleID == False:
                 # if we are not returning the article ID, separator is ""
                 if not opasgenlib.is_empty(retValSuffix):
                     retValSep = "."
@@ -1039,17 +1043,19 @@ class Locator:
 
                 # nested checks are to do as little as possible unless absolutely necessary
                 # the worst case scenario is having to look it up in the DB and that's time consuming.
-                if localIDRef.localIDType[0] == "P":
+                if self.__localIDRef.localIDType[0] == "P":
                     if self.isSplitBook():
                         # lookup where this page is found!
-                        newLoc = Locator(self.forceArticleID(forcePgStart=localIDRef.localIDVal), art_info=self.art_info)
-                        splitArticleID = split_book_data.get_splitbook_page_instance(book_code=newLoc.jrnlCode, vol=str(newLoc.jrnlVol), page_id=retValSuffix[1:])
+                        newLoc = Locator(self.forceArticleID(forcePgStart=self.__localIDRef.localIDVal), art_info=self.art_info)
+                        splitArticleID = split_book_data.get_splitbook_page_instance(book_code=newLoc.jrnlCode,
+                                                                                     vol=str(newLoc.jrnlVol),
+                                                                                     page_id=retValSuffix[1:])
                         #splitArticleID = checkSplitInThisBiblioDB.splitPageData.getSplitBookInstance(newLoc.jrnlCode, newLoc.jrnlVol, retValSuffix[1:])
                         if splitArticleID is not None:
                             retVal = Locator(splitArticleID).articleID() + retValSep + str(retValSuffix)
                         else:
                             #see if the page # is an exception!
-                            newLoc = Locator(self.forceArticleID(forcePgStart=localIDRef.localIDVal))
+                            newLoc = Locator(self.forceArticleID(forcePgStart=self.__localIDRef.localIDVal))
                             splitArticleID = split_book_data.get_splitbook_page_instance(book_code=newLoc.jrnlCode, vol=newLoc.jrnlVol, page_id=retValSuffix[1:])
                             logger.warning("The page lookup for %s.%s didn't find any instances" % (newLoc.baseCode(), retValSuffix))
                     #else:
