@@ -26,6 +26,14 @@ services:
         - 3306:3306
         - 33060:33060
 
+    dbeaver:
+        image: dbeaver/cloudbeaver:latest
+        restart: always
+        ports:
+            - 8080:8978
+        depends_on: 
+            - mysql
+
 # Names our volume
 volumes:
   solrdata:
