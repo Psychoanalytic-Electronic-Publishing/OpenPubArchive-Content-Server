@@ -3,7 +3,6 @@ COPY ./requirements.txt /app/requirements.txt
 RUN pip install --trusted-host pypi.python.org -r /app/requirements.txt
 RUN pip install fastapi
 COPY ./app /app
-COPY ./app/config/docker_local_config.py /app/config/localsecrets.py
 RUN chmod 750 /app
 ENV LOG_LEVEL=warning
 ENV ACCESS_LOG=
