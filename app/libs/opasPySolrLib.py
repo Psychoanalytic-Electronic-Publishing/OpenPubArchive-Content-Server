@@ -1767,7 +1767,13 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                                                             )
     
             documentList = models.DocumentList(documentList = documentListStruct)
-    
+            if facet_counts: # FOR DEBUG TEST/WATCHING
+                facet_fields = facet_counts.get("facet_fields")
+                if facet_fields:
+                    facet_terms = facet_fields.get("glossary_group_terms", None)
+                    if facet_terms:
+                        print (facet_terms)
+                    
             ret_val = documentList
             
         except Exception as e:

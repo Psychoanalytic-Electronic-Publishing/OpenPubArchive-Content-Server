@@ -530,10 +530,9 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents, in
     terms_highlighted = remove_values_from_terms_highlighted_list(terms_highlighted)
     # get counts dynamically, or from file
     if artInfo.glossary_terms_dict is None:
-        glossary_terms_dict = glossEngine.getGlossaryLists(pepxml, art_id=artInfo.art_id, verbose=verbose)
-        glossary_terms_list = [(k, v) for k, v in glossary_terms_dict.items()]
-    else:
-        glossary_terms_list = artInfo.glossary_terms_dict
+        artInfo.glossary_terms_dict = glossEngine.getGlossaryLists(pepxml, art_id=artInfo.art_id, verbose=verbose)
+
+    glossary_terms_list = list(artInfo.glossary_terms_dict.keys())
     # 
     # After much testing, and contemplating which is best: **Always use terms rather than groups.**
     # 
@@ -1319,7 +1318,7 @@ def add_to_artstat_table(ocd, artInfo, verbose=None):
                        "modtime":opasCentralDBLib.date_to_db_date(artInfo.filedatetime),
                        "createtime":opasCentralDBLib.date_to_db_date(artInfo.file_create_time),
                        "pubyear":artInfo.art_year,
-                       "glossarydict": artInfo.glossary_terms_dict
+                       "glossarydict": artInfo.glossary_terms_dict_str
                     }
     
     # string entries above must match an attr of the art_info instance.

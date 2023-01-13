@@ -13,6 +13,7 @@ from datetime import datetime
 import opasXMLHelper as opasxmllib
 import opasLocator
 import html
+import json
 from lxml import etree
 import opasConfig
 from configLib.opasIJPConfig import IJPOPENISSUES
@@ -25,6 +26,30 @@ from pydantic import BaseModel, Field
 import opasProductLib
 sourceDB = opasProductLib.SourceInfoDB()
 
+def parse_glossary_terms_dict(glossary_terms_dict_str, verbose=False):
+    #if not glossary_terms_dict_str:
+        #glossary_terms_count, glossary_terms_dict = glossEngine.getGlossaryLists(parsed_xml, 
+                                                                                 #verbose=verbose)
+        ## need to compute it
+        #term_json = json.dumps(glossary_terms_dict)
+        #pep_addon = f'<unit type="glossary_term_dict"><!-- {term_json} --></unit>'
+    #else:
+        #print ("\t...Glossary terms list loaded from database")
+        #pep_addon = glossary_terms_dict_str
+    
+    #glossary_terms_dict_str = pep_addon
+    
+    m = re.search("<!--.*?(?P<dict_str>\{.*\}).*?-->", glossary_terms_dict_str)
+    dict_str = m.group("dict_str")
+    glossary_terms_dict = json.loads(dict_str)
+    
+    ret_val = glossary_terms_dict
+    
+    #new_unit = ET.fromstring(pep_addon, parser)
+    #parsed_xml.append(new_unit)
+    
+    return ret_val
+   
 def parse_volume_code(vol_code: str, source_code: str=None): 
     """
     PEP Volume numbers in IDS can be numbers or suffixed by an issue code--we use them after a volume number when a journal repeats pagination
@@ -831,13 +856,18 @@ class ArticleInfo(object):
             if self.src_code == "GW":
                 self.bk_seriestoc = "GW.000.0000A"               
 
-        glossary_terms_dict = parsed_xml.xpath("//unit[@type='glossary_term_dict']")
-        if glossary_terms_dict:
-            glossary_terms_dict = glossary_terms_dict[0]
-            if glossary_terms_dict is not None:
-                self.glossary_terms_dict = etree.tostring(glossary_terms_dict).decode("utf8")
+        # if article xml has glossary_terms, set glossary_terms fields
+        glossary_terms_dict_addon = parsed_xml.xpath("//unit[@type='glossary_term_dict']")
+        if glossary_terms_dict_addon:
+            glossary_terms_dict_addon = glossary_terms_dict_addon[0]
+            if glossary_terms_dict_addon is not None:
+                self.glossary_terms_dict_str = etree.tostring(glossary_terms_dict_addon).decode("utf8")
+                self.glossary_terms_dict = parse_glossary_terms_dict(self.glossary_terms_dict_str)
+                self.glossary_terms_count = len(self.glossary_terms_dict)
         else:
-            self.glossary_terms_dict = None       
+            self.glossary_terms_dict_str = None       
+            self.glossary_terms_dict = {}
+            self.glossary_terms_count = 0
 
         # check art_id's against the standard, old system of locators.
         try:
