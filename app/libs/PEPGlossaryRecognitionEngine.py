@@ -306,6 +306,7 @@ class GlossaryRecognitionEngine(UserDict):
     #--------------------------------------------------------------------------------
     def getGlossaryLists(self,
                          parsed_xml,
+                         art_id=None, 
                          skipIfHasAncestorRegx=default_ancestor_list,
                          verbose=True):
         """
@@ -322,7 +323,16 @@ class GlossaryRecognitionEngine(UserDict):
         total_changes = 0
         if isinstance(parsed_xml, str):
             parsed_xml = etree.fromstring(opasxmllib.remove_encoding_string(parsed_xml), parser)
-        
+
+        if art_id is not None:
+            # try to get it from the artstat table
+            sql_select = f"select * from artstat where articleID='{art_id}'"
+            artstat = ocd.get_select_as_list_of_dicts(sql_select)
+            if artstat:
+                glossary_term_dict = artstat[0].get("glossaryDict", None)
+        else:
+            art_id = opasxmllib.xml_xpath_return_textsingleton(parsed_xml, "//artinfo/@id", None)
+            
         # see if the precompiled version is present
         glossary_term_dict = parsed_xml.xpath("//unit[@type='glossary_term_dict']")
         if glossary_term_dict == []: # if empty
@@ -369,6 +379,9 @@ class GlossaryRecognitionEngine(UserDict):
                         print (e)
             
             ret_val = dict(sorted(found_term_dict.items(), key=lambda item: item[1], reverse=True))
+            # add to artstat
+            #update_rec = f"UPDATE artstat SET glossaryDict={ret_val} WHERE articleID={art_id}"
+            #ocd.do_action_query(update_rec)
             
         else: # use the precompiled dictionary
             try:

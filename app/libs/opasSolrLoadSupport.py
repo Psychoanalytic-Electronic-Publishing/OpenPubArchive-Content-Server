@@ -20,7 +20,7 @@ sys.path.append('../libs/configLib')
 
 import os
 from datetime import datetime
-import time
+# import time
 import string
 import re
 import urllib.request, urllib.parse, urllib.error
@@ -32,7 +32,7 @@ from lxml import etree
 parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=False)
 # import html
 import mysql.connector
-import json
+# import json
 
 import localsecrets
 import opasConfig
@@ -46,6 +46,7 @@ import loaderConfig
 # import opasArticleIDSupport
 import logging
 logger = logging.getLogger(__name__)
+from loggingDebugStream import log_everywhere_if    # log as usual, but if first arg is true, also put to stdout for watching what's happening
 
 # new for processing code
 import PEPJournalData
@@ -108,6 +109,15 @@ def remove_values_from_terms_highlighted_list(the_list, remove_stop_words=True, 
     else:
         return [strip_tags(value, compiled_tag_pattern = cStripPattern) for value in the_list]
 
+def strip_extra_spaces(textstr:str):
+    if textstr is not None:
+        ret_val = textstr.strip()
+        ret_val = re.sub(" +", " ", ret_val)
+    else:
+        ret_val = None
+
+    return ret_val
+
 class BiblioEntry(object):
     """
     An entry from a documents bibliography.
@@ -116,11 +126,27 @@ class BiblioEntry(object):
        and the Solr core pepwebrefs for searching in special cases.
     
     """
-    def __init__(self, artInfo, ref):
+    def __init__(self, artInfo, ref, db_bib_entry=[]):
+        import models
+        if not db_bib_entry:
+            self.last_update = datetime.today()
+            self.rx = opasxmllib.xml_get_element_attr(ref, "rx", default_return=None)
+            self.rx_confidence = 0
+            self.rxcf = opasxmllib.xml_get_element_attr(ref, "rxcf", default_return=None) # related rx
+            self.rxcf_confidence = 0
+        else:
+            self.last_update = db_bib_entry.last_update 
+            self.rx = db_bib_entry[0].bib_rx
+            self.rx_confidence = db_bib_entry[0].bib_rx_confidence
+            self.rxcf = db_bib_entry[0].bib_rxcf
+            self.rxcf_confidence = db_bib_entry[0].bib_rxcf_confidence          
+            
         self.ref_entry_xml = etree.tostring(ref, with_tail=False)
         if self.ref_entry_xml is not None:
             self.ref_entry_xml = self.ref_entry_xml.decode("utf8") # convert from bytes
+            self.ref_entry_xml = re.sub(" +", " ", self.ref_entry_xml)
         self.ref_entry_text = opasxmllib.xml_elem_or_str_to_text(ref)
+        self.ref_entry_text = strip_extra_spaces(self.ref_entry_text)
         self.art_id = artInfo.art_id
         self.sourcecode = ""
         self.ref_source_type = ""
@@ -129,12 +155,13 @@ class BiblioEntry(object):
         self.ref_local_id= opasxmllib.xml_get_element_attr(ref, "id")
         self.ref_id = artInfo.art_id + "." + self.ref_local_id
         self.ref_title = opasxmllib.xml_get_subelement_textsingleton(ref, "t")
+        self.ref_title = strip_extra_spaces(opasxmllib.xml_get_subelement_textsingleton(ref, "t"))
         self.ref_title = self.ref_title[:1023]
         self.pgrg = opasxmllib.xml_get_subelement_textsingleton(ref, "pp")
         self.pgrg = opasgenlib.first_item_grabber(self.pgrg, re_separator_ptn=";|,", def_return=self.pgrg)
         self.pgrg = self.pgrg[:23]
-        self.rx = opasxmllib.xml_get_element_attr(ref, "rx", default_return=None)
-        self.rxcf = opasxmllib.xml_get_element_attr(ref, "rxcf", default_return=None) # related rx
+        #self.rx = opasxmllib.xml_get_element_attr(ref, "rx", default_return=None)
+        #self.rxcf = opasxmllib.xml_get_element_attr(ref, "rxcf", default_return=None) # related rx
         if self.rx is not None:
             self.rx_sourcecode = re.search("(.*?)\.", self.rx, re.IGNORECASE).group(1)
         else:
@@ -205,7 +232,7 @@ class BiblioEntry(object):
         if self.year != "" and self.year is not None:
             self.year_int = int(self.year)
         else:
-            self.year_int = "Null"
+            self.year_int = None
             
         self.author_name_list = [etree.tostring(x, with_tail=False).decode("utf8") for x in ref.findall("a") if x is not None]
         self.authors_xml = '; '.join(self.author_name_list)
@@ -213,16 +240,44 @@ class BiblioEntry(object):
         self.author_list = [opasxmllib.xml_elem_or_str_to_text(x) for x in ref.findall("a") if opasxmllib.xml_elem_or_str_to_text(x) is not None]  # final if x gets rid of any None entries which can rarely occur.
         self.author_list_str = '; '.join(self.author_list)
         self.author_list_str = self.author_list_str[:2040]
+        self.ref_doi = ref.findtext("webx[@type='doi']")
+
+        self.ref = models.Biblioxml(art_id = artInfo.art_id,
+                                    bib_local_id = self.ref_id, 
+                                    art_year = self.year_int, 
+                                    bib_rx = self.rx, 
+                                    bib_rx_confidence = self.rx_confidence, 
+                                    bib_rxcf = self.rxcf, 
+                                    bib_rxcf_confidence = self.rxcf_confidence, 
+                                    bib_sourcecode = self.sourcecode, 
+                                    bib_authors = self.author_list_str, 
+                                    bib_articletitle = self.ref_title, 
+                                    title = self.ref_title, 
+                                    full_ref_text = self.ref_entry_text, 
+                                    bib_sourcetype = self.ref_source_type, 
+                                    bib_sourcetitle = self.source_title, 
+                                    bib_authors_xml = self.authors_xml, 
+                                    full_ref_xml = self.ref_entry_xml, 
+                                    bib_pgrg = self.pgrg, 
+                                    doi = self.ref_doi, 
+                                    bib_year = self.year, 
+                                    bib_year_int = self.year_int, 
+                                    bib_volume = self.volume, 
+                                    bib_publisher = self.publishers, 
+                                    last_update = self.last_update                               
+                                    )
+        
 #------------------------------------------------------------------------------------------------------
 def get_file_dates_solr(solrcore, art_id=None, filename=None):
     """
-    Fetch the article dates
+    Fetch the art_id, file_name, file_last_modified, timestamp
+      from Solr either from the file name or art_id
     """
     ret_val = {}
     max_rows = 1000000
 
     if art_id is not None:
-        getFileInfoSOLR = f'art_level:1 && art_id:{art_id}'
+        getFileInfoSOLR = f"art_level:1 && art_id:{art_id}"
     elif filename is not None:
         basename = os.path.basename(filename)
 
@@ -261,9 +316,7 @@ def process_article_for_glossary_core(pepxml, artInfo, solr_gloss, fileXMLConten
     glossary_groups = pepxml.xpath("/pepkbd3//dictentrygrp")  
     group_count = len(glossary_groups)
     msg = f"\t...Processing XML for Glossary Core. File has {group_count} groups."
-    logger.info(msg)
-    if verbose:
-        print (msg)
+    log_everywhere_if(verbose, "info", msg)
 
     # processedFilesCount += 1
 
@@ -348,9 +401,7 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents, in
     """
     ret_val = False
     msg = f"\t...Loading XML to Docs Core."
-    logger.info(msg)
-    if verbose:
-        print (msg)
+    log_everywhere_if(verbose, "info", msg)
 
     art_lang = pepxml.xpath('//@lang')
     if art_lang == []:
@@ -478,8 +529,11 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents, in
                         #opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//body/*/i") 
     terms_highlighted = remove_values_from_terms_highlighted_list(terms_highlighted)
     # get counts dynamically, or from file
-    glossary_terms_dict = glossEngine.getGlossaryLists(pepxml, verbose=verbose)
-    glossary_terms_list = [(k, v) for k, v in glossary_terms_dict.items()]
+    if artInfo.glossary_terms_dict is None:
+        glossary_terms_dict = glossEngine.getGlossaryLists(pepxml, art_id=artInfo.art_id, verbose=verbose)
+        glossary_terms_list = [(k, v) for k, v in glossary_terms_dict.items()]
+    else:
+        glossary_terms_list = artInfo.glossary_terms_dict
     # 
     # After much testing, and contemplating which is best: **Always use terms rather than groups.**
     # 
@@ -740,9 +794,7 @@ def process_info_for_author_core(pepxml, artInfo, solrAuthor, verbose=None):
     
     ret_val = False
     msg = f"\t...Loading XML to Author Core."
-    logger.info(msg)
-    if verbose:
-        print (msg)
+    log_everywhere_if(verbose, "info", msg)
     
     try:
         # Save author info in database
@@ -850,14 +902,28 @@ def add_reference_to_biblioxml_table(ocd, artInfo, bib_entry, verbose=None):
       
     """
     ret_val = False
+    
+    #if bib_entry.rx is None or bib_entry.rxcf is None:
+        ## Read from the current table
+        # old_bib_entry = ocd.get_references_from_biblioxml_table(article_id=bib_entry.art_id, ref_local_id=bib_entry.ref_id)
+        #if bib_entry.rx is None:
+            #bib_entry.rx = old_bib_entry.rx
+            #bib_entry.bib_rx_confidence = old_bib_entry.bib_rx_confidence 
+
+        #if bib_entry.rxcf is None:
+            #bib_entry.rx = old_bib_entry.rxcf
+            #bib_entry.bib_rxcf_confidence = old_bib_entry.bib_rxcf_confidence 
+        
     insert_if_not_exists = r"""REPLACE
                                INTO api_biblioxml (
                                     art_id,
                                     bib_local_id,
                                     art_year,
                                     bib_rx,
+                                    bib_rx_confidence,
                                     bib_sourcecode, 
                                     bib_rxcf, 
+                                    bib_rxcf_confidence,
                                     bib_authors, 
                                     bib_authors_xml, 
                                     bib_articletitle, 
@@ -867,7 +933,8 @@ def add_reference_to_biblioxml_table(ocd, artInfo, bib_entry, verbose=None):
                                     bib_year, 
                                     bib_year_int, 
                                     bib_volume, 
-                                    bib_publisher, 
+                                    bib_publisher,
+                                    doi,
                                     full_ref_xml,
                                     full_ref_text
                                     )
@@ -875,8 +942,10 @@ def add_reference_to_biblioxml_table(ocd, artInfo, bib_entry, verbose=None):
                                         %(ref_local_id)s,
                                         %(art_year_int)s,
                                         %(rx)s,
+                                        %(rx_confidence)s,
                                         %(rx_sourcecode)s,
                                         %(rxcf)s,
+                                        %(rxcf_confidence)s,
                                         %(author_list_str)s,
                                         %(authors_xml)s,
                                         %(ref_title)s,
@@ -887,6 +956,7 @@ def add_reference_to_biblioxml_table(ocd, artInfo, bib_entry, verbose=None):
                                         %(year_of_publication_int)s,
                                         %(volume)s,
                                         %(publishers)s,
+                                        %(ref_doi)s,
                                         %(ref_entry_xml)s,
                                         %(ref_entry_text)s
                                         );
@@ -895,6 +965,7 @@ def add_reference_to_biblioxml_table(ocd, artInfo, bib_entry, verbose=None):
     # need to remove lists, even if they are not used.
     del query_param_dict["author_list"]
     del query_param_dict["author_name_list"]
+    del query_param_dict["ref"]
 
     res = ""
     try:
@@ -913,18 +984,12 @@ def add_article_to_api_articles_table(ocd, artInfo, verbose=None):
     """
     Adds the article data from a single document to the api_articles table in mysql database opascentral.
     
-    This database table is used as the basis for
+    This database table is used as the basis for linking articles.
      
-    Note: This data is in addition to the Solr pepwebdocs core which is added elsewhere.  The SQL table is
-          currently primarily used for the crosstabs rather than API queries, since the Solr core is more
-          easily joined with other Solr cores in queries.  (TODO: Could later experiment with bridging Solr/SQL.)
-      
     """
     ret_val = False
-    msg = f"\t...Loading metadata to Articles DB."
-    logger.info(msg)
-    if verbose:
-        print (msg)
+    msg = f"\t...Saving metadata to Articles DB."
+    log_everywhere_if(verbose, "info", msg)
     
     ocd.open_connection(caller_name="processArticles")
     
@@ -1175,10 +1240,8 @@ def add_to_artstat_table(ocd, artInfo, verbose=None):
     """
     ret_val = False
     procname = "AddToArtStatDB"
-    msg = f"\t...Loading statistics to artStat table."
-    logger.info(msg)
-    if verbose:
-        print (msg)
+    msg = f"\t...Saving statistics to artStat table."
+    log_everywhere_if(verbose, "info", msg)
     
     ocd.open_connection(caller_name=procname)
     
@@ -1206,7 +1269,8 @@ def add_to_artstat_table(ocd, artInfo, verbose=None):
                                     NonspaceChars,
                                     modTime,
                                     createTime,
-                                    pubyear
+                                    pubyear,
+                                    glossaryDict
                             )
                         values
                            (
@@ -1229,7 +1293,8 @@ def add_to_artstat_table(ocd, artInfo, verbose=None):
                                     %(art_chars_no_spaces_count)s,
                                     %(modtime)s,
                                     %(createtime)s,
-                                    %(pubyear)s
+                                    %(pubyear)s,
+                                    %(glossarydict)s
                             )
                             """
 
@@ -1254,6 +1319,7 @@ def add_to_artstat_table(ocd, artInfo, verbose=None):
                        "modtime":opasCentralDBLib.date_to_db_date(artInfo.filedatetime),
                        "createtime":opasCentralDBLib.date_to_db_date(artInfo.file_create_time),
                        "pubyear":artInfo.art_year,
+                       "glossarydict": artInfo.glossary_terms_dict
                     }
     
     # string entries above must match an attr of the art_info instance.

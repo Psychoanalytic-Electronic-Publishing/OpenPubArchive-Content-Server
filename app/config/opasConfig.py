@@ -54,6 +54,7 @@ MIN_TERM_LENGTH_MATCH = 4 # smallest length term to match from glossary (i.e., e
 WHATS_NEW_EXPIRES_DAYS = 0
 WHATS_NEW_EXPIRES_HOURS = 8
 WHATS_NEW_EXPIRES_MINUTES = 0
+CONTINUE_PROCESSING_DAYS = 2
 
 JOURNALNEWFLAG = "*New* "
 NO_OFFSITE_DOCUMENT_ACCESS_CHECKS = True # set to false if the server should check with PaDS for offsite documents

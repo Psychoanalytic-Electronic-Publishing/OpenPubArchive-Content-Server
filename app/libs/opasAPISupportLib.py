@@ -843,7 +843,7 @@ def documents_get_document_from_file(document_id,
             document_list_item.document = fileXMLContents
             # replace facet_counts with new dict
             try:
-                term_dict = glossEngine.getGlossaryLists(fileXMLContents, verbose=False)
+                term_dict = glossEngine.getGlossaryLists(fileXMLContents, art_id=document_id, verbose=False)
                 result.documents.responseInfo.facetCounts = {"facet_fields": {"glossary_group_terms": term_dict}}
             except Exception as e:
                 status_message = f"{caller_name}: {e}"
@@ -1026,7 +1026,7 @@ def documents_get_document(document_id,
                 # replace facet_counts with new dict
                 try:
                     pepxml = document_list.documentList.responseSet[0].document
-                    term_dict = glossEngine.getGlossaryLists(pepxml, verbose=False)
+                    term_dict = glossEngine.getGlossaryLists(pepxml, art_id=document_id, verbose=False)
                     response_info.facetCounts = {"facet_fields": {"glossary_group_terms": term_dict}}
                 except Exception as e:
                     logger.error(f"{caller_name}: Error replacing term_dict {e}")

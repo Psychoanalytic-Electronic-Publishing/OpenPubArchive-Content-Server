@@ -1542,7 +1542,7 @@ class PEPJournalData:
     #print jrnlPEPPatterns.get("ANRP"   )
     #rgxSEPat = re.compile(jrnlPEPPatterns.get("SE"), re.VERBOSE | re.IGNORECASE)
     rgxSEPat = re.compile(jrnlPEPPatterns.get("SE"), re.VERBOSE | re.IGNORECASE)
-    SEPat2 = r"\bSE\b|S\.\s?E\." # Keep sep so not so many false positives.  Use only on XML areas
+    SEPat2 = r"\bSE\b|S\.\s?E\.|Standard Ed(ition|.)" # Keep sep so not so many false positives.  Use only on XML areas
     GWPat2 = r"\bGW\b|G\.\s?W\." # Keep sep so not so many false positives.  Use only on XML areas
     
     SEVolPrefix = "("+jrnlPEPPatterns.get("SE")+"|"+SEPat2+")"

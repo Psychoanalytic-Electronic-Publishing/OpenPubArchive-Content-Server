@@ -115,9 +115,11 @@ class BiblioxmlGeneric(BaseModel):
 class Biblioxml(BaseModel):
     art_id: str = Field(None)
     bib_local_id: str = Field(None)
-    art_year: int = Field(0)
+    art_year: Optional[int]
     bib_rx: str = Field(None)
+    bib_rx_confidence: float = Field(0)
     bib_rxcf: str = Field(None)
+    bib_rxcf_confidence: float = Field(0)
     bib_sourcecode: str = None
     bib_authors: str = Field(None)
     bib_articletitle: str = Field(None)
@@ -128,9 +130,9 @@ class Biblioxml(BaseModel):
     bib_authors_xml: str = Field(None)
     full_ref_xml: str = Field(None)
     bib_pgrg: str = Field(None)
-    doi: str = Field(None)
+    doi: Optional[str]
     bib_year: str = Field(None)
-    bib_year_int: int = Field(0)
+    bib_year_int: Optional[int]
     bib_volume: str = Field(None)
     bib_publisher: str = Field(None)
     last_update: datetime = Field(None)

@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 
 import time
 from datetime import datetime
+import datetime as dtime
 from dateutil import parser
 import calendar
 import email.utils
@@ -330,6 +331,17 @@ def first_item_grabber(the_str: str, re_separator_ptn=";|\-|&#8211;|,|\|", def_r
 
     return ret_val    
 
+def utctimestampstr_to_timestamp(timestampstr: str):
+    """
+    Convert UTC timestamp string to UTC timestamp
+    
+    >>> utctimestampstr_to_timestamp('2023-01-09T23:10:33Z')
+    datetime.datetime(2023, 1, 9, 23, 10, 33, tzinfo=datetime.timezone.utc)
+    
+    """
+    TIME_FORMAT='%Y-%m-%dT%H:%M:%S'
+    ret_val = datetime.strptime(timestampstr, TIME_FORMAT + '%z')
+    return ret_val
 
 def uppercase_andornot(boolean_str: str) -> str:
     ret_val = " ".join([x.upper() if x in ("or", "and", "not") else x for x in re.split("\s+(and|or|not)\s+", boolean_str)])
