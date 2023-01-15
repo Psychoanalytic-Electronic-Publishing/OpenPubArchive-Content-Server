@@ -21,6 +21,7 @@ import opasCentralDBLib
 import opasXMLHelper
 import opasXMLProcessor
 import opasConfig
+import opasArticleIDSupport
 import models
 
 gDbg1 = 0	# details
@@ -286,6 +287,9 @@ def walk_through_references(ocd=ocd):
     fname = "walk_through_references"
     ocd.open_connection(caller_name=fname) # make sure connection is open
     ret_val = None
+    artInfo = opasArticleIDSupport.ArticleInfo(art_id="IJP.100.0001A",
+                                               art_year="2022")
+    
     sqlSelect = "select * from api_biblioxml where bib_rx is NULL"
     if ocd.db is not None:
         # rows = self.SQLSelectGenerator(sqlSelect)
@@ -311,23 +315,23 @@ def walk_through_references(ocd=ocd):
             else:
                 continue
 
-            vols = parsed_ref.xpath("//v")
-            pages = parsed_ref.xpath("//pp")
-            years = parsed_ref.xpath("//y")
-            book_title = parsed_ref.xpath("//bst")
-            titles = parsed_ref.xpath("//t")
-            if titles:
-                title = titles[0].text
-            else:
-                title = ""
+            vols = opasXMLHelper.xml_xpath_return_textsingleton(parsed_ref, "//v")
+            pages = opasXMLHelper.xml_xpath_return_textsingleton(parsed_ref, "//pp")
+            years = opasXMLHelper.xml_xpath_return_textsingleton(parsed_ref, "//y")
+            book_title = opasXMLHelper.xml_xpath_return_textsingleton(parsed_ref, "//bst")
+            title = opasXMLHelper.xml_xpath_return_textsingleton(parsed_ref, "//t")
+            artInfo = opasArticleIDSupport.ArticleInfo(art_id=row["art_id"],
+                                                       art_year=row["art_year"])
+
+            bib_entry = opasSolrLoadSupport.BiblioEntry(artInfo, ref=parsed_ref)
                 
             plain_text = opasXMLHelper.xml_elem_or_str_to_text(fullref)
             # print (f"Looking for: {plain_text}")
             # look in articles table
             art_search = f"""
-            select art_id, art_citeas_text, art_citeas_xml, match(art_citeas_text) against ("{title}") AS Relevance
-            from api_articles 
-            where match(art_citeas_text) against  ("{title}");
+            SELECT art_id, art_citeas_text, art_citeas_xml, match(art_citeas_text) against ("{title}") AS Relevance
+                   FROM api_articles 
+                   WHERE match(art_citeas_text) AGAINST ("{title}");
             """
             article_matches = ocd.get_select_as_list_of_dicts(art_search)
             article_matches = article_matches[:100]

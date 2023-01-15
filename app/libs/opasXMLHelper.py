@@ -513,14 +513,14 @@ def xmlstr_to_etree(xmlstr):
 
     if isinstance(xmlstr, bytes):
         try:
-            root = etree.parse(BytesIO(xmlstr), parser)
+            root = etree.parse(BytesIO(xmlstr), parser=parser)
         except Exception as e:
             logger.error(f"Error parsing Bytes xmlstr: {e}")
     elif isinstance(xmlstr, str):
         try:
             #xmlstr = xmlstr.replace("encoding=\'UTF-8\'", "")
             xmlstr = remove_encoding_string(xmlstr)
-            root = etree.parse(StringIO(xmlstr), parser)
+            root = etree.parse(StringIO(xmlstr), parser=parser)
         except Exception as e:
             logger.error(f"Error parsing xmlstr: {e}")
     elif etree.iselement(xmlstr):

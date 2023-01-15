@@ -155,8 +155,9 @@ class BiblioEntry(object):
         self.ref_local_id= opasxmllib.xml_get_element_attr(ref, "id")
         self.ref_id = artInfo.art_id + "." + self.ref_local_id
         self.ref_title = opasxmllib.xml_get_subelement_textsingleton(ref, "t")
-        self.ref_title = strip_extra_spaces(opasxmllib.xml_get_subelement_textsingleton(ref, "t"))
-        self.ref_title = self.ref_title[:1023]
+        if self.ref_title:
+            self.ref_title = strip_extra_spaces(self.ref_title)
+            self.ref_title = self.ref_title[:1023]
         self.pgrg = opasxmllib.xml_get_subelement_textsingleton(ref, "pp")
         self.pgrg = opasgenlib.first_item_grabber(self.pgrg, re_separator_ptn=";|,", def_return=self.pgrg)
         self.pgrg = self.pgrg[:23]
@@ -168,30 +169,31 @@ class BiblioEntry(object):
             self.rx_sourcecode = None
         self.volume = opasxmllib.xml_get_subelement_textsingleton(ref, "v")
         self.volume = self.volume[:23]
-        self.source_title = opasxmllib.xml_get_subelement_textsingleton(ref, "j")
         self.publishers = opasxmllib.xml_get_subelement_textsingleton(ref, "bp")
         self.publishers = self.publishers[:254]
+        journal_title = opasxmllib.xml_get_subelement_textsingleton(ref, "j")
+        book_title = opasxmllib.xml_get_subelement_textsingleton(ref, "bst")
 
-        if self.source_title is None or self.source_title == "":
-            self.source_title = opasxmllib.xml_get_direct_subnode_textsingleton(ref, "bst")  # book title
-            if self.source_title is not None and self.source_title != "":
-                self.ref_source_type = "book"
-                self.ref_is_book = True
-        
-        if self.publishers != "":
-            self.ref_source_type = "book"
+        if (book_title or self.publishers) and not journal_title:
             self.ref_is_book = True
-        elif self.ref_source_type is None or self.ref_source_type == "":
+            self.ref_source_type = "book"
+            self.source_title = opasxmllib.xml_get_direct_subnode_textsingleton(ref, "bst")  # book title
+        elif journal_title:
             self.ref_source_type = "journal"
             self.ref_is_book = False
+            self.source_title = journal_title
+        else:
+            self.ref_source_type = "unknown"
+            self.ref_is_book = False
+            self.source_title = f"{journal_title} / {book_title}"
 
-        if self.ref_source_type == "book":
+        if self.ref_is_book:
             self.year_of_publication = opasxmllib.xml_get_subelement_textsingleton(ref, "bpd")
             if self.year_of_publication == "":
                 self.year_of_publication = opasxmllib.xml_get_subelement_textsingleton(ref, "y")
-            #if self.source_title is None or self.source_title == "":
+            if self.source_title is None or self.source_title == "":
                 ## sometimes has markup
-                #self.source_title = opasxmllib.xml_get_direct_subnode_textsingleton(ref, "bst")  # book title
+                self.source_title = opasxmllib.xml_get_direct_subnode_textsingleton(ref, "bst")  # book title
         else:
             self.year_of_publication = opasxmllib.xml_get_subelement_textsingleton(ref, "y")
             sourcecode, dummy, dummy = jrnlData.getPEPJournalCode(self.source_title)
@@ -530,7 +532,7 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents, in
     terms_highlighted = remove_values_from_terms_highlighted_list(terms_highlighted)
     # get counts dynamically, or from file
     if artInfo.glossary_terms_dict is None:
-        artInfo.glossary_terms_dict = glossEngine.getGlossaryLists(pepxml, art_id=artInfo.art_id, verbose=verbose)
+        matched_word_count, artInfo.glossary_terms_dict = glossEngine.getGlossaryLists(pepxml, art_id=artInfo.art_id, verbose=verbose)
 
     glossary_terms_list = list(artInfo.glossary_terms_dict.keys())
     # 
@@ -582,7 +584,7 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents, in
     new_rec = {
                 "id": artInfo.art_id,                                         # important =  note this is unique id for every reference
                 "art_id" : artInfo.art_id,                                    # important
-                "art_embargo" : artInfo.embargo,                              # limit display if true (e.g., IJPOpen removed articles)
+                "art_embargo" : artInfo.embargoed,                              # limit display if true (e.g., IJPOpen removed articles)
                 "art_embargotype" : artInfo.embargotype,
                 "title" : artInfo.art_title,                                  # important
                 "title_str" : title_str, # remove all punct, this is only used for sorting
@@ -648,7 +650,7 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents, in
                 "art_authors_citation_list" : non_empty_string(artInfo.art_auth_citation_list),
                 "art_authors_unlisted" : non_empty_string(artInfo.art_auth_mast_unlisted_str),
                 "art_authors_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//aut", default_return = None),
-                "art_year" : non_empty_string(artInfo.art_year),
+                "art_year" : non_empty_string(artInfo.art_year_str),
                 "art_year_int" : artInfo.art_year_int,
                 "art_vol" : artInfo.art_vol_int,
                 "art_vol_suffix" : non_empty_string(artInfo.art_vol_suffix),
@@ -1072,7 +1074,7 @@ def add_article_to_api_articles_table(ocd, artInfo, verbose=None):
         "art_title":  artInfo.art_title,
         "src_title_abbr":  artInfo.src_title_abbr,  
         "src_code":  artInfo.src_code,  
-        "art_year":  artInfo.art_year,
+        "art_year":  artInfo.art_year_str,
         "art_vol_int":  artInfo.art_vol_int,
         "art_vol_str":  artInfo.art_vol_str,
         "art_vol_suffix":  artInfo.art_vol_suffix,
@@ -1317,7 +1319,7 @@ def add_to_artstat_table(ocd, artInfo, verbose=None):
                        "art_chars_no_spaces_count":artInfo.art_chars_no_spaces_count,
                        "modtime":opasCentralDBLib.date_to_db_date(artInfo.filedatetime),
                        "createtime":opasCentralDBLib.date_to_db_date(artInfo.file_create_time),
-                       "pubyear":artInfo.art_year,
+                       "pubyear":artInfo.art_year_str,
                        "glossarydict": artInfo.glossary_terms_dict_str
                     }
     

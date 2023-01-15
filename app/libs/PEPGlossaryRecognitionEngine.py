@@ -182,7 +182,9 @@ class GlossaryRecognitionEngine(UserDict):
         If theGroupName is supplied, it means we are marking up the glossary itself, and any impxs that match
         theGroupName will be removed (as self referential)
 
-        Returns the number of changed terms, and a dictionary of terms and counts
+        Returns the matched_word_count (not unique words), and a dictionary of unique terms with counts
+        
+        If markup_terms is True, then the terms will be marked in the document, except where prohibited or risky
 
         >>> glossEngine = GlossaryRecognitionEngine(gather=False, verbose=True)
         Gathering regex patterns is off.
@@ -301,7 +303,7 @@ class GlossaryRecognitionEngine(UserDict):
         sorted_term_dict = dict(sorted(found_term_dict.items(), key=lambda item: item[1], reverse=True))
 
         # returns count of changes and list of tuples with (term, count)
-        return ret_status, sorted_term_dict
+        return ret_status, sorted_term_dict # matches getGlossaryLists return
 
     #--------------------------------------------------------------------------------
     def getGlossaryLists(self,
@@ -312,7 +314,7 @@ class GlossaryRecognitionEngine(UserDict):
         """
         Get glossary term lists from document without marking any up.
     
-        Returns the number of changed terms, and a dictionary of terms and counts
+        Returns the matched_word_count (not unique words), and a dictionary of unique terms with counts
     
         """
         
@@ -404,9 +406,10 @@ class GlossaryRecognitionEngine(UserDict):
                 print (f"\t...{count_in_doc} glossary terms recognized in {timeDiff:.4f} secs")
             else:
                 print (f"\t...Glossary terms loaded from compiled XML in {timeDiff:.4f} secs")
-            
-        return ret_val
 
+        ret_status = sum(ret_val.values()) # total number of words found (not unique words)
+        return ret_status, ret_val # matches doGlossaryMarkup return
+    
 
 #==================================================================================================
 # Main Routines

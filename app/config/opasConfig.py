@@ -39,6 +39,8 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_INPUT_BUILD = "(bKBD3)"
 DEFAULT_OUTPUT_BUILD = "(bEXP_ARCH1)"
+PEP_KBD_DTD = "https://pep-web-includes.s3.amazonaws.com/pepkbd3.dtd"
+PEP_KBD_DOCTYPE = f'<!DOCTYPE pepkbd3 SYSTEM "{PEP_KBD_DTD}">'
 
 # Various switches for information/debugging
 DEBUG_TRACE = False

@@ -10,15 +10,16 @@ import PEPGlossaryRecognitionEngine
 import opasXMLProcessor
 import opasArticleIDSupport
 import opasCentralDBLib
+import opasConfig
 from lxml import etree
 
 import logging
 logger = logging.getLogger()
 
 ocd = opasCentralDBLib.opasCentralDB()
-test_data = """
+test_data = f"""
 <?xml version='1.0' encoding='UTF-8'?>
-<!DOCTYPE pepkbd3 SYSTEM "http://peparchive.org/pepa1dtd/pepkbd3.dtd">
+{opasConfig.PEP_KBD_DOCTYPE}
 <pepkbd3 lang="en">
 <artinfo arttype="ART" j="PAQ" newsecnm="Original Articles" doi="10.1080/00332828.2019.1556036" ISSN="0033-2828">
     <artyear>2019</artyear>
@@ -53,9 +54,9 @@ test_data = """
 </pepkbd3>
 """
 
-test_data2 = """
+test_data2 = f"""
 <?xml version='1.0' encoding='UTF-8'?>
-<!DOCTYPE pepkbd3 SYSTEM "http://peparchive.org/pepa1dtd/pepkbd3.dtd">
+{opasConfig.PEP_KBD_DOCTYPE}
 <pepkbd3 lang="en">
 <artinfo arttype="ART" j="ZBK" doi="10.7208/chicago/9780226450148.001.0001" id="ZBK.049.0001A">
         <artyear>1971</artyear>
@@ -86,9 +87,9 @@ test_data2 = """
 </pepkbd3>
 """
 
-test_data3 = """
+test_data3 = f"""
 <?xml version="1.0" encoding="UTF-8" ?>
-<!DOCTYPE pepkbd3 SYSTEM "http://peparchive.org/pepa1dtd/pepkbd3.dtd">
+{opasConfig.PEP_KBD_DOCTYPE}
 <pepkbd3 srcdate="2022-10-11" cvtby="aptara" cvtfrom="TF">
 <artinfo arttype="ART" j="CPS" ISSN="0010-7530" doi="10.1080/00107530.2022.2110758">
 <artyear>2022</artyear>

@@ -179,8 +179,8 @@ class ResponseInfo(BaseModel):
 #-------------------------------------------------------
 class APIStatusItem(BaseModel):
     opas_version: str = Field(None, title="Version of OPAS")
-    timeStamp: str = Field(None, title="Current time")
-    
+    timeStamp: str = Field(None, title="Current time")   
+
 #-------------------------------------------------------
 # General Data Encapsulation classes
 #-------------------------------------------------------

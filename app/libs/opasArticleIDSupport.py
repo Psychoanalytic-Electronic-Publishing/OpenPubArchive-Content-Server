@@ -9,6 +9,7 @@ import logging
 import string
 import opasGenSupportLib as opasgenlib
 import time
+from typing import List, Generic, TypeVar, Optional
 from datetime import datetime
 import opasXMLHelper as opasxmllib
 import opasLocator
@@ -299,7 +300,7 @@ class ArticleID(BaseModel):
     allInfo: bool = Field(False, title="Show all captured information, e.g. for diagnostics")
             
 #------------------------------------------------------------------------------------------------------
-class ArticleInfo(object):
+class ArticleInfo(BaseModel):
     """
     An entry from a documents metadata.
     
@@ -308,7 +309,10 @@ class ArticleInfo(object):
        client searches.
 
     """
-    def __init__(self, parsed_xml, art_id, logger, filename_base, fullfilename=None, verbose=None):
+    def __init__(self, art_id, parsed_xml, logger=None, filename_base="", fullfilename=None, verbose=None, **kwargs):
+        super().__init__(**kwargs)
+
+        # def __init__(self, parsed_xml, art_id, logger, filename_base, fullfilename=None, verbose=None):
         # let's just double check artid!
         self.art_id = None
         self.art_id_from_filename = art_id # file name will always already be uppercase (from caller)
@@ -330,7 +334,8 @@ class ArticleInfo(object):
         # now, the rest of the variables we can set from the data
         self.processed_datetime = datetime.utcfromtimestamp(time.time()).strftime(opasConfig.TIME_FORMAT_STR)
         try:
-            self.art_id = opasxmllib.xml_xpath_return_textsingleton(parsed_xml, "//artinfo/@id", None)
+            art_id = opasxmllib.xml_xpath_return_textsingleton(parsed_xml, "//artinfo/@id", None)
+            self.art_id = art_id
             if self.art_id is None:
                 self.art_id = self.art_id_from_filename
             else:
@@ -355,7 +360,7 @@ class ArticleInfo(object):
         self.artinfo_xml = etree.tostring(artinfo_xml).decode("utf8")
         self.src_code = parsed_xml.xpath("//artinfo/@j")[0]
         self.src_code = self.src_code.upper()  # 20191115 - To make sure this is always uppercase
-        self.embargo = parsed_xml.xpath("//artinfo/@embargo")
+        self.embargoed = parsed_xml.xpath("//artinfo/@embargo")
         self.embargotype = opasxmllib.xml_xpath_return_textsingleton(parsed_xml, "//artinfo/@embargotype", default_return=None)
         if self.embargotype is not None:
             self.embargotype = self.embargotype.upper()
@@ -429,7 +434,7 @@ class ArticleInfo(object):
             if self.src_title_full is not None:
                 self.src_title_full = self.src_title_full.replace(opasConfig.JOURNALNEWFLAG, "")
             
-            self.src_embargo = sourceDB.sourceData[pepsrccode].get("wall", None)
+            self.src_embargo_in_years = sourceDB.sourceData[pepsrccode].get("wall", None)
             product_type = sourceDB.sourceData[pepsrccode].get("product_type", None)  # journal, book, video...
                 
             if self.src_code in ["GW", "SE"]:
@@ -447,7 +452,7 @@ class ArticleInfo(object):
             self.src_title_abbr = None
             self.src_title_full = None
             self.src_type = "book"
-            self.src_embargo = None
+            self.src_embargo_in_years = None
             logger.warning("ArticleInfoError: Source %s not found in source info db.  Assumed to be an offsite book.  Or you can add to the api_productbase table in the RDS/MySQL DB", self.src_code)
         except Exception as err:
             logger.error("ArticleInfoError: Problem with this files source info. File skipped. (%s)", err)
@@ -472,23 +477,26 @@ class ArticleInfo(object):
         self.art_year_str = opasxmllib.xml_xpath_return_textsingleton(parsed_xml, '//artinfo/artyear/node()', default_return=None)
         m = re.match("(?P<yearint>[0-9]{4,4})(?P<yearsuffix>[a-zA-Z])?(\s*\-\s*)?((?P<year2int>[0-9]{4,4})(?P<year2suffix>[a-zA-Z])?)?", self.art_year_str)
         if m is not None:
-            self.art_year = m.group("yearint")
+            self.art_year_suffix = m.group("yearsuffix")
+            self.art_year_str = m.group("yearint")
+            self.art_year2_str = m.group("year2int")
+            self.art_year2_suffix = m.group("year2suffix")
             self.art_year_int = int(m.group("yearint"))
         else:
             try:
-                art_year_for_int = re.sub("[^0-9]", "", self.art_year)
+                art_year_for_int = re.sub("[^0-9]", "", self.art_year_str)
                 self.art_year_int = int(art_year_for_int)
             except ValueError as err:
-                logger.error("Error converting art_year to int: %s", self.art_year)
+                logger.error("Error converting art_year to int: %s", self.art_year_str)
                 self.art_year_int = 0
 
 
         artInfoNode = parsed_xml.xpath('//artinfo')[0]
         self.art_type = opasxmllib.xml_get_element_attr(artInfoNode, "arttype", default_return=None)
         if self.art_type is not None and self.art_type.upper() == "TOC":
-            self.is_maintoc = True
+            self.art_is_maintoc = True
         else:
-            self.is_maintoc = False
+            self.art_is_maintoc = False
             
         self.art_vol_title = opasxmllib.xml_xpath_return_textsingleton(parsed_xml, '//artinfo/artvolinfo/voltitle/node()', default_return=None)
         if self.art_vol_title is None:
@@ -509,7 +517,7 @@ class ArticleInfo(object):
         if self.verbose and self.art_issue_title is not None:
             print (f"\t...Issue title: {self.art_issue_title}")
             
-        self.art_doi = opasxmllib.xml_get_element_attr(artInfoNode, "doi", default_return=None) 
+        art_doi = self.art_doi = opasxmllib.xml_get_element_attr(artInfoNode, "doi", default_return=None) 
         self.art_issn = opasxmllib.xml_get_element_attr(artInfoNode, "ISSN", default_return=None) 
         self.art_isbn = opasxmllib.xml_get_element_attr(artInfoNode, "ISBN", default_return=None) 
         self.art_orig_rx = opasxmllib.xml_get_element_attr(artInfoNode, "origrx", default_return=None) 
@@ -706,12 +714,12 @@ class ArticleInfo(object):
         self.art_author_ids_str = ", ".join(self.art_author_id_list)
         self.art_auth_mast, self.art_auth_mast_list = opasxmllib.author_mast_from_xmlstr(self.author_xml, listed=True)
         self.art_auth_mast_unlisted_str, self.art_auth_mast_unlisted_list = opasxmllib.author_mast_from_xmlstr(self.author_xml, listed=False)
-        self.art_auth_count = len(self.author_xml_list)
-        self.art_author_lastnames = opasxmllib.xml_xpath_return_textlist(parsed_xml, '//artinfo/artauth/aut[@listed="true"]/nlast')
+        # self.art_auth_count = len(self.author_xml_list)
+        # self.art_author_lastnames = opasxmllib.xml_xpath_return_textlist(parsed_xml, '//artinfo/artauth/aut[@listed="true"]/nlast')
         
-        self.art_all_authors = self.art_auth_mast + " (" + self.art_auth_mast_unlisted_str + ")"
+        # self.art_all_authors = self.art_auth_mast + " (" + self.art_auth_mast_unlisted_str + ")"
 
-        self.issue_id_str = f"<issue_id><src>{self.src_code}</src><yr>{self.art_year}</yr><vol>{self.art_vol_str}</vol><iss>{self.art_issue}</iss></issue_id>"
+        self.issue_id_str = f"<issue_id><src>{self.src_code}</src><yr>{self.art_year_str}</yr><vol>{self.art_vol_str}</vol><iss>{self.art_issue}</iss></issue_id>"
         try:
             if self.src_title_full is not None:
                 safe_src_title_full = html.escape(self.src_title_full)
@@ -748,7 +756,7 @@ class ArticleInfo(object):
         # Usually we put the abbreviated title here, but that won't always work here.
         self.art_citeas_xml = u"""<p class="citeas"><span class="authors">%s</span> (<span class="year">%s</span>) <span class="title">%s</span>. <span class="sourcetitle">%s</span> <span class="vol">%s</span>:<span class="pgrg">%s</span></p>""" \
             %                   (self.authors_bibliographic,
-                                 self.art_year,
+                                 self.art_year_str,
                                  safe_art_title,
                                  safe_src_title_full,
                                  self.art_vol_int,
@@ -770,12 +778,12 @@ class ArticleInfo(object):
                 #except Exception as e:
                     #print (e)
 
-        self.artinfo_bkinfo_next = parsed_xml.xpath("//artbkinfo/@next")
-        self.artinfo_bkinfo_prev = parsed_xml.xpath("//artbkinfo/@prev")
-        if self.artinfo_bkinfo_next != []:
-            self.artinfo_bkinfo_next = str(opasLocator.Locator(self.artinfo_bkinfo_next[0]))
-        if self.artinfo_bkinfo_prev != []:
-            self.artinfo_bkinfo_prev = str(opasLocator.Locator(self.artinfo_bkinfo_prev[0]))
+        #self.artinfo_bkinfo_next = parsed_xml.xpath("//artbkinfo/@next")
+        #self.artinfo_bkinfo_prev = parsed_xml.xpath("//artbkinfo/@prev")
+        #if self.artinfo_bkinfo_next != []:
+            #self.artinfo_bkinfo_next = str(opasLocator.Locator(self.artinfo_bkinfo_next[0]))
+        #if self.artinfo_bkinfo_prev != []:
+            #self.artinfo_bkinfo_prev = str(opasLocator.Locator(self.artinfo_bkinfo_prev[0]))
             
         # will be None if not a book extract
         # self.art_qual = None
@@ -863,24 +871,151 @@ class ArticleInfo(object):
             if glossary_terms_dict_addon is not None:
                 self.glossary_terms_dict_str = etree.tostring(glossary_terms_dict_addon).decode("utf8")
                 self.glossary_terms_dict = parse_glossary_terms_dict(self.glossary_terms_dict_str)
-                self.glossary_terms_count = len(self.glossary_terms_dict)
+                # self.glossary_terms_count = len(self.glossary_terms_dict)
         else:
             self.glossary_terms_dict_str = None       
             self.glossary_terms_dict = {}
-            self.glossary_terms_count = 0
+            # self.glossary_terms_count = 0
 
         # check art_id's against the standard, old system of locators.
         try:
-            self.art_locator = opasLocator.Locator(self.art_id)
-                                                   
-            if self.art_id != self.art_locator.articleID():
-                logger.warning(f"art_id: {self.art_id} is not the same as the computed locator: {self.art_locator} ")
+            art_locator = opasLocator.Locator(self.art_id)                                                  
+            if self.art_id != art_locator.articleID():
+                logger.warning(f"art_id: {self.art_id} is not the same as the computed locator: {art_locator} ")
                 
             # Take advantage of Locator object for conversion data required.
-            self.is_splitbook = self.art_locator.thisIsSplitBook
+            self.is_splitbook = art_locator.thisIsSplitBook
         except Exception as e:
             logger.error(f"Problem converting {self.art_id} to locator")
             
+    #pydantic definitions
+    #art_locator: Optional[opasLocator.Locator] = Field(opasLocator.Locator, title="PEP full article ID locator object")
+    art_auth_citation: Optional[str]
+    art_auth_mast: Optional[str] = Field(None, title="Author mast, for Solr")
+    art_auth_mast_list: list = Field([], title="List of author names format for masts, for Solr")
+    art_auth_mast_unlisted_str: Optional[str]
+    art_auth_mast_unlisted_list: list = Field([], title="List of author names")
+    author_xml_list: list = Field([], title="List of authors, for Solr")
+    author_xml: Optional[str]
+    authors_bibliographic: Optional[str]
+    authors_bibliographic_list: list = Field([], title="List of authors")
+    art_citeas_text: Optional[str]
+    art_citeas_xml: Optional[str]
+    art_doi: Optional[str]
+    art_graphic_list: list = Field([], title="List of graphic references")
+    art_id: str = Field(None)             # Key!!!!
+    art_id_from_filename: Optional[str]   # Should match key!!
+    art_is_maintoc: Optional[bool]
+    art_isbn: Optional[str]
+    art_issn: Optional[str]
+    art_issue: Optional[str]
+    art_issue_title: Optional[str]
+    art_issue_title_str: Optional[str]
+    art_issue_seqnbr: Optional[str]
+    art_kwds: Optional[str]
+    art_kwds_str: Optional[str]
+    art_lang: Optional[str]
+    art_locator_str: Optional[str]
+    art_orig_rx: Optional[str]
+    art_pgend: Optional[str]
+    art_pgrg: Optional[str]
+    art_pgstart: Optional[str]
+    art_pgstart_prefix: Optional[str]
+    pgstart_suffix: Optional[str]
+    pgend_prefix: Optional[str]
+    art_pgend: Optional[str]
+    pgend_suffix: Optional[str]
+    art_qual: Optional[str]
+    art_subtitle: Optional[str]
+    art_title: Optional[str]
+    art_type: Optional[str]
+    art_vol_int: Optional[int]
+    art_vol_str: Optional[str]
+    art_vol_suffix: Optional[str]
+    art_vol_title: Optional[str]
+    art_year_int: Optional[int]
+    art_year_str: Optional[str]
+    art_year_suffix: Optional[str]
+    art_year2_str: Optional[str]
+    art_year2_suffix: Optional[str]
+    artinfo_meta_xml: Optional[str]
+    artinfo_xml: Optional[str]
+    author_list: list = Field([], title="List of author names")
+    art_authors_mast_list: list = Field([], title="List of author names")
+    art_authors_mast_list_strings: list = Field([], title="List of author names")
+    art_author_id_list: list = Field([], title="List of author names")  
+    art_author_ids_str: Optional[str]
+    art_auth_citation: Optional[str]
+    art_auth_citation_list: list = Field([], title="List of authors cited")
+    bib_authors: Optional[str]
+    bib_title: Optional[str]
+    bib_rx: Optional[str]
+    bk_info_xml: Optional[str]
+    bk_next_id: Optional[str]
+    bk_publisher: Optional[str]
+    bk_seriestoc: Optional[str]
+    bk_subdoc: Optional[str]
+    bk_title: Optional[str]
+    src_embargo_in_years: Optional[str]
+    embargoed: Optional[str] = Field("False")
+    embargotype: Optional[str]
+    file_classification: Optional[str]
+    file_create_time: Optional[str]
+    file_size: Optional[int]
+    file_updated: Optional[bool]
+    filedatetime: Optional[str]
+    filename: Optional[str]
+    filename: Optional[str]
+    filename_artinfo: Optional[str]
+    fullfilename: Optional[str]
+    glossary_terms_dict: Optional[dict]
+    glossary_terms_dict_str: Optional[str]
+    last_update: Optional[str]
+    main_toc_id: Optional[str]
+    manuscript_date_str: Optional[str]
+    metadata_dict: Optional[dict]
+    preserve: Optional[str]
+    processed_datetime: Optional[str]
+    publisher_ms_id: Optional[str]
+    src_code: Optional[str]
+    src_code_active: Optional[str]
+    src_is_book: Optional[bool]
+    src_prodkey: Optional[str]
+    src_title_abbr: Optional[str]
+    src_title_full: Optional[str]
+    src_type: Optional[str]
+    start_sectname: Optional[str]
+    start_sectlevel: Optional[str]
+    verbose: Optional[bool]
+    is_splitbook: Optional[bool]
+    bib_rx: list = Field([], title="")
+    bib_journaltitle: Optional[str]
+    issue_id_str: Optional[str]
+    # stat fields for artstat
+    art_abs_count: int = Field(0, title="")
+    art_authors_count: int = Field(0, title="")
+    # art_auth_count = int = Field(0, title="") # perhaps not needed
+    art_citations_count: Optional[int]
+    art_pgrx_count: int = Field(0, title="")
+    art_figcount: int = Field(0, title="")
+    art_headings_count: int = Field(0, title="")
+    art_poems_count: int = Field(0, title="")
+    art_notes_count: int = Field(0, title="")
+    art_kwds_count: int = Field(0, title="")
+    art_tblcount: int = Field(0, title="")
+    art_terms_count: int = Field(0, title="")
+    art_pgcount: int = Field(0, title="")
+    art_ftns_count: int = Field(0, title="")
+    art_quotes_count: int = Field(0, title="")
+    art_dreams_count: int = Field(0, title="")
+    art_dialogs_count: int = Field(0, title="")
+    art_paras_count: int = Field(0, title="")
+    art_words_count: int = Field(0, title="")
+    art_chars_count: int = Field(0, title="")
+    art_chars_no_spaces_count: int = Field(0, title="")
+    # glossary_terms_count: int = Field(0, title="Number of glossary terms found")
+    ref_count: int = Field(0, title="Number of references")
+    
 class JournalVolIssue(BaseModel):
     """
     #Identify and parse a "loose" spec if a journal code, volume or year, and issue.

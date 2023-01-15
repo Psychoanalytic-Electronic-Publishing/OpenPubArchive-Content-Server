@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2023, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2023.0111b/v2.0.047b"   # semver versioning after date.
+__version__     = "2023.0114/v2.0.049"   # !!! IMPORTANT: Increment opasXMLProcessor version (if chgd). It's written to the XML !!!
 __status__      = "Development"
 
 programNameShort = "opasDataLoader"
@@ -1290,8 +1290,8 @@ if __name__ == "__main__":
     parser.add_option("--nobibdbupdate", action="store_true", dest="no_bibdbupdate", default=False,
                       help="Turn off save of biblio info to the database (i.e., if done using opasDataLinker")
 
-    parser.add_option("--doctype", dest="output_doctype", default=loaderConfig.DEFAULT_DOCTYPE,
-                      help=f"For output files, default={loaderConfig.DEFAULT_DOCTYPE}.")
+    parser.add_option("--doctype", dest="output_doctype", default=opasConfig.PEP_KBD_DOCTYPE,
+                      help=f"For output files, default={opasConfig.PEP_KBD_DOCTYPE}.")
 
     parser.add_option("--termtags", action="store_true", dest="glossary_term_tagging", default=False,
                       help="Markup glossary terms in paragraphs when compiling XML")

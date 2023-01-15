@@ -14,7 +14,7 @@ Can optionally
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2023.0105/v.1.0.105"  # recorded in xml processed pepkbd3 procby, keep up to date!
+__version__     = "2023.0111/v.1.0.106"  # recorded in xml processed pepkbd3 procby, keep up to date!
 __status__      = "Development"
 
 programNameShort = "opasXMLProcessor"
@@ -714,7 +714,7 @@ def add_pagenbrs_to_splitbook_table(parsed_xml, artInfo, ocd, split_book_data, p
         else:
             has_biblio = 0
 
-        if artInfo.is_maintoc:
+        if artInfo.art_is_maintoc:
             has_toc = 1
         else:
             has_toc = len(parsed_xml.xpath('//grp[@name="TOC"]'))
@@ -924,25 +924,25 @@ def xml_update(parsed_xml,
         parser = ET.XMLParser(encoding='utf-8', recover=True, resolve_entities=False, load_dtd=False)
         # see if it's already been computed to save time
         art_stat = ocd.get_artstat(document_id=artInfo.art_id)
-        glossary_terms_dict_str = art_stat.get("glossaryDict")
-        if not glossary_terms_dict_str:
-            artInfo.glossary_terms_count, artInfo.glossary_terms_dict = glossEngine.doGlossaryMarkup(parsed_xml,
+        artInfo.glossary_terms_dict_str = art_stat.get("glossaryDict") # Get glossary list from database
+        if not artInfo.glossary_terms_dict_str:
+            glossary_terms_total_found, artInfo.glossary_terms_dict = glossEngine.doGlossaryMarkup(parsed_xml,
                                                                                                      pretty_print=pretty_print,
                                                                                                      markup_terms=markup_terms,
                                                                                                      verbose=verbose)
             # need to compute it
             term_json = json.dumps(artInfo.glossary_terms_dict)
             pep_addon = f'<unit type="glossary_term_dict"><!-- {term_json} --></unit>'
+            artInfo.glossary_terms_dict_str = pep_addon
+            print (f"\t...{glossary_terms_total_found} glossary terms ({len(artInfo.glossary_terms_dict)} unique) in document")
         else:
-            print ("\t...Glossary terms list loaded from database")
-            pep_addon = glossary_terms_dict_str
-
-        m = re.search("<!--.*?(?P<dict_str>\{.*\}).*?-->", pep_addon)
-        dict_str = m.group("dict_str")
-        artInfo.glossary_terms_dict = json.loads(dict_str)
-        artInfo.glossary_terms_count = len(artInfo.glossary_terms_dict)
-        artInfo.glossary_terms_dict_str = pep_addon
-
+            pep_addon = artInfo.glossary_terms_dict_str
+            m = re.search("<!--.*?(?P<dict_str>\{.*\}).*?-->", pep_addon)
+            dict_str = m.group("dict_str")
+            artInfo.glossary_terms_dict = json.loads(dict_str)
+            glossary_terms_total_found = sum(artInfo.glossary_terms_dict.values())
+            print (f"\t...Glossary terms list loaded from database. {glossary_terms_total_found} glossary terms ({len(artInfo.glossary_terms_dict)} unique) in document")
+        
         new_unit = ET.fromstring(pep_addon, parser)
         parsed_xml.append(new_unit)
     
