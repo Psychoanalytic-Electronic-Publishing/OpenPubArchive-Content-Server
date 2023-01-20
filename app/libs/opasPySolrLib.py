@@ -1183,8 +1183,8 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
     except Exception as e:
         if req_url != opasConfig.CACHEURL: # no session supplied when loading caching, ok
             logger.warning("No Session info supplied to search_text_qs")
-        # mark as not logged in
-        #user_logged_in_bool = False
+            # mark as not logged in
+            #user_logged_in_bool = False
 
     if 1: # just to allow folding
         if solr_query_spec.solrQueryOpts is None: # initialize a new model
@@ -2429,16 +2429,16 @@ def metadata_get_next_and_prev_articles(art_id=None,
     match_art = {}
     
     query = "art_level:1 "
-    if article_id.sourceCode is not None:
-        query += f" && art_sourcecode:{article_id.sourceCode}"
+    if article_id.src_code is not None:
+        query += f" && art_sourcecode:{article_id.src_code}"
 
-    if article_id.volumeInt is not None:
-        query += f" && art_vol:{article_id.volumeInt}"
+    if article_id.art_vol_int is not None:
+        query += f" && art_vol:{article_id.art_vol_int}"
         
-    if article_id.issueInt != 0:
-        query += f" && art_iss:{article_id.issueInt}"  # just the number representation, 1-n
-    elif article_id.issueCode != '':
-        query += f" && art_iss:{article_id.issueCode}*" # could be S, or A, B, C..., but issue_code could be spelled out supplement
+    if article_id.art_issue_int != 0:
+        query += f" && art_iss:{article_id.art_issue_int}"  # just the number representation, 1-n
+    elif article_id.art_issue_alpha_code != '':
+        query += f" && art_iss:{article_id.art_issue_alpha_code}*" # could be S, or A, B, C..., but issue_code could be spelled out supplement
         # Need to deal with FA...has Pilot and then numbers    
         #if source_year is not None and source_year.isalnum():
             #query += f" && art_year:{source_year}"

@@ -51,7 +51,10 @@ help_text = (
          --outputbuild       output build name, e.g., (bEXP_ARCH1) 
          --inputbuildpattern selection by build of what files to include
          --smartload         see if inputbuild file is newer or missing from db,
-                             if so then compile and load, otherwise skip
+                             if so then compile and load, or
+                             if there's changes to this article's records in api_biblioxml
+                             then compile and load
+                             otherwise skip
          --nohelp            Turn off front-matter help (that displays when you run)
          --doctype           Output doctype (defaults to DEFAULT_DOCTYPE setting in loaderConfig.py)
          --rebuild           Rebuild all compiled XML files, then load into the database, even if not changed
@@ -106,6 +109,7 @@ sys.path.append('../config')
 sys.path.append('../libs/configLib')
 
 import time
+import pytz # when we get to python 3.9, this isn't needed
 import random
 import pysolr
 import localsecrets
@@ -132,12 +136,15 @@ from configLib.opasCoreConfig import solr_authors2, solr_gloss2
 import loaderConfig
 import opasSolrLoadSupport
 import opasArticleIDSupport
+import opasBiblioSupport
 import opasConfig
 
 import opasXMLHelper as opasxmllib
 import opasGenSupportLib as opasgenlib
 import opasCentralDBLib
-import opasProductLib
+ocd = opasCentralDBLib.opasCentralDB()
+
+# import opasProductLib
 import opasFileSupport
 import opasAPISupportLib
 import opasDataLoaderIJPOpenSupport
@@ -258,7 +265,7 @@ def file_was_loaded_to_solr_after(solrcore, after_date, art_id):
     return ret_val
 
 #------------------------------------------------------------------------------------------------------
-def output_file_needs_rebuilding(outputfilename, inputfilename=None, inputfilespec=None):
+def output_file_needs_rebuilding(outputfilename, inputfilename=None, inputfilespec=None, art_id=None):
     ret_val = False
     outfile_exists = True
     infile_exists = True
@@ -281,12 +288,35 @@ def output_file_needs_rebuilding(outputfilename, inputfilename=None, inputfilesp
                 # need to build
                 ret_val = True
                 outfile_exists = False
-            else:    
-                if fileinfoout.timestamp < inputfilespec.timestamp:
-                    # need to rebuild
-                    ret_val = True
+            
+            elif fileinfoout.timestamp < inputfilespec.timestamp:
+                # need to rebuild
+                ret_val = True
+
+            elif art_id is not None:
+                # get api_biblioxml last add date
+                last_update = ocd.get_max_bibrecord_update(art_id)
+                    
+                if last_update is None:
+                    ret_val = False # no biblio records
                 else:
-                    ret_val = False
+                    try:
+                        east_tz = pytz.timezone("US/Eastern")
+                        utc_tz = pytz.timezone("UTC")
+                        file_updated_time = utc_tz.localize(fileinfoout.timestamp)
+                        if localsecrets.S3_KEY is None:
+                            # nrs - my local db is recording in my time zone ET
+                            localized = east_tz.localize(last_update)
+                            last_update = localized.astimezone(utc_tz)
+                        if last_update >= file_updated_time:
+                            ret_val = True
+                
+                    except Exception as e:
+                        print (e)
+                            
+            else:
+                ret_val = False
+                    
 
         except Exception as e:
             print (e)
@@ -748,7 +778,8 @@ def main():
 
                 file_status_tuple = output_file_needs_rebuilding(inputfilespec=n,
                                                                  inputfilename=inputfilename,
-                                                                 outputfilename=outputfilename)
+                                                                 outputfilename=outputfilename,
+                                                                 art_id=artID)
 
                 input_file_was_updated, infile_exists, outfile_exists, both_same = file_status_tuple
                 
@@ -870,10 +901,10 @@ def main():
                     file_text = lxml.etree.tostring(parsed_xml, pretty_print=options.pretty_printed, encoding="utf8").decode("utf-8")
                     file_text = file_prefix + file_text
                     # this is required if running on S3
-                    success = fs.create_text_file(fname, data=file_text, delete_existing=True)
-                    if success:
+                    compile_success = fs.create_text_file(fname, data=file_text, delete_existing=True)
+                    if compile_success:
                         rebuild_count += 1
-                        log_everywhere_if(True, level="info", msg=f"\t...Compiled {n.basename} to ...{fname[-40:]}")
+                        log_everywhere_if(options.display_verbose , level="info", msg=f"\t...Compiled {n.basename} to ...{fname[-40:]}")
                     else:
                         log_everywhere_if(options.display_verbose, level="error", msg=f"\t...There was a problem writing {fname}.")
 
@@ -939,7 +970,7 @@ def main():
                     logger.warning("Could not determine file classification for %s (%s)" % (n.filespec, e))
                 
                 msg = f"\t...Loading precompiled XML file {final_fileinfo.basename} ({final_fileinfo.filesize} bytes) Access: {artInfo.file_classification }"
-                log_everywhere_if(True, level="info", msg=msg)
+                log_everywhere_if(options.display_verbose , level="info", msg=msg)
                 
                 # not a new journal, see if it's a new article.
                 if opasSolrLoadSupport.add_to_tracker_table(ocd, artInfo.art_id): # if true, added successfully, so new!
@@ -1002,7 +1033,8 @@ def main():
                             log_everywhere_if(True, "error", f"Authors Core Commit error - Solr internal issue: perhaps lock issue? {e}")
                     
                 # Add to the references table
-                if not options.no_bibdbupdate:
+                if not options.no_bibdbupdate and not compile_success: 
+                    # if compile_success is false, because otherwise, we just loaded these references!
                     # only need to do bib save to db if not done separately via opasDataLinker 
                     if artInfo.ref_count > 0:
                         art_reference_count = artInfo.ref_count
@@ -1012,11 +1044,11 @@ def main():
     
                         ocd.open_connection(caller_name="processBibliographies")
                         for ref in bibReferences:
-                            bib_entry = opasSolrLoadSupport.BiblioEntry(artInfo, ref)
+                            bib_entry = opasSolrLoadSupport.BiblioEntry(artInfo.art_id, ref)
                             # record .99 confidence for any rx in source XML
                             if bib_entry.rx is not None and bib_entry.rx_confidence==0:
                                 bib_entry.rx_confidence=.99
-                            opasSolrLoadSupport.add_reference_to_biblioxml_table(ocd, artInfo, bib_entry)
+                            opasBiblioSupport.add_reference_to_biblioxml_table(ocd, artInfo, bib_entry)
     
                         try:
                             ocd.db.commit()
@@ -1278,9 +1310,13 @@ if __name__ == "__main__":
     parser.add_option("--load", "--loadxml", action="store_true", dest="loadprecompiled", default=True,
                       help="Load precompiled XML, e.g. (bEXP_ARCH1) into database.")
 
+    msg = f"""Rebuild from source (e.g., bKBD3) if necessary, load precompiled XML (e.g., bEXP_ARCH1) if necessary. If inputbuild file is newer, output is missing, or there are changes to 
+the api_biblioxml records, compile and then load into database.  Use together with load to smartbuild if needed AND force
+reload. You can manually fix links in api_biblioxml and they will be loaded into the precompiled XML.
+Set rxcf to 1 for manually corrected links."""
     parser.add_option("--smartload", "--smartbuild", action="store_true", dest="smartload", default=False,
-                      help="Load precompiled XML (e.g., bEXP_ARCH1), or if needed, precompile keyboarded XML (e.g., bKBD3) and load into database.")
-
+                      help=msg)
+    
     parser.add_option("--prettyprint", action="store_true", dest="pretty_printed", default=False,
                       help="Pretty format the compiled XML.")
 

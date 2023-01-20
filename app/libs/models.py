@@ -113,19 +113,19 @@ class BiblioxmlGeneric(BaseModel):
     row: dict = Field({}, title="Fully flexible content row from Database")
 
 class Biblioxml(BaseModel):
-    art_id: str = Field(None)
-    bib_local_id: str = Field(None)
+    art_id: str = Field(None, title="Article ID (locator) of the instance containing the reference")
+    bib_local_id: str = Field(None, title="ID of the be or binc element in the instance")
     art_year: Optional[int]
     bib_rx: str = Field(None)
-    bib_rx_confidence: float = Field(0)
-    bib_rxcf: str = Field(None)
-    bib_rxcf_confidence: float = Field(0)
-    bib_sourcecode: str = None
+    bib_rx_confidence: float = Field(0, title="Confidence level of assigned rx. Manual QA = 1, code parsed = .99, Heuristic = .1 to .97")
+    bib_rxcf: str = Field(None, title="List of possible article ID codes for this reference")
+    bib_rxcf_confidence: float = Field(0, title="Max confidence level of rxcf codes")
+    bib_sourcecode: str = Field(None)
     bib_authors: str = Field(None)
     bib_articletitle: str = Field(None)
     title: str = Field(None)
     full_ref_text: str = Field(None)
-    bib_sourcetype: str = Field(None)
+    bib_sourcetype: str = Field(None, title="journal, book, unknown") # could add video
     bib_sourcetitle: str = Field(None)
     bib_authors_xml: str = Field(None)
     full_ref_xml: str = Field(None)
@@ -134,6 +134,8 @@ class Biblioxml(BaseModel):
     bib_year: str = Field(None)
     bib_year_int: Optional[int]
     bib_volume: str = Field(None)
+    bib_volume_int: Optional[int]
+    bib_volume_isroman: bool = Field(False, title="True if bib_volume is roman")
     bib_publisher: str = Field(None)
     last_update: datetime = Field(None)
 

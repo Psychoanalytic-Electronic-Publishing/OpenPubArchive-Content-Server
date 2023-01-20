@@ -36,7 +36,7 @@ import re
 import opasGenSupportLib as opasgenlib
 
 # import sciHLMath
-# import sciSupport
+# import opasgenlib
 
 LOCALID = "LocalID"			# need this here because it is the default for a argument
                             # and you can't use the local class definition,

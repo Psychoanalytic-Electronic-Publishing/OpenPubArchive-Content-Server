@@ -91,10 +91,10 @@ class TestArticleID(unittest.TestCase):
             # test return
             r = response.json()
             a = ArticleID(**r)
-            if a.isSupplement:
-                assert(a.issueCodeInt == 0)
+            if a.is_supplement:
+                assert(a.art_issue_int == 0)
             else:
-                assert(a.issueCodeInt == n[1])
+                assert(a.art_issue_int == n[1])
             
             print (n, " = ", r)
           
@@ -106,7 +106,7 @@ class TestArticleID(unittest.TestCase):
         ]
         for n in testIDs:
             a = ArticleID(articleID=n)
-            print (a.articleID, a.standardized, a.altStandard)
+            print (a.art_id, a.standardized, a.alt_standard)
             assert(a.standardized == n.upper())
         
         

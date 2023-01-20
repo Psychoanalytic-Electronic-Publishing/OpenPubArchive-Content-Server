@@ -341,12 +341,12 @@ def update_solr_stat_data(solrcon, all_records:bool=False):
                 found = True
             else: # TryAlternateID:
                 parsed_id = ArticleID(articleID=doc_id)
-                results = solrcon.search(q = f"art_id:{parsed_id.altStandard}")
+                results = solrcon.search(q = f"art_id:{parsed_id.alt_standard}")
                 if results.raw_response["response"]["numFound"] == 1:  # only accept alternative if there's only one match (otherwise, not known which)
                     # odds are good this is what was cited.
                     found = True
-                    logger.info(f"Document ID {doc_id} not in Solr.  The correct ID seems to be {parsed_id.altStandard}. Using that instead!")
-                    doc_id = parsed_id.altStandard
+                    logger.info(f"Document ID {doc_id} not in Solr.  The correct ID seems to be {parsed_id.alt_standard}. Using that instead!")
+                    doc_id = parsed_id.alt_standard
                 else:
                     logger.warning(f"Document ID {doc_id} not in Solr.  No alternative ID found.")
                 

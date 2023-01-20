@@ -556,7 +556,7 @@ class Locator:
                     errStr = "Incomplete/Invalid ID: %s/v%s/p%s" % (self.jrnlCode, self.jrnlVol, self.pgStart)
                 
                 self.validError = errStr
-                logger.warning(errStr)
+                logger.debug(errStr)
                 self.valid = 0
             else:
                 

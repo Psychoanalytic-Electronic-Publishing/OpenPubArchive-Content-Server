@@ -50,21 +50,33 @@ rgxTrim = re.compile("^\s+(?P<cleanStr>.*?)\s+$")
 
 #----------------------------------------------------------------------------------------
 def	do_escapes(data, hasEscapes=0):
-    retVal = data
-    if retVal != None:
+    ret_val = data
+    if ret_val != None:
         if hasEscapes==0:
-            if re.search(r'\\',	retVal)	is not None:
-                retVal = re.sub(r'\\', r'\\\\',	retVal)
-        if re.search(r'"',	retVal)	is not None:
-            retVal = re.sub(r'(?P<pre>([^\\]|\A))"', r'\1\\"', retVal)
+            if re.search(r'\\',	ret_val)	is not None:
+                ret_val = re.sub(r'\\', r'\\\\',	ret_val)
+        if re.search(r'"',	ret_val)	is not None:
+            ret_val = re.sub(r'(?P<pre>([^\\]|\A))"', r'\1\\"', ret_val)
         # if doubled, take care of second one here, and first in next set
         # This extra effort has to be done because you have to watch for
         # already-escaped slashes!
-        if re.search(r"''", retVal) is not None:
-            retVal = re.sub(r"''",	r"'\\'", retVal)
-        if re.search(r"'", retVal) is not None:
-            retVal = re.sub(r"(?P<pre>([^\\]|\A))'", r"\1\\'", retVal)
-    return retVal
+        if re.search(r"''", ret_val) is not None:
+            ret_val = re.sub(r"''",	r"'\\'", ret_val)
+        if re.search(r"'", ret_val) is not None:
+            ret_val = re.sub(r"(?P<pre>([^\\]|\A))'", r"\1\\'", ret_val)
+    return ret_val
+
+#----------------------------------------------------------------------------------------
+def	do_re_escapes(data):
+    """
+    Escape periods and other regular expression chars in data
+    """
+    if data is not None:
+        ret_val = re.escape(data)
+    else:
+        ret_val = ""
+
+    return ret_val
 
 class DocumentID(object):
     """
@@ -419,7 +431,7 @@ def format_http_timestamp(ts: Union[int, float, tuple, time.struct_time, datetim
 def derive_author_mast(authorIDList):
     """
     """
-    retVal = ""
+    ret_val = ""
     authorMast = ""
     authCount = 0
     if authorIDList is not None:
@@ -440,9 +452,9 @@ def derive_author_mast(authorIDList):
                 authorMast += aut
                 logger.error("Could not derive Author Mast name")
 
-        retVal = authorMast.strip()
+        ret_val = authorMast.strip()
 
-    return retVal
+    return ret_val
 #-----------------------------------------------------------------------------
 def string_to_list(strlist: str, sep=","):
     """
@@ -988,7 +1000,7 @@ def removeLeadingPunctAndSpaces(input_str, punct_set=[',', '.', ' ', ':', ';', '
     return ret_val
 
 # ----------------------------------------------------------------------------------------
-def removeAllPunct(input_str, punct_set=[',', '.', ':', ';', '(', ')', '\t', '"', "'"]):
+def removeAllPunct(input_str, punct_set=[',', '.', ':', ';', '(', ')', '\t', r'/', '"', "'", "[", "]"]):
     # Beginning in Python 2.2.3 you can do this
     #ret_val = string.rstrip(input_str, ",.\t ")
     ret_val = ""
@@ -1026,15 +1038,15 @@ def atoiYear(strArg):
         ret_val = 0
     else:
         if isinstance(strArg, str):  # supports string and unicode Was if type(strArg) == type(""):
-            str = trimPunctAndSpaces(strArg)
-            if len(str) > 4:
-                m = re.match("[^0-9]*?(?P<year>[1-2][0-9]{3,3})[^0-9]*?", str)
+            strArg = trimPunctAndSpaces(strArg)
+            if len(strArg) > 4:
+                m = re.match("[^0-9]*?(?P<year>[1-2][0-9]{3,3})[^0-9]*?", strArg)
                 if m != None:
                     ret_val = m.group("year")
                 else:
                     ret_val = 0
             else:
-                ret_val = str
+                ret_val = strArg
 
             try:
                 ret_val = int(ret_val)
@@ -1155,18 +1167,28 @@ def trimNonDigits( str_arg ):
 
 # -------------------------------------------------------------------------------------------------------
 def isRoman(roman_str):
-
     # Searching the input string in expression and
-    # returning the boolean value
-    if isinstance(roman_str, str):
-        ret_val = bool(re.search(r"^M{0,3}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})$", roman_str.upper()))
-    elif isinstance(roman_str, int):
-        ret_val = roman_str < 0 #  true if negative
-    else:
-        ret_val = False
+    # returning the boolean True if roman
+    # if negative, assumes coded for roman
+    ret_val = False
+    if roman_str:
+        if isinstance(roman_str, str):
+            ret_val = bool(re.search(r"^M{0,3}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})$", roman_str.upper()))
+        elif isinstance(roman_str, int):
+            ret_val = roman_str < 0 #  true if negative
 
     return ret_val
 
+# -------------------------------------------------------------------------------------------------------
+def is_roman_str(roman_str):
+    # Searching the input string in expression and
+    # returning the boolean True if roman
+    ret_val = False
+    if roman_str:
+        if isinstance(roman_str, str):
+            ret_val = bool(re.search(r"^M{0,3}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})$", roman_str.upper()))
+
+    return ret_val
 # -------------------------------------------------------------------------------------------------------
 def romanToInt(S: str) -> int:
     roman = {'I':1,'V':5,'X':10,'L':50,'C':100,'D':500,'M':1000}

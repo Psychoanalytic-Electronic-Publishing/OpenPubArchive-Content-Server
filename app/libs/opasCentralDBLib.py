@@ -408,11 +408,31 @@ class opasCentralDB(object):
         self.close_connection(caller_name=fname) # make sure connection is closed
         return ret_val
 
+    def article_exists(self, rx_locator):
+        """
+        Does this rx_locator (doc_id) match an article?
+        """
+        fname = "article_exists"
+        ret_val = False
+        self.open_connection(caller_name=fname) # make sure connection is open
+        if self.db is not None:
+            with closing(self.db.cursor(buffered=True, dictionary=False)) as curs:
+                sql = f"SELECT art_id from api_articles where art_id='{rx_locator}';"
+                curs.execute(sql)
+                row_count = curs.rowcount
+                if row_count > 0:
+                    ret_val = True
+        else:
+            logger.error("Connection not available to database.")
+
+        self.close_connection(caller_name=fname) # make sure connection is closed
+        return ret_val
+
     def get_article_year(self, doc_id):
         """
         Load the article data for a document id
         """
-        fname = "get_productbase_data"
+        fname = "get_article_year"
         ret_val = None
         self.open_connection(caller_name=fname) # make sure connection is open
         if self.db is not None:
@@ -1007,6 +1027,41 @@ class opasCentralDB(object):
 
         self.close_connection(caller_name=fname) # make sure connection is closed
         return ret_val 
+
+    def get_max_bibrecord_update(self, art_id):
+        sel = f"""
+                SELECT max( `api_biblioxml`.`last_update` ) AS `max` 
+                FROM `api_biblioxml`
+                WHERE art_id = '{art_id}'
+		"""
+        fname = "max_bibrecord_update"
+        self.open_connection(caller_name=fname) # make sure connection is open
+        ret_val = None
+        if self.db is not None:
+            try:
+                with closing(self.db.cursor(buffered=True, dictionary=True)) as cursor:
+                    try:
+                        cursor.execute(sel)
+                    except ValueError as e:
+                        logger.error(f"DB Value Error {e} - {errmsg}")
+                    except mysql.connector.IntegrityError as e:
+                        logger.error(f"Integrity Error {e} - {errmsg}")
+                    except mysql.connector.InternalError as e:
+                        logger.error(f"Internal Error {e} - {errmsg}")
+                    except mysql.connector.DatabaseError as e:
+                        logger.error(f"Database Error {e} - {errmsg}")
+                    except Exception as e:
+                        logger.error(f"DB Error  {e} - {errmsg}")
+                    else:
+                        ret_val = cursor.fetchall()
+                        ret_val = ret_val[0]["max"]
+            except Exception as e:
+                logger.error(f"DB Error {e}")
+    
+        self.close_connection(caller_name=fname) # make sure connection is closed
+
+        return ret_val
+
     
     def get_min_max_volumes(self, source_code):
         sel = f"""
@@ -1323,6 +1378,58 @@ class opasCentralDB(object):
 
         # return session model object
         return ret_val # List of records or empty list
+
+    def update_biblioxml_record_links(self, art_id, bib_id, rx=None, rx_confidence=0, rxcfs=None, rxcfs_confidence=0, verbose=False):
+        """
+        
+        """
+        ret_val = False
+        caller_name = "update_biblioxml_record"
+        msg = f"\t...Updating biblio record to add rx and rx_confidence."
+        log_everywhere_if(verbose, "info", msg)
+            
+        if rx == "":
+            rx = None
+
+        if rx_confidence is None:
+            rx_confidence = 0
+
+        if rxcfs == '':
+            rxcfs = None
+            
+        if rxcfs_confidence is None:
+            rxcfs_confidence = 0
+        
+        if (rx is not None and rx_confidence is not None) or  (rxcfs is not None and rxcfs_confidence is not None):
+            self.open_connection(caller_name=caller_name)
+            sqlcpy = f"""
+                        UPDATE api_biblioxml
+                            SET bib_rx = %s,
+                                bib_rx_confidence = %s,
+                                bib_rxcf = %s,
+                                bib_rxcf_confidence = %s
+                            WHERE art_id = %s
+                            AND bib_local_id = %s
+                      """
+            
+            query_params = (rx,
+                            rx_confidence,
+                            rxcfs,
+                            rxcfs_confidence,
+                            art_id,
+                            bib_id)
+        
+            try:
+                res = self.do_action_query(querytxt=sqlcpy, queryparams=query_params)
+            except Exception as e:
+                errStr = f"{caller_name}: update error {e}"
+                logger.error(errStr)
+                if opasConfig.LOCAL_TRACE: print (errStr)
+            else:
+                ret_val = True
+        
+        self.close_connection(caller_name=caller_name) # make sure connection is closed
+        return ret_val
 
     def update_session(self,
                        session_id,

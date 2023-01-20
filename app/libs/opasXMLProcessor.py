@@ -58,6 +58,7 @@ import PEPJournalData
 import opasXMLParaLanguageConcordance
 import opasXMLPageConcordance
 import opasEmbargoContent
+import opasBiblioSupport
 
 global gJrnlData
 try:  # see if it's been defined.
@@ -426,7 +427,8 @@ def update_biblio_nonheuristic(parsed_xml, artInfo, ocd, pretty_print=False, ver
         #processedFilesCount += 1
         # bib_total_reference_count = 0
         for ref in bibReferences:
-            bib_entry = opasSolrLoadSupport.BiblioEntry(artInfo, ref)
+            #bib_entry = opasSolrLoadSupport.BiblioEntry(art_id=artInfo.art_id, ref=ref)
+            bib_entry = opasBiblioSupport.BiblioEntry(art_id=artInfo.art_id, ref_or_parsed_ref=ref)
             ref_id = bib_entry.ref_local_id
             bib_refdb_model = api_biblioxml_dict_of_models.get(ref_id)
 
@@ -442,6 +444,7 @@ def update_biblio_nonheuristic(parsed_xml, artInfo, ocd, pretty_print=False, ver
                         if bib_refdb_model.bib_rx != ref_rx and bib_refdb_model.bib_rx_confidence == 1:
                             # change ref, confidence is certain in db
                             ref.attrib["rx"] = bib_refdb_model.bib_rx
+                            ref.attrib["rxconf"] = str(bib_refdb_model.bib_rx_confidence)
                             if verbose: print (f"\t\t...Bib Dict ({bib_refdb_model.bib_rx}) overriding rx: {ref_rx}")
                         else:
                             if verbose: print (f"\t\t...Bib ID {ref_id} ref has rx: {ref_rx} Bib_dict: {bib_refdb_model.bib_rx}. {bib_entry.ref_entry_xml}")
@@ -450,13 +453,14 @@ def update_biblio_nonheuristic(parsed_xml, artInfo, ocd, pretty_print=False, ver
                 elif bib_refdb_model.bib_rx:
                     if verbose: print (f"\t\t...Bib ID {ref_id} No rx Bib_dict used: {bib_refdb_model.bib_rx} {bib_refdb_model.full_ref_text}")
                     ref.attrib["rx"] = bib_refdb_model.bib_rx
+                    ref.attrib["rxconf"] = str(bib_refdb_model.bib_rx_confidence)
             
             if not ref.attrib.get("rx"):
                 # still no rx
                 if bib_entry.ref_is_book:
                     bk_locator_str, match_val, whatever = known_books.getPEPBookCodeStr(bib_entry.ref_entry_text)
                     if bk_locator_str is not None:
-                        ref.attrib["rx"] = bk_locator_str 
+                        ref.attrib["rx"] = bk_locator_str
                         search_str = f"//be[@id='{ref_id}']"
                         msg = f"\t\t\t...Matched Book {match_val}. {opasxmllib.xml_xpath_return_xmlstringlist(parsed_xml, search_str)[0]}"
                         log_everywhere_if(gDbg2, level="info", msg=msg)
@@ -498,8 +502,11 @@ def update_biblio_nonheuristic(parsed_xml, artInfo, ocd, pretty_print=False, ver
                                           notFatal=True, 
                                           noStartingPageException=True, 
                                           filename=artInfo.filename)
-                        if locator.valid != 0:
-                            pep_ref = True
+                        if locator.valid:
+                            if ocd.article_exists(locator):
+                                pep_ref = True
+                            else:
+                                pep_ref = False
                     else:
                         locator = None
 
@@ -510,6 +517,7 @@ def update_biblio_nonheuristic(parsed_xml, artInfo, ocd, pretty_print=False, ver
                         pass
                     else:
                         ref.attrib["rx"] = locator.articleID()
+                        ref.attrib["rx_conf"] = str(0.99)
                         search_str = f"//be[@id='{ref_id}']"
                         msg = f"\t\t...Matched Journal {opasxmllib.xml_xpath_return_xmlstringlist(parsed_xml, search_str)[0]}"
                         log_everywhere_if(verbose, level="debug", msg=msg)
@@ -529,15 +537,15 @@ def update_bincs(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
         if verbose: print(f"\t...Examining {count} inclusion refs (binc) for links (rx) and related titles (rxcf).")
         #processedFilesCount += 1
         bib_total_reference_count = 0
-        for ref in bibReferences:
+        for parsed_ref in bibReferences:
             # bib_entry_text = ''.join(ref.itertext())
             bib_pgstart = None
             bib_pgend = None
             # compare_to = ""
-            ref_id = ref.attrib.get("id", None)
+            ref_id = parsed_ref.attrib.get("id", None)
             if ref_id is None:
                 if gDbg1:
-                    print (f"\t\t...Skipping attempted link of {ET.tostring(ref)}")
+                    print (f"\t\t...Skipping attempted link of {ET.tostring(parsed_ref)}")
                 continue # no id, minor instance, skip
             # see if it's already in table
             bib_saved_entry_tuple = ocd.get_references_from_biblioxml_table(article_id=artInfo.art_id, ref_local_id=ref_id)
@@ -548,7 +556,8 @@ def update_bincs(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
             
             # merge record info
             bib_total_reference_count += 1
-            bib_entry = opasSolrLoadSupport.BiblioEntry(artInfo, ref)
+            #bib_entry = opasSolrLoadSupport.BiblioEntry(artInfo.art_id, parsed_ref)
+            bib_entry = opasBiblioSupport.BiblioEntry(artInfo.art_id, ref_or_parsed_ref=parsed_ref)
             #if bib_entry.sourcecode is None:
                 #if isinstance(bib_entry.source_title, str) and not opasgenlib.is_empty(bib_entry.source_title):
                     #bib_entry.sourcecode, dummy, dummy = gJrnlData.getPEPJournalCode(strText=bib_entry.source_title) 
@@ -570,7 +579,7 @@ def update_bincs(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
                         # find and store rxcf for related articles (side effect of function)
                         if gDbg2 and verbose: print (f"\t...Finding related articles for bibliography based on ref_title")
                         # called routine updates ref if found
-                        rxcf = find_related_articles(ref,
+                        rxcf = find_related_articles(parsed_ref,
                                                      art_or_source_title=bib_entry.ref_title,
                                                      query_target="art_title_xml",
                                                      max_words=opasConfig.MAX_WORDS,
@@ -603,7 +612,7 @@ def update_bincs(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
                         log_everywhere_if(gDbg2, level="info", msg=msg)
                         continue
                         
-                    ref.attrib["rx"] = locator.articleID()
+                    parsed_ref.attrib["rx"] = locator.articleID()
                     search_str = f"//binc[@id='{ref_id}']"
                     msg = f"\t\t\t...Matched Journal {opasxmllib.xml_xpath_return_xmlstringlist(parsed_xml, search_str)[0]}"
                     log_everywhere_if(gDbg2, level="debug", msg=msg)
@@ -612,7 +621,7 @@ def update_bincs(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
             else:
                 bk_locator_str, match_val, whatever = known_books.getPEPBookCodeStr(bib_entry.ref_entry_text)
                 if bk_locator_str is not None:
-                    ref.attrib["rx"] = bk_locator_str 
+                    parsed_ref.attrib["rx"] = bk_locator_str 
                     search_str = f"//binc[@id='{ref_id}']"
                     msg = f"\t\t\t...Matched Book {match_val}. {opasxmllib.xml_xpath_return_xmlstringlist(parsed_xml, search_str)[0]}"
                     log_everywhere_if(gDbg2, level="info", msg=msg)
@@ -632,7 +641,7 @@ def update_bincs(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
                         # find_related_articles assigns to ref attrib rxcf (hence no need to use return val)
                         if gDbg2 and verbose: print (f"\t...Finding related articles for bibliography based on source_title")
                         # called routine updates ref if found
-                        rxcf = find_related_articles(ref,
+                        rxcf = find_related_articles(parsed_ref,
                                                      art_or_source_title=bib_entry.source_title,
                                                      query_target="art_title_xml",
                                                      max_words=opasConfig.MAX_WORDS,
@@ -641,7 +650,7 @@ def update_bincs(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
                                                      max_cf_list=opasConfig.MAX_CF_LIST)
 
                         if rxcf == [] and bib_entry.ref_title:
-                            rxcf = find_related_articles(ref,
+                            rxcf = find_related_articles(parsed_ref,
                                                          art_or_source_title=bib_entry.ref_title,
                                                          query_target="art_title_xml",
                                                          max_words=opasConfig.MAX_WORDS,
@@ -688,7 +697,7 @@ def update_bincs(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
                                 base_info = opasPySolrLib.get_base_article_info_by_id(locator)
                                 
                             if base_info is not None:
-                                ref.attrib["rx"] = locator.articleID()
+                                parsed_ref.attrib["rx"] = locator.articleID()
                                 search_str = f"//binc[@id='{ref_id}']"
                                 msg = f"\t\t\t...Matched Book {match_val}. {opasxmllib.xml_xpath_return_xmlstringlist(parsed_xml, search_str)[0]}"
                                 log_everywhere_if(gDbg2, level="debug", msg=msg)
@@ -934,14 +943,16 @@ def xml_update(parsed_xml,
             term_json = json.dumps(artInfo.glossary_terms_dict)
             pep_addon = f'<unit type="glossary_term_dict"><!-- {term_json} --></unit>'
             artInfo.glossary_terms_dict_str = pep_addon
-            print (f"\t...{glossary_terms_total_found} glossary terms ({len(artInfo.glossary_terms_dict)} unique) in document")
+            if verbose:
+                print (f"\t...{glossary_terms_total_found} glossary terms ({len(artInfo.glossary_terms_dict)} unique) in document")
         else:
             pep_addon = artInfo.glossary_terms_dict_str
             m = re.search("<!--.*?(?P<dict_str>\{.*\}).*?-->", pep_addon)
             dict_str = m.group("dict_str")
             artInfo.glossary_terms_dict = json.loads(dict_str)
             glossary_terms_total_found = sum(artInfo.glossary_terms_dict.values())
-            print (f"\t...Glossary terms list loaded from database. {glossary_terms_total_found} glossary terms ({len(artInfo.glossary_terms_dict)} unique) in document")
+            if verbose:
+                print (f"\t...Glossary terms list loaded from database. {glossary_terms_total_found} glossary terms ({len(artInfo.glossary_terms_dict)} unique) in document")
         
         new_unit = ET.fromstring(pep_addon, parser)
         parsed_xml.append(new_unit)
