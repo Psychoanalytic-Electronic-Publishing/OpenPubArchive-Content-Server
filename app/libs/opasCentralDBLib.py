@@ -1208,7 +1208,7 @@ class opasCentralDB(object):
         ret_val = None
 
         if ref_local_id is not None:
-            local_id_clause = f"AND bib_local_id RLIKE '{ref_local_id}'"
+            local_id_clause = f"AND ref_local_id RLIKE '{ref_local_id}'"
         else:
             local_id_clause = ""
             

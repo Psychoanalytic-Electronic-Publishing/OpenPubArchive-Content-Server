@@ -143,7 +143,7 @@ class TestXMLProcessing(unittest.TestCase):
             local_id = n[1]
             result = ocd.get_references_from_biblioxml_table(document_id, local_id)
             assert result[0].art_id == document_id
-            print(result[0].art_id, result[0].bib_sourcetitle)
+            print(result[0].art_id, result[0].ref_sourcetitle)
 
     def test_2_glossary_word_markup(self):
         """

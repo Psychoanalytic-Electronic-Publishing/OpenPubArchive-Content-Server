@@ -114,29 +114,32 @@ class BiblioxmlGeneric(BaseModel):
 
 class Biblioxml(BaseModel):
     art_id: str = Field(None, title="Article ID (locator) of the instance containing the reference")
-    bib_local_id: str = Field(None, title="ID of the be or binc element in the instance")
+    ref_local_id: str = Field(None, title="ID of the be or binc element in the instance")
     art_year: Optional[int]
-    bib_rx: str = Field(None)
-    bib_rx_confidence: float = Field(0, title="Confidence level of assigned rx. Manual QA = 1, code parsed = .99, Heuristic = .1 to .97")
-    bib_rxcf: str = Field(None, title="List of possible article ID codes for this reference")
-    bib_rxcf_confidence: float = Field(0, title="Max confidence level of rxcf codes")
-    bib_sourcecode: str = Field(None)
-    bib_authors: str = Field(None)
-    bib_articletitle: str = Field(None)
-    title: str = Field(None)
-    full_ref_text: str = Field(None)
-    bib_sourcetype: str = Field(None, title="journal, book, unknown") # could add video
-    bib_sourcetitle: str = Field(None)
-    bib_authors_xml: str = Field(None)
-    full_ref_xml: str = Field(None)
-    bib_pgrg: str = Field(None)
-    doi: Optional[str]
-    bib_year: str = Field(None)
-    bib_year_int: Optional[int]
-    bib_volume: str = Field(None)
-    bib_volume_int: Optional[int]
-    bib_volume_isroman: bool = Field(False, title="True if bib_volume is roman")
-    bib_publisher: str = Field(None)
+    art_title: str = Field(None)
+    ref_rx: str = Field(None)
+    ref_rx_confidence: float = Field(0, title="Confidence level of assigned rx. Manual QA = 1, code parsed = .99, Heuristic = .1 to .97")
+    ref_rxcf: str = Field(None, title="List of possible article ID codes for this reference")
+    ref_rxcf_confidence: float = Field(0, title="Max confidence level of rxcf codes")
+    ref_sourcecode: str = Field(None)
+    ref_authors: str = Field(None)
+    ref_authors_xml: str = Field(None)
+    ref_articletitle: str = Field(None)
+    ref_text: str = Field(None)
+    ref_sourcetype: str = Field(None, title="journal, book, unknown") # could add video
+    ref_is_book: bool = Field(False)
+    ref_sourcetitle: str = Field(None)
+    ref_authors_xml: str = Field(None)
+    ref_xml: str = Field(None)
+    ref_pgrg: str = Field(None)
+    ref_doi: Optional[str]
+    ref_title: str = Field(None)
+    ref_year: str = Field(None)
+    ref_year_int: Optional[int]
+    ref_volume: str = Field(None)
+    ref_volume_int: Optional[int]
+    ref_volume_isroman: bool = Field(False, title="True if ref_volume is roman")
+    ref_publisher: str = Field(None)
     last_update: datetime = Field(None)
 
 #-------------------------------------------------------

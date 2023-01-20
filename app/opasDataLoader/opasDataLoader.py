@@ -1052,7 +1052,7 @@ def main():
                             # record .99 confidence for any rx in source XML
                             if bib_entry.rx is not None and bib_entry.rx_confidence==0:
                                 bib_entry.rx_confidence=.99
-                            opasBiblioSupport.add_reference_to_biblioxml_table(ocd, artInfo, bib_entry)
+                            opasBiblioSupport.save_ref_to_biblioxml_table(ocd, artInfo, bib_entry)
     
                         try:
                             ocd.db.commit()

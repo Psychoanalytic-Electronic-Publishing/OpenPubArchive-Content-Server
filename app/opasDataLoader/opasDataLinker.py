@@ -121,7 +121,9 @@ def xxupdate_bincs(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
                     print (f"\t\t...Skipping attempted link of {ET.tostring(parsed_ref)}")
                 continue # no id, minor instance, skip
             # see if it's already in table
-            bib_saved_entry_tuple = ocd.get_references_from_biblioxml_table(article_id=artInfo.art_id, ref_local_id=ref_id)
+            bib_saved_entry_tuple = opasBiblioSupport.get_ref_from_db(ocd,
+                                                                      art_id=artInfo.art_id,
+                                                                      ref_local_id=ref_id)
             if bib_saved_entry_tuple is not None and bib_saved_entry_tuple != []:
                 bib_saved_entry = bib_saved_entry_tuple[0]
             else:
@@ -689,13 +691,13 @@ def fix_pgstart_errors_in_reflinks(ocd=ocd,
 if __name__ == "__main__":
 
     if 0:
-        set1 = "select * from api_biblioxml where bib_rx is NULL and bib_authors like '%Freud%'"
+        set1 = "select * from api_biblioxml where ref_rx is NULL and bib_authors like '%Freud%'"
         walk_through_reference_set(ocd, sql_set_select=set1, set_description="Freud")
     elif 0:
-        set1 = "select * from api_biblioxml where bib_rx is not NULL and bib_authors like '%Freud%'"
+        set1 = "select * from api_biblioxml where ref_rx is not NULL and bib_authors like '%Freud%'"
         clean_reference_links(ocd, set1)
     elif 1:
-        set1 = "select * from api_biblioxml where bib_rx is not NULL;"
+        set1 = "select * from api_biblioxml where ref_rx is not NULL;"
         fix_pgstart_errors_in_reflinks(ocd, set1)
     else:
         import doctest

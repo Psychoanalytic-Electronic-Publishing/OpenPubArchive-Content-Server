@@ -415,7 +415,7 @@ def update_biblio_nonheuristic(parsed_xml, artInfo, ocd, pretty_print=False, ver
         # load biblio records
         list_of_models = ocd.get_references_from_biblioxml_table(article_id=artInfo.art_id)
         if list_of_models:
-            api_biblioxml_dict_of_models = {x.bib_local_id: x for x in list_of_models}
+            api_biblioxml_dict_of_models = {x.ref_local_id: x for x in list_of_models}
         else:
             api_biblioxml_dict_of_models = {}
 
@@ -434,26 +434,26 @@ def update_biblio_nonheuristic(parsed_xml, artInfo, ocd, pretty_print=False, ver
 
             ref_rx = ref.attrib.get("rx")
             if bib_refdb_model:
-                if bib_refdb_model.bib_rx:
-                    bib_refdb_model.bib_rx = Locator(bib_refdb_model.bib_rx).articleID()
-                    bib_refdb_model.bib_rx_confidence = bib_refdb_model.bib_rx_confidence
+                if bib_refdb_model.ref_rx:
+                    bib_refdb_model.ref_rx = Locator(bib_refdb_model.ref_rx).articleID()
+                    bib_refdb_model.ref_rx_confidence = bib_refdb_model.ref_rx_confidence
                 
                 if ref_rx:
                     ref_rx = Locator(ref_rx).articleID()
-                    if bib_refdb_model.bib_rx:
-                        if bib_refdb_model.bib_rx != ref_rx and bib_refdb_model.bib_rx_confidence == 1:
+                    if bib_refdb_model.ref_rx:
+                        if bib_refdb_model.ref_rx != ref_rx and bib_refdb_model.ref_rx_confidence == 1:
                             # change ref, confidence is certain in db
-                            ref.attrib["rx"] = bib_refdb_model.bib_rx
-                            ref.attrib["rxconf"] = str(bib_refdb_model.bib_rx_confidence)
-                            if verbose: print (f"\t\t...Bib Dict ({bib_refdb_model.bib_rx}) overriding rx: {ref_rx}")
+                            ref.attrib["rx"] = bib_refdb_model.ref_rx
+                            ref.attrib["rxconf"] = str(bib_refdb_model.ref_rx_confidence)
+                            if verbose: print (f"\t\t...Bib Dict ({bib_refdb_model.ref_rx}) overriding rx: {ref_rx}")
                         else:
-                            if verbose: print (f"\t\t...Bib ID {ref_id} ref has rx: {ref_rx} Bib_dict: {bib_refdb_model.bib_rx}. {bib_entry.ref_entry_xml}")
+                            if verbose: print (f"\t\t...Bib ID {ref_id} ref has rx: {ref_rx} Bib_dict: {bib_refdb_model.ref_rx}. {bib_entry.ref_entry_xml}")
                             # no change to ref but make sure it's a valid locator
                             ref.attrib["rx"] = ref_rx
-                elif bib_refdb_model.bib_rx:
-                    if verbose: print (f"\t\t...Bib ID {ref_id} No rx Bib_dict used: {bib_refdb_model.bib_rx} {bib_refdb_model.full_ref_text}")
-                    ref.attrib["rx"] = bib_refdb_model.bib_rx
-                    ref.attrib["rxconf"] = str(bib_refdb_model.bib_rx_confidence)
+                elif bib_refdb_model.ref_rx:
+                    if verbose: print (f"\t\t...Bib ID {ref_id} No rx Bib_dict used: {bib_refdb_model.ref_rx} {bib_refdb_model.ref_text}")
+                    ref.attrib["rx"] = bib_refdb_model.ref_rx
+                    ref.attrib["rxconf"] = str(bib_refdb_model.ref_rx_confidence)
             
             if not ref.attrib.get("rx"):
                 # still no rx
