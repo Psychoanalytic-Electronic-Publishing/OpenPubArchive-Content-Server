@@ -33,7 +33,7 @@ import roman
 import logging
 logger = logging.getLogger(__name__)
 from loggingDebugStream import log_everywhere_if    # log as usual, but if first arg is true, also put to stdout for watching what's happening
-gDbg2 = True
+gDbg2 = False
 
 parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=False)
 
@@ -125,7 +125,7 @@ class BiblioEntry(object):
     bib_publisher: str = Field(None)
     last_update: datetime = Field(None)
     
-    def __init__(self, art_id, ref_or_parsed_ref, db_bib_entry=[]):
+    def __init__(self, art_id, ref_or_parsed_ref, db_bib_entry=[], verbose=False):
         
         # allow either string xml ref or parsed ref
         if isinstance(ref_or_parsed_ref, str):
@@ -313,8 +313,8 @@ class BiblioEntry(object):
                                     bib_publisher = self.publishers, 
                                     last_update = self.last_update                               
                                     )
-
-        log_everywhere_if(self.rx, "debug", f"\t\t...BibEntry {self.rx} loaded")
+        if gDbg2:
+            log_everywhere_if(self.rx, "debug", f"\t\t...BibEntry linked to {self.rx} loaded")
 
     #------------------------------------------------------------------------------------------------------------
     def identify_nonheuristic(self, ocd, pretty_print=False, verbose=False):

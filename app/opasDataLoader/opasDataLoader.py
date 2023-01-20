@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2023, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2023.0114/v2.0.049"   # !!! IMPORTANT: Increment opasXMLProcessor version (if chgd). It's written to the XML !!!
+__version__     = "2023.0120/v2.0.050"   # !!! IMPORTANT: Increment opasXMLProcessor version (if chgd). It's written to the XML !!!
 __status__      = "Development"
 
 programNameShort = "opasDataLoader"
@@ -570,7 +570,7 @@ def main():
                 #selected_input_build = options.input_build
                 
             if options.resetCoreData:
-                print("Reset Core Data option selected but has been disabled as of 1/10/2023: ", options.resetCoreData)
+                print("Reset Core Data option selected. As of 2023, it does not clear api_articles nor api_biblioxml. They are cleared via a postprocess program: ", options.resetCoreData)
             
             print(80*"*")
             print(f"Database will be updated. Location: {localsecrets.DBHOST}")
@@ -636,7 +636,7 @@ def main():
         solr_docs2 = pysolr.Solr(solrurl_docs)
 
     # Reset core's data if requested (mainly for early development)
-    if 0: # disabled for now - options.resetCoreData:
+    if options.resetCoreData:
         if not options.glossary_only: # options.fulltext_core_update:
             if not options.no_check:
                 cont = input ("The solr cores and the database article and artstat tables will be cleared.  Do you want to continue (y/n)?")
@@ -649,17 +649,21 @@ def main():
                 print ("Second Warning: Continuing the run (and core and database reset) in 20 seconds...")
                 time.sleep(20)               
 
-            msg = "*** Deleting all data from the docs and author cores, the articles, artstat, and biblio database tables ***"
+            msg = "*** Deleting all data from the docs and author cores, BUT NOT THE the articles, artstat, and biblio database tables ***"
             logger.warning(msg)
             print (msg)
-            ocd.delete_all_article_data()
+            # As of 2023, do not delete RDS/MySQL article data during build
+            # The api_biblioxml table is critical to linking, and is adjusted though opasDataLinker and manually to fix links
+            # we may be able to delete the article data from api_articles, but I believe we have referential integrity constraints
+            # on online which will delete the records from the bibliotable.
+            # DISABLED: ocd.delete_all_article_data()
             solr_docs2.delete(q='*:*')
             solr_docs2.commit()
             solr_authors2.delete(q="*:*")
             solr_authors2.commit()
 
         # reset glossary core when others are reset, or when --resetcore is selected with --glossaryonly   
-        if 1: # options.glossary_core_update:
+        if options.glossary_core_update:
             msg = "*** Deleting all data from the Glossary core ***"
             logger.warning(msg)
             print (msg)
@@ -839,7 +843,7 @@ def main():
                                                             input_build=selected_input_build, 
                                                             output_build=options.output_build)
                 separated_input_output = final_xml_filename != n.filespec
-
+                just_compiled = False
                 # smart rebuild should not rebuild glossary files, so skip those
                 if (smart_file_rebuild or options.forceRebuildAllFiles) and not rc_skip_glossary_kbd3_files.match(n.basename):
                     # make changes to the XML
@@ -901,8 +905,8 @@ def main():
                     file_text = lxml.etree.tostring(parsed_xml, pretty_print=options.pretty_printed, encoding="utf8").decode("utf-8")
                     file_text = file_prefix + file_text
                     # this is required if running on S3
-                    compile_success = fs.create_text_file(fname, data=file_text, delete_existing=True)
-                    if compile_success:
+                    just_compiled = fs.create_text_file(fname, data=file_text, delete_existing=True)
+                    if just_compiled:
                         rebuild_count += 1
                         log_everywhere_if(options.display_verbose , level="info", msg=f"\t...Compiled {n.basename} to ...{fname[-40:]}")
                     else:
@@ -1033,8 +1037,8 @@ def main():
                             log_everywhere_if(True, "error", f"Authors Core Commit error - Solr internal issue: perhaps lock issue? {e}")
                     
                 # Add to the references table
-                if not options.no_bibdbupdate and not compile_success: 
-                    # if compile_success is false, because otherwise, we just loaded these references!
+                if not options.no_bibdbupdate and not just_compiled: 
+                    # if just_compiled is false, because otherwise, we just loaded these references!
                     # only need to do bib save to db if not done separately via opasDataLinker 
                     if artInfo.ref_count > 0:
                         art_reference_count = artInfo.ref_count
@@ -1044,7 +1048,7 @@ def main():
     
                         ocd.open_connection(caller_name="processBibliographies")
                         for ref in bibReferences:
-                            bib_entry = opasSolrLoadSupport.BiblioEntry(artInfo.art_id, ref)
+                            bib_entry = opasBiblioSupport.BiblioEntry(artInfo.art_id, ref)
                             # record .99 confidence for any rx in source XML
                             if bib_entry.rx is not None and bib_entry.rx_confidence==0:
                                 bib_entry.rx_confidence=.99
