@@ -130,9 +130,9 @@ class TestXMLProcessing(unittest.TestCase):
 
     DocumentID = [
                   ('IJP.101.0273A', 'B.*'), 
-                  ('LU-AM.005I.0025A', 'B0001'),
-                  ('CPS.039.0107A', 'B0008'), 
-                  ('CPS.039.0107A', 'B0003'),
+                  ('LU-AM.005I.0025A', 'B001'),
+                  ('CPS.039.0107A', 'B008'), 
+                  ('CPS.039.0107A', 'B003'),
                   ]
 
     def test_1_get_reference_from_api_biblio_table(self):

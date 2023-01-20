@@ -105,7 +105,7 @@ class TestArticleID(unittest.TestCase):
             "FA.001.R0002", 
         ]
         for n in testIDs:
-            a = ArticleID(articleID=n)
+            a = ArticleID(art_id=n)
             print (a.art_id, a.standardized, a.alt_standard)
             assert(a.standardized == n.upper())
         

@@ -1054,7 +1054,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
             # Moved this down here, so we can fill in the Limit, Page and Offset fields based on whether there
             #  was a full-text request with a page offset and limit
             # Solr search was ok
-            responseInfo = models.ResponseInfo(count = len(results.docs),
+            responseInfo = models.ResponseInfo(count = len(documentItemList),
                                                fullCount = results.hits,
                                                totalMatchCount = results.hits,
                                                description=solr_query_spec.solrQuery.semanticDescription, 

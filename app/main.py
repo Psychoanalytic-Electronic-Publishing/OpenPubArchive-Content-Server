@@ -4259,7 +4259,7 @@ def metadata_articleid(response: Response,
     # api_id = opasCentralDBLib.API_METADATA_ARTICLEID
     
     # return the articleID model to the client to break it down for them
-    ret_val = ArticleID(articleID=articleID, allInfo=diagnostics)
+    ret_val = ArticleID(art_id=articleID, allInfo=diagnostics)
     
     return ret_val
 

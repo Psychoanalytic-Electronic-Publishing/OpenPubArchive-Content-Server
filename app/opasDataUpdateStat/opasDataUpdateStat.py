@@ -340,7 +340,7 @@ def update_solr_stat_data(solrcon, all_records:bool=False):
             if results.raw_response["response"]["numFound"] > 0:
                 found = True
             else: # TryAlternateID:
-                parsed_id = ArticleID(articleID=doc_id)
+                parsed_id = ArticleID(art_id=doc_id)
                 results = solrcon.search(q = f"art_id:{parsed_id.alt_standard}")
                 if results.raw_response["response"]["numFound"] == 1:  # only accept alternative if there's only one match (otherwise, not known which)
                     # odds are good this is what was cited.
