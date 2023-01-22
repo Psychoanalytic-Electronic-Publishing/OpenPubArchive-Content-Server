@@ -14,7 +14,7 @@ Can optionally
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2023.0111/v.1.0.106"  # recorded in xml processed pepkbd3 procby, keep up to date!
+__version__     = "2023.0121/v.1.0.107"  # recorded in xml processed pepkbd3 procby, keep up to date!
 __status__      = "Development"
 
 programNameShort = "opasXMLProcessor"
@@ -428,7 +428,7 @@ def update_biblio_nonheuristic(parsed_xml, artInfo, ocd, pretty_print=False, ver
         # bib_total_reference_count = 0
         for ref in bibReferences:
             #bib_entry = opasSolrLoadSupport.BiblioEntry(art_id=artInfo.art_id, ref=ref)
-            bib_entry = opasBiblioSupport.BiblioEntry(art_id=artInfo.art_id, ref_or_parsed_ref=ref)
+            bib_entry = opasBiblioSupport.BiblioEntry(art_id=artInfo.art_id, art_year=artInfo.art_year_int, ref_or_parsed_ref=ref)
             ref_id = bib_entry.ref_local_id
             bib_refdb_model = api_biblioxml_dict_of_models.get(ref_id)
 
@@ -447,7 +447,7 @@ def update_biblio_nonheuristic(parsed_xml, artInfo, ocd, pretty_print=False, ver
                             ref.attrib["rxconf"] = str(bib_refdb_model.ref_rx_confidence)
                             if verbose: print (f"\t\t...Bib Dict ({bib_refdb_model.ref_rx}) overriding rx: {ref_rx}")
                         else:
-                            if verbose: print (f"\t\t...Bib ID {ref_id} ref has rx: {ref_rx} Bib_dict: {bib_refdb_model.ref_rx}. {bib_entry.ref_entry_xml}")
+                            if verbose: print (f"\t\t...Bib ID {ref_id} ref has rx: {ref_rx} Bib_dict: {bib_refdb_model.ref_rx}. {bib_entry.ref_xml}")
                             # no change to ref but make sure it's a valid locator
                             ref.attrib["rx"] = ref_rx
                 elif bib_refdb_model.ref_rx:
@@ -458,7 +458,7 @@ def update_biblio_nonheuristic(parsed_xml, artInfo, ocd, pretty_print=False, ver
             if not ref.attrib.get("rx"):
                 # still no rx
                 if bib_entry.ref_is_book:
-                    bk_locator_str, match_val, whatever = known_books.getPEPBookCodeStr(bib_entry.ref_entry_text)
+                    bk_locator_str, match_val, whatever = known_books.getPEPBookCodeStr(bib_entry.ref_text)
                     if bk_locator_str is not None:
                         ref.attrib["rx"] = bk_locator_str
                         search_str = f"//be[@id='{ref_id}']"
@@ -468,19 +468,19 @@ def update_biblio_nonheuristic(parsed_xml, artInfo, ocd, pretty_print=False, ver
                     else:
                         # see if we have info to link SE/GW etc., these are in a sense like journals
                         pep_ref = False
-                        if PEPJournalData.PEPJournalData.rgxSEPat2.search(bib_entry.ref_entry_text):
+                        if PEPJournalData.PEPJournalData.rgxSEPat2.search(bib_entry.ref_text):
                             pep_ref = True
                             bib_entry.sourcecode = "SE"
-                        elif PEPJournalData.PEPJournalData.rgxGWPat2.search(bib_entry.ref_entry_text):
+                        elif PEPJournalData.PEPJournalData.rgxGWPat2.search(bib_entry.ref_text):
                             pep_ref = True
                             bib_entry.sourcecode = "GW"
                 
-                if not ref.attrib.get("rx") and bib_entry.sourcecode:
-                    if not opasgenlib.is_empty(bib_entry.pgrg):
+                if not ref.attrib.get("rx") and bib_entry.ref_sourcecode:
+                    if not opasgenlib.is_empty(bib_entry.ref_pgrg):
                         try:
-                            bib_pgstart, bib_pgend = bib_entry.pgrg.split("-")
+                            bib_pgstart, bib_pgend = bib_entry.ref_pgrg.split("-")
                         except Exception as e:
-                            bib_pgstart = bib_entry.pgrg
+                            bib_pgstart = bib_entry.ref_pgrg
                     else:
                         if bib_entry.ref_is_book:
                             bib_pgstart = 0
@@ -489,13 +489,13 @@ def update_biblio_nonheuristic(parsed_xml, artInfo, ocd, pretty_print=False, ver
                     
                     if bib_pgstart or bib_entry.ref_is_book:
                         locator = Locator(strLocator=None,
-                                          jrnlCode=bib_entry.sourcecode, 
+                                          jrnlCode=bib_entry.ref_sourcecode, 
                                           jrnlVolSuffix="", 
-                                          jrnlVol=bib_entry.volume, 
+                                          jrnlVol=bib_entry.ref_volume, 
                                           jrnlIss=None, 
                                           pgVar="A", 
                                           pgStart=bib_pgstart, 
-                                          jrnlYear=bib_entry.year, 
+                                          jrnlYear=bib_entry.ref_year, 
                                           localID=ref_id, 
                                           keepContext=1, 
                                           forceRoman=False, 
@@ -511,7 +511,7 @@ def update_biblio_nonheuristic(parsed_xml, artInfo, ocd, pretty_print=False, ver
                         locator = None
 
                     if locator is None or locator.valid == 0:
-                        msg = f"\t\t...Bib ID {ref_id} not enough info {bib_entry.sourcecode}.{bib_entry.volume}.{bib_pgstart} {bib_entry.ref_entry_text}"
+                        msg = f"\t\t...Bib ID {ref_id} not enough info {bib_entry.ref_sourcecode}.{bib_entry.ref_volume}.{bib_pgstart} {bib_entry.ref_text}"
                         log_everywhere_if(verbose, level="info", msg=msg)
                     elif not pep_ref:
                         pass
@@ -557,24 +557,24 @@ def update_bincs(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
             # merge record info
             bib_total_reference_count += 1
             #bib_entry = opasSolrLoadSupport.BiblioEntry(artInfo.art_id, parsed_ref)
-            bib_entry = opasBiblioSupport.BiblioEntry(artInfo.art_id, ref_or_parsed_ref=parsed_ref)
+            bib_entry = opasBiblioSupport.BiblioEntry(art_id=artInfo.art_id, art_year=artInfo.art_year_int, ref_or_parsed_ref=parsed_ref)
             #if bib_entry.sourcecode is None:
                 #if isinstance(bib_entry.source_title, str) and not opasgenlib.is_empty(bib_entry.source_title):
                     #bib_entry.sourcecode, dummy, dummy = gJrnlData.getPEPJournalCode(strText=bib_entry.source_title) 
 
             try:
-                if not opasgenlib.is_empty(bib_entry.pgrg):
-                    bib_pgstart, bib_pgend = bib_entry.pgrg.split("-")
+                if not opasgenlib.is_empty(bib_entry.ref_pgrg):
+                    bib_pgstart, bib_pgend = bib_entry.ref_pgrg.split("-")
             except ValueError as e:
-                if not opasgenlib.is_empty(bib_entry.pgrg):
-                    bib_pgstart = bib_entry.pgrg
-                    bib_pgend = bib_entry.pgrg
+                if not opasgenlib.is_empty(bib_entry.ref_pgrg):
+                    bib_pgstart = bib_entry.ref_pgrg
+                    bib_pgend = bib_entry.ref_pgrg
                 else:
                     bib_pgstart = ""
                     bib_pgend = ""
                 
             if not bib_entry.ref_is_book: # journal or other
-                if opasgenlib.is_empty(bib_entry.sourcecode):
+                if opasgenlib.is_empty(bib_entry.ref_sourcecode):
                     if bib_entry.ref_title:
                         # find and store rxcf for related articles (side effect of function)
                         if gDbg2 and verbose: print (f"\t...Finding related articles for bibliography based on ref_title")
@@ -593,13 +593,13 @@ def update_bincs(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
                     
                 else: # if not opasgenlib.is_empty(bib_entry.sourcecode):
                     locator = Locator(strLocator=None,
-                                       jrnlCode=bib_entry.sourcecode, 
+                                       jrnlCode=bib_entry.ref_sourcecode, 
                                        jrnlVolSuffix="", 
-                                       jrnlVol=bib_entry.volume, 
+                                       jrnlVol=bib_entry.ref_volume, 
                                        jrnlIss=None, 
                                        pgVar="A", 
                                        pgStart=bib_pgstart, 
-                                       jrnlYear=bib_entry.year, 
+                                       jrnlYear=bib_entry.ref_year, 
                                        localID=ref_id, 
                                        keepContext=1, 
                                        forceRoman=False, 
@@ -608,7 +608,7 @@ def update_bincs(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
                                        filename=artInfo.filename)
                     # need to check if it's whole, and if it works, but for now.
                     if locator.valid == 0:
-                        msg = f"\t\t\t...Bib ID {ref_id} does not have enough info to link. {bib_entry.year}.{bib_entry.volume}.{bib_pgstart}"
+                        msg = f"\t\t\t...Bib ID {ref_id} does not have enough info to link. {bib_entry.ref_year}.{bib_entry.ref_volume}.{bib_pgstart}"
                         log_everywhere_if(gDbg2, level="info", msg=msg)
                         continue
                         
@@ -619,7 +619,7 @@ def update_bincs(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
 
                 
             else:
-                bk_locator_str, match_val, whatever = known_books.getPEPBookCodeStr(bib_entry.ref_entry_text)
+                bk_locator_str, match_val, whatever = known_books.getPEPBookCodeStr(bib_entry.ref_text)
                 if bk_locator_str is not None:
                     parsed_ref.attrib["rx"] = bk_locator_str 
                     search_str = f"//binc[@id='{ref_id}']"
@@ -629,20 +629,20 @@ def update_bincs(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
                 else:
                     # see if we have info to link SE/GW etc., these are in a sense like journals
                     pep_ref = False
-                    if PEPJournalData.PEPJournalData.rgxSEPat2.match(bib_entry.source_title) or PEPJournalData.PEPJournalData.rgxSEPat.match(bib_entry.source_title):
+                    if PEPJournalData.PEPJournalData.rgxSEPat2.match(bib_entry.ref_sourcetitle) or PEPJournalData.PEPJournalData.rgxSEPat.match(bib_entry.ref_sourcetitle):
                         pep_ref = True
                         bib_entry.sourcecode = "SE"
-                    elif PEPJournalData.PEPJournalData.rgxGWPat2.match(bib_entry.source_title):
+                    elif PEPJournalData.PEPJournalData.rgxGWPat2.match(bib_entry.ref_sourcetitle):
                         pep_ref = True
                         bib_entry.sourcecode = "GW"
                     
                     #try checking this anyway!
-                    if bib_entry.source_title:
+                    if bib_entry.ref_sourcetitle:
                         # find_related_articles assigns to ref attrib rxcf (hence no need to use return val)
                         if gDbg2 and verbose: print (f"\t...Finding related articles for bibliography based on source_title")
                         # called routine updates ref if found
                         rxcf = find_related_articles(parsed_ref,
-                                                     art_or_source_title=bib_entry.source_title,
+                                                     art_or_source_title=bib_entry.ref_sourcetitle,
                                                      query_target="art_title_xml",
                                                      max_words=opasConfig.MAX_WORDS,
                                                      min_words=opasConfig.MIN_WORDS,
@@ -665,11 +665,11 @@ def update_bincs(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
                         locator = Locator(strLocator=None,
                                            jrnlCode=bib_entry.sourcecode, 
                                            jrnlVolSuffix="", 
-                                           jrnlVol=bib_entry.volume, 
+                                           jrnlVol=bib_entry.ref_volume, 
                                            jrnlIss=None, 
                                            pgVar="A", 
                                            pgStart=bib_pgstart, 
-                                           jrnlYear=bib_entry.year, 
+                                           jrnlYear=bib_entry.ref_year, 
                                            localID=ref_id, 
                                            keepContext=1, 
                                            forceRoman=False, 
@@ -682,11 +682,11 @@ def update_bincs(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
                             if base_info is None:
                                 # try without page number
                                 locator = Locator(strLocator=None,
-                                                   jrnlCode=bib_entry.sourcecode, 
+                                                   jrnlCode=bib_entry.ref_sourcecode, 
                                                    jrnlVolSuffix="", 
-                                                   jrnlVol=bib_entry.volume, 
+                                                   jrnlVol=bib_entry.ref_volume, 
                                                    jrnlIss=None, 
-                                                   jrnlYear=bib_entry.year, 
+                                                   jrnlYear=bib_entry.ref_year, 
                                                    localID=ref_id, 
                                                    keepContext=1, 
                                                    forceRoman=False, 
@@ -702,12 +702,12 @@ def update_bincs(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
                                 msg = f"\t\t\t...Matched Book {match_val}. {opasxmllib.xml_xpath_return_xmlstringlist(parsed_xml, search_str)[0]}"
                                 log_everywhere_if(gDbg2, level="debug", msg=msg)
                             else:
-                                log_everywhere_if(gDbg2, level="debug", msg=f"didn't find this: {bib_entry.sourcecode}")
+                                log_everywhere_if(gDbg2, level="debug", msg=f"didn't find this: {bib_entry.ref_sourcecode}")
                             
                         
                     else:     
                         locator = None
-                        msg = f"\t\t\t...Skipped: {bib_entry.ref_entry_text}"
+                        msg = f"\t\t\t...Skipped: {bib_entry.ref_text}"
                         log_everywhere_if(gDbg2, level="debug", msg=msg)
 
 #------------------------------------------------------------------------------------------------------

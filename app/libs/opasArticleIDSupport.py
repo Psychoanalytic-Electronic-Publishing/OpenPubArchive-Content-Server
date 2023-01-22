@@ -59,7 +59,7 @@ def parse_glossary_terms_dict(glossary_terms_dict_str, verbose=False):
     #parsed_xml.append(new_unit)
     
     return ret_val
-   
+
 def parse_volume_code(vol_code: str, source_code: str=None): 
     """
     PEP Volume numbers in IDS can be numbers or suffixed by an issue code--we use them after a volume number when a journal repeats pagination
@@ -122,6 +122,12 @@ class ArticleID(BaseModel):
     But when designed as such, the structure of the article IDs may be different in different systems, so it needs to be configurable as possible.
     This routine is a start of allowing that to be defined as part of the customization. 
 
+    >>> a = ArticleID(art_id="FA.001A.0005A")
+    >>> print (a.art_issue_alpha_code)
+    A
+    >>> print (a.art_issue_int)
+    1
+
     >>> a = ArticleID(art_id="AJRPP.004.0007A")
     >>> print (a.articleidinfo)
     {'source_code': 'AJRPP', 'vol_str': '004', 'vol_numeric': '004', 'vol_suffix': '', 'vol_wildcard': '', 'issue_nbr': '', 'page': '0007A', 'roman': '', 'page_numeric': '0007', 'page_suffix': 'A', 'page_wildcard': ''}
@@ -129,6 +135,7 @@ class ArticleID(BaseModel):
     >>> a = ArticleID(art_id="MPSA.043.0117A")
     >>> print (a.alt_standard)
     MPSA.043?.0117A
+
     
     >>> a = ArticleID(art_id="AJRPP.004A.0007A")
     >>> print (a.art_vol_str)
@@ -165,6 +172,17 @@ class ArticleID(BaseModel):
     False
     >>> print (a)
     art_id='BADSTUFF' articleidinfo=None standardized=None alt_standard=None is_ArticleID=False src_code=None art_vol_suffix=None art_vol_int=0 art_vol_str=None art_issue_alpha_code=None is_supplement=False art_issue_int=0 art_pgstart=None art_pgstart_int=0 roman_prefix='' is_roman=False page_suffix=None
+
+    Handle Special Naming
+    >>> a = ArticleID(art_id="APA.062.NP0016A(bKBD3).xml")
+    >>> print (a.art_id)
+    APA.062.NP0016A
+
+    >>> a = ArticleID(art_id="IJP.001.E0001A")
+    >>> print (a.art_id)
+    IJP.001.E0001A
+
+
     """
     #************************************************************************************
     # pydantic model - object definitions for ArticleID       
@@ -182,43 +200,46 @@ class ArticleID(BaseModel):
     art_vol_str: str = Field(None, title="Volume number padded to 3 digits and issuecode if repeating pages or supplement")
     art_issue_alpha_code: str = Field(None, title="Suffix after volume indicating issue number alphabetically")
     is_supplement: bool = Field(False, title="")
-    art_issue_int: int = Field(0, title="")
+    art_issue: str = Field(None, title="")
+    art_issue_int: Optional[int] = Field(default=None, title="")
     art_pgstart: str = Field(None, title="")
-    art_pgstart_int: int = Field(0, title="")
+    art_pgstart_int: int = Field(default=0, title="")
     # pageWildcard: str = Field(None, title="")
     roman_prefix: str = Field("", title="R if start page number in ID is roman")
     is_roman: bool = Field(False, title="")
-    page_suffix: str = Field(None, title="")    
+    page_suffix: str = Field(None, title="")
+    special_section_prefix: str = Field("", title="")
+    is_special_section: bool = Field(False, title="")
     # allInfo: bool = Field(False, title="Show all captured information, e.g. for diagnostics")
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        regex_article_id = "(?P<source_code>[A-Z\-]{2,13})\.(?P<vol_str>(((?P<vol_numeric>[0-9]{3,4})(?P<vol_suffix>[A-Z]?))|(?P<vol_wildcard>\*)))(\((?P<issue_nbr>[0-9]{1,3})\))?\.(?P<page>((?P<special_section>(NP)?)(?P<roman>R?)(((?P<page_numeric>([0-9]{4,4}))(?P<page_suffix>[A-Z]?))|(?P<page_wildcard>\*))))"
+        regex_article_id = "(?P<source_code>[A-Z\-]{2,13})\.(?P<vol_str>(((?P<vol_numeric>[0-9]{3,4})(?P<vol_suffix>[A-Z]?))|(?P<vol_wildcard>\*)))(\((?P<issue_nbr>[0-9]{1,3})\))?\.(?P<page>((?P<special_section>(NP|E)?)(?P<roman>R?)(((?P<page_numeric>([0-9]{4,4}))(?P<page_suffix>[A-Z]?))|(?P<page_wildcard>\*))))"
         volumeWildcardOverride = ''
         m = re.match(regex_article_id, self.art_id, flags=re.IGNORECASE)
         if m is not None:
             self.articleidinfo = m.groupdict("")
             self.src_code = self.articleidinfo.get("source_code")
             # See if it has issue number numerically in ()
-            self.art_issue_int = self.articleidinfo.get("issue_nbr") # default for groupdict is ''
-            if self.art_issue_int != '':
-                self.art_issue_int = int(self.art_issue_int)
-            else:
-                self.art_issue_int = 0
-
+            self.art_issue = self.articleidinfo.get("issue_nbr") # default for groupdict is ''
+            self.art_issue_int = opasgenlib.str_to_int(self.art_issue, default=None)
+            if self.art_issue == "0":
+                self.art_issue = ""
             self.art_vol_suffix = self.articleidinfo.get("vol_suffix", "")
             altVolSuffix = ""
             if self.art_vol_suffix != "":
                 self.art_issue_alpha_code  = self.art_vol_suffix[0]  # sometimes it says supplement!
             else:
                 self.art_issue_alpha_code = ""
-                if self.art_issue_int > 0:
-                    altVolSuffix = string.ascii_uppercase[self.art_issue_int-1]
+                if self.art_issue_int is not None:
+                    if self.art_issue_int > 0:
+                        altVolSuffix = string.ascii_uppercase[self.art_issue_int-1]
                 
-            if not self.is_supplement and self.art_issue_int == 0 and self.art_issue_alpha_code != "":
+            if not self.is_supplement and self.art_issue_alpha_code != "":
                 # an issue code was specified (but not supplement or "S")
                 converted = parse_issue_code(self.art_issue_alpha_code, source_code=self.src_code, vol=self.art_vol_int)
-                if converted.isdecimal() and self.art_issue_int == 0:
+                if converted.isdecimal() and self.art_issue_int is None:
+                    self.art_issue = converted
                     self.art_issue_int = int(converted)
 
             self.art_vol_int = self.articleidinfo.get("vol_numeric") 
@@ -251,6 +272,9 @@ class ArticleID(BaseModel):
             if pageWildcard != '':
                 self.art_pgstart = pageWildcard
             
+            self.special_section_prefix = self.articleidinfo.get("special_section", "")
+            self.is_special_section = not opasgenlib.is_empty(self.special_section_prefix)
+            
             self.roman_prefix = self.articleidinfo.get("roman", "")  
             self.is_roman = self.roman_prefix.upper() == "R"
             #if self.isRoman:
@@ -273,8 +297,8 @@ class ArticleID(BaseModel):
             
             if volumeWildcardOverride == '':
                 if pageWildcard == '':
-                    self.standardized += f".{self.roman_prefix}{self.art_pgstart}{self.page_suffix}"
-                    self.alt_standard += f".{self.roman_prefix}{self.art_pgstart}{self.page_suffix}"
+                    self.standardized += f".{self.special_section_prefix}{self.roman_prefix}{self.art_pgstart}{self.page_suffix}"
+                    self.alt_standard += f".{self.special_section_prefix}{self.roman_prefix}{self.art_pgstart}{self.page_suffix}"
                     #self.standardizedPlusIssueCode += f".{self.roman_prefix}{self.pageNbrStr}{self.pageSuffix}"
                 else:
                     self.standardized += f".*"
@@ -291,14 +315,6 @@ class ArticleID(BaseModel):
             self.art_id = self.standardized
         else:
             self.is_ArticleID = False   
-    
-class ArticleInfoBasic(BaseModel):
-    def __init__(self, art_id, parsed_xml=None, logger=None, filename_base="", fullfilename=None, verbose=None, **kwargs):
-        super().__init__(**kwargs)
-        
-        self.art_id = art_id
-        self.art_id_from_filename = art_id # file name will always already be uppercase (from caller)
-    
     
 #------------------------------------------------------------------------------------------------------
 class ArticleInfo(BaseModel):
@@ -398,7 +414,6 @@ class ArticleInfo(BaseModel):
     file_updated: Optional[bool]
     filedatetime: Optional[str]
     filename: Optional[str]
-    filename: Optional[str]
     filename_artidinfo: Optional[str]
     fullfilename: Optional[str]
     glossary_terms_dict: Optional[dict]
@@ -482,13 +497,14 @@ class ArticleInfo(BaseModel):
             file_contents_art_id = opasxmllib.xml_xpath_return_textsingleton(parsed_xml, "//artinfo/@id", None)
             basic_art_info = ArticleID(art_id=file_contents_art_id)
                 
-        if not basic_art_info.is_ArticleID and parsed_xml:
+        if not basic_art_info.is_ArticleID and not opasgenlib.is_empty(parsed_xml):
             # should try not to call this this way, but for testing, it's useful.  
             basic_art_info.art_vol_str = opasxmllib.xml_xpath_return_textsingleton(parsed_xml, '//artinfo/artvol/node()', default_return=None)
             basic_art_info.src_code = parsed_xml.xpath("//artinfo/@j")[0]
             basic_art_info.src_code = basic_art_info.src_code.upper()  # 20191115 - To make sure this is always uppercase
             basic_art_info.art_vol_str = opasxmllib.xml_xpath_return_textsingleton(parsed_xml, '//artinfo/artvol/node()', default_return=None)
             basic_art_info.art_issue = opasxmllib.xml_xpath_return_textsingleton(parsed_xml, '//artinfo/artiss/node()', default_return=None)
+            basic_art_info.art_issue_int = opasgenlib.str_to_int(basic_art_info.art_issue, default=None)
             
             # for compare/debug
             vol_actual = opasxmllib.xml_xpath_return_textsingleton(parsed_xml, '//artinfo/artvol/@actual', default_return=None)
@@ -536,7 +552,7 @@ class ArticleInfo(BaseModel):
             self.art_issue = str(basic_art_info.art_issue_int)
             self.art_pgstart = basic_art_info.art_pgstart
         else:
-            raise Exception("error")
+            raise ValueError(f"Fatal Error: {filename_base} is improperly named and does not have a valid article ID: {basic_art_info.dict()}")
         
         self.article_id_dict = basic_art_info.dict()
         #self.art_id_from_filename = art_id # file name will always already be uppercase (from caller)
@@ -894,6 +910,18 @@ class ArticleInfo(BaseModel):
     
             except Exception as e:
                 logger.error(f"ArticleInfoError: Art PgRg escape error: {e}")
+                safe_art_pgrg = ''
+
+            try:
+                if self.bk_title is not None:
+                    safe_src_title_full = html.escape(self.bk_title)
+                elif self.src_title_full is not None:
+                    safe_src_title_full = html.escape(self.src_title_full)
+                else:
+                    logger.info(f"Source title is None")
+                    safe_src_title_full = ''
+            except Exception as e:
+                logger.error(f"ArticleInfoError: Art bk_title escape error: {e}")
                 safe_art_pgrg = ''
                 
             # Usually we put the abbreviated title here, but that won't always work here.

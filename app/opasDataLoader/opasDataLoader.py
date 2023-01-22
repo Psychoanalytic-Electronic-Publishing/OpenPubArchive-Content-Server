@@ -7,8 +7,10 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2023, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2023.0120/v2.0.050"   # !!! IMPORTANT: Increment opasXMLProcessor version (if chgd). It's written to the XML !!!
+__version__     = "2023.0121/v2.1.001"   # Requires update to api_biblioxml and views based on it.
 __status__      = "Development"
+
+# !!! IMPORTANT: Increment opasXMLProcessor version (if version chgd). It's written to the XML !!!
 
 programNameShort = "opasDataLoader"
 
@@ -266,6 +268,12 @@ def file_was_loaded_to_solr_after(solrcore, after_date, art_id):
 
 #------------------------------------------------------------------------------------------------------
 def output_file_needs_rebuilding(outputfilename, inputfilename=None, inputfilespec=None, art_id=None):
+    """
+    Checks and returns true if:
+       - output (precompiled markup) file doesn't exist
+       - input file is dated after the output file
+       - if a reference in the biblio (via api_biblioxml) has been updated
+    """
     ret_val = False
     outfile_exists = True
     infile_exists = True
@@ -761,6 +769,7 @@ def main():
             rc_skip_glossary_kbd3_files = re.compile(glossary_file_skip_pattern, re.IGNORECASE)
             insert_date = ocd.get_last_record_insertion_date()
             for n in filenames:
+                fullfilename = n.filespec
                 fileTimeStart = time.time()
                 input_file_was_updated = False
                 output_file_newer_than_solr = False
@@ -779,7 +788,12 @@ def main():
                     inputfilename = str(n.filespec)
                 
                 outputfilename = inputfilename.replace(opasConfig.DEFAULT_INPUT_BUILD, selected_output_build) # was opasConfig.DEFAULT_OUTPUT_BUILD)
-
+                # ###############################################################################
+                # Check if:
+                #   - output (precompiled markup) file doesn't exist
+                #   - input file is dated after the output file
+                #   - if a reference in the biblio (via api_biblioxml) has been updated
+                # ###############################################################################
                 file_status_tuple = output_file_needs_rebuilding(inputfilespec=n,
                                                                  inputfilename=inputfilename,
                                                                  outputfilename=outputfilename,
@@ -798,10 +812,10 @@ def main():
                                    
                 if not options.forceRebuildAllFiles:  # not forced, but always force processed for single file 
                     if not options.display_verbose and processed_files_count % 100 == 0 and processed_files_count != 0: # precompiled xml files loaded progress indicator
-                        print (f"Precompiled XML Files ...loaded {processed_files_count} out of {files_found} possible.")
+                        print (f"Precompiled XML Files \t ...loaded {processed_files_count} out of {files_found} possible.")
     
                     if not options.display_verbose and skipped_files % 100 == 0 and skipped_files != 0: # xml files loaded progress indicator
-                        print (f"Skipped {skipped_files} so far...loaded {processed_files_count} out of {files_found} possible." )
+                        print (f"Skipped {skipped_files} so far \t...loaded {processed_files_count} out of {files_found} possible." )
                     
                     # if smartload, this will be kbd3, and it basically only decides whether it needs to be built.
                     
@@ -955,16 +969,32 @@ def main():
                 #root = pepxml.getroottree()
         
                 # save common document (article) field values into artInfo instance for both databases
-                artInfo = opasArticleIDSupport.ArticleInfo(parsed_xml=parsed_xml,
-                                                           art_id=artID,
-                                                           filename_base=base,
-                                                           fullfilename=final_xml_filename,
-                                                           logger=logger)
+                try:
+                    artInfo = opasArticleIDSupport.ArticleInfo(parsed_xml=parsed_xml,
+                                                               art_id=artID,
+                                                               filename_base=base,
+                                                               fullfilename=final_xml_filename,
+                                                               logger=logger)
+                except Exception as e:
+                    log_everywhere_if(True, "error", f"Error: Article Info Incomplete: Skipping input file {fullfilename} or compiled file {final_xml_filename}. {e}")
+                    continue
+                
                 artInfo.filedatetime = final_fileinfo.timestamp_str
                 # artInfo.filename = base
                 artInfo.file_size = final_fileinfo.filesize
                 artInfo.file_updated = input_file_was_updated
                 artInfo.file_create_time = final_fileinfo.create_time
+                if artInfo.art_orig_rx is None:
+                    # check the database to see if there's a translation / relation
+                    # this returns the original
+                    artInfo.art_orig_rx = ocd.get_art_relations(artID)
+                    if options.display_verbose and artInfo.art_orig_rx is not None:
+                        msg = f"\t...Translations available. Marking original {artInfo.art_orig_rx}."
+                        log_everywhere_if(options.display_verbose, level="info", msg=msg)
+                else:
+                    msg = f"\t...Translations available. Origrx {artInfo.art_orig_rx}."
+                    log_everywhere_if(options.display_verbose, level="info", msg=msg)
+                    
                 try:
                     artInfo.file_classification = re.search("(?P<class>current|archive|future|free|special|offsite)", str(n.filespec), re.IGNORECASE).group("class")
                     # set it to lowercase for ease of matching later
@@ -989,7 +1019,7 @@ def main():
                 # walk through bib section and add to refs core database
                 precommit_file_count += 1
                 if precommit_file_count > configLib.opasCoreConfig.COMMITLIMIT:
-                    print(f"Committing info for {configLib.opasCoreConfig.COMMITLIMIT} documents/articles")
+                    print(f"** Committing info for {configLib.opasCoreConfig.COMMITLIMIT} documents/articles **")
     
                 # input to the glossary
                 if 1: # options.glossary_core_update:
@@ -1046,20 +1076,13 @@ def main():
                         bibReferences = parsed_xml.xpath("/pepkbd3//be")  # this is the second time we do this (also in artinfo, but not sure or which is better per space vs time considerations)
                         if options.display_verbose: print("\t...Loading %s references to the references database." % (artInfo.ref_count))
     
-                        ocd.open_connection(caller_name="processBibliographies")
                         for ref in bibReferences:
-                            bib_entry = opasBiblioSupport.BiblioEntry(artInfo.art_id, ref)
+                            bib_entry = opasBiblioSupport.BiblioEntry(art_id=artInfo.art_id, art_year=artInfo.art_year_int, ref_or_parsed_ref=ref)
                             # record .99 confidence for any rx in source XML
-                            if bib_entry.rx is not None and bib_entry.rx_confidence==0:
+                            if bib_entry.ref_rx is not None and bib_entry.ref_rx_confidence==0:
                                 bib_entry.rx_confidence=.99
-                            opasBiblioSupport.save_ref_to_biblioxml_table(ocd, artInfo, bib_entry)
-    
-                        try:
-                            ocd.db.commit()
-                        except mysql.connector.Error as e:
-                            print("SQL Database -- Biblio Commit failed!", e)
-                            
-                        ocd.close_connection(caller_name="processBibliographies")
+
+                            ocd.save_ref_to_biblioxml_table(bib_entry)
     
                 # close the file, and do the next
                 if options.display_verbose: print(f"\t...Time: {time.time() - fileTimeStart:.4f} seconds.")

@@ -1021,8 +1021,6 @@ def add_article_to_api_articles_table(ocd, artInfo, verbose=None):
     msg = f"\t...Saving metadata to Articles DB."
     log_everywhere_if(verbose, "info", msg)
     
-    ocd.open_connection(caller_name="processArticles")
-    
     # reduce object
   
     insert_if_not_exists = r"""REPLACE
@@ -1132,6 +1130,7 @@ def add_article_to_api_articles_table(ocd, artInfo, verbose=None):
     #query_param_dict["author_xml_list"] = None
         
     try:
+        # commit automatically handled by do_action_query
         res = ocd.do_action_query(querytxt=insert_if_not_exists, queryparams=query_params)
     except Exception as e:
         errStr = f"AddToArticlesDBError: insert error {e}"
@@ -1140,15 +1139,6 @@ def add_article_to_api_articles_table(ocd, artInfo, verbose=None):
     else:
         ret_val = True
         
-    try:
-        ocd.db.commit()
-        ocd.close_connection(caller_name="processArticles")
-    except mysql.connector.Error as e:
-        errStr = f"SQLDatabaseError: Commit failed! {e}"
-        logger.error(errStr)
-        if opasConfig.LOCAL_TRACE: print (errStr)
-        ret_val = False
-    
     return ret_val  # return True for success
 
 #------------------------------------------------------------------------------------------------------
@@ -1167,7 +1157,6 @@ def add_to_tracker_table(ocd, art_id, verbose=None):
     """
     ret_val = False
     caller_name = "add_to_tracker_table"
-    ocd.open_connection(caller_name=caller_name)
     insert_if_not_exists = r"""INSERT
                                INTO article_tracker (art_id)
                                values (
@@ -1188,15 +1177,6 @@ def add_to_tracker_table(ocd, art_id, verbose=None):
     else:
         ret_val = True
         
-    try:
-        ocd.db.commit()
-        ocd.close_connection(caller_name=caller_name)
-    except mysql.connector.Error as e:
-        errStr = f"SQLDatabaseError: Commit failed! {e}"
-        logger.error(errStr)
-        if opasConfig.LOCAL_TRACE: print (errStr)
-        ret_val = False
-    
     return ret_val  # return True for success
 
 #--------------------------------------------------------------------------------
@@ -1248,9 +1228,8 @@ def garbage_collect_stat(ocd):
     procname = "garbage_collect_stat"
     sqlActionQry = "delete from artstat where artstat.articleID not in (select art_id from api_articles)"
     try:
-        ocd.open_connection(caller_name=procname)
+        # commit automatically handled by do_action_query
         ret_val = ocd.do_action_query(sqlActionQry, queryparams=None)
-        ocd.close_connection(caller_name=procname)
     except Exception as e:
         logger.error(e)
         ret_val = False
@@ -1265,11 +1244,8 @@ def add_to_artstat_table(ocd, artInfo, verbose=None):
     update the corresponding database record
     """
     ret_val = False
-    procname = "AddToArtStatDB"
     msg = f"\t...Saving statistics to artStat table."
     log_everywhere_if(verbose, "info", msg)
-    
-    ocd.open_connection(caller_name=procname)
     
     if artInfo == None:
         print ("Error!")
@@ -1355,6 +1331,7 @@ def add_to_artstat_table(ocd, artInfo, verbose=None):
     #query_param_dict["author_xml_list"] = None
         
     try:
+        # commit automatically handled by do_action_query
         res = ocd.do_action_query(querytxt=selInsert, queryparams=query_params)
     except Exception as e:
         errStr = f"DBError: insert error {e}"
@@ -1362,16 +1339,7 @@ def add_to_artstat_table(ocd, artInfo, verbose=None):
         if opasConfig.LOCAL_TRACE: print (errStr)
     else:
         ret_val = True
-        
-    try:
-        ocd.db.commit()
-        ocd.close_connection(caller_name=procname)
-    except mysql.connector.Error as e:
-        errStr = f"DBError: Commit failed! {e}"
-        logger.error(errStr)
-        if opasConfig.LOCAL_TRACE: print (errStr)
-        ret_val = False
-    
+
     return ret_val  # return True for success
 
 

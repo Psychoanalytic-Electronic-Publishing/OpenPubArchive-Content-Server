@@ -79,20 +79,20 @@ class BiblioEntry(object):
        
     >>> ocd = opasCentralDBLib.opasCentralDB()  
 
-    >> ref = '<be id="B070"><a><l>Money-Kyrle</l>, R.</a> (<y>1968</y>). <t>Cognitive development.</t> <j>The International Journal of Psycho-Analysis</j>, <v>49</v>, <pp>691-698</pp>.</be>'
-    >> parsed_ref = etree.fromstring(ref, parser=parser)
-    >> be_journal = BiblioEntry(art_id="ANIJP-TR.007.0157A", ref_or_parsed_ref=parsed_ref)
-    >> be_journal.identify_nonheuristic(ocd)
+    >>> ref = '<be id="B070"><a><l>Money-Kyrle</l>, R.</a> (<y>1968</y>). <t>Cognitive development.</t> <j>The International Journal of Psycho-Analysis</j>, <v>49</v>, <pp>691-698</pp>.</be>'
+    >>> parsed_ref = etree.fromstring(ref, parser=parser)
+    >>> be_journal = BiblioEntry(art_id="ANIJP-TR.007.0157A", ref_or_parsed_ref=parsed_ref)
+    >>> be_journal.identify_nonheuristic(ocd)
     'IJP.049.0691A'
 
-    >> be_journal = BiblioEntry(art_id="FA.013A.0120A", ref_or_parsed_ref='<be id="B009"><a><l>Sternberg</l>, J</a> &amp; <a><l>Scott</l>, A</a> (<y>2009</y>) <t>Editorial.</t> <j>British Journal of Psychotherapy</j>, <v>25</v> (<bs>2</bs>): <pp>143-5</pp>.</be>')
-    >> be_journal.identify_nonheuristic(ocd)
+    >>> be_journal = BiblioEntry(art_id="FA.013A.0120A", ref_or_parsed_ref='<be id="B009"><a><l>Sternberg</l>, J</a> &amp; <a><l>Scott</l>, A</a> (<y>2009</y>) <t>Editorial.</t> <j>British Journal of Psychotherapy</j>, <v>25</v> (<bs>2</bs>): <pp>143-5</pp>.</be>')
+    >>> be_journal.identify_nonheuristic(ocd)
     'BJP.025.0143A'
 
-    >> ref = '<be id="B0006" reftype="journal" class="mixed-citation"><a class="western"><l>Beebe</l>, B.</a>, &amp; <a class="western"> <l>Lachmann</l>, F.</a> (<y>2002</y>). <t class="article-title">Organizing principles of interaction from infant research and the lifespan prediction of attachment: Application to adult treatment</t>. <j>Journal of Infant, Child, and Adolescent Psychotherapy</j>, <v> 2</v>(<bs>4</bs>), <pp>61 - 89</pp>&#8211;. doi:<webx type="doi">10.1080/15289168.2002.10486420</webx></be>'
-    >> parsed_ref = etree.fromstring(ref, parser=parser)
-    >> be_journal = BiblioEntry(art_id="FA.013A.0120A", ref_or_parsed_ref=parsed_ref)
-    >> rx = be_journal.identify_nonheuristic(ocd)
+    >>> ref = '<be id="B0006" reftype="journal" class="mixed-citation"><a class="western"><l>Beebe</l>, B.</a>, &amp; <a class="western"> <l>Lachmann</l>, F.</a> (<y>2002</y>). <t class="article-title">Organizing principles of interaction from infant research and the lifespan prediction of attachment: Application to adult treatment</t>. <j>Journal of Infant, Child, and Adolescent Psychotherapy</j>, <v> 2</v>(<bs>4</bs>), <pp>61 - 89</pp>&#8211;. doi:<webx type="doi">10.1080/15289168.2002.10486420</webx></be>'
+    >>> parsed_ref = etree.fromstring(ref, parser=parser)
+    >>> be_journal = BiblioEntry(art_id="FA.013A.0120A", ref_or_parsed_ref=parsed_ref)
+    >>> rx = be_journal.identify_nonheuristic(ocd)
     'JICAP.002.0061A'
     
     
@@ -100,7 +100,7 @@ class BiblioEntry(object):
     # Transitional, until I change this class to the model
     art_id: str = Field(None)
     ref_local_id: str = Field(None)
-    art_year: Optional[int]              # containing article year
+    art_year: int = Field(0)              # containing article year
     ref_rx: str = Field(None)
     ref_rx_confidence: float = Field(0)
     ref_rxcf: str = Field(None)
@@ -126,8 +126,11 @@ class BiblioEntry(object):
     ref_publisher: str = Field(None)
     last_update: datetime = Field(None)
     
-    def __init__(self, art_id, ref_or_parsed_ref, db_bib_entry=[], verbose=False):
+    def __init__(self, art_id, art_year=None, ref_or_parsed_ref=None, db_bib_entry=[], verbose=False):
         # allow either string xml ref or parsed ref
+        if ref_or_parsed_ref is None:
+            raise ValueError("You must provide a ref or parsed ref")
+
         if isinstance(ref_or_parsed_ref, str):
             parsed_ref = etree.fromstring(ref_or_parsed_ref, parser=parser)
             ref_entry_xml = ref_or_parsed_ref
@@ -141,6 +144,13 @@ class BiblioEntry(object):
         self.art_id = art_id
         self.ref_local_id = opasxmllib.xml_get_element_attr(parsed_ref, "id")
         self.ref_id = art_id + "." + self.ref_local_id
+        
+        self.art_year = art_year
+        if art_year is not None:
+            try:
+                self.art_year_int = int(art_year)
+            except Exception as e:
+                self.art_year_int = 0
 
         if ref_entry_xml is not None:
             ref_entry_xml = re.sub(" +", " ", ref_entry_xml)
@@ -179,10 +189,10 @@ class BiblioEntry(object):
         self.ref_sourcecode = ""
         self.ref_sourcetype = ""
         self.ref_is_book = False
-        # self.art_year_int = 0 # artInfo.art_year_int
+        # self.art_year = 0 # artInfo.art_year_int
         
         if self.ref_rx is not None:
-            self.ref_rx_sourcecode = re.search("(.*?)\.", self.rx, re.IGNORECASE).group(1)
+            self.ref_rx_sourcecode = re.search("(.*?)\.", self.ref_rx, re.IGNORECASE).group(1)
         else:
             self.ref_rx_sourcecode = None
 
@@ -198,7 +208,7 @@ class BiblioEntry(object):
                     try:
                         self.ref_volume_int = int(self.ref_volume)
                     except Exception as e:
-                        log_everywhere_if(True, "warning", msg=f"BibEntry vol {self.volume} is neither roman nor int {e}")
+                        log_everywhere_if(True, "warning", msg=f"BibEntry vol {self.ref_volume} is neither roman nor int {e}")
                         self.volume_int = 0
             else:
                 if self.ref_volume.isnumeric():
@@ -213,6 +223,7 @@ class BiblioEntry(object):
         self.ref_publisher = self.ref_publisher[:254]
         journal_title = opasxmllib.xml_get_subelement_textsingleton(parsed_ref, "j")
         book_title = opasxmllib.xml_get_subelement_textsingleton(parsed_ref, "bst")
+        self.ref_sourcetitle = None
         if journal_title in ("Ges. Schr.", ):
             book_title = journal_title
             journal_title = None
@@ -239,7 +250,7 @@ class BiblioEntry(object):
                 year_of_publication = opasgenlib.removeAllPunct(year) # punct_set=[',', '.', ':', ';', '(', ')', '\t', r'/', '"', "'", "[", "]"])
             if self.ref_sourcetitle is None or self.ref_sourcetitle == "":
                 ## sometimes has markup
-                self.source_title = book_title  # book title (bst)
+                self.ref_sourcetitle = book_title  # book title (bst)
         else:
             year_of_publication = opasxmllib.xml_get_subelement_textsingleton(parsed_ref, "y")
             sourcecode, dummy, dummy = jrnlData.getPEPJournalCode(self.ref_sourcetitle)
@@ -277,8 +288,8 @@ class BiblioEntry(object):
         else:
             self.ref_year_int = 0
             
-        self.author_name_list = [etree.tostring(x, with_tail=False).decode("utf8") for x in parsed_ref.findall("a") if x is not None]
-        self.ref_authors_xml = '; '.join(self.author_name_list)
+        author_name_list = [etree.tostring(x, with_tail=False).decode("utf8") for x in parsed_ref.findall("a") if x is not None]
+        self.ref_authors_xml = '; '.join(author_name_list)
         self.ref_authors_xml = self.ref_authors_xml[:2040]
         author_list = [opasxmllib.xml_elem_or_str_to_text(x) for x in parsed_ref.findall("a") if opasxmllib.xml_elem_or_str_to_text(x) is not None]  # final if x gets rid of any None entries which can rarely occur.
         self.ref_authors = '; '.join(author_list)
@@ -389,7 +400,7 @@ class BiblioEntry(object):
 
                 if locator is None or locator.valid == 0:
                     msg = f"\t\t...Bib ID {ref_id} not enough info {self.sourcecode}.{self.volume}.{bib_pgstart} {self.ref_text}"
-                    log_everywhere_if(verbose, level="info", msg=msg)
+                    log_everywhere_if(verbose, level="info", msg=msg[:opasConfig.MAX_LOGMSG_LEN])
                 elif not pep_ref:
                     pass
 
@@ -398,151 +409,6 @@ class BiblioEntry(object):
     def parse_nonxml_reference(self, ref_text, verbose=False):
         #Reusable Patterns (should not have group names)
         pass
-
-#------------------------------------------------------------------------------------------------------
-def save_ref_to_biblioxml_table(ocd, bib_entry, verbose=None):
-    """
-    Adds the bibliography data from a single document to the biblioxml table in mysql database opascentral.
-    
-    This database table is used as the basis for the cited_crosstab views, which show most cited articles
-      by period.  It replaces fullbiblioxml which was being imported from the non-OPAS document database
-      pepa1db, which is generated during document conversion from KBD3 to EXP_ARCH1.  That was being used
-      as an easy bridge to start up OPAS.
-      
-    Note: This data is in addition to the Solr pepwebrefs (biblio) core which is added elsewhere.  The SQL table is
-          primarily used for the cross-tabs, since the Solr core is more easily joined with
-          other Solr cores in queries.  (TODO: Could later experiment with bridging Solr/SQL.)
-          
-    Note: More info than needed for crosstabs is captured to this table, but that's as a bridge
-          to potential future uses.
-          
-          TODO: Finish redefining crosstab queries to use this base table.
-          
-    >>> ocd = opasCentralDBLib.opasCentralDB()
-    >>> art_id="FA.013A.0120A"
-    >>> ref_local_id='B009'
-    >>> bib_entry = get_ref_from_db(ocd, art_id=art_id, ref_local_id=ref_local_id)
-    >>> success = save_ref_to_biblioxml_table(ocd, bib_entry=bib_entry, verbose=True)
-    
-      
-    """
-    ret_val = False
-    
-    if bib_entry.ref_rx is None or bib_entry.ref_rxcf is None:
-        # Read from the current table
-        current_db_entry = get_ref_from_db(ocd,
-                                        art_id=bib_entry.art_id,
-                                        ref_local_id=bib_entry.ref_local_id)
-        if current_db_entry is not None:
-            if bib_entry.ref_rx is None:
-                bib_entry.ref_rx = current_db_entry.ref_rx
-                bib_entry.ref_rx_confidence = current_db_entry.ref_rx_confidence
-            elif current_db_entry.ref_rx_confidence > bib_entry.ref_rx_confidence:
-                bib_entry.ref_rx = current_db_entry.ref_rx
-                bib_entry.ref_rx_confidence = current_db_entry.ref_rx_confidence
-    
-            if bib_entry.ref_rxcf is None:
-                bib_entry.ref_rxcf = current_db_entry.ref_rxcf
-                bib_entry.ref_rxcf_confidence = current_db_entry.ref_rxcf_confidence 
-            elif current_db_entry.ref_rxcf_confidence > bib_entry.ref_rxcf_confidence:
-                bib_entry.ref_rxcf = current_db_entry.ref_rxcf
-                bib_entry.ref_rxcf_confidence = current_db_entry.ref_rxcf_confidence
-
-    if bib_entry.ref_rx_confidence is None:
-        bib_entry.ref_rx_confidence = 0
-        
-    if bib_entry.ref_rxcf_confidence is None:
-        bib_entry.ref_rxcf_confidence = 0
-
-    insert_if_not_exists = r"""REPLACE
-                               INTO api_biblioxml (
-                                    art_id,
-                                    ref_local_id,
-                                    art_year,
-                                    ref_rx,
-                                    ref_rx_confidence,
-                                    ref_sourcecode, 
-                                    ref_rxcf, 
-                                    ref_rxcf_confidence,
-                                    ref_authors, 
-                                    ref_authors_xml, 
-                                    ref_title, 
-                                    ref_sourcetype, 
-                                    ref_sourcetitle, 
-                                    ref_pgrg, 
-                                    ref_year, 
-                                    ref_year_int, 
-                                    ref_volume, 
-                                    ref_publisher,
-                                    ref_doi,
-                                    ref_xml,
-                                    ref_text
-                                    )
-                                values (%(art_id)s,
-                                        %(ref_local_id)s,
-                                        %(art_year)s,
-                                        %(ref_rx)s,
-                                        %(ref_rx_confidence)s,
-                                        %(ref_sourcecode)s,
-                                        %(ref_rxcf)s,
-                                        %(ref_rxcf_confidence)s,
-                                        %(ref_authors)s,
-                                        %(ref_authors_xml)s,
-                                        %(ref_title)s,
-                                        %(ref_sourcetype)s,
-                                        %(ref_sourcetitle)s,
-                                        %(ref_pgrg)s,
-                                        %(ref_year)s,
-                                        %(ref_year_int)s,
-                                        %(ref_volume)s,
-                                        %(ref_publisher)s,
-                                        %(ref_doi)s,
-                                        %(ref_xml)s,
-                                        %(ref_text)s
-                                        );
-                            """
-    query_param_dict = bib_entry.__dict__
-    # need to remove lists, even if they are not used.
-    #del query_param_dict["author_list"]
-    #del query_param_dict["author_name_list"]
-    #del query_param_dict["ref"]
-
-    res = ""
-    try:
-        res = ocd.do_action_query(querytxt=insert_if_not_exists, queryparams=query_param_dict)
-    except Exception as e:
-        errStr = f"AddToBiblioDBError: insert (returned {res}) error {e}"
-        logger.error(errStr)
-        if opasConfig.LOCAL_TRACE: print (errStr)
-        
-    else:
-        ret_val = True
-        
-    return ret_val  # return True for success
-
-#------------------------------------------------------------------------------------------------------
-def get_ref_from_db(ocd, art_id, ref_local_id, verbose=None):
-    """
-    Return a reference model from the api_biblioxml table in opascentral
-    
-    >>> ocd = opasCentralDBLib.opasCentralDB()
-    >>> ref=get_ref_from_db(ocd, art_id="FA.013A.0120A", ref_local_id='B009')
-    >>> ref.ref_rx
-    'BJP.025.0143A'
-    
-    """
-    ret_val = None
-
-    select = f"""SELECT * from api_biblioxml
-                 WHERE art_id = '{art_id}'
-                 AND ref_local_id = '{ref_local_id}'
-                 """
-
-    results = ocd.get_select_as_list_of_models(select, model=models.Biblioxml)
-    if results:
-        ret_val = results[0]
-
-    return ret_val
 
 #------------------------------------------------------------------------------------------------------------
 if __name__ == "__main__":

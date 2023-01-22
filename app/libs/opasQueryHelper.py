@@ -1989,6 +1989,7 @@ def get_base_article_info_from_search_result(result: dict, documentListItem: mod
             documentListItem.docType = result.get("art_type", None)
             if result.get("art_doi", None): documentListItem.doi = result.get("art_doi", None)
             documentListItem.issue = result.get("art_iss", None)
+            if documentListItem.issue == '0': documentListItem.issue = None
             documentListItem.issn = result.get("art_issn", None)
             documentListItem.isbn = result.get("art_isbn", None)
             documentListItem.embargo = result.get("art_embargo", False)

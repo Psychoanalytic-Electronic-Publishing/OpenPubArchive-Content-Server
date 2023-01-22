@@ -2006,6 +2006,7 @@ def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
             citeAs = opasgenlib.force_string_return_from_various_return_types(citeAs)
             vol = result.get("art_vol", None)
             issue = result.get("art_iss", None)
+            if issue == '0': issue = None
             issue_title = result.get("art_iss_title", None)
             issue_seqnbr = result.get("art_iss_seqnbr", None)
             listed_new_section_name = new_section_name = result.get("art_newsecnm", None)

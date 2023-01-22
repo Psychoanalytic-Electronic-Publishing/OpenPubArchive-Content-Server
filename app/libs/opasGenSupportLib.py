@@ -951,6 +951,33 @@ def split_long_lines(line, maxlen, splitter_ptn, joiner_ptn):
 
     return ret_val
 
+def str_to_int(str_to_convert:str, default=None, zero_allowed=False):
+    """
+    Convert string to int with error trapping, and default optional
+    where zero can be allowed or not allowed.
+    
+    >>> str_to_int("21")
+    21
+
+    >>> a = str_to_int("a", default="")
+    >>> a
+    ''
+    >>> a = str_to_int("a")
+    >>> a
+    """
+    ret_val = default
+    if str_to_convert:
+        try:
+            converted = int(str_to_convert)
+            if converted == 0 and not zero_allowed:
+                ret_val = default
+            else:
+                ret_val = converted
+        except Exception as e:
+            ret_val = default
+           
+    return ret_val
+
 # ----------------------------------------------------------------------------------------
 # the following routines from older codebase
 # ----------------------------------------------------------------------------------------

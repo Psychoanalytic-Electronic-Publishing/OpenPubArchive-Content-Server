@@ -59,8 +59,7 @@ class TestMetadataVolumes(unittest.TestCase):
         assert(response.ok == True)
         # test return
         r = response.json()
-        print (f"ZBK Volume Count: {r['volumeList']['responseInfo']['fullCount']}")
-        assert(r['volumeList']['responseInfo']['fullCount'] >= unitTestConfig.VOL_COUNT_ZBK) 
+        assert r['volumeList']['responseInfo']['fullCount'] >= unitTestConfig.VOL_COUNT_ZBK, f"{r['volumeList']['responseInfo']['fullCount']} should be >= {unitTestConfig.VOL_COUNT_ZBK}"
 
     def test_0_meta_volumes_api_IJPSP(self): 
         # ---------------------------------------------------------------------------------------

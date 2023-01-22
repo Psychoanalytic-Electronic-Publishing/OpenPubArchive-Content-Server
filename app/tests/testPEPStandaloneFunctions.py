@@ -34,6 +34,14 @@ class TestStandaloneFunctions(unittest.TestCase):
         print (resp)
         resp = opasQueryHelper.cleanup_solr_query("(freud, sigmund OR grotstein, james s)")
         print (resp)
+
+    def test_query_solr_erroneous_records_seen_in_some_builds(self):
+        # 2023-01-21 Seen some records without an art_id but not the subpara kind from SE and GW.
+        #  not sure where they come from but this will check for them.
+        # Shouldn't return any records.
+        r1, status = search_text(query="-art_id:* AND -id:GW* AND -id:SE*")
+        r1_count = r1.documentList.responseInfo.fullCount
+        assert(r1_count == 0)
         
     def test_query_equivalence(self):
         r1, status = search_text(query="mother and milk or father and child")
