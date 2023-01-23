@@ -924,19 +924,27 @@ def xml_update(parsed_xml,
         parser = ET.XMLParser(encoding='utf-8', recover=True, resolve_entities=False, load_dtd=False)
         # see if it's already been computed to save time
         art_stat = ocd.get_artstat(document_id=artInfo.art_id)
-        glossary_terms_dict = art_stat.get("glossaryDict")
-        if not glossary_terms_dict:
-            total_count, term_dict = glossEngine.doGlossaryMarkup(parsed_xml, pretty_print=pretty_print, markup_terms=markup_terms, verbose=verbose)
+        glossary_terms_dict_str = art_stat.get("glossaryDict")
+        if not glossary_terms_dict_str:
+            artInfo.glossary_terms_count, artInfo.glossary_terms_dict = glossEngine.doGlossaryMarkup(parsed_xml,
+                                                                                                     pretty_print=pretty_print,
+                                                                                                     markup_terms=markup_terms,
+                                                                                                     verbose=verbose)
             # need to compute it
-            term_json = json.dumps(term_dict)
+            term_json = json.dumps(artInfo.glossary_terms_dict)
             pep_addon = f'<unit type="glossary_term_dict"><!-- {term_json} --></unit>'
         else:
             print ("\t...Glossary terms list loaded from database")
-            pep_addon = glossary_terms_dict
+            pep_addon = glossary_terms_dict_str
+
+        m = re.search("<!--.*?(?P<dict_str>\{.*\}).*?-->", pep_addon)
+        dict_str = m.group("dict_str")
+        artInfo.glossary_terms_dict = json.loads(dict_str)
+        artInfo.glossary_terms_count = len(artInfo.glossary_terms_dict)
+        artInfo.glossary_terms_dict_str = pep_addon
 
         new_unit = ET.fromstring(pep_addon, parser)
         parsed_xml.append(new_unit)
-        artInfo.glossary_terms_dict = pep_addon
     
     web_links = parsed_xml.xpath("/pepkbd3//autaff//url") 
     logger.info("\t...Processing url links.")

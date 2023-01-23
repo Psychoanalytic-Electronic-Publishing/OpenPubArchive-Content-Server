@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2023, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2023.0111/v2.0.047"   # semver versioning after date.
+__version__     = "2023.0111b/v2.0.047b"   # semver versioning after date.
 __status__      = "Development"
 
 programNameShort = "opasDataLoader"
@@ -886,11 +886,11 @@ def main():
                     archived_files_not_loaded += 1
                     continue # skip this file
                 # ##########################################################################################################
-
-                # make sure the file we read is the processed file.  Should be the output/processed build.
+                # 
+                # make sure the file we read is the processed file. Should be the output/processed build, e.g. (bEXP_ARCH1).
                 # note: if input build is same as processed (output build), then this won't change and the input file/build
                 #       will be used
-                
+                # 
                 # Read processed file format (sometimes it's the input file, sometimes it's the output file)
                 fileXMLContents, final_fileinfo = fs.get_file_contents(final_xml_filename)
                 if fileXMLContents is None:

@@ -1761,13 +1761,19 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                                                )
    
             # responseInfo.count = len(documentItemList)
-    
+            # FOR DEBUGGING Glossary_group_terms, glossary_terms_dict in facets
+            #if opasConfig.DEBUG_TRACE and facet_counts: 
+                #facet_fields = facet_counts.get("facet_fields")
+                #if facet_fields:
+                    #facet_terms = facet_fields.get("glossary_group_terms", None)
+                    #if facet_terms:
+                        #print (facet_terms)
+                    
             documentListStruct = models.DocumentListStruct( responseInfo = responseInfo, 
                                                             responseSet = documentItemList
                                                             )
     
             documentList = models.DocumentList(documentList = documentListStruct)
-    
             ret_val = documentList
             
         except Exception as e:

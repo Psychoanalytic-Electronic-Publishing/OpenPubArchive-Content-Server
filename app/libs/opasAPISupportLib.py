@@ -28,6 +28,7 @@ import os
 import os.path
 import sys
 # import shlex
+import json
 import copy
 import string
 
@@ -66,6 +67,9 @@ import opasConfig
 import localsecrets
 
 import opasFileSupport
+from lxml import etree
+parser = etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True)
+
 import PEPGlossaryRecognitionEngine
 glossEngine = PEPGlossaryRecognitionEngine.GlossaryRecognitionEngine(gather=False)
 
@@ -117,7 +121,6 @@ def set_log_level(level_int):
     ret_val = logger.level
     logger.debug(f"Log Level: {logger.level}")
     return ret_val
-
     
 def get_query_item_of_interest(solrQuery):
     """
@@ -804,7 +807,6 @@ def documents_get_document_from_file(document_id,
         #fullfilename = fs.find(fullfilename, path_root="X:\AWS_S3\AWS PEP-Web-Live-Data\_PEPTests")
     
     fileXMLContents, input_fileinfo = fs.get_file_contents(fullfilename)
-    parser = etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True)
     parsed_xml = etree.fromstring(opasxmllib.remove_encoding_string(fileXMLContents), parser)
     title = opasxmllib.xml_xpath_return_textsingleton(parsed_xml, '//arttitle', default_return=None)
     abstract = opasxmllib.xml_xpath_return_textsingleton(parsed_xml, '//abs', default_return=None)
