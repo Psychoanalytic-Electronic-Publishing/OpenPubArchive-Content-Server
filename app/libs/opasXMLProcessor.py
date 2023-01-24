@@ -14,13 +14,14 @@ Can optionally
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2023.0121/v.1.0.107"  # recorded in xml processed pepkbd3 procby, keep up to date!
+__version__     = "2023.0123/v.1.0.108"  # recorded in xml processed pepkbd3 procby, keep up to date!
 __status__      = "Development"
 
 programNameShort = "opasXMLProcessor"
 
 gDbg1 = False # display errors on stdout
 gDbg2 = False # processing details
+gDbg3 = False # debugging details
 
 import logging
 logger = logging.getLogger(programNameShort)
@@ -44,7 +45,7 @@ import opasLocator
 from opasLocator import Locator
 import opasGenSupportLib as opasgenlib
 import loaderConfig
-import opasSolrLoadSupport
+# import opasSolrLoadSupport
 import PEPBookInfo
 import opasXMLPEPAuthorID 
 import PEPGlossaryRecognitionEngine
@@ -427,31 +428,54 @@ def update_biblio_nonheuristic(parsed_xml, artInfo, ocd, pretty_print=False, ver
         #processedFilesCount += 1
         # bib_total_reference_count = 0
         for ref in bibReferences:
-            #bib_entry = opasSolrLoadSupport.BiblioEntry(art_id=artInfo.art_id, ref=ref)
-            bib_entry = opasBiblioSupport.BiblioEntry(art_id=artInfo.art_id, art_year=artInfo.art_year_int, ref_or_parsed_ref=ref)
+            bib_entry = opasBiblioSupport.BiblioEntry(art_id=artInfo.art_id,
+                                                      art_year=artInfo.art_year_int,
+                                                      ref_or_parsed_ref=ref)
             ref_id = bib_entry.ref_local_id
             bib_refdb_model = api_biblioxml_dict_of_models.get(ref_id)
+            # ref_text_slice = opasgenlib.text_slice(bib_entry.ref_text, 25)
 
             ref_rx = ref.attrib.get("rx")
+            ref_rx_confidence = int(ref.attrib.get("rxconf", "0"))
+            if ref_rx is not None:
+                ref_rx = Locator(ref_rx).articleID()
+                
+            if ref_rx is not None:
+                if not ocd.article_exists(ref_rx):
+                    ref.attrib["rx"] = ""
+                    ref_rx_confidence = int(ref.attrib.get("rxconf", "0"))
+                    if verbose: print (f"\t\t...Bib ID {ref_id} ref rx: {ref_rx} doesn't exist. Removing and checking for replacement.")
+
+            # compare to database anyway
             if bib_refdb_model:
                 if bib_refdb_model.ref_rx:
                     bib_refdb_model.ref_rx = Locator(bib_refdb_model.ref_rx).articleID()
                     bib_refdb_model.ref_rx_confidence = bib_refdb_model.ref_rx_confidence
-                
+                    bib_refdb_slice = opasgenlib.text_slice(bib_refdb_model.ref_text)
                 if ref_rx:
-                    ref_rx = Locator(ref_rx).articleID()
                     if bib_refdb_model.ref_rx:
                         if bib_refdb_model.ref_rx != ref_rx and bib_refdb_model.ref_rx_confidence == 1:
                             # change ref, confidence is certain in db
                             ref.attrib["rx"] = bib_refdb_model.ref_rx
                             ref.attrib["rxconf"] = str(bib_refdb_model.ref_rx_confidence)
-                            if verbose: print (f"\t\t...Bib Dict ({bib_refdb_model.ref_rx}) overriding rx: {ref_rx}")
-                        else:
-                            if verbose: print (f"\t\t...Bib ID {ref_id} ref has rx: {ref_rx} Bib_dict: {bib_refdb_model.ref_rx}. {bib_entry.ref_xml}")
-                            # no change to ref but make sure it's a valid locator
-                            ref.attrib["rx"] = ref_rx
+                            if verbose: print (f"\t\t...dict ({bib_refdb_model.ref_rx}) overrides rx: {ref_rx} {bib_refdb_slice}")
+                        elif bib_refdb_model.ref_rx != ref_rx and bib_refdb_model.ref_rx_confidence > ref_rx_confidence:
+                            #keep separate from above case for debugging and improvement
+                            log_everywhere_if(gDbg3,
+                                              level="info",
+                                              msg=f"\t\t...Repl, rx with db (conf: {ref_rx_confidence}/{bib_refdb_model.ref_rx_confidence} {bib_refdb_slice}")
+                            ref.attrib["rx"] = bib_refdb_model.ref_rx
+                            ref.attrib["rxconf"] = str(bib_refdb_model.ref_rx_confidence)
+                        #else:
+                            #if ref_rx:
+                                #if not ocd.article_exists(ref_rx):
+                                    #ref.attrib["rx"] = bib_refdb_model.ref_rx
+                                    #ref.attrib["rxconf"] = bib_refdb_model.ref_rx_confidence
+                                #else:
+                                    # no change to ref 
+                            
                 elif bib_refdb_model.ref_rx:
-                    if verbose: print (f"\t\t...Bib ID {ref_id} No rx Bib_dict used: {bib_refdb_model.ref_rx} {bib_refdb_model.ref_text}")
+                    if verbose: print (f"\t\t...Bib ID {ref_id} Bib_dict used: {bib_refdb_model.ref_rx} {bib_refdb_slice}")
                     ref.attrib["rx"] = bib_refdb_model.ref_rx
                     ref.attrib["rxconf"] = str(bib_refdb_model.ref_rx_confidence)
             

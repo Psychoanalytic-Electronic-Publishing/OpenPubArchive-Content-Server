@@ -1016,7 +1016,7 @@ def documents_get_document(document_id,
                 if option_flags & opasConfig.OPTION_2_RETURN_TRANSLATION_SET:
                     # get document translations of the first document (note this also includes the original)
                     if document_list_item.origrx is not None:
-                        translationSet, count = opasPySolrLib.quick_docmeta_docsearch(q_str=f"art_origrx:{document_list_item.origrx}", req_url=req_url)
+                        translationSet, count = opasPySolrLib.quick_docmeta_docsearch(q_str=f"art_origrx:{document_list_item.origrx} OR art_id:{document_list_item.origrx}", req_url=req_url)
                         if translationSet is not None:
                             # set translationSet to a list, just like 
                             document_list_item.translationSet = translationSet

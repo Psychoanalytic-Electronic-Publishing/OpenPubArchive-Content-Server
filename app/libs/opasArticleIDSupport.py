@@ -7,6 +7,7 @@ __license__     = "Apache 2.0"
 import re
 import logging
 logger = logging.getLogger(__name__)
+from loggingDebugStream import log_everywhere_if
 
 import string
 import opasGenSupportLib as opasgenlib
@@ -35,6 +36,8 @@ SUPPLEMENT_ISSUE_SEARCH_STR = "Supplement" # this is what will be searched in "a
 
 import opasProductLib
 sourceDB = opasProductLib.SourceInfoDB()
+
+gDbg2 = True
 
 def parse_glossary_terms_dict(glossary_terms_dict_str, verbose=False):
     #if not glossary_terms_dict_str:
@@ -460,6 +463,8 @@ class ArticleInfo(BaseModel):
     art_paras_count: int = Field(0, title="")
     art_words_count: int = Field(0, title="")
     art_chars_count: int = Field(0, title="")
+    art_chars_meta_count: int = Field(0, title="")
+    art_chars_no_spaces_meta_count: int = Field(0, title="") 
     art_chars_no_spaces_count: int = Field(0, title="")
     # glossary_terms_count: int = Field(0, title="Number of glossary terms found")
     ref_count: int = Field(0, title="Number of references")
@@ -705,6 +710,7 @@ class ArticleInfo(BaseModel):
             try:
                 self.art_pgcount = int(parsed_xml.xpath("count(//pb)")) # 20200506
             except Exception as e:
+                log_everywhere_if(gDbg2, level="warning", msg=f"article info error: {e}")
                 self.art_pgcount = 0
                 
             self.art_kwds = opasxmllib.xml_xpath_return_textsingleton(parsed_xml, "//artinfo/artkwds/node()", None)
@@ -713,6 +719,7 @@ class ArticleInfo(BaseModel):
             try:
                 self.art_pgrx_count = int(parsed_xml.xpath("count(//pgx)")) # 20220320
             except Exception as e:
+                log_everywhere_if(gDbg2, level="warning", msg=f"article info error: {e}")
                 self.art_pgrx_count = 0
                 
             if 1: # counts
@@ -723,82 +730,96 @@ class ArticleInfo(BaseModel):
                     else:
                         self.art_kwds_count = 0
                 except Exception as e:
+                    log_everywhere_if(gDbg2, level="warning", msg=f"article info error: {e}")
                     self.art_kwds_count = 0
         
                 # art_abs_count
                 try:
                     self.art_abs_count = int(parsed_xml.xpath("count(//abs)"))
                 except Exception as e:
+                    log_everywhere_if(gDbg2, level="warning", msg=f"article info error: {e}")
                     self.art_abs_count  = 0
         
                 # art_ftns_count_count 
                 try:
                     self.art_ftns_count = int(parsed_xml.xpath("count(//ftn)")) # 20210413
                 except Exception as e:
+                    log_everywhere_if(gDbg2, level="warning", msg=f"article info error: {e}")
                     self.art_ftns_count = 0
         
                 # art_paras_count
                 try:
                     self.art_paras_count = int(parsed_xml.xpath("count(//p)")) # 20210413
                 except Exception as e:
+                    log_everywhere_if(gDbg2, level="warning", msg=f"article info error: {e}")
                     self.art_paras_count = 0
         
                 # art_headings_count
                 try:
                     self.art_headings_count = int(parsed_xml.xpath("count(//*[self::h1 or self::h2 or self::h3 or self::h4 or self::h5 or self::h6])")) # 20210413
                 except Exception as e:
+                    log_everywhere_if(gDbg2, level="warning", msg=f"article info error: {e}")
                     self.art_headings_count = 0
         
                 # art_terms_count
                 try:
                     self.art_terms_count = int(parsed_xml.xpath('count(//impx[@type="TERM2"])')) # 20210413
                 except Exception as e:
+                    log_everywhere_if(gDbg2, level="warning", msg=f"article info error: {e}")
                     self.art_terms_count = 0
         
                 # art_dreams_count
                 try:
                     self.art_dreams_count = int(parsed_xml.xpath("count(//dream)")) # 20210413
                 except Exception as e:
+                    log_everywhere_if(gDbg2, level="warning", msg=f"article info error: {e}")
                     self.art_dreams_count = 0
         
                 # art_dialogs_count
                 try:
                     self.art_dialogs_count = int(parsed_xml.xpath("count(//dialog)")) # 20210413
                 except Exception as e:
+                    log_everywhere_if(gDbg2, level="warning", msg=f"article info error: {e}")
                     self.art_dialogs_count = 0
         
                 # art_notes_count
                 try:
                     self.art_notes_count = int(parsed_xml.xpath("count(//note)")) # 20210413
                 except Exception as e:
+                    log_everywhere_if(gDbg2, level="warning", msg=f"article info error: {e}")
                     self.art_notes_count = 0
         
                 # art_poems_count
                 try:
                     self.art_poems_count = int(parsed_xml.xpath("count(//poem)")) # 20210413
                 except Exception as e:
+                    log_everywhere_if(gDbg2, level="warning", msg=f"article info error: {e}")
                     self.art_poems_count = 0
                     
                 # art_citations_count
                 try:
                     self.art_citations_count = int(parsed_xml.xpath("count(//bx)")) # 20210413
                 except Exception as e:
+                    log_everywhere_if(gDbg2, level="warning", msg=f"article info error: {e}")
                     self.art_citations_count = 0
                 
                 # art_quotes_count
                 try:
                     self.art_quotes_count = int(parsed_xml.xpath("count(//quote)")) # 20210413
                 except Exception as e:
+                    log_everywhere_if(gDbg2, level="warning", msg=f"article info error: {e}")
                     self.art_quotes_count = 0
         
                 try:
                     self.art_tblcount = int(parsed_xml.xpath("count(//tbl)")) # 20200922
                 except Exception as e:
+                    log_everywhere_if(gDbg2, level="warning", msg=f"article info error: {e}")
                     self.art_tblcount = 0
         
                 try:
                     self.art_figcount = int(parsed_xml.xpath("count(//figure)")) # 20200922
                 except Exception as e:
+                    log_everywhere_if(gDbg2, level="warning", msg=f"article info error: {e}")
                     self.art_figcount = 0
                     
                 # art_chars_count
@@ -807,6 +828,7 @@ class ArticleInfo(BaseModel):
                     self.art_chars_meta_count = int(parsed_xml.xpath("string-length(normalize-space(//meta))"))
                     self.art_chars_count -= self.art_chars_meta_count 
                 except Exception as e:
+                    log_everywhere_if(gDbg2, level="warning", msg=f"article info error: {e}")
                     self.art_chars_count  = 0
         
                 try:
@@ -814,11 +836,13 @@ class ArticleInfo(BaseModel):
                     self.art_chars_no_spaces_meta_count = int(parsed_xml.xpath("string-length(translate(normalize-space(//meta),' ',''))"))
                     self.art_chars_no_spaces_count -= self.art_chars_no_spaces_meta_count
                 except Exception as e:
+                    log_everywhere_if(gDbg2, level="warning", msg=f"article info error: {e}")
                     self.art_chars_no_spaces_count  = 0
         
                 try:
                     self.art_words_count = self.art_chars_count - self.art_chars_no_spaces_count + 1
                 except Exception as e:
+                    log_everywhere_if(gDbg2, level="warning", msg=f"article info error: {e}")
                     self.art_words_count  = 0
         
                 # ************* end of counts! 20210413 *******************************************

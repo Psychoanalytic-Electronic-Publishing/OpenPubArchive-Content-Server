@@ -74,7 +74,7 @@ class TestSorts(unittest.TestCase):
         #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
-        assert(response_set[0]["stat"]["art_words_count"] >= 20000)
+        assert(response_set[0]["stat"]["art_words_count"] >= 20000),  response_set[0]["stat"]["art_words_count"]
         
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?fulltext1=erection&sort=words asc')
         response = requests.get(full_URL, headers=headers)

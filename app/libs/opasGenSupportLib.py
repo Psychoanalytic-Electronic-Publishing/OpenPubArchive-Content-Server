@@ -1053,6 +1053,16 @@ def removeExtraSpaces(self, s):
     return s
 
 # ----------------------------------------------------------------------------------------
+def text_slice(textstr: str, chr_count=25):
+    "Slice the middle out of a string to make it easy to display in summary"
+    ret_val = textstr
+    # for short displaying/debug
+    if len(textstr) > 80:
+        ret_val = f"{textstr[:chr_count]}...{textstr[-chr_count:]}"
+        
+    return ret_val
+
+# ----------------------------------------------------------------------------------------
 def trimPunctAndSpaces(input_str, punct_set=[',', '.', ' ', ':', ';', ')', '(', '\t', '"', "'"]):
     ret_val = removeLeadingPunctAndSpaces(input_str, punct_set)
     ret_val = removeTrailingPunctAndSpaces(ret_val, punct_set)

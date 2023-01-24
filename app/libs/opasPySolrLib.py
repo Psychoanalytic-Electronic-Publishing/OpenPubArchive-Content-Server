@@ -3319,7 +3319,7 @@ def quick_docmeta_docsearch(q_str,
         results = solr_docs2.search(q=q_str, **args)
     except Exception as e:
         err_info = pysolrerror_processing(e)
-        logger.error(f"DocMetaDocSearch: {err_info.httpcode}. Query: {query} Error: {err_info.error_description}")
+        logger.error(f"DocMetaDocSearch: {err_info.httpcode}. Query: {q_str} Error: {err_info.error_description}")
         
     document_item_list = []
     count = len(results)
