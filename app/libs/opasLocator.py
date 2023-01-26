@@ -189,7 +189,7 @@ class Locator:
     #--------------------------------------------------------------------------------
     def __init__(self, strLocator=None, jrnlCode=None, jrnlVolSuffix="", jrnlVol=None, jrnlIss=None, pgVar="A",
                  pgStart=None, jrnlYear=None, localID=None, keepContext=1, forceRoman=False, notFatal=True,
-                 noStartingPageException=True, filename=None, art_info=None, ocd=None):
+                 noStartingPageException=True, filename=None, art_info=None):
         """
         Initialize the locator.  Make sure that other args, except keepcontext, are not specified if
             strLocator is.
@@ -198,10 +198,6 @@ class Locator:
 
         self.__reset()
         self.filename = filename
-        if ocd is None:
-            self.ocd = opasCentralDBLib.opasCentralDB()
-        else:
-            self.ocd = ocd
         # self_copy = copy.copy(self)
         
         self.art_info = art_info # provide full information about the xml of the article we're dealing with
@@ -450,7 +446,7 @@ class Locator:
     #--------------------------------------------------------------------------------
     def isValid(self):
         """
-        Return true if locator is valie
+        Return true if locator is well formed. It may not exist though.
         """
         return self.valid
 

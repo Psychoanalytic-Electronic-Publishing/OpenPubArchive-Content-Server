@@ -53,7 +53,7 @@ def find_related_articles(ref, art_or_source_title,
     Search for related articles and add to rxcf of reference
     
     """
-    # title is either bib_entry.art_title_xml or bib_entry.source_title
+    # title is either ref_entry.art_title_xml or bib_entry.source_title
     ret_val = [] # rxcf
     prev_rxcf = None
     title_words = re.findall(r'\b\w{%s,}\b' % word_len, art_or_source_title)[:max_words]
@@ -289,7 +289,7 @@ def find_matching_pep_articles(bib_entry,
     if art_or_source_title:
         art_or_source_title = opasgenlib.removeAllPunct(art_or_source_title, punct_set=[',', '.', ':', ';', '(', ')', '\t', r'/', '"', "'", "[", "]"])
         query = f"{query_target}:({art_or_source_title})"
-        authors = bib_entry.author_list_str
+        authors = bib_entry.ref_authors
         if authors:
             authors = opasgenlib.removeAllPunct(authors, punct_set=solr_adverse_punct_set)
             query = query + f" AND authors:{authors}"
@@ -373,7 +373,7 @@ def walk_through_reference_set(ocd=ocd,
             # parsed_ref = ET.parse(StringIO(fullref), parser=parser)
             parsed_ref = ET.fromstring(fullref, parser=parser)
             bib_entry = opasBiblioSupport.BiblioEntry(art_id, art_year, ref_or_parsed_ref=parsed_ref)
-            author_list = bib_entry.author_list_str
+            author_list = bib_entry.ref_authors
             
             if bib_entry.ref_is_book:
                 source_title = title
@@ -446,14 +446,17 @@ def clean_reference_links(ocd=ocd,
     return ret_val # None or Session Object
 
 def fix_pgstart_errors_in_reflinks(ocd=ocd,
-                                   sql_set_select = "select * from api_biblioxml where bib_rx is not NULL",
+                                   sql_set_select = "select * from api_biblioxml where ref_rx is not NULL",
                                    set_description = "All"
                                    ):
     """
+    Checks for a bad locator and tries to fix it if
+      it's a page start error.  Otherwise leaves it alone
+    
     """
     fname = "find_start_page_errors"
     ocd.open_connection(caller_name=fname) # make sure connection is open
-    ret_val = None
+    ret_val = 0
     #artInfo = opasArticleIDSupport.ArticleInfo(art_id="IJP.100.0001A",
                                                #art_year="2022")
     
@@ -465,47 +468,49 @@ def fix_pgstart_errors_in_reflinks(ocd=ocd,
         if warnings:
             for warning in warnings:
                 logger.warning(warning)
-                
-        counter = 0
-        for row in curs.fetchall():
+        
+        rows = curs.fetchall()
+        print (f"Checking {len(rows)} rows")
+        for row in rows:
             art_id = row["art_id"]
-            bib_local_id = row["bib_local_id"]
-            bib_rx = row["bib_rx"]
-            full_ref_text = row["full_ref_text"]
-            if bib_rx:
-                if not ocd.article_exists(bib_rx):
-                    try:
-                        newLocator = Locator(bib_rx)
-                        newLocator.pgStart -= 1
-                        if ocd.article_exists(str(newLocator)):
-                            # correct it
-                            print (f"\t...{art_id}/{bib_local_id} - {bib_rx} doesn't exist. Chgto:{newLocator} for {full_ref_text}.")
-                            success = ocd.update_biblioxml_links(art_id, bib_local_id,
-                                                                  rx=str(newLocator),
-                                                                  rx_confidence=.97,
-                                                                  verbose=False)
-                            counter += 1
-                            time.sleep(.175)
-                            
-                    except Exception as e:
-                        msg = f"Error updating locator and/or biblioxml record (from bib_rx:{bib_rx}): {e}"
-                        log_everywhere_if(True, "warning", msg)
+            ref_local_id = row["ref_local_id"]
+            ref_rx = row["ref_rx"]
+            ref_rx_confidence = row["ref_rx_confidence"]
+            ref_text = row["ref_text"]
+            if ref_rx:
+                result, rx, rx_confidence = ocd.check_for_locator_page_mismatch(ref_rx, ref_rx_confidence)
+                if result == 2:
+                    # correct it
+                    print (f"\t...{art_id}/{ref_local_id} - {ref_rx} doesn't exist. Chgto:{newLocator} for {ref_text}.")
+                    success = ocd.update_biblioxml_links(art_id, ref_local_id,
+                                                          rx=str(rx),
+                                                          rx_confidence=rx_confidence,
+                                                          verbose=False)
+                    ret_val += 1
+                elif result == 1:
+                    if rx_confidence != ref_rx_confidence:
+                        success = ocd.update_biblioxml_links(art_id, ref_local_id,
+                                                              rx=str(rx),
+                                                              rx_confidence=rx_confidence,
+                                                              verbose=False)
+                        #print (f"Updated {rx_confidence} != {ref_rx_confidence}")
+                        
                     
-    print (f"Corrected {counter} biblioxml records where rx was off by one page!")
+    print (f"Corrected {ret_val} biblioxml records where rx was off by one page!")
     ocd.close_connection(caller_name=fname) # make sure connection is closed
     
     # return session model object
-    return ret_val # None or Session Object
+    return ret_val # number of updated rows
 
 if __name__ == "__main__":
 
-    if 0:
-        set1 = "select * from api_biblioxml where ref_rx is NULL and bib_authors like '%Freud%'"
+    if 1:
+        set1 = "select * from api_biblioxml where ref_rx is NULL and ref_authors like '%Freud%'"
         walk_through_reference_set(ocd, sql_set_select=set1, set_description="Freud")
     elif 0:
-        set1 = "select * from api_biblioxml where ref_rx is not NULL and bib_authors like '%Freud%'"
+        set1 = "select * from api_biblioxml where ref_rx is not NULL and ref_authors like '%Freud%'"
         clean_reference_links(ocd, set1)
-    elif 1:
+    elif 0:
         set1 = "select * from api_biblioxml where ref_rx is not NULL;"
         fix_pgstart_errors_in_reflinks(ocd, set1)
     else:

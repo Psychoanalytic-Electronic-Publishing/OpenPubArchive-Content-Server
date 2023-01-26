@@ -663,7 +663,7 @@ class FlexFileSystem(object):
                 # s3 running from local
                 data_folder = pathlib.Path(path + subfolder)
             else:
-                data_folder = path / subfolder
+                data_folder = pathlib.Path(str(path) + subfolder)
             
         if self.key is not None:
             data_folder = data_folder.as_posix()

@@ -121,7 +121,7 @@ class PageConcordance:
 
         """
         retVal = None
-        aLoc = opasLocator.Locator(articleID, ocd=self.ocd)
+        aLoc = opasLocator.Locator(articleID)
         if aLoc.jrnlCode == "SE":
             retVal = self.get_page_locator_for_GW(articleID, page_number)
         elif aLoc.jrnlCode == "GW":

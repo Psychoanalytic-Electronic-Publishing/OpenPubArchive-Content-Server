@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2023, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2023.0123/v2.1.002"   # Requires update to api_biblioxml and views based on it.
+__version__     = "2023.0125/v2.1.003"   # Requires update to api_biblioxml and views based on it.
 __status__      = "Development"
 
 # !!! IMPORTANT: Increment opasXMLProcessor version (if version chgd). It's written to the XML !!!
@@ -984,16 +984,17 @@ def main():
                 artInfo.file_size = final_fileinfo.filesize
                 artInfo.file_updated = input_file_was_updated
                 artInfo.file_create_time = final_fileinfo.create_time
-                if artInfo.art_orig_rx is None:
-                    # check the database to see if there's a translation / relation
-                    # this returns the original
-                    artInfo.art_orig_rx = ocd.get_art_relations(artID)
-                    if options.display_verbose and artInfo.art_orig_rx is not None:
-                        msg = f"\t...Translations available. Marking original {artInfo.art_orig_rx}."
-                        log_everywhere_if(options.display_verbose, level="info", msg=msg)
-                else:
-                    msg = f"\t...Translations available. Origrx {artInfo.art_orig_rx}."
-                    log_everywhere_if(options.display_verbose, level="info", msg=msg)
+                # This isn't needed.
+                #if artInfo.art_orig_rx is None:
+                    ## check the database to see if there's a translation / relation
+                    ## this returns the original
+                    #artInfo.art_orig_rx = ocd.get_art_relations(artID)
+                    #if options.display_verbose and artInfo.art_orig_rx is not None:
+                        #msg = f"\t...Translations available. Marking original {artInfo.art_orig_rx}."
+                        #log_everywhere_if(options.display_verbose, level="info", msg=msg)
+                #else:
+                    #msg = f"\t...Translations available. Origrx {artInfo.art_orig_rx}."
+                    #log_everywhere_if(options.display_verbose, level="info", msg=msg)
                     
                 try:
                     artInfo.file_classification = re.search("(?P<class>current|archive|future|free|special|offsite)", str(n.filespec), re.IGNORECASE).group("class")
@@ -1272,70 +1273,92 @@ if __name__ == "__main__":
     global options  # so the information can be used in support functions
     options = None
     parser = OptionParser(usage="%prog [options] - PEP Solr Data Loader", version=f"%prog ver. {__version__}")
+
     parser.add_option("-a", "--allfiles", action="store_true", dest="forceRebuildAllFiles", default=False,
                       help="Option to force all files to be loaded to the specified cores.")
-    # redundant add option to use so compatible options to the PEPXML code for manual use
-    parser.add_option("--rebuild", action="store_true", dest="forceRebuildAllFiles", default=False,
-                      help="Force files to be compiled into precompiled XML and reloaded to the specified cores whether changed or not.")
-    parser.add_option("--reload", action="store_true", dest="forceReloadAllFiles", default=False,
-                      help="Force reloads to Solr whether changed or not.")
+
     parser.add_option("--after", dest="created_after", default=None,
                       help="Load files created or modifed after this datetime (use YYYY-MM-DD format). (May not work on S3)")
+
+    msg = f"""This option can be used to continue a partial/failed run or to run simultaneous overlapping builds.
+For example, if you run the same set in reverse and forward, when they overlap, they 
+will start skipping files since they have already been loaded into Solr in the continuation time period as configured in opasConfig {opasConfig.CONTINUE_PROCESSING_DAYS} days.
+"""
+    parser.add_option("--continue", action="store_true", dest="continue_processing", default=False,
+                          help=msg)
+    
     parser.add_option("-d", "--dataroot", dest="rootFolder", default=localsecrets.FILESYSTEM_ROOT,
                       help="Bucket (Required S3) or Root folder path where input data is located")
-    parser.add_option("--key", dest="file_key", default=None,
-                      help="Key for a single file to load, e.g., AIM.076.0269A.  Use in conjunction with --sub for faster processing of single files on AWS")
-    parser.add_option("-l", "--loglevel", dest="logLevel", default=logging.ERROR,
-                      help="Level at which events should be logged (DEBUG, INFO, WARNING, ERROR")
-    #parser.add_option("--logfile", dest="logfile", default=logFilename,
-                      #help="Logfile name with full path where events should be logged")
-    parser.add_option("--nocheck", action="store_true", dest="no_check", default=False,
-                      help="Don't prompt whether to proceed.")
-    parser.add_option("--only", dest="file_only", default=None,
-                      help="File spec for a single file to process.")
-    parser.add_option("--includeparas", action="store_true", dest="include_paras", default=False,
-                      help="Don't separately store paragraphs except for sources using concordance (GW/SE).")
-    parser.add_option("--halfway", action="store_true", dest="halfway", default=False,
-                      help="Only process halfway through (e.g., when running forward and reverse.")
+
+    parser.add_option("--doctype", dest="output_doctype", default=opasConfig.PEP_KBD_DOCTYPE,
+                      help=f"For output files, default={opasConfig.PEP_KBD_DOCTYPE}.")
+
     parser.add_option("--glossaryonly", action="store_true", dest="glossary_only", default=False,
                       help="Only process the glossary (quicker).")
-    parser.add_option("--pw", dest="httpPassword", default=None,
-                      help="Password for the server")
-    parser.add_option("-r", "--reverse", dest="run_in_reverse", action="store_true", default=False,
-                      help="Whether to run the selected files in reverse order")
-    parser.add_option("--resetcore",
-                      action="store_true", dest="resetCoreData", default=False,
-                      help="This option (currently disabled) would clear (delete) any data in the selected cores (author core is reset with the fulltext core).")
-    parser.add_option("--seed",
-                      dest="randomizer_seed", default=None,
-                      help="Seed so data update files don't collide if they start writing at exactly the same time.")
-    parser.add_option("--sub", dest="subFolder", default=None,
-                      help="Sub folder of root folder specified via -d to process")
-    parser.add_option("--test", dest="testmode", action="store_true", default=False,
-                      help="Run Doctests")
-    parser.add_option("--userid", dest="httpUserID", default=None,
-                      help="UserID for the server")
-    parser.add_option("--verbose", action="store_true", dest="display_verbose", default=False,
-                      help="Display status and operational timing info as load progresses.")
-    parser.add_option("--nofiles", action="store_true", dest="no_files", default=False,
-                      help="Don't load any files (use with whatsnewdays to only generate a whats new list).")
-    parser.add_option("--whatsnewdays", dest="daysback", default=None,
-                      help="Generate a log of files added in the last n days (1==today), rather than for files added during this run.")
-    parser.add_option("--whatsnewfile", dest="whatsnewfile", default=None,
-                      help="File name to force the file and path rather than a generated name for the log of files added in the last n days.")
-    # New OpasLoader2 Options
+
+    parser.add_option("--halfway", action="store_true", dest="halfway", default=False,
+                      help="Only process halfway through (e.g., when running forward and reverse.")
+
+    parser.add_option("--includeparas", action="store_true", dest="include_paras", default=False,
+                      help="Don't separately store paragraphs except for sources using concordance (GW/SE).")
+
     parser.add_option("--inputbuildpattern", dest="input_build_pattern", default=None,
                       help="Pattern of the build specifier to load (input), e.g., (bEXP_ARCH1|bSeriesTOC), or (bKBD3|bSeriesTOC)")
     
     parser.add_option("--inputbuild", dest="input_build", default=opasConfig.DEFAULT_INPUT_BUILD,
                       help=f"Build specifier to load (input), e.g., (bKBD3) or just bKBD3")
     
-    parser.add_option("--outputbuild", dest="output_build", default=opasConfig.DEFAULT_OUTPUT_BUILD,
-                      help=f"Specific output build specification, default='{opasConfig.DEFAULT_OUTPUT_BUILD}'. e.g., (bEXP_ARCH1) or just bEXP_ARCH1.")
-    
+    parser.add_option("--key", dest="file_key", default=None,
+                      help="Key for a single file to load, e.g., AIM.076.0269A.  Use in conjunction with --sub for faster processing of single files on AWS")
+
+    parser.add_option("-l", "--loglevel", dest="logLevel", default=logging.ERROR,
+                      help="Level at which events should be logged (DEBUG, INFO, WARNING, ERROR")
+
     # --load option still the default.  Need to keep for backwards compatibility, at least for now (7/2022)
     parser.add_option("--load", "--loadxml", action="store_true", dest="loadprecompiled", default=True,
                       help="Load precompiled XML, e.g. (bEXP_ARCH1) into database.")
+
+    parser.add_option("--nobibdbupdate", action="store_true", dest="no_bibdbupdate", default=False,
+                      help="Turn off save of biblio info to the database (i.e., if done using opasDataLinker")
+
+    parser.add_option("--nocheck", action="store_true", dest="no_check", default=False,
+                      help="Don't prompt whether to proceed.")
+
+    parser.add_option("--nofiles", action="store_true", dest="no_files", default=False,
+                      help="Don't load any files (use with whatsnewdays to only generate a whats new list).")
+
+    parser.add_option("--nohelp", action="store_true", dest="no_help", default=False,
+                      help="Turn off front-matter help")
+
+    parser.add_option("--only", dest="file_only", default=None,
+                      help="File spec for a single file to process.")
+
+    parser.add_option("--outputbuild", dest="output_build", default=opasConfig.DEFAULT_OUTPUT_BUILD,
+                      help=f"Specific output build specification, default='{opasConfig.DEFAULT_OUTPUT_BUILD}'. e.g., (bEXP_ARCH1) or just bEXP_ARCH1.")
+    
+    parser.add_option("--prettyprint", action="store_true", dest="pretty_printed", default=False,
+                      help="Pretty format the compiled XML.")
+
+    parser.add_option("--pw", dest="httpPassword", default=None,
+                      help="Password for the server")
+
+    parser.add_option("-r", "--reverse", dest="run_in_reverse", action="store_true", default=False,
+                      help="Whether to run the selected files in reverse order")
+
+    # redundant add option to use so compatible options to the PEPXML code for manual use
+    parser.add_option("--rebuild", action="store_true", dest="forceRebuildAllFiles", default=False,
+                      help="Force files to be compiled into precompiled XML and reloaded to the specified cores whether changed or not.")
+
+    parser.add_option("--reload", action="store_true", dest="forceReloadAllFiles", default=False,
+                      help="Force reloads to Solr whether changed or not.")
+
+    parser.add_option("--resetcore",
+                      action="store_true", dest="resetCoreData", default=False,
+                      help="This option (currently disabled) would clear (delete) any data in the selected cores (author core is reset with the fulltext core).")
+
+    parser.add_option("--seed",
+                      dest="randomizer_seed", default=None,
+                      help="Seed so data update files don't collide if they start writing at exactly the same time.")
 
     msg = f"""Rebuild from source (e.g., bKBD3) if necessary, load precompiled XML (e.g., bEXP_ARCH1) if necessary. If inputbuild file is newer, output is missing, or there are changes to 
 the api_biblioxml records, compile and then load into database.  Use together with load to smartbuild if needed AND force
@@ -1344,17 +1367,8 @@ Set rxcf to 1 for manually corrected links."""
     parser.add_option("--smartload", "--smartbuild", action="store_true", dest="smartload", default=False,
                       help=msg)
     
-    parser.add_option("--prettyprint", action="store_true", dest="pretty_printed", default=False,
-                      help="Pretty format the compiled XML.")
-
-    parser.add_option("--nohelp", action="store_true", dest="no_help", default=False,
-                      help="Turn off front-matter help")
-
-    parser.add_option("--nobibdbupdate", action="store_true", dest="no_bibdbupdate", default=False,
-                      help="Turn off save of biblio info to the database (i.e., if done using opasDataLinker")
-
-    parser.add_option("--doctype", dest="output_doctype", default=opasConfig.PEP_KBD_DOCTYPE,
-                      help=f"For output files, default={opasConfig.PEP_KBD_DOCTYPE}.")
+    parser.add_option("--sub", dest="subFolder", default=None,
+                      help="Sub folder of root folder specified via -d to process")
 
     parser.add_option("--termtags", action="store_true", dest="glossary_term_tagging", default=False,
                       help="Markup glossary terms in paragraphs when compiling XML")
@@ -1362,17 +1376,20 @@ Set rxcf to 1 for manually corrected links."""
     parser.add_option("--termdictoff", action="store_false", dest="add_glossary_term_dict", default=True,
                       help=f"""Do not add a glossary term/count dict when compiling XML""")
 
-    msg = f"""This option can be used to continue a partial/failed run or to run simultaneous overlapping builds.
-For example, if you run the same set in reverse and forward, when they overlap, they 
-will start skipping files since they have already been loaded into Solr in the continuation time period as configured in opasConfig {opasConfig.CONTINUE_PROCESSING_DAYS} days.
-"""
-    parser.add_option("--continue", action="store_true", dest="continue_processing", default=False,
-                      help=msg)
+    parser.add_option("--test", dest="testmode", action="store_true", default=False,
+                      help="Run Doctests")
 
-    #parser.add_option("-w", "--writexml", "--writeprocessed", action="store_true", dest="write_processed", default=False,
-                      #help="Write the processed data to files, using the output build (e.g., (bEXP_ARCH1).")
-    #parser.add_option("--noload", action="store_true", dest="no_load", default=False,
-                      #help="for use with option writeprocessed, don't load Solr...just process.")
+    parser.add_option("--userid", dest="httpUserID", default=None,
+                      help="UserID for the server")
+
+    parser.add_option("--verbose", action="store_true", dest="display_verbose", default=False,
+                      help="Display status and operational timing info as load progresses.")
+
+    parser.add_option("--whatsnewdays", dest="daysback", default=None,
+                      help="Generate a log of files added in the last n days (1==today), rather than for files added during this run.")
+
+    parser.add_option("--whatsnewfile", dest="whatsnewfile", default=None,
+                      help="File name to force the file and path rather than a generated name for the log of files added in the last n days.")
 
     (options, args) = parser.parse_args()
     

@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2023.0123/v2.2.002"   # Requires update to api_biblioxml and views based on it.
+__version__     = "2023.0125/v2.2.003"   # Requires update to api_biblioxml and views based on it.
 __status__      = "Development/Libs/Loader"  
 
 """
@@ -2178,7 +2178,14 @@ async def database_extendedsearch(response: Response,
              "solrquery": "art_qual:(IJP.076.0019A)", 
               "solrargs": {
                  "fq": "art_id:(NOT IJP.078.0335A)",
-                 "fl": "art_id, art_title, art_title_xml, art_subtitle_xml, art_author_id, art_authors, art_citeas_xml, art_info_xml, art_sourcecode, art_sourcetitleabbr, art_sourcetitlefull, art_sourcetype, art_level, para_art_id, parent_tag, para, art_vol, art_type, art_vol_title, art_year, art_iss, art_iss_title, art_newsecnm, art_pgrg, art_lang, art_doi, art_issn, art_isbn, art_origrx, art_qual, art_kwds, art_cited_all, art_cited_5, art_cited_10, art_cited_20, art_views_lastcalyear, art_views_last1mos, art_views_last6mos, art_views_last12mos, art_views_lastweek, reference_count, art_fig_count, art_tbl_count, art_kwds_count, art_words_count, art_citations_count, art_ftns_count, art_notes_count, art_dreams_count, file_last_modified, file_classification, timestamp, score, id"
+                 "fl": "art_id, art_title, art_title_xml, art_subtitle_xml, art_author_id, art_authors, art_citeas_xml, art_info_xml, \
+                        art_sourcecode, art_sourcetitleabbr, art_sourcetitlefull, art_sourcetype, art_level, para_art_id, parent_tag, para, \
+                        art_vol, art_type, art_vol_title, art_year, art_iss, art_iss_title, art_newsecnm, art_pgrg, art_lang, art_doi, \
+                        art_issn, art_isbn, art_origrx, art_qual, art_kwds, art_cited_all, art_cited_5, art_cited_10, art_cited_20,
+                        art_views_lastcalyear, art_views_last1mos, art_views_last6mos, art_views_last12mos, art_views_lastweek, \
+                        reference_count, art_fig_count, art_tbl_count, art_kwds_count, art_words_count, \
+                        art_citations_count, art_ftns_count, art_notes_count, art_dreams_count, file_last_modified, \
+                        file_classification, timestamp, score, id"
               }
            }           
            
@@ -5054,7 +5061,7 @@ def documents_document_fetch(response: Response,
                              page:int=Query(None, title=opasConfig.TITLE_PAGEREQUEST, description=opasConfig.DESCRIPTION_PAGEREQUEST),
                              return_format: str=Query("HTML", title=opasConfig.TITLE_RETURNFORMATS, description=opasConfig.DESCRIPTION_RETURNFORMATS),
                              similarcount: int=Query(0, title=opasConfig.TITLE_SIMILARCOUNT, description=opasConfig.DESCRIPTION_SIMILARCOUNT),
-                             translations: bool=Query(False, title=opasConfig.TITLE_TRANSLATIONS, description=opasConfig.DESCRIPTION_TRANSLATIONS),
+                             translations: bool=Query(True, title=opasConfig.TITLE_TRANSLATIONS, description=opasConfig.DESCRIPTION_TRANSLATIONS),
                              search: str=Query(None, title=opasConfig.TITLE_SEARCHPARAM, description=opasConfig.DESCRIPTION_SEARCHPARAM),
                              pagelimit: int=Query(None,title=opasConfig.TITLE_PAGELIMIT, description=opasConfig.DESCRIPTION_PAGELIMIT),
                              pageoffset: int=Query(None, title=opasConfig.TITLE_PAGEOFFSET,description=opasConfig.DESCRIPTION_PAGEOFFSET),

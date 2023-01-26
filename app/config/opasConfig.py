@@ -56,7 +56,7 @@ MIN_TERM_LENGTH_MATCH = 4 # smallest length term to match from glossary (i.e., e
 WHATS_NEW_EXPIRES_DAYS = 0
 WHATS_NEW_EXPIRES_HOURS = 8
 WHATS_NEW_EXPIRES_MINUTES = 0
-CONTINUE_PROCESSING_DAYS = 2
+CONTINUE_PROCESSING_DAYS = 1
 
 JOURNALNEWFLAG = "*New* "
 NO_OFFSITE_DOCUMENT_ACCESS_CHECKS = True # set to false if the server should check with PaDS for offsite documents
@@ -292,6 +292,16 @@ def normalize_val(val, val_dict, default=None):
 
 # Special relatedrx field name from Solr schema
 RELATED_RX_FIELDNAME = "art_qual"
+# standard confidence values with implied meaning
+RX_CONFIDENCE_POSITIVE = 1                          # human verified
+RX_CONFIDENCE_PROBABLE = .99                        # target exists and likely right
+RX_CONFIDENCE_EXISTS = .98                          # target exists
+RX_CONFIDENCE_PAGE_ADJUSTED = .97                   # matched by page adjusting
+RX_CONFIDENCE_SAME_AUT_TITLE_OTH_SRC = .96       # matched by page adjusting
+
+RX_CONFIDENCE_THIS_IS_NOT_THE_REFERENCE = .01
+RX_CONFIDENCE_MINIMUM_NO_REPLACE = .92
+
 # OR'd list RE of terms to not match in the documents for glossary items
 GLOSSARY_TERM_SKIP_REGEX = "(stage|feeling)"
 

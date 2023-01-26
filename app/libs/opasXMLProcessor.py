@@ -308,7 +308,7 @@ def pgx_add_rx_split_book_links(parsed_xml, ocd, artInfo, split_book_data=None, 
             
         if inst is not None and pgx.attrib.get("rx", None) is None:
             if gDbg2: print (f"Setting TOC page link: {pgx.text}, {pgx.attrib}, {inst}")
-            loc = Locator(inst, ocd=ocd)
+            loc = Locator(inst)
             pgx.attrib["rx"] = str(loc) + ".P" + opasDocuments.PageNumber(pgx.text).pageID()
             ret_val += 1
 
@@ -361,14 +361,14 @@ def pgx_add_rx_book_links(parsed_xml, ocd, artInfo, split_book_data=None, verbos
                 fulltext_cleaned = fulltext_cleaned.format(keyword=fulltext_cleaned.LOCALID)
                 split_inst_from_fulltext = split_book_data.get_splitbook_page_instance(book_code=jrnlCode, vol=vol, vol_suffix=artInfo.art_vol_suffix, page_id=fulltext_cleaned)
                 if split_inst_from_fulltext is None:
-                    splitLoc = opasLocator.Locator(jrnlCode=jrnlCode, jrnlVol=vol, jrnlVolSuffix=artInfo.art_vol_suffix, pgStart="1", art_info=artInfo, ocd=ocd)
+                    splitLoc = opasLocator.Locator(jrnlCode=jrnlCode, jrnlVol=vol, jrnlVolSuffix=artInfo.art_vol_suffix, pgStart="1", art_info=artInfo)
                     local = splitLoc.localID(fulltext_cleaned, ocd=ocd).upper()
                     # if 1: print (f"\t\t\tLocalID: {local}")
                     pgx.attrib["rx"] = local
                     pgx.attrib["type"] = pgxlink_type
                     log_everywhere_if(gDbg2, level="info", msg=f"\t\t\t...Reference to non-Split Book. Set link (type={pgxlink_type}) including local to: {local}")
                 else:
-                    splitLoc = opasLocator.Locator(split_inst_from_fulltext, ocd=ocd)
+                    splitLoc = opasLocator.Locator(split_inst_from_fulltext)
                     #print (splitLoc, SEPage)
                     local = splitLoc.localID(fulltext_cleaned).upper()
                     pgx.attrib["rx"] = local
@@ -458,7 +458,7 @@ def update_biblio_nonheuristic(parsed_xml, artInfo, ocd, pretty_print=False, ver
                             # change ref, confidence is certain in db
                             ref.attrib["rx"] = bib_refdb_model.ref_rx
                             ref.attrib["rxconf"] = str(bib_refdb_model.ref_rx_confidence)
-                            if verbose: print (f"\t\t...dict ({bib_refdb_model.ref_rx}) overrides rx: {ref_rx} {bib_refdb_slice}")
+                            if verbose: print (f"\t\t...dict ({bib_refdb_model.ref_rx} {bib_refdb_model.ref_rx_confidence}) overrides rx: {ref_rx} {bib_refdb_slice}")
                         elif bib_refdb_model.ref_rx != ref_rx and bib_refdb_model.ref_rx_confidence > ref_rx_confidence:
                             #keep separate from above case for debugging and improvement
                             log_everywhere_if(gDbg3,
@@ -466,18 +466,36 @@ def update_biblio_nonheuristic(parsed_xml, artInfo, ocd, pretty_print=False, ver
                                               msg=f"\t\t...Repl, rx with db (conf: {ref_rx_confidence}/{bib_refdb_model.ref_rx_confidence} {bib_refdb_slice}")
                             ref.attrib["rx"] = bib_refdb_model.ref_rx
                             ref.attrib["rxconf"] = str(bib_refdb_model.ref_rx_confidence)
-                        #else:
-                            #if ref_rx:
-                                #if not ocd.article_exists(ref_rx):
-                                    #ref.attrib["rx"] = bib_refdb_model.ref_rx
-                                    #ref.attrib["rxconf"] = bib_refdb_model.ref_rx_confidence
-                                #else:
-                                    # no change to ref 
                             
-                elif bib_refdb_model.ref_rx:
-                    if verbose: print (f"\t\t...Bib ID {ref_id} Bib_dict used: {bib_refdb_model.ref_rx} {bib_refdb_slice}")
-                    ref.attrib["rx"] = bib_refdb_model.ref_rx
-                    ref.attrib["rxconf"] = str(bib_refdb_model.ref_rx_confidence)
+                elif bib_refdb_model.ref_rx and bib_refdb_model.ref_rx_confidence != opasConfig.RX_CONFIDENCE_THIS_IS_NOT_THE_REFERENCE:
+                    if ocd.article_exists(bib_refdb_model.ref_rx):
+                        if verbose: print (f"\t\t...Bib ID {ref_id} Bib_dict used: {bib_refdb_model.ref_rx} {bib_refdb_slice}")
+                        ref.attrib["rx"] = bib_refdb_model.ref_rx
+                        ref.attrib["rxconf"] = str(bib_refdb_model.ref_rx_confidence)
+                    else:
+                        if ocd.update_biblioxml_links(bib_refdb_model.art_id, bib_refdb_model.ref_local_id, rx=bib_refdb_model.ref_rx, rx_confidence=opasConfig.RX_CONFIDENCE_THIS_IS_NOT_THE_REFERENCE):
+                            rx, rx_confidence, rxcfs, rxcfs_confidence, \
+                                title_list = opasBiblioSupport.find_matching_articles(bib_entry)
+                                
+                            if rx_confidence is not None and rx_confidence > opasConfig.RX_CONFIDENCE_PAGE_ADJUSTED:
+                                if verbose: print (f"\t\t...Bib ID {ref_id} Bib_dict used: {bib_refdb_model.ref_rx} {bib_refdb_slice}")
+                                ref.attrib["rx"] = rx
+                                ref.attrib["rxconf"] = str(rx_confidence)
+                                log_everywhere_if(True, level="warning",
+                                                  msg=f"\t\t...BAD rx {bib_refdb_model.ref_rx} in db{bib_refdb_model.ref_rx} in db dict: {bib_refdb_model.art_id}.{bib_refdb_model.ref_local_id}. Found heuristic replacement {rx}, {rx_confidence} for now: Found heuristic replacement for now: {opasgenlib.text_slice(title_list[0], chr_count=40)}")
+                            else:
+                                rx2, rx2_confidence, rxcfs2, rxcfs_confidence2, \
+                                    title_list2 = opasBiblioSupport.find_matching_articles(bib_refdb_model)
+                                if rx_confidence is not None and rx2_confidence > opasConfig.RX_CONFIDENCE_PAGE_ADJUSTED:
+                                    if verbose: print (f"\t\t...Bib ID {ref_id} Bib_dict used: {bib_refdb_model.ref_rx} {bib_refdb_slice}")
+                                    ref.attrib["rx"] = rx2
+                                    ref.attrib["rxconf"] = str(rx2_confidence)
+                                    log_everywhere_if(True, level="warning",
+                                                      msg=f"\t\t...BAD rx {bib_refdb_model.ref_rx} in db dict: {bib_refdb_model.art_id}.{bib_refdb_model.ref_local_id}. Found heuristic replacement {rx2}, {rx2_confidence} for now: {opasgenlib.text_slice(title_list2[0], chr_count=40)}")
+                                else:
+                                    print (bib_entry.ref_text)
+                                    log_everywhere_if(True, level="warning",
+                                                      msg=f"\t\t...Reset BAD rx {bib_refdb_model.ref_rx} in db dict: {bib_refdb_model.art_id}.{bib_refdb_model.ref_local_id} {opasgenlib.text_slice(bib_refdb_model.ref_text, chr_count=40)}")
             
             if not ref.attrib.get("rx"):
                 # still no rx

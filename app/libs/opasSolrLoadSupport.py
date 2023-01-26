@@ -31,9 +31,9 @@ import lxml
 from lxml import etree
 parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=False)
 # import html
-import mysql.connector
+# import mysql.connector
 # import json
-import roman
+# import roman
 
 import localsecrets
 import opasConfig

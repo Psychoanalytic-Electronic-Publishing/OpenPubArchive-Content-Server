@@ -70,6 +70,7 @@ import time
 from passlib.context import CryptContext
 import mysql.connector
 import json
+from opasLocator import Locator
 
 gDbg3 = False
 
@@ -257,6 +258,29 @@ class opasCentralDB(object):
         # if 1: print (f"Connection_count: {self.connection_count}")
         return self.connected
 
+    def check_for_locator_page_mismatch(self, rx: str, rx_confidence: float):
+        ret_val = (1, rx, rx_confidence)
+        if rx_confidence == .99:
+            ret_val = (1, rx, opasConfig.RX_CONFIDENCE_EXISTS)
+        elif rx_confidence != 1:
+            ret_val = (1, rx, opasConfig.RX_CONFIDENCE_EXISTS)
+            if not self.article_exists(rx):
+                newLocator = Locator(rx)
+                if newLocator.articleID() is not None:
+                    newLocator.pgStart -= 1
+                    if self.article_exists(str(newLocator)):
+                        ret_val = (2, newLocator.articleID(), opasConfig.RX_CONFIDENCE_PAGE_ADJUSTED)
+                    else:
+                        ret_val = (0, rx, rx_confidence)
+                else:
+                    ret_val = (0, rx, rx_confidence)
+                    
+        # validation check values:
+        # 0 = Not valid, No fix  
+        # 1 = Already correct
+        # 2 = Fixed page mismatch, 
+        return ret_val # (validation check, locator, confidence)
+        
     def close_connection(self, caller_name=""):
         ret_val = False # failed, or not open
         if self.connected and self.connection_count > 1: # try to keep connection count to 1
@@ -398,17 +422,19 @@ class opasCentralDB(object):
     def article_exists(self, rx_locator):
         """
         Does this rx_locator (doc_id) match an article?
+        
+        Allows Regexp qualifiers.
         """
         fname = "article_exists"
-        ret_val = False
+        ret_val = []
         self.open_connection(caller_name=fname) # make sure connection is open
         if self.db is not None:
             with closing(self.db.cursor(buffered=True, dictionary=False)) as curs:
-                sql = f"SELECT art_id from api_articles where art_id='{rx_locator}';"
+                sql = f"SELECT art_id from api_articles where art_id LIKE '{rx_locator}';"
                 curs.execute(sql)
                 row_count = curs.rowcount
                 if row_count > 0:
-                    ret_val = True
+                    ret_val = curs.fetchall()
         else:
             logger.error("Connection not available to database.")
 
@@ -1163,30 +1189,33 @@ class opasCentralDB(object):
     
         return ret_val  # return True for success
 
-    #------------------------------------------------------------------------------------------------------
-    def get_art_relations(self, the_id, relation_type="Translation"):
-        """
-        if you supply a document_id returns the origrxID if there are multiple relations
-         according to the opasloader_art_relations table.
-         
-        >>> ocd = opasCentralDB()
-        >>> ocd.get_art_relations(the_id='IJP.086.1523A')
-        'IJP.086.1523A'
-        >>> ocd.get_art_relations(the_id='ANIJP-FR.2006.0161A')
-        'IJP.086.1523A'
-
-        """
-        ret_val = None
-
-        sql_select = f"select * from opasloader_art_relations where articleID = '{the_id}' and relationType='{relation_type}'"
-        ret_val = self.get_select_as_list_of_dicts(sql_select)
-        if len(ret_val) == 1:
-            # found, get origrx
-            ret_val = origrx_id = ret_val[0].get("origrxID", the_id)
-        else:
-            ret_val = origrx_id = the_id
+    ##------------------------------------------------------------------------------------------------------
+    #def get_art_relations(self, the_id, relation_type="Translation"):
+        #"""
+        #01/24 - CORRECTION: I don't think this table is needed.  The problem with showing
+                #translations was elsewhere!
         
-        return origrx_id
+        #if you supply a document_id returns the origrxID if there are multiple relations
+         #according to the opasloader_art_relations table.
+         
+        #>>> ocd = opasCentralDB()
+        #>>> ocd.get_art_relations(the_id='IJP.086.1523A')
+        #'IJP.086.1523A'
+        #>>> ocd.get_art_relations(the_id='ANIJP-FR.2006.0161A')
+        #'IJP.086.1523A'
+
+        #"""
+        #ret_val = None
+
+        #sql_select = f"select * from opasloader_art_relations where articleID = '{the_id}' and relationType='{relation_type}'"
+        #ret_val = self.get_select_as_list_of_dicts(sql_select)
+        #if len(ret_val) == 1:
+            ## found, get origrx
+            #ret_val = origrx_id = ret_val[0].get("origrxID", the_id)
+        #else:
+            #ret_val = origrx_id = the_id
+        
+        #return origrx_id
         
     #------------------------------------------------------------------------------------------------------
     def get_select_as_list_of_dicts(self, sqlSelect: str):
@@ -1486,12 +1515,12 @@ class opasCentralDB(object):
         if (rx is not None and rx_confidence is not None) or  (rxcfs is not None and rxcfs_confidence is not None):
             sqlcpy = f"""
                         UPDATE api_biblioxml
-                            SET bib_rx = %s,
-                                bib_rx_confidence = %s,
-                                bib_rxcf = %s,
-                                bib_rxcf_confidence = %s
+                            SET ref_rx = %s,
+                                ref_rx_confidence = %s,
+                                ref_rxcf = %s,
+                                ref_rxcf_confidence = %s
                             WHERE art_id = %s
-                            AND bib_local_id = %s
+                            AND ref_local_id = %s
                       """
             
             query_params = (rx,

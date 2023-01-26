@@ -348,11 +348,11 @@ class ArticleInfo(BaseModel):
     art_auth_mast: Optional[str] = Field(None, title="Author mast, for Solr")
     art_auth_mast_list: list = Field([], title="List of author names format for masts, for Solr")
     art_auth_mast_unlisted_str: Optional[str]
-    art_auth_mast_unlisted_list: list = Field([], title="List of author names")
+    # art_auth_mast_unlisted_list: list = Field([], title="List of author names")
     author_xml_list: list = Field([], title="List of authors, for Solr")
     author_xml: Optional[str]
-    authors_bibliographic: Optional[str]
-    authors_bibliographic_list: list = Field([], title="List of authors")
+    # authors_bibliographic: Optional[str]  
+    # authors_bibliographic_list: list = Field([], title="List of authors")
     art_citeas_text: Optional[str]
     art_citeas_xml: Optional[str]
     art_doi: Optional[str]
@@ -591,14 +591,14 @@ class ArticleInfo(BaseModel):
             try:
                 if self.src_title_full is not None:
                     self.src_title_full = self.src_title_full.replace(opasConfig.JOURNALNEWFLAG, "")
-                    safe_src_title_full = html.escape(self.src_title_full)
+                    src_title_full_safe = html.escape(self.src_title_full)
                 else:
                     logger.warning(f"Source title full is None")
-                    safe_src_title_full = ''
+                    src_title_full_safe = ''
     
             except Exception as e:
                 logger.error(f"ArticleInfoError: Source title escape error: {e}")
-                safe_src_title_full = ''
+                src_title_full_safe = ''
                         
             self.src_embargo_in_years = sourceDB.sourceData[pepsrccode].get("wall", None)
             product_type = sourceDB.sourceData[pepsrccode].get("product_type", None)  # journal, book, video...
@@ -694,7 +694,12 @@ class ArticleInfo(BaseModel):
             art_doi = self.art_doi = opasxmllib.xml_get_element_attr(artInfoNode, "doi", default_return=None) 
             self.art_issn = opasxmllib.xml_get_element_attr(artInfoNode, "ISSN", default_return=None) 
             self.art_isbn = opasxmllib.xml_get_element_attr(artInfoNode, "ISBN", default_return=None) 
-            self.art_orig_rx = opasxmllib.xml_get_element_attr(artInfoNode, "origrx", default_return=None) 
+            orig_rx = opasxmllib.xml_get_element_attr(artInfoNode, "origrx", default_return=None)
+            if orig_rx is not None:
+                orig_rx = opasLocator.Locator(orig_rx)
+                if orig_rx.isValid():
+                    self.art_orig_rx = orig_rx.articleID()
+                
             self.start_sectlevel = opasxmllib.xml_get_element_attr(artInfoNode, "newseclevel", default_return=None)
             self.start_sectname = opasxmllib.xml_get_element_attr(artInfoNode, "newsecnm", default_return=None)
             if self.start_sectname is None:
@@ -892,9 +897,9 @@ class ArticleInfo(BaseModel):
             
             self.author_xml_list = parsed_xml.xpath('//artinfo/artauth/aut')
             self.author_xml = opasxmllib.xml_xpath_return_xmlsingleton(parsed_xml, '//artinfo/artauth')
-            self.authors_bibliographic, self.author_list, self.authors_bibliographic_list = opasxmllib.authors_citation_from_xmlstr(self.author_xml, listed="All") #listed=True)
-            self.art_auth_citation = self.authors_bibliographic
-            self.art_auth_citation_list = self.authors_bibliographic_list
+            authors_bibliographic, self.author_list, authors_bibliographic_list = opasxmllib.authors_citation_from_xmlstr(self.author_xml, listed="All") #listed=True)
+            self.art_auth_citation = authors_bibliographic
+            self.art_auth_citation_list = authors_bibliographic_list
             # ToDo: I think I should add an author ID to bib aut too.  But that will have
             #  to wait until later.
             # TODO: fix PEP2XML--in cases like AJRPP.004.0273A it put Anonymous in the authindexid.
@@ -906,7 +911,7 @@ class ArticleInfo(BaseModel):
     
             self.art_author_ids_str = ", ".join(self.art_author_id_list)
             self.art_auth_mast, self.art_auth_mast_list = opasxmllib.author_mast_from_xmlstr(self.author_xml, listed=True)
-            self.art_auth_mast_unlisted_str, self.art_auth_mast_unlisted_list = opasxmllib.author_mast_from_xmlstr(self.author_xml, listed=False)
+            self.art_auth_mast_unlisted_str, art_auth_mast_unlisted_list = opasxmllib.author_mast_from_xmlstr(self.author_xml, listed=False)
             # self.art_auth_count = len(self.author_xml_list)
             # self.art_author_lastnames = opasxmllib.xml_xpath_return_textlist(parsed_xml, '//artinfo/artauth/aut[@listed="true"]/nlast')
             
@@ -916,46 +921,46 @@ class ArticleInfo(BaseModel):
                 
             try:
                 if self.art_title is not None:
-                    safe_art_title = html.escape(self.art_title)
+                    art_title_safe = html.escape(self.art_title)
                 else:
                     logger.warning(f"Art title is None")
-                    safe_art_title = ''
+                    art_title_safe = ''
     
             except Exception as e:
                 logger.error(f"ArticleInfoError: Art title escape error: {e}")
-                safe_art_title = ''
+                art_title_safe = ''
     
             try:
                 if self.art_pgrg is not None:
-                    safe_art_pgrg = html.escape(self.art_pgrg)
+                    art_pgrg_safe = html.escape(self.art_pgrg)
                 else:
                     logger.warning(f"Art title is None")
-                    safe_art_pgrg = ''
+                    art_pgrg_safe = ''
     
             except Exception as e:
                 logger.error(f"ArticleInfoError: Art PgRg escape error: {e}")
-                safe_art_pgrg = ''
+                art_pgrg_safe = ''
 
             try:
                 if self.bk_title is not None:
-                    safe_src_title_full = html.escape(self.bk_title)
+                    src_title_full_safe = html.escape(self.bk_title)
                 elif self.src_title_full is not None:
-                    safe_src_title_full = html.escape(self.src_title_full)
+                    src_title_full_safe = html.escape(self.src_title_full)
                 else:
                     logger.info(f"Source title is None")
-                    safe_src_title_full = ''
+                    src_title_full_safe = ''
             except Exception as e:
                 logger.error(f"ArticleInfoError: Art bk_title escape error: {e}")
-                safe_art_pgrg = ''
+                art_pgrg_safe = ''
                 
             # Usually we put the abbreviated title here, but that won't always work here.
             self.art_citeas_xml = u"""<p class="citeas"><span class="authors">%s</span> (<span class="year">%s</span>) <span class="title">%s</span>. <span class="sourcetitle">%s</span> <span class="vol">%s</span>:<span class="pgrg">%s</span></p>""" \
-                %                   (self.authors_bibliographic,
+                %                   (self.art_auth_citation,
                                      self.art_year_str,
-                                     safe_art_title,
-                                     safe_src_title_full,
+                                     art_title_safe,
+                                     src_title_full_safe,
                                      self.art_vol_int,
-                                     safe_art_pgrg
+                                     art_pgrg_safe
                                     )
             
             self.art_citeas_text = opasxmllib.xml_elem_or_str_to_text(self.art_citeas_xml)
