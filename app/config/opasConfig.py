@@ -293,14 +293,28 @@ def normalize_val(val, val_dict, default=None):
 # Special relatedrx field name from Solr schema
 RELATED_RX_FIELDNAME = "art_qual"
 # standard confidence values with implied meaning
-RX_CONFIDENCE_POSITIVE = 1                          # human verified
-RX_CONFIDENCE_PROBABLE = .99                        # target exists and likely right
-RX_CONFIDENCE_EXISTS = .98                          # target exists
-RX_CONFIDENCE_PAGE_ADJUSTED = .97                   # matched by page adjusting
-RX_CONFIDENCE_SAME_AUT_TITLE_OTH_SRC = .96       # matched by page adjusting
-
+RX_CONFIDENCE_POSITIVE = 1                        # human verified
+RX_CONFIDENCE_AUTO_POSITIVE = .99                 # as sure as possible, automatically
+RX_CONFIDENCE_PROBABLE = .91                      # target exists and likely right
+RX_CONFIDENCE_PAGE_ADJUSTED = .88                 # matched by page adjusting
+RX_CONFIDENCE_EXISTS = .85                        # target exists
+RX_CONFIDENCE_SAME_AUT_TITLE_OTH_SRC = .81        # matched by page adjusting
+RX_CONFIDENCE_TITLE_MATCH_NOT_YEAR = .79
 RX_CONFIDENCE_THIS_IS_NOT_THE_REFERENCE = .01
-RX_CONFIDENCE_MINIMUM_NO_REPLACE = .92
+RX_CONFIDENCE_MINIMUM_NO_REPLACE = .77
+
+HEURISTIC_SEARCH_LIST_MAX_LEN = 5                # Max length of ref_rxcf list
+HEURISTIC_SEARCH_MAX_COUNT = 10                  # max matches to consider in heuristic search
+
+RX_LINK_SOURCE_DB = "database"
+RX_LINK_SOURCE_TITLE = "title"
+RX_LINK_SOURCE_TITLE_AND_YEAR = "title and year"
+RX_LINK_SOURCE_XML = "xml"
+RX_LINK_SOURCE_PATTERN = "pattern"
+RX_LINK_SOURCE_VARIATION = "variation"
+RX_LINK_SOURCE_HEURISTIC = "heuristic"
+RX_LINK_SOURCE_TITLE_HEURISTIC = "title heuristic"
+RX_LINK_SOURCE_RX = "in rx"
 
 # OR'd list RE of terms to not match in the documents for glossary items
 GLOSSARY_TERM_SKIP_REGEX = "(stage|feeling)"

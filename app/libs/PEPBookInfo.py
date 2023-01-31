@@ -27,7 +27,7 @@ import re
 #import html.parser
 # import xml.sax.saxutils
 
-from opasConfig import gClassicBookTOCList, gSEIndex, gGWIndex
+from opasConfig import gClassicBookTOCList, gSEIndex, gGWIndex, RX_CONFIDENCE_PROBABLE
 
 import opasGenSupportLib as opasgenlib
 #import opasDocuments
@@ -1122,65 +1122,6 @@ class PEPBookInfo:
         This is used for XML based references (most accurate)
 
         """
-        #from sciHLPyxie import SUB, E, A
-        #from sciHLElemTreeLXML import ALL, SUB, FIRST, E, A, hlString2xTree
-
-        # removed for now
-        
-        #self.__initDB__()
-
-        #retVal = None, None, None
-        #if theReference == None:
-            #print(10*"WARNING: getPEPBookCodeXML called with NONE for theReference!\n")
-            #return retVal
-
-        #if isinstance(theReference, sciHLElemTree):
-            ## already parsed
-            #if gDbg1: print("getPEPBookCodeXML Passed PYXTree for processing: ", repr(theReference))
-            #self.LastPYXRefTree = theReference
-        #else:   # string format, but might be XML
-            ## See if it's XML in the string
-            #if re.search("<t>|<bst>|<j>", theReference) != None: #re.search("<be|<binc", theReference) != None:
-                ##theReference = re.sub('<cs style="PEPSymb1">ecaron</cs>', "&ecaron;", theReference)
-
-                #if gDbg1: print("getPEPBookCodeXML Parse Processing: ", theReference)
-                ## Get the XML of the reference, parse it, so we have all aspects of it.
-                #try:
-                    #self.LastPYXRefTree = hlString2xTree (theReference)
-                #except Exception as e:
-                    ##print "Error %s converting tree: %s" % (e, theReference)
-                    ##print "getPEPBookCodeXML Exception Processing: ", theReference
-                    #theReference  = re.sub("&(?!.{1,10};)", "&amp;", theReference)
-                    #theReference = re.sub("<<", "&lt;", theReference)
-                    #theReference = re.sub(">>>", ">&gt;", theReference)
-                    #theReference = re.sub(">>", ">&gt;", theReference)
-                    #theReference  = re.sub("(<webx.*?>.*?)[>](.*?</webx>)", r"\1&gt;\2", theReference)
-                    #theReference  = re.sub("(<webx.*?>.*?)[<](.*?</webx>)", r"\1&lt;\2", theReference)
-                    #theReference = re.sub(r"<([=\-])>", r"&lt;\1&gt;", theReference)
-
-                    #try:
-                        #self.LastPYXRefTree = hlString2xTree (theReference)
-                    #except Exception as e:
-                        #try:
-                            #logger.error("Exception: Error in converting tree: %s (%s)" % (e, theReference))
-                        #except:
-                            #pass
-                        #self.LastPYXRefTree = None # called with string, so reset tree.
-                        #retVal = self.getPEPBookCodeStr(theReference=theReference)
-                        ## done, processed in getPEPBookCodeStr
-                        #return retVal # will be tuple or none
-
-                #if not isinstance(self.LastPYXRefTree, sciHLElemTree):
-                    #raise ValueError(f"hlstring2xtree returned a string: {self.LastPYXRefTree}")
-
-                ## fall through for processing
-            #else:
-                ## plain string
-                #self.LastPYXRefTree = None # called with string, so reset tree.
-                #retVal = self.getPEPBookCodeStr(theReference=theReference)
-                ## done, processed in getPEPBookCodeStr
-                #return retVal # will be tuple or none
-
         ## at this point, only XML falls through
         #bookMarkup = self.LastPYXRefTree.getElementTextSingleton(SUB, E("bst|bp|bsy|bpd"))
         #journal = self.LastPYXRefTree.getElementTextSingleton(SUB, E("j"))
@@ -1242,7 +1183,7 @@ class PEPBookInfo:
         pass
     
     #--------------------------------------------------------------------------------
-    def getPEPBookCodeStr(self, theReference, sRatio = .87654320):
+    def getPEPBookCodeStr(self, theReference, sRatio = RX_CONFIDENCE_PROBABLE):
         """
         Identify the reference in the unstructured strBookReference and return the
             associated bookID if there is one
@@ -1255,7 +1196,7 @@ class PEPBookInfo:
         # Book reference
         retVal = None, None, None
         matchID = None
-
+        
         # self.LastPYXRefTree = None # called with string, so reset tree.
         # fall through and process string
 

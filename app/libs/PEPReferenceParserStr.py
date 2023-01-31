@@ -32,11 +32,14 @@ gDbg2 = 1	# High level
 class StrReferenceParser(object):
     """
         
-    >>> ref = 'Jones, D. (2009), Addiction and pathological accommodation: An intersubjective look at impediments to the utilization of Alcoholics Anonymous. Internat. J. Psychoanal. Self Psychol., 4:212–233.'
+    >>> ref = "Freud, S. 1905 On psychotherapy Standard Edition 7"
     >>> str_parser = StrReferenceParser()
     >>> str_parser.parse_str(ref)
     
-    >>>
+    >> ref = 'Jones, D. (2009), Addiction and pathological accommodation: An intersubjective look at impediments to the utilization of Alcoholics Anonymous. Internat. J. Psychoanal. Self Psychol., 4:212–233.'
+    >> str_parser = StrReferenceParser()
+    >> str_parser.parse_str(ref)
+
     
     """
     art_id: str = Field(None, title="Article ID (locator) of the instance containing the reference")
@@ -74,6 +77,31 @@ class StrReferenceParser(object):
         Load the translation dictionary for parsing references
         -----------------------------------------------------------
         """
+        
+        self.art_id = None
+        self.bib_local_id = None
+        self.art_year = 0
+        self.bib_ref_in_pep = False
+        self.bib_rx = None
+        self.bib_rx_confidence = 0
+        self.bib_rxcf = None
+        self.bib_rxcf_confidence = None
+        self.bib_sourcetype = None
+        self.bib_authors = None
+        self.bib_title = None
+        self.full_ref_text = None
+        self.bib_sourcecode = None
+        self.bib_sourcetitle = None
+        self.bib_pgrg = None
+        self.doi = None
+        self.bib_year = None
+        self.bib_year_int = 0
+        self.bib_volume = None
+        self.bib_volume_int = 0
+        self.bib_volume_isroman = None
+        self.bib_publisher = None
+        self.last_update = None
+        
         # pattern matchers are at the class level...so only need to initialize once.
         try:
             if self.reDictInitd==1:
@@ -316,7 +344,7 @@ class StrReferenceParser(object):
         bpgstart = 0
         bpgend = 0
         bjournal = ""
-
+        
         self.art_id = art_id
         self.bib_local_id = bib_local_id
         
@@ -462,7 +490,10 @@ class StrReferenceParser(object):
             if self.bib_year != None:
                 # lookup vol
                 if self.bib_sourcecode != None:
-                    self.bib_volume, self.bib_vol_list = gJrnlData.getVol(self.bib_sourcecode, self.bib_year)
+                    try:
+                        self.bib_volume, self.bib_vol_list = gJrnlData.getVol(self.bib_sourcecode, self.bib_year)
+                    except Exception as e:
+                        pass # cant find them
                 else:
                     if gDbg1: print("Ref - No source code to look up")
 
@@ -485,8 +516,8 @@ class StrReferenceParser(object):
             if self.bib_year != None:
                 str1 = "\(?\s*" + str(self.bib_year) + "[a-z]?\s*\)?"
             elif self.bib_authors != None:
-                str1 = self.bib_authors
-                str1 = opasgenlib.removeAllPunct(str1, punctSet=['*', ']', '[', '(', ')', '\t', '"', "'"]) # removed "*" as well, if found causes problems with the reg expression parse.
+                str1 = opasgenlib.remove_all_punct(self.bib_authors, additional_chars="\t/,[]‘’1234567890")
+                self.bib_authors = str1
             else:
                 str1 = None
 
@@ -554,7 +585,7 @@ class StrReferenceParser(object):
                         self.bib_title = trimPunctAndSpaces(m.group("title"))
             else:
                 # what do we use!
-                print(logger.warning("PEPReferenceParserStr - Not enough info in ref to search for title: '%s'." % ref_entry_text.rstrip()))
+                logger.warning("PEPReferenceParserStr - Not enough info in ref to search for title: '%s'." % ref_entry_text.rstrip())
 
         bookCode, sRatio, refObj = bookInfo.getPEPBookCodeStr(ref_entry_text)
         if bookCode != None:

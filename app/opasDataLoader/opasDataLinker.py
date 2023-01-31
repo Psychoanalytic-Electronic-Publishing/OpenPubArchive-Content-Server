@@ -31,6 +31,7 @@ import models
 import PEPJournalData
 import PEPBookInfo
 known_books = PEPBookInfo.PEPBookInfo()
+import PEPReferenceParserStr
 
 gDbg1 = 0	# details
 gDbg2 = 1	# High level
@@ -43,310 +44,20 @@ import lxml
 sqlSelect = ""
 parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True)
 
-def find_related_articles(ref, art_or_source_title,
-                          query_target="art_title_xml",
-                          max_words=opasConfig.MAX_WORDS,
-                          min_words=opasConfig.MIN_WORDS,
-                          word_len=opasConfig.MIN_WORD_LEN,
-                          max_cf_list=opasConfig.MAX_CF_LIST):
-    """
-    Search for related articles and add to rxcf of reference
-    
-    """
-    # title is either ref_entry.art_title_xml or bib_entry.source_title
-    ret_val = [] # rxcf
-    prev_rxcf = None
-    title_words = re.findall(r'\b\w{%s,}\b' % word_len, art_or_source_title)[:max_words]
-    if len(title_words) >= min_words:
-        safe_title_words = " AND ".join(title_words)
-        query = f"{query_target}:({safe_title_words})"
-        result = opasPySolrLib.search_text(query=query, limit=10, offset=0, full_text_requested=False)
-        
-        if result[1][0] == 200:
-            if gDbg2:
-                title_list = [item.title for item in result[0].documentList.responseSet[0:max_cf_list]]
-                if title_list != []:
-                    print (f"\t\t\t...Article title first {len(title_words)} words of len {word_len} for search: {safe_title_words} from title:{art_or_source_title}")
-                    for n in title_list:
-                        print (f"\t\t\t\t...cf Article Title: {n[:opasConfig.MAX_DISPLAY_LEN_CF_ARTICLES]}")
-                        
-            ret_val = [item.documentID for item in result[0].documentList.responseSet[0:max_cf_list]]
-            try:
-                prev_rxcf = ref.attrib["rxcf"]
-            except Exception:
-                pass
-
-            if len(ret_val) > 0 and prev_rxcf is None:
-                ref.attrib["rxcf"] = ",".join(ret_val)
-                compare_to = f"\t\t\t...Journal title compare to: {ref.attrib['rxcf']}"
-                log_everywhere_if(gDbg2, level="debug", msg=compare_to)
-            elif prev_rxcf is not None:
-                ref.attrib["rxcf"] = prev_rxcf + "," + ",".join(ret_val)
-                compare_to = f"\t\t\t...Journal title compare to: {ref.attrib['rxcf']}"
-                log_everywhere_if(gDbg2, level="debug", msg=compare_to)
-                
-        else:
-            log_everywhere_if(gDbg1, level="debug", msg=result[1][1])
-    elif gDbg2:
-        print (f"\t\t\t...Skipped cf search (too few words): {title_words}")
-
-    return ret_val
-                  
-#------------------------------------------------------------------------------------------------------
-def xx_identify_ref(ref, artInfo, ocd, pretty_print=False, verbose=False):
-    """
-    For the arg ref, find matching articles via Solr search
-     of the title, year and author.
-     and return a matched rx and confidence
-     and a list of possible matches, rxcf, and confidences.
-    """
-
-    # add links to biblio entries, rx to be
-    # merge record info
-    bib_entry = opasBiblioSupport.BiblioEntry(art_id=artInfo.art_id, art_year=artInfo.art_year_int, ref_or_parsed_ref=ref)
-    #if bib_entry.sourcecode is None:
-        #if isinstance(bib_entry.source_title, str) and not opasgenlib.is_empty(bib_entry.source_title):
-            #bib_entry.sourcecode, dummy, dummy = gJrnlData.getPEPJournalCode(strText=bib_entry.source_title) 
-
-    try:
-        if not opasgenlib.is_empty(bib_entry.ref_pgrg):
-            bib_pgstart, bib_pgend = bib_entry.ref_pgrg.split("-")
-    except ValueError as e:
-        if not opasgenlib.is_empty(bib_entry.ref_pgrg):
-            bib_pgstart = bib_entry.ref_pgrg
-            bib_pgend = bib_entry.ref_pgrg
-        else:
-            bib_pgstart = ""
-            bib_pgend = ""
-        
-    if not bib_entry.ref_is_book: # journal or other
-        if opasgenlib.is_empty(bib_entry.sourcecode):
-            # there's no source code
-            if bib_entry.ref_title:
-                # find and store rxcf for related articles (side effect of function)
-                if gDbg2 and verbose: print (f"\t...Finding related articles for bibliography based on ref_title")
-                # called routine updates ref if found
-                rxcf = opasXMLProcessor.find_related_articles(ref,
-                                             art_or_source_title=bib_entry.ref_title,
-                                             query_target="art_title_xml",
-                                             max_words=opasConfig.MAX_WORDS,
-                                             min_words=opasConfig.MIN_WORDS,
-                                             word_len=opasConfig.MIN_WORD_LEN,
-                                             max_cf_list=opasConfig.MAX_CF_LIST)                        
-            else:
-                locator = None
-                msg = f"\t\t\t...Skipped: {bib_saved_entry}"
-                log_everywhere_if(gDbg2, level="debug", msg=msg)                            
-            
-        else: # there's a source code
-            locator = Locator(strLocator=None,
-                               jrnlCode=bib_entry.sourcecode, 
-                               jrnlVolSuffix="", 
-                               jrnlVol=bib_entry.ref_volume, 
-                               jrnlIss=None, 
-                               pgVar="A", 
-                               pgStart=bib_pgstart, 
-                               jrnlYear=bib_entry.ref_year, 
-                               localID=bib_entry.ref_local_id, 
-                               keepContext=1, 
-                               forceRoman=False, 
-                               notFatal=True, 
-                               noStartingPageException=True) #, 
-                               #filename=artInfo.filename)
-                               
-            # need to check if it's whole, and if it works, but for now.
-            if locator.valid == 0:
-                msg = f"\t\t\t...Bib ID {ref_id} does not have enough info to link. {bib_entry.ref_year}.{bib_entry.ref_volume}.{bib_pgstart}"
-                log_everywhere_if(gDbg2, level="info", msg=msg)
-            else:
-                ref.attrib["rx"] = locator.articleID()
-                search_str = f"//be[@id='{ref_id}']"
-                msg = f"\t\t\t...Matched Journal {opasxmllib.xml_xpath_return_xmlstringlist(parsed_xml, search_str)[0]}"
-                log_everywhere_if(gDbg2, level="debug", msg=msg)
-
-    else: # this is a book
-        bk_locator_str, match_val, whatever = known_books.getPEPBookCodeStr(bib_entry.ref_text)
-        if bk_locator_str is not None:
-            ref.attrib["rx"] = bk_locator_str 
-            search_str = f"//be[@id='{ref_id}']"
-            msg = f"\t\t\t...Matched Book {match_val}. {opasxmllib.xml_xpath_return_xmlstringlist(parsed_xml, search_str)[0]}"
-            log_everywhere_if(gDbg2, level="info", msg=msg)
-            
-        else:
-            # see if we have info to link SE/GW etc., these are in a sense like journals
-            pep_ref = False
-            if PEPJournalData.PEPJournalData.rgxSEPat2.search(bib_entry.ref_text):
-                pep_ref = True
-                bib_entry.sourcecode = "SE"
-            elif PEPJournalData.PEPJournalData.rgxGWPat2.search(bib_entry.ref_text):
-                pep_ref = True
-                bib_entry.sourcecode = "GW"
-            
-            #try checking this anyway!
-            if bib_entry.ref_sourcetitle:
-                # find_related_articles assigns to ref attrib rxcf (hence no need to use return val)
-                if gDbg2 and verbose:
-                    print (f"\t...Finding related articles for bibliography rxcf based on source_title: {bib_entry.ref_sourcetitle}")
-                # called routine updates ref if found
-                rxcf = find_related_articles(ref,
-                                             art_or_source_title=bib_entry.ref_sourcetitle,
-                                             query_target="art_title_xml",
-                                             max_words=opasConfig.MAX_WORDS,
-                                             min_words=opasConfig.MIN_WORDS,
-                                             word_len=opasConfig.MIN_WORD_LEN,
-                                             max_cf_list=opasConfig.MAX_CF_LIST)
-
-            if not rxcf and bib_entry.ref_title:
-                if gDbg2 and verbose: print (f"\t...Finding related articles for bibliography rxcf based on ref_title: {bib_entry.ref_title}")
-                rxcf = find_related_articles(ref,
-                                             art_or_source_title=bib_entry.ref_title,
-                                             query_target="art_title_xml",
-                                             max_words=opasConfig.MAX_WORDS,
-                                             min_words=opasConfig.MIN_WORDS,
-                                             word_len=opasConfig.MIN_WORD_LEN,
-                                             max_cf_list=opasConfig.MAX_CF_LIST)
-                    
-                    
-            # elif bib_entry.ref
-
-            if pep_ref:
-                locator = Locator(strLocator=None,
-                                   jrnlCode=bib_entry.sourcecode, 
-                                   jrnlVolSuffix="", 
-                                   jrnlVol=bib_entry.ref_volume, 
-                                   jrnlIss=None, 
-                                   pgVar="A", 
-                                   pgStart=bib_pgstart, 
-                                   jrnlYear=bib_entry.ref_year, 
-                                   localID=bib_entry.ref_local_id, 
-                                   keepContext=1, 
-                                   forceRoman=False, 
-                                   notFatal=True, 
-                                   noStartingPageException=True, 
-                                   filename=artInfo.filename)
-                # check locator
-                if locator is not None:
-                    base_info = opasPySolrLib.get_base_article_info_by_id(locator)
-                    if base_info is None:
-                        # try without page number
-                        locator = Locator(strLocator=None,
-                                           jrnlCode=bib_entry.sourcecode, 
-                                           jrnlVolSuffix="", 
-                                           jrnlVol=bib_entry.ref_volume, 
-                                           jrnlIss=None, 
-                                           jrnlYear=bib_entry.ref_year, 
-                                           localID=bib_entry.ref_local_id, 
-                                           keepContext=1, 
-                                           forceRoman=False, 
-                                           notFatal=True, 
-                                           noStartingPageException=True, 
-                                           filename=artInfo.filename)
-                        # recheck locator
-                        base_info = opasPySolrLib.get_base_article_info_by_id(locator)
-                        
-                    if base_info is not None:
-                        ref.attrib["rx"] = locator.articleID()
-                        search_str = f"//be[@id='{ref_id}']"
-                        msg = f"\t\t\t...Matched Book {match_val}. {opasxmllib.xml_xpath_return_xmlstringlist(parsed_xml, search_str)[0]}"
-                        log_everywhere_if(gDbg2, level="debug", msg=msg)
-                    else:
-                        log_everywhere_if(gDbg2, level="debug", msg=f"didn't find this: {bib_entry.sourcecode}")
-                    
-                
-            else:     
-                locator = None
-                msg = f"\t\t\t...Skipped: {bib_entry.ref_text}"
-                log_everywhere_if(gDbg2, level="debug", msg=msg)
-
-#------------------------------------------------------------------------------------------------------
-def find_matching_pep_articles(bib_entry, 
-                               query_target="art_title_xml",
-                               max_words=opasConfig.MAX_WORDS,
-                               min_words=opasConfig.MIN_WORDS,
-                               word_len=opasConfig.MIN_WORD_LEN,
-                               max_cf_list=opasConfig.MAX_CF_LIST,
-                               verbose=False):
-    """
-    For the parsed_ref, find matching articles via
-     Solr search of the title, year and author.
-       and return a matched rx and confidence
-       and a list of possible matches, rxcf, and confidences.
-    
-    """
-    # title is either bib_entry.art_title_xml or bib_entry.source_title
-    rx = None
-    rxcfs = []
-    rx_confidence = None
-    rxcfs_confidence = []
-    title_list = []
-    solr_adverse_punct_set = [':', '"', "'", "[", "]", r"/"]
-    if bib_entry.ref_is_book:
-        art_or_source_title = bib_entry.source_title
-    else:
-        art_or_source_title = bib_entry.ref_title
-    
-    # prev_rxcf = None
-    if art_or_source_title:
-        art_or_source_title = opasgenlib.removeAllPunct(art_or_source_title, punct_set=[',', '.', ':', ';', '(', ')', '\t', r'/', '"', "'", "[", "]"])
-        query = f"{query_target}:({art_or_source_title})"
-        authors = bib_entry.ref_authors
-        if authors:
-            authors = opasgenlib.removeAllPunct(authors, punct_set=solr_adverse_punct_set)
-            query = query + f" AND authors:{authors}"
-    
-        #title_words = re.findall(r'\b\w{%s,}\b' % word_len, art_or_source_title)[:max_words]
-            
-        if bib_entry.year_int:
-            query = query + f" AND art_year:{bib_entry.year_int}"
-    
-        if bib_entry.volume and not bib_entry.ref_is_book:
-            # list of last name of authors with AND, search field art_authors_xml
-            query = query + f" AND art_vol:{opasgenlib.removeAllPunct(bib_entry.volume, punct_set=solr_adverse_punct_set)}"
-    
-        if gDbg2: print (f"Solr Query: {query}")
-        result, return_status = opasPySolrLib.search_text(query=query, limit=10, offset=0, full_text_requested=False, req_url=opasConfig.CACHEURL)
-        if return_status[0] == 200:
-            result_count = result.documentList.responseInfo.count
-            if result_count > 0 and result_count < 10:
-                rxcfs = [item.documentID for item in result.documentList.responseSet[0:max_cf_list]]
-                rxcfs_confidence = []
-                title_list = []
-                for item in result.documentList.responseSet[0:max_cf_list]:
-                    similarity_score = opasgenlib.similarityText(art_or_source_title, item.title)
-                    rxcfs_confidence.append(similarity_score)
-                    title_list.append({
-                                        "score": min(.99, round(similarity_score, 2)),
-                                        "art_title": item.title,
-                                        "rx": item.documentID,
-                                        "source_title": {art_or_source_title},
-                                       }
-                                     )
-                    
-                title_list = sorted(title_list, key=lambda d: d["score"], reverse=True)
-                rx_confidence = title_list[0]["score"]
-                rx = title_list[0]["rx"]
-                rxcfs = [item["rx"] for item in title_list]
-                rxcfs_confidence = [item["score"] for item in title_list]
-                
-                
-                #if title_list != []:
-                
-                    #if verbose: print (f"\t\t\t...Article title first {len(title_words)} words of len {word_len} for search: {query} from title:{art_or_source_title}")
-                    #for n in title_list:
-                        #if verbose: print (f"\t\t\t\t...cf Article Title: {n[:max_display_len_cf_articles]}")
-                            
-            else:
-                if verbose: print (f"Not Found: {bib_entry.ref_entry_text}")
-        else:
-            log_everywhere_if(True, "warning", return_status)
-
-    return rx, rx_confidence, rxcfs, rxcfs_confidence, title_list
-
 def walk_through_reference_set(ocd=ocd,
-                               sql_set_select = "select * from api_biblioxml where bib_rx is NULL",
+                               sql_set_select = "select * from api_biblioxml where art_id='CPS.031.0617A'",
                                set_description = "All"
                                ):
     """
+    >> walk_set = "SingleTest1", "select * from api_biblioxml where art_id='CPS.031.0617A' and ref_local_id='B024'"
+    >> walk_through_reference_set(ocd, sql_set_select=walk_set[1], set_description=walk_set[0])
+
+    >>> walk_set = "SingleTest1", "select * from api_biblioxml where art_id='CPS.031.0617A'"
+    >>> walk_through_reference_set(ocd, sql_set_select=walk_set[1], set_description=walk_set[0])
+
+    >> walk_set = "Freud", "select * from api_biblioxml where ref_rx is NULL and ref_authors like '%Freud%'"
+    >> walk_through_reference_set(ocd, sql_set_select=walk_set[1], set_description=walk_set[0])
+    
     """
     fname = "walk_through_reference_set"
     ocd.open_connection(caller_name=fname) # make sure connection is open
@@ -356,49 +67,58 @@ def walk_through_reference_set(ocd=ocd,
     
     if ocd.db is not None:
         # rows = self.SQLSelectGenerator(sqlSelect)
-        curs = ocd.db.cursor(buffered=True, dictionary=True)
-        curs.execute(sql_set_select)
-        warnings = curs.fetchwarnings()
-        if warnings:
-            for warning in warnings:
-                logger.warning(warning)
-                
+        biblio_entries = ocd.get_references_select_biblioxml(sql_set_select)
         counter = 0
-        for row in curs.fetchall():
+        for ref in biblio_entries:
             counter += 1
-            fullref = row['full_ref_xml']
-            art_id = row["art_id"]
-            art_year = row["art_year"]
-            bib_local_id = row["bib_local_id"]
-            # parsed_ref = ET.parse(StringIO(fullref), parser=parser)
-            parsed_ref = ET.fromstring(fullref, parser=parser)
-            bib_entry = opasBiblioSupport.BiblioEntry(art_id, art_year, ref_or_parsed_ref=parsed_ref)
-            author_list = bib_entry.ref_authors
-            
-            if bib_entry.ref_is_book:
-                source_title = title
-            #else:
-                #source_title = book_title
-
-            rx, rx_confidence, rxcfs, rxcfs_confidence, \
-                title_list = find_matching_pep_articles(bib_entry, verbose=True)
-            if len(rxcfs) >= 1:
-                # we have a close match?
-                if rx_confidence > .69:
-                    rx = rx
-                    print (f"\t...{rx} considered a match. Updating record.")
-                    success = ocd.update_biblioxml_links(art_id, bib_local_id,
-                                                          rx=rx,
-                                                          rx_confidence=rx_confidence,
-                                                          rxcfs=', '.join([str(item) for item in rxcfs]),
-                                                          rxcfs_confidence=max(rxcfs_confidence),
-                                                          verbose=True)
+            print (ref.ref_text)
+            parsed_ref = ET.fromstring(ref.ref_xml, parser=parser)
+            bib_entry = opasBiblioSupport.BiblioEntry(ref.art_id, db_bib_entry=ref)
+            art_id = bib_entry.art_id
+            if bib_entry.ref_rx is None:
+                print (bib_entry.ref_text)
+                bib_match = bib_entry.lookup_title_in_db(ocd)
+                if bib_match.ref_rx is None:
+                    bib_match = bib_entry.identify_heuristic()
                 else:
-                    print (f"\t...Potential matches {source_title}: {rxcfs}")
-                    success = ocd.update_biblioxml_links(art_id, bib_local_id,
-                                                          rxcfs=', '.join([str(item) for item in rxcfs]),
-                                                          rxcfs_confidence=max(rxcfs_confidence),
-                                                          verbose=True)
+                    print (f"\t..Reference ID: {bib_match.ref_rx} Confidence {bib_match.ref_rx_confidence} Link Updated: link")
+                    #time.sleep(2)
+            else:
+                bib_match = bib_entry.compare_to_database(ocd)
+                bib_match = bib_entry.lookup_more_exact_artid_in_db(ocd)
+                print (f"\t..Reference ID: {bib_entry.ref_rx} Confidence {bib_entry.ref_rx_confidence} Link Updated: link")
+                #if ref_rx is not None:
+                    #success = bib_entry.update_db_links(art_id,
+                                                        #local_id,
+                                                       #verbose=True)
+
+            if bib_entry.ref_rx is None and bib_match.ref_rx is not None:
+                bib_entry.update_bib_entry(bib_match)
+
+            if bib_entry.link_updated:
+                # make sure database isn't better
+                bib_match = bib_entry.compare_to_database(ocd)
+                bib_match = bib_entry.lookup_more_exact_artid_in_db(ocd)
+                if bib_match.ref_rx is not None:
+                    match1 = f"rx: {bib_match.ref_rx} "
+                else:
+                    match1 = ""
+                if bib_match.ref_rxcf is not None:
+                    match2 = f"rxcf: {bib_match.ref_rxcf} "
+                else:
+                    match2 = ""
+                print (f"\t...{match1} {match2} considered a match ({bib_match.link_source}) Updating DB record.")
+                if bib_match.link_source != "database" and bib_match.link_updated == True:
+                    success = ocd.update_biblioxml_links(bib_entry.art_id,
+                                                         bib_entry.ref_local_id,
+                                                         bib_entry=bib_match, 
+                                                         #rx=bib_match.ref_rx,
+                                                         #rx_confidence=bib_match.ref_rx_confidence,
+                                                         #rxcfs=bib_match.ref_rxcf,
+                                                         #rxcfs_confidence=bib_match.ref_rxcf_confidence,
+                                                         #rx_link_source=bib_match.link_source,
+                                                         #ref_xml=bib_match.ref_xml
+                                                        )
         
     ocd.close_connection(caller_name=fname) # make sure connection is closed
     
@@ -445,75 +165,108 @@ def clean_reference_links(ocd=ocd,
     # return session model object
     return ret_val # None or Session Object
 
-def fix_pgstart_errors_in_reflinks(ocd=ocd,
-                                   sql_set_select = "select * from api_biblioxml where ref_rx is not NULL",
-                                   set_description = "All"
-                                   ):
-    """
-    Checks for a bad locator and tries to fix it if
-      it's a page start error.  Otherwise leaves it alone
+# --------------------------------------------------------------------------------------------
+# TBD: These next two routines should now be handled automatically by biblioxml.  
+#    Delete in a future build after confirming
+# 
+# --------------------------------------------------------------------------------------------
+#def check_for_locator_page_mismatch(self, rx: str, rx_confidence: float):
+    #ret_val = (1, rx, rx_confidence)
+    #if rx_confidence == .99:
+        #ret_val = (1, rx, opasConfig.RX_CONFIDENCE_EXISTS)
+    #elif rx_confidence != 1:
+        #ret_val = (1, rx, opasConfig.RX_CONFIDENCE_EXISTS)
+        #if not self.article_exists(rx):
+            #newLocator = Locator(rx)
+            #if newLocator.articleID() is not None:
+                #newLocator.pgStart -= 1
+                #if self.article_exists(str(newLocator)):
+                    #ret_val = (2, newLocator.articleID(), opasConfig.RX_CONFIDENCE_PAGE_ADJUSTED)
+                #else:
+                    #ret_val = (0, rx, rx_confidence)
+            #else:
+                #ret_val = (0, rx, rx_confidence)
+                
+    ## validation check values:
+    ## 0 = Not valid, No fix  
+    ## 1 = Already correct
+    ## 2 = Fixed page mismatch, 
+    #return ret_val # (validation check, locator, confidence)
+
+#def fix_pgstart_errors_in_reflinks(ocd=ocd,
+                                   #sql_set_select = "select * from api_biblioxml where ref_rx is not NULL",
+                                   #set_description = "All"
+                                   #):
+    #"""
+    #Checks for a bad locator and tries to fix it if
+      #it's a page start error.  Otherwise leaves it alone
     
-    """
-    fname = "find_start_page_errors"
-    ocd.open_connection(caller_name=fname) # make sure connection is open
-    ret_val = 0
-    #artInfo = opasArticleIDSupport.ArticleInfo(art_id="IJP.100.0001A",
-                                               #art_year="2022")
+    #"""
+    #fname = "find_start_page_errors"
+    #ocd.open_connection(caller_name=fname) # make sure connection is open
+    #ret_val = 0
+    ##artInfo = opasArticleIDSupport.ArticleInfo(art_id="IJP.100.0001A",
+                                               ##art_year="2022")
     
-    if ocd.db is not None:
-        # rows = self.SQLSelectGenerator(sqlSelect)
-        curs = ocd.db.cursor(buffered=True, dictionary=True)
-        curs.execute(sql_set_select)
-        warnings = curs.fetchwarnings()
-        if warnings:
-            for warning in warnings:
-                logger.warning(warning)
+    #if ocd.db is not None:
+        ## rows = self.SQLSelectGenerator(sqlSelect)
+        #curs = ocd.db.cursor(buffered=True, dictionary=True)
+        #curs.execute(sql_set_select)
+        #warnings = curs.fetchwarnings()
+        #if warnings:
+            #for warning in warnings:
+                #logger.warning(warning)
         
-        rows = curs.fetchall()
-        print (f"Checking {len(rows)} rows")
-        for row in rows:
-            art_id = row["art_id"]
-            ref_local_id = row["ref_local_id"]
-            ref_rx = row["ref_rx"]
-            ref_rx_confidence = row["ref_rx_confidence"]
-            ref_text = row["ref_text"]
-            if ref_rx:
-                result, rx, rx_confidence = ocd.check_for_locator_page_mismatch(ref_rx, ref_rx_confidence)
-                if result == 2:
-                    # correct it
-                    print (f"\t...{art_id}/{ref_local_id} - {ref_rx} doesn't exist. Chgto:{newLocator} for {ref_text}.")
-                    success = ocd.update_biblioxml_links(art_id, ref_local_id,
-                                                          rx=str(rx),
-                                                          rx_confidence=rx_confidence,
-                                                          verbose=False)
-                    ret_val += 1
-                elif result == 1:
-                    if rx_confidence != ref_rx_confidence:
-                        success = ocd.update_biblioxml_links(art_id, ref_local_id,
-                                                              rx=str(rx),
-                                                              rx_confidence=rx_confidence,
-                                                              verbose=False)
-                        #print (f"Updated {rx_confidence} != {ref_rx_confidence}")
+        #rows = curs.fetchall()
+        #print (f"Checking {len(rows)} rows")
+        #for row in rows:
+            #art_id = row["art_id"]
+            #ref_local_id = row["ref_local_id"]
+            #ref_rx = row["ref_rx"]
+            #ref_rx_confidence = row["ref_rx_confidence"]
+            #ref_text = row["ref_text"]
+            #if ref_rx:
+                #result, rx, rx_confidence = check_for_locator_page_mismatch(ref_rx, ref_rx_confidence)
+                #if result == 2:
+                    ## correct it
+                    #print (f"\t...{art_id}/{ref_local_id} - {ref_rx} doesn't exist. Chgto:{newLocator} for {ref_text}.")
+                    #success = ocd.update_biblioxml_links(art_id, ref_local_id,
+                                                          #rx=str(rx),
+                                                          #rx_confidence=rx_confidence,
+                                                          #verbose=False)
+                    #ret_val += 1
+                #elif result == 1:
+                    #if rx_confidence != ref_rx_confidence:
+                        #success = ocd.update_biblioxml_links(art_id, ref_local_id,
+                                                              #rx=str(rx),
+                                                              #rx_confidence=rx_confidence,
+                                                              #verbose=False)
+                        ##print (f"Updated {rx_confidence} != {ref_rx_confidence}")
                         
                     
-    print (f"Corrected {ret_val} biblioxml records where rx was off by one page!")
-    ocd.close_connection(caller_name=fname) # make sure connection is closed
+    #print (f"Corrected {ret_val} biblioxml records where rx was off by one page!")
+    #ocd.close_connection(caller_name=fname) # make sure connection is closed
     
-    # return session model object
-    return ret_val # number of updated rows
+    ## return session model object
+    #return ret_val # number of updated rows
+# --------------------------------------------------------------------------------------------
+# End TBD
+# --------------------------------------------------------------------------------------------
 
 if __name__ == "__main__":
 
-    if 1:
-        set1 = "select * from api_biblioxml where ref_rx is NULL and ref_authors like '%Freud%'"
-        walk_through_reference_set(ocd, sql_set_select=set1, set_description="Freud")
-    elif 0:
-        set1 = "select * from api_biblioxml where ref_rx is not NULL and ref_authors like '%Freud%'"
-        clean_reference_links(ocd, set1)
-    elif 0:
-        set1 = "select * from api_biblioxml where ref_rx is not NULL;"
-        fix_pgstart_errors_in_reflinks(ocd, set1)
-    else:
+    do_walk_set = False
+    do_clean = False
+    do_doctest = True
+
+    if do_walk_set:
+        walk_through_reference_set(ocd, sql_set_select=walk_set[1], set_description=walk_set[0])
+
+    if do_clean:
+        clean_set = "Freud", "select * from api_biblioxml where ref_rx is not NULL and ref_authors like '%Freud%'"
+        clean_reference_links(ocd, clean_set[1])
+    
+    if do_doctest:
         import doctest
         doctest.testmod(optionflags=doctest.ELLIPSIS|doctest.NORMALIZE_WHITESPACE)
     

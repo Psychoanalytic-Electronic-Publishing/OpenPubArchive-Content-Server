@@ -140,6 +140,8 @@ class Biblioxml(BaseModel):
     ref_volume_int: Optional[int]
     ref_volume_isroman: bool = Field(False, title="True if ref_volume is roman")
     ref_publisher: str = Field(None)
+    link_source: str = Field(None, title="Source of rx link, 'xml', 'database', or 'pattern'")
+    link_updated: bool = Field(False, title="Indicates whether the data was corrected during load. If so, may need to update DB.  See link_source for method")
     last_update: datetime = Field(None)
 
 #-------------------------------------------------------

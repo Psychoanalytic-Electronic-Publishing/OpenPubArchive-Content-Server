@@ -70,7 +70,6 @@ import time
 from passlib.context import CryptContext
 import mysql.connector
 import json
-from opasLocator import Locator
 
 gDbg3 = False
 
@@ -257,29 +256,6 @@ class opasCentralDB(object):
         
         # if 1: print (f"Connection_count: {self.connection_count}")
         return self.connected
-
-    def check_for_locator_page_mismatch(self, rx: str, rx_confidence: float):
-        ret_val = (1, rx, rx_confidence)
-        if rx_confidence == .99:
-            ret_val = (1, rx, opasConfig.RX_CONFIDENCE_EXISTS)
-        elif rx_confidence != 1:
-            ret_val = (1, rx, opasConfig.RX_CONFIDENCE_EXISTS)
-            if not self.article_exists(rx):
-                newLocator = Locator(rx)
-                if newLocator.articleID() is not None:
-                    newLocator.pgStart -= 1
-                    if self.article_exists(str(newLocator)):
-                        ret_val = (2, newLocator.articleID(), opasConfig.RX_CONFIDENCE_PAGE_ADJUSTED)
-                    else:
-                        ret_val = (0, rx, rx_confidence)
-                else:
-                    ret_val = (0, rx, rx_confidence)
-                    
-        # validation check values:
-        # 0 = Not valid, No fix  
-        # 1 = Already correct
-        # 2 = Fixed page mismatch, 
-        return ret_val # (validation check, locator, confidence)
         
     def close_connection(self, caller_name=""):
         ret_val = False # failed, or not open
@@ -464,6 +440,22 @@ class opasCentralDB(object):
         self.close_connection(caller_name=fname) # make sure connection is closed
         return ret_val
         
+    def get_vols_for_source_and_year(self, src_code, year):
+        """
+        Return a set of years per a volume number for a source code
+        """
+        ret_val = None
+        sql = f"""
+                SELECT art_vol
+                FROM api_articles
+                WHERE src_code = '{src_code}'
+                      and art_year = {year};
+               """				            
+        ret_val = self.get_select_as_list(sql)
+        ret_val = [n[0] for n in ret_val]
+        return ret_val
+
+
     def most_viewed_generator( self,
                                publication_period: int=5,  # Number of publication years to include (counting back from current year, 0 means current year)
                                viewperiod: int=4,          # used here for sort and limiting viewcount results (more_than_clause)
@@ -1140,54 +1132,56 @@ class opasCentralDB(object):
         
         return ret_val
 
-    #------------------------------------------------------------------------------------------------------
-    def add_art_relations(self, art_id, origrx, language_code="EN", relation_type="Translation"):
-        """
-        Add this article's language info to the article qualifier table (linkartqual)
-        if you supply a document_id returns the origrxID if there are multiple relations
-         according to the opasloader_art_relations table.
+    ##------------------------------------------------------------------------------------------------------
+    #def xxx_add_art_relations(self, art_id, origrx, language_code="EN", relation_type="Translation"):
+        #"""
+        #01/24 - CORRECTION: I don't think this table is needed.  The problem with showing
+                #translations was elsewhere!
+        #Add this article's language info to the article qualifier table (linkartqual)
+        #if you supply a document_id returns the origrxID if there are multiple relations
+         #according to the opasloader_art_relations table.
         
-        >>> ocd = opasCentralDB()
-        >>> ocd.add_art_relations(art_id='ANIJP-FR.2006.0161A', language_code="FR", origrx='IJP.086.1523A')
-        True
-        >>> ocd = opasCentralDB()
-        >>> ocd.add_art_relations(art_id='IJP.086.1523A', language_code="EN", origrx='IJP.086.1523A')
-        True
-        """
-        ret_val = False
-        sel_insert = r"""REPLACE INTO opasloader_art_relations
-                        (
-                            articleID, 
-                            origrxID, 
-                            languageCode, 
-                            relationType
-                        )
-                        values
-                        (
-                            %(articleID)s,
-                            %(origrxID)s,
-                            %(languageCode)s, 
-                            %(relationType)s                              
-                        )
-                        """
-        query_params = {
-                           "articleID":art_id,
-                           "origrxID":origrx, 
-                           "languageCode":language_code, 
-                           "relationType": relation_type                     # reflinks
-                        }
+        #>> ocd = opasCentralDB()
+        #>> ocd.add_art_relations(art_id='ANIJP-FR.2006.0161A', language_code="FR", origrx='IJP.086.1523A')
+        #True
+        #>> ocd = opasCentralDB()
+        #>> ocd.add_art_relations(art_id='IJP.086.1523A', language_code="EN", origrx='IJP.086.1523A')
+        #True
+        #"""
+        #ret_val = False
+        #sel_insert = r"""REPLACE INTO opasloader_art_relations
+                        #(
+                            #articleID, 
+                            #origrxID, 
+                            #languageCode, 
+                            #relationType
+                        #)
+                        #values
+                        #(
+                            #%(articleID)s,
+                            #%(origrxID)s,
+                            #%(languageCode)s, 
+                            #%(relationType)s                              
+                        #)
+                        #"""
+        #query_params = {
+                           #"articleID":art_id,
+                           #"origrxID":origrx, 
+                           #"languageCode":language_code, 
+                           #"relationType": relation_type                     # reflinks
+                        #}
         
-        try:
-            # commit automatically handled by do_action_query
-            res = ocd.do_action_query(querytxt=sel_insert, queryparams=query_params)
-        except Exception as e:
-            errStr = f"DBError: insert error {e}"
-            logger.error(errStr)
-            if opasConfig.LOCAL_TRACE: print (errStr)
-        else:
-            ret_val = True
+        #try:
+            ## commit automatically handled by do_action_query
+            #res = ocd.do_action_query(querytxt=sel_insert, queryparams=query_params)
+        #except Exception as e:
+            #errStr = f"DBError: insert error {e}"
+            #logger.error(errStr)
+            #if opasConfig.LOCAL_TRACE: print (errStr)
+        #else:
+            #ret_val = True
     
-        return ret_val  # return True for success
+        #return ret_val  # return True for success
 
     ##------------------------------------------------------------------------------------------------------
     #def get_art_relations(self, the_id, relation_type="Translation"):
@@ -1313,19 +1307,40 @@ class opasCentralDB(object):
         return ret_val
 
     #------------------------------------------------------------------------------------------------------
-    def get_references_from_biblioxml_table(self, article_id, ref_local_id=None, verbose=None):
+    def get_references_select_biblioxml(self, select, verbose=None):
         """
-        Return a list of references from the api_biblioxml table in opascentral
+        Return a list of references as BiblioEntry's from the api_biblioxml table in opascentral
         """
         ret_val = None
 
+        results = self.get_select_as_list_of_models(select, model=models.Biblioxml)
+        
+        ret_val = results
+    
+        return ret_val  # return True for success
+
+    #------------------------------------------------------------------------------------------------------
+    def get_references_from_biblioxml_table(self, article_id, ref_local_id=None, verbose=None):
+        """
+        Return a list of references as BiblioEntry's from the api_biblioxml table in opascentral
+        """
+        ret_val = None
+
+        if article_id is not None:
+            art_id_clause = f"WHERE art_id = '{article_id}'"
+        elif "*" in article_id or "?" in article_id:
+            art_id_clause = f"WHERE art_id RLIKE '{article_id}'"
+        else:
+            art_id_clause = ""
+            
         if ref_local_id is not None:
             local_id_clause = f"AND ref_local_id RLIKE '{ref_local_id}'"
         else:
             local_id_clause = ""
             
         select = f"""SELECT * from api_biblioxml
-                     WHERE art_id = '{article_id}' {local_id_clause}
+                     {art_id_clause}
+                     {local_id_clause}
                      """
     
         results = self.get_select_as_list_of_models(select, model=models.Biblioxml)
@@ -1491,8 +1506,18 @@ class opasCentralDB(object):
         # return session model object
         return ret_val # List of records or empty list
 
-    def update_biblioxml_links(self, art_id, bib_id, rx=None, rx_confidence=0, rxcfs=None, rxcfs_confidence=0, verbose=False):
+    def update_biblioxml_links(self, art_id,
+                               bib_id,
+                               bib_entry=None, 
+                               #rx=None,
+                               #rx_confidence=0,
+                               #rxcfs=None,
+                               #rxcfs_confidence=0,
+                               #rx_link_source="",
+                               #ref_xml="", 
+                               verbose=False):
         """
+        Call with BiblioMatch or BiblioEntry object
         
         """
         ret_val = False
@@ -1500,33 +1525,37 @@ class opasCentralDB(object):
         msg = f"\t...Updating biblio record to add rx and rx_confidence."
         log_everywhere_if(verbose, "info", msg)
             
-        if rx == "":
-            rx = None
+        #if rx == "":
+            #rx = None
 
-        if rx_confidence is None:
-            rx_confidence = 0
+        #if rx_confidence is None:
+            #rx_confidence = 0
 
-        if rxcfs == '':
-            rxcfs = None
+        #if rxcfs == '':
+            #rxcfs = None
             
-        if rxcfs_confidence is None:
-            rxcfs_confidence = 0
+        #if rxcfs_confidence is None:
+            #rxcfs_confidence = 0
         
-        if (rx is not None and rx_confidence is not None) or  (rxcfs is not None and rxcfs_confidence is not None):
+        if bib_entry.link_updated or bib_entry.record_updated:
             sqlcpy = f"""
                         UPDATE api_biblioxml
                             SET ref_rx = %s,
                                 ref_rx_confidence = %s,
                                 ref_rxcf = %s,
-                                ref_rxcf_confidence = %s
+                                ref_rxcf_confidence = %s,
+                                ref_link_source = %s,
+                                ref_xml = %s
                             WHERE art_id = %s
                             AND ref_local_id = %s
                       """
             
-            query_params = (rx,
-                            rx_confidence,
-                            rxcfs,
-                            rxcfs_confidence,
+            query_params = (bib_entry.ref_rx,
+                            bib_entry.ref_rx_confidence,
+                            bib_entry.ref_rxcf,
+                            bib_entry.ref_rxcf_confidence,
+                            bib_entry.link_source,
+                            bib_entry.ref_xml, 
                             art_id,
                             bib_id)
         
@@ -2054,12 +2083,12 @@ class opasCentralDB(object):
         
         Returns True of False
 
-        >>> ocd = opasCentralDB()
-        >>> model = models.ClientConfigList(configList=[models.ClientConfigItem(configName="demo", configSettings={"A":"123", "B":"1234"})])
-        >>> ocd.save_client_config(client_id="123", client_configuration=model, session_id="test123", replace=True)
+        >> ocd = opasCentralDB()
+        >> model = models.ClientConfigList(configList=[models.ClientConfigItem(configName="demo", configSettings={"A":"123", "B":"1234"})])
+        >> ocd.save_client_config(client_id="123", client_configuration=model, session_id="test123", replace=True)
         (200, 'OK')
-        >>> model = models.ClientConfigList(configList=[models.ClientConfigItem(configName="test", configSettings={"A":"123", "B":"1234"}), models.ClientConfigItem(configName="test2", configSettings={"C":"456", "D":"5678"})])
-        >>> ocd.save_client_config(client_id="123", client_configuration=model, session_id="test123", replace=True)
+        >> model = models.ClientConfigList(configList=[models.ClientConfigItem(configName="test", configSettings={"A":"123", "B":"1234"}), models.ClientConfigItem(configName="test2", configSettings={"C":"456", "D":"5678"})])
+        >> ocd.save_client_config(client_id="123", client_configuration=model, session_id="test123", replace=True)
         (200, 'OK')
         """
         fname = "save_client_config"
@@ -2658,6 +2687,7 @@ class opasCentralDB(object):
         #del query_param_dict["author_list"]
         #del query_param_dict["author_name_list"]
         #del query_param_dict["ref"]
+        del query_param_dict["parsed_ref"]
     
         res = ""
         try:

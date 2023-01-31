@@ -498,18 +498,21 @@ class ArticleInfo(BaseModel):
             if filename_base is not None:
                 basic_art_info = ArticleID(art_id=filename_base) # use base filename for implied artinfo
         
-        if not basic_art_info.is_ArticleID:
+        if not basic_art_info.is_ArticleID: # separate from above since status can change
             file_contents_art_id = opasxmllib.xml_xpath_return_textsingleton(parsed_xml, "//artinfo/@id", None)
             basic_art_info = ArticleID(art_id=file_contents_art_id)
                 
-        if not basic_art_info.is_ArticleID and not opasgenlib.is_empty(parsed_xml):
+        if not opasgenlib.is_empty(parsed_xml):
+            # critical to set these, used from basic_art_info below and it's not always part of the articleID
+            basic_art_info.art_issue = opasxmllib.xml_xpath_return_textsingleton(parsed_xml, '//artinfo/artiss/node()', default_return=None)
+            basic_art_info.art_issue_int = opasgenlib.str_to_int(basic_art_info.art_issue, default=None)
+        
+        if basic_art_info.is_ArticleID and not opasgenlib.is_empty(parsed_xml):
             # should try not to call this this way, but for testing, it's useful.  
             basic_art_info.art_vol_str = opasxmllib.xml_xpath_return_textsingleton(parsed_xml, '//artinfo/artvol/node()', default_return=None)
             basic_art_info.src_code = parsed_xml.xpath("//artinfo/@j")[0]
             basic_art_info.src_code = basic_art_info.src_code.upper()  # 20191115 - To make sure this is always uppercase
             basic_art_info.art_vol_str = opasxmllib.xml_xpath_return_textsingleton(parsed_xml, '//artinfo/artvol/node()', default_return=None)
-            basic_art_info.art_issue = opasxmllib.xml_xpath_return_textsingleton(parsed_xml, '//artinfo/artiss/node()', default_return=None)
-            basic_art_info.art_issue_int = opasgenlib.str_to_int(basic_art_info.art_issue, default=None)
             
             # for compare/debug
             vol_actual = opasxmllib.xml_xpath_return_textsingleton(parsed_xml, '//artinfo/artvol/@actual', default_return=None)

@@ -21,6 +21,7 @@ import os.path
 import re
 import logging
 import numbers
+import string
 logger = logging.getLogger(__name__)
 
 import time
@@ -967,6 +968,8 @@ def str_to_int(str_to_convert:str, default=None, zero_allowed=False):
     """
     ret_val = default
     if str_to_convert:
+        f = filter(str.isdigit, str_to_convert)
+        str_to_convert = "".join(f)
         try:
             converted = int(str_to_convert)
             if converted == 0 and not zero_allowed:
@@ -1027,7 +1030,14 @@ def removeLeadingPunctAndSpaces(input_str, punct_set=[',', '.', ' ', ':', ';', '
     return ret_val
 
 # ----------------------------------------------------------------------------------------
-def removeAllPunct(input_str, punct_set=[',', '.', ':', ';', '(', ')', '\t', r'/', '"', "'", "[", "]"]):
+def remove_all_punct(input_str, additional_chars=''):
+    standard_additions = '”“'
+    punct = string.punctuation + standard_additions + additional_chars
+    ret_val = input_str.translate(str.maketrans('', '', punct))
+    return ret_val
+
+# ----------------------------------------------------------------------------------------
+def removeAllPunct(input_str, punct_set=[',', '.', ':', ';', '(', ')', '\t', r'/', '"', "'", "[", "]", '”', '“']):
     # Beginning in Python 2.2.3 you can do this
     #ret_val = string.rstrip(input_str, ",.\t ")
     ret_val = ""
@@ -1053,12 +1063,15 @@ def removeExtraSpaces(self, s):
     return s
 
 # ----------------------------------------------------------------------------------------
-def text_slice(textstr: str, chr_count=25):
+def text_slice(textstr: str, start_chr_count=25, end_chr_count=None):
     "Slice the middle out of a string to make it easy to display in summary"
     ret_val = textstr
+    if end_chr_count is None:
+        end_chr_count = start_chr_count
+        
     # for short displaying/debug
     if len(textstr) > 80:
-        ret_val = f"{textstr[:chr_count]}...{textstr[-chr_count:]}"
+        ret_val = f"{textstr[:start_chr_count]}...{textstr[-end_chr_count:]}"
         
     return ret_val
 

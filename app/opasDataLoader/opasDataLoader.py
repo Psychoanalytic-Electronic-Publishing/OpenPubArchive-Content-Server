@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2023, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2023.0125/v2.1.003"   # Requires update to api_biblioxml and views based on it.
+__version__     = "2023.0131/v2.1.005"   # Requires update to api_biblioxml and views based on it.
 __status__      = "Development"
 
 # !!! IMPORTANT: Increment opasXMLProcessor version (if version chgd). It's written to the XML !!!
@@ -273,6 +273,10 @@ def output_file_needs_rebuilding(outputfilename, inputfilename=None, inputfilesp
        - output (precompiled markup) file doesn't exist
        - input file is dated after the output file
        - if a reference in the biblio (via api_biblioxml) has been updated
+       
+    Returns tuple with info:
+         input_file_was_updated, infile_exists, outfile_exists, both_same
+         
     """
     ret_val = False
     outfile_exists = True
@@ -647,7 +651,7 @@ def main():
     if options.resetCoreData:
         if not options.glossary_only: # options.fulltext_core_update:
             if not options.no_check:
-                cont = input ("The solr cores and the database article and artstat tables will be cleared.  Do you want to continue (y/n)?")
+                cont = input ("The solr cores will be cleared.  Do you want to continue (y/n)?")
                 if cont.lower() == "n":
                     print ("User requested exit.  No data changed.")
                     sys.exit(0)
@@ -671,7 +675,7 @@ def main():
             solr_authors2.commit()
 
         # reset glossary core when others are reset, or when --resetcore is selected with --glossaryonly   
-        if options.glossary_core_update:
+        if 1: # options.glossary_core_update:
             msg = "*** Deleting all data from the Glossary core ***"
             logger.warning(msg)
             print (msg)
@@ -832,7 +836,7 @@ def main():
 
                     insert_date = datetime.today() - dtime.timedelta(days = opasConfig.CONTINUE_PROCESSING_DAYS)
                     if file_was_loaded_to_solr_after(solr_docs2, insert_date, art_id=artID):
-                        msg = f"{80*'-'}\nExamining file #%s of %s: %s (%s bytes). **Already processed.**" % (processed_files_count + skipped_files, files_found, n.basename, n.filesize)
+                        msg = f"Examining file #%s of %s: %s (%s bytes). **Already processed.**" % (processed_files_count + skipped_files, files_found, n.basename, n.filesize)
                         log_everywhere_if(options.display_verbose, level="info", msg=msg)
                         skipped_files += 1
                         continue
@@ -1079,11 +1083,8 @@ def main():
     
                         for ref in bibReferences:
                             bib_entry = opasBiblioSupport.BiblioEntry(art_id=artInfo.art_id, art_year=artInfo.art_year_int, ref_or_parsed_ref=ref)
-                            # record .99 confidence for any rx in source XML
-                            if bib_entry.ref_rx is not None and bib_entry.ref_rx_confidence==0:
-                                bib_entry.rx_confidence=.99
-
-                            ocd.save_ref_to_biblioxml_table(bib_entry)
+                            if bib_entry.link_updated or bib_entry.record_updated:
+                                ocd.save_ref_to_biblioxml_table(bib_entry)
     
                 # close the file, and do the next
                 if options.display_verbose: print(f"\t...Time: {time.time() - fileTimeStart:.4f} seconds.")
@@ -1093,10 +1094,10 @@ def main():
                 try:
                     print ("Performing final commit.")
                     if not options.glossary_only: # options.fulltext_core_update:
-                        solr_docs2.commit()
-                        solr_authors2.commit()
+                        a = solr_docs2.commit()
+                        b = solr_authors2.commit()
                     if 1: # options.glossary_core_update:
-                        solr_gloss2.commit()
+                        c = solr_gloss2.commit()
                 except Exception as e:
                     print(("Exception: ", e))
                 else:

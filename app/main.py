@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2023.0125/v2.2.003"   # Requires update to api_biblioxml and views based on it.
+__version__     = "2023.0131/v2.2.005"   # Requires update to api_biblioxml and views based on it.
 __status__      = "Development/Libs/Loader"  
 
 """
