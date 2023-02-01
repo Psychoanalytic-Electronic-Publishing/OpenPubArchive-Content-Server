@@ -265,7 +265,6 @@ class Locator:
             #print "Locator Parameters: ", jrnlCode, jrnlVolSuffix, jrnlVol, jrnlIss, self.pgStart, pgVar, jrnlYear
             self.__standardize()
             self.validate()
-            
 
     #--------------------------------------------------------------------------------
     def __reset(self):

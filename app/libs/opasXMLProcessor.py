@@ -366,16 +366,16 @@ def pgx_add_rx_book_links(parsed_xml, ocd, artInfo, split_book_data=None, verbos
                     # if 1: print (f"\t\t\tLocalID: {local}")
                     pgx.attrib["rx"] = local
                     pgx.attrib["type"] = pgxlink_type
-                    log_everywhere_if(gDbg2, level="info", msg=f"\t\t\t...Reference to non-Split Book. Set link (type={pgxlink_type}) including local to: {local}")
+                    log_everywhere_if(gDbg2, level="info", msg=f"\t\t...Reference to non-Split Book. Set link (type={pgxlink_type}) including local to: {local}")
                 else:
                     splitLoc = opasLocator.Locator(split_inst_from_fulltext)
                     #print (splitLoc, SEPage)
                     local = splitLoc.localID(fulltext_cleaned).upper()
                     pgx.attrib["rx"] = local
                     pgx.attrib["type"] = pgxlink_type
-                    log_everywhere_if(gDbg2, level="info", msg=f"\t\t\t...Reference to Split Book. Set link (type={pgxlink_type}) including local to: {local}")
+                    log_everywhere_if(gDbg2, level="info", msg=f"\t\t...Reference to Split Book. Set link (type={pgxlink_type}) including local to: {local}")
             else:
-                log_everywhere_if(gDbg2, level="info", msg=f"\t\t\t...Rx link for pgx already set: {current_rx_link}")
+                log_everywhere_if(gDbg2, level="info", msg=f"\t\t...Rx link for pgx already set: {current_rx_link}")
 
     return ret_val
 #------------------------------------------------------------------------------------------------------
@@ -430,8 +430,8 @@ def update_biblio_nonheuristic(parsed_xml, artInfo, ocd, pretty_print=False, ver
                 bib_entry.link_updated = True
                 
             if not bib_entry.ref_rx and not bib_entry.link_updated and bib_entry.ref_in_pep:
-                msg = f"\t  ...Bib ID {bib_entry.ref_id} not enough info (rx: {bib_entry.ref_sourcecode}.{bib_entry.ref_volume}.{bib_entry.ref_pgstart}) {opasgenlib.text_slice(bib_entry.ref_text, start_chr_count=25, end_chr_count=50)}"
-                log_everywhere_if(verbose, level="info", msg=msg)
+                #msg = f"\t  ...Bib ID {bib_entry.ref_id} not enough info (rx: {bib_entry.ref_sourcecode}.{bib_entry.ref_volume}.{bib_entry.ref_pgstart}) {opasgenlib.text_slice(bib_entry.ref_text, start_chr_count=25, end_chr_count=50)}"
+                #log_everywhere_if(verbose, level="info", msg=msg)
                 a = 1 # just to break here TBD #Temp
             elif bib_entry.link_updated:
                 msg = None

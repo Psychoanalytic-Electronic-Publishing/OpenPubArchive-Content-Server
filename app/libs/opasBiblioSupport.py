@@ -117,34 +117,35 @@ def check_for_known_books(ref_text):
 def check_for_vol_suffix(ocd, loc_str, verbose):
     ret_val = None
     newloc = Locator(loc_str)
-    if newloc.jrnlVol[-1].isnumeric():
-        newloc.jrnlVol.volSuffix = "%"
-        new_loc_str = newloc.articleID()
-        new_locs = ocd.article_exists(new_loc_str)
-        if len(new_locs) == 1:
-            ret_val = new_locs[0][0]
-            log_everywhere_if(verbose, level="info", msg=f"\t\t...Bib ID with vol variant found.  Returning it: {ret_val}.")
+    if newloc.validate():
+        if newloc.jrnlVol[-1].isnumeric():
+            newloc.jrnlVol.volSuffix = "%"
+            new_loc_str = newloc.articleID()
+            new_locs = ocd.article_exists(new_loc_str)
+            if len(new_locs) == 1:
+                ret_val = new_locs[0][0]
+                log_everywhere_if(verbose, level="info", msg=f"\t\t...Bib ID with vol variant found.  Returning it: {ret_val}.")
 
     return ret_val    
 
 #------------------------------------------------------------------------------------------------------
 def check_for_page_start(ocd, loc_str, page_offset=-1, verbose=False):
     ret_val = None
-    try:
-        newloc = Locator(loc_str)
-        newloc.pgStart += page_offset
-    except Exception as e:
-        log_everywhere_if(verbose, "info", f"Bad locator {loc_str}")
-    else:
-        if newloc.isValid():
-            new_loc_str = newloc.articleID()
-            new_locs = ocd.article_exists(new_loc_str)
-            if len(new_locs) == 1:
-                ret_val = new_locs[0][0]
-                log_everywhere_if(verbose, level="info", msg=f"\t\t...Bib ID with page-1 found.  Returning it: {ret_val}.")
-            #else:
-                #log_everywhere_if(verbose, "warning", f"Bad locator in reference {loc_str}->{new_loc_str}(article doesn't exist)")
-
+    newloc = Locator(loc_str)
+    if newloc.validate():
+        try:
+            newloc.pgStart += page_offset
+        except Exception as e:
+            log_everywhere_if(verbose, "info", f"Bad locator {loc_str}")
+        else:
+            if newloc.isValid():
+                new_loc_str = newloc.articleID()
+                new_locs = ocd.article_exists(new_loc_str)
+                if len(new_locs) == 1:
+                    ret_val = new_locs[0][0]
+                    log_everywhere_if(verbose, level="info", msg=f"\t\t...Bib ID with page-1 found.  Returning it: {ret_val}.")
+                #else:
+                    #log_everywhere_if(verbose, "warning", f"Bad locator in reference {loc_str}->{new_loc_str}(article doesn't exist)")
     return ret_val    
 
 #------------------------------------------------------------------------------------------------------
@@ -248,6 +249,7 @@ class BiblioEntry(object):
     ref_volume_isroman: bool = Field(False, title="True if bib_volume is roman")
     ref_publisher: str = Field(None)
     ref_in_pep: bool = Field(False, title="Indicates this is a PEP reference")
+    ref_exists: bool = Field(False, title="Indicates this ref link has been verified")
     link_source: str = Field(None, title="Source of rx link, 'xml', 'database', or 'pattern'")
     link_updated: bool = Field(False, title="Indicates whether the data was corrected during load. If so, may need to update DB.")
     record_updated: bool = Field(False, title="Indicates whether the data was corrected during load. If so, may need to update DB.")
@@ -260,6 +262,7 @@ class BiblioEntry(object):
         self.ref_in_pep = False
         self.ref_pgstart = ""
         self.ref_pgrg = ""
+        self.ref_exists = False
 
         # allow either string xml ref or parsed ref
         if ref_or_parsed_ref is None and not db_bib_entry:
@@ -517,10 +520,13 @@ class BiblioEntry(object):
                                     #ref_publisher = self.ref_publisher, 
                                     #last_update = self.last_update                               
                                     #)
-
-        self.identify_nonheuristic(verbose=verbose)
-        if gDbg2:
-            log_everywhere_if(self.ref_rx, "debug", f"\t\t...BibEntry linked to {self.ref_rx} loaded")
+        try:
+            self.identify_nonheuristic(verbose=verbose)
+        except:
+            log_everywhere_if(verbose, "debug", f"Biblio Entry ID issues {art_id, self.ref_local_id}")
+        else:
+            if gDbg2:
+                log_everywhere_if(self.ref_rx, "debug", f"\t\t...BibEntry linked to {self.ref_rx} loaded")
 
     #------------------------------------------------------------------------------------------------------------
     def update_bib_entry(self, bib_match, verbose=False):
@@ -729,11 +735,13 @@ class BiblioEntry(object):
                             msg = f"\t\t...Locator verified {loc_str}"
                             log_everywhere_if(verbose, level="debug", msg=msg)
                             self.ref_rx = loc_str
+                            self.ref_exists = True
                             self.ref_rx_confidence = opasConfig.RX_CONFIDENCE_PROBABLE
                             link_updated = True
                             self.link_source = opasConfig.RX_LINK_SOURCE_PATTERN
                         else:
                             # see if there's a vol variant
+                            self.ref_exists = False
                             loc_str = locator.articleID()
                             newloc = check_for_page_start(ocd, loc_str, verbose=False) # log it here, not there
                             if newloc is not None:
@@ -755,12 +763,12 @@ class BiblioEntry(object):
                 else:
                     locator = None
 
-                if locator is None or locator.valid == 0:
-                    if self.ref_in_pep:
-                        msg = f"\t  ...Bib ID {ref_id} not enough info (rx: {self.ref_sourcecode}.{self.ref_volume}.{self.ref_pgstart}) {opasgenlib.text_slice(self.ref_text, start_chr_count=25, end_chr_count=50)}"
+                if self.ref_in_pep and not self.ref_exists:
+                    if locator.valid == 0:
+                        msg = f"\t\t...Bib ID {ref_id} loc not valid {locator.articleID()} (components: {self.ref_sourcecode}/{self.ref_volume}/{self.ref_pgstart}) {opasgenlib.text_slice(self.ref_text, start_chr_count=25, end_chr_count=50)}"
+                    else:
+                        msg = f"\t\t...Bib ID {ref_id} loc valid {locator.articleID()} but doesn't exist (components: {self.ref_sourcecode}/{self.ref_volume}/{self.ref_pgstart}) {opasgenlib.text_slice(self.ref_text, start_chr_count=25, end_chr_count=50)}"
                         log_everywhere_if(verbose, level="info", msg=msg[:opasConfig.MAX_LOGMSG_LEN])
-                elif not pep_ref:
-                    pass
         
         self.link_updated = link_updated
         #ret_val = self.ref_rx, self.ref_rx_confidence, self.link_updated
