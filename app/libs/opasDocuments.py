@@ -183,7 +183,7 @@ class VolumeNumber:
                     logger.error(f"Can't remove vol suffix {volNum} {e}")
                 
             if volNum == None or volNum=="":
-                logging.warning("Bad volNum. Set to 0")
+                logging.debug("Bad volNum. Set to 0")
                 volNum = 0
 
             if isinstance(volNum, str):  # supports string and unicode Was if type(volNum) == type(""):

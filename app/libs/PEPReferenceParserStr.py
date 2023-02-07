@@ -419,7 +419,7 @@ class StrReferenceParser(object):
                 byear = trimPunctAndSpaces(byear)
         else:
             if gDbg1: raise "No Year: %s" % (ref_entry_text)
-            logger.warning("Reference has no year information: %s" % (ref_entry_text))
+            logger.debug("Reference has no year information: %s" % (ref_entry_text))
             noYear = 1
 
 
@@ -436,15 +436,15 @@ class StrReferenceParser(object):
                     self.bib_authors = bauthors
                     self.bib_author_list = self.__parse_authors(bauthors)
                 else:
-                    logger.warning(f"Ref - No Authors (quoted text removed!): {ref_entry_text}")
+                    logger.debug(f"Ref - No Authors (quoted text removed!): {ref_entry_text}")
             else:
-                logger.warning("Ref - No Authors: %s" % (ref_entry_text))
+                logger.debug("Ref - No Authors: %s" % (ref_entry_text))
         else:
             err = "Ref - No Author Info: %s" % (ref_entry_text)
             if noYear == 0: #can't find authors without year
-                logger.error(err)
+                logger.debug(err)
             else:
-                logger.warning(err)
+                logger.debug(err)
 
         self.bib_year = atoiYear(byear)
         self.bib_pgrg = trimPunctAndSpaces(bpgrg)
@@ -484,7 +484,7 @@ class StrReferenceParser(object):
                             self.bib_volume = repr(opasgenlib.convertStringToArabic(vol))
                             if gDbg1: print ("Found SE Volume!")
 
-                logger.warning("Ref - No year or volume information: %s" % (ref_entry_text))
+                logger.debug("Ref - No year or volume information: %s" % (ref_entry_text))
 
         if self.bib_volume==None:
             if self.bib_year != None:
@@ -585,7 +585,7 @@ class StrReferenceParser(object):
                         self.bib_title = trimPunctAndSpaces(m.group("title"))
             else:
                 # what do we use!
-                logger.warning("PEPReferenceParserStr - Not enough info in ref to search for title: '%s'." % ref_entry_text.rstrip())
+                logger.debug("PEPReferenceParserStr - Not enough info in ref to search for title: '%s'." % ref_entry_text.rstrip())
 
         bookCode, sRatio, refObj = bookInfo.getPEPBookCodeStr(ref_entry_text)
         if bookCode != None:

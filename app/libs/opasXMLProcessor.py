@@ -402,18 +402,24 @@ def remove_author_pretitles(parsed_xml, verbose=False):
     
 
 #------------------------------------------------------------------------------------------------------
-def update_biblio_nonheuristic(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
+def update_biblio_links(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
     """
     Walk through the biblio records and update rx and rxcf links in the XML,
       using the markup in the ref and the stored biblioxml links.
-      (Heuristic Search is now a separate process to optimize speed.)
+      (Heuristic Search is now a separate process to optimize speed,
+      done only via opasDataLinker in the reference table)
       
-      # TBD: should deprecate and replace with biblioxml processing
+      Good test examples:
+         AIM.015.0003A
+      
     """
-
+    ret_val = 0 # change count
+    log_level_for_trace = "info"
     if artInfo.ref_count > 0:
         bibReferences = parsed_xml.xpath("/pepkbd3//be")  # this is the second time we do this (also in artinfo, but not sure or which is better per space vs time considerations)
-        if verbose: print("\t...Examining %s references for links (rx) and related titles (rxcf)." % (artInfo.ref_count))
+        if verbose:
+            msg = "\t...opasXMLProcessor checking %s references for links (rx) and related titles (rxcf)." % (artInfo.ref_count)
+            log_everywhere_if(verbose, level=log_level_for_trace, msg=msg)
         for ref in bibReferences:
             try:
                 bib_entry = opasBiblioSupport.BiblioEntry(art_id=artInfo.art_id,
@@ -425,32 +431,62 @@ def update_biblio_nonheuristic(parsed_xml, artInfo, ocd, pretty_print=False, ver
                 continue
 
             if bib_entry.record_updated:
+                # replaced the actual biblio text, e.g., to add markup
                 parent = ref.getparent()
                 parent.replace(ref, bib_entry.parsed_ref)
                 bib_entry.link_updated = True
                 
-            if not bib_entry.ref_rx and not bib_entry.link_updated and bib_entry.ref_in_pep:
-                #msg = f"\t  ...Bib ID {bib_entry.ref_id} not enough info (rx: {bib_entry.ref_sourcecode}.{bib_entry.ref_volume}.{bib_entry.ref_pgstart}) {opasgenlib.text_slice(bib_entry.ref_text, start_chr_count=25, end_chr_count=50)}"
-                #log_everywhere_if(verbose, level="info", msg=msg)
-                a = 1 # just to break here TBD #Temp
-            elif bib_entry.link_updated:
-                msg = None
-                if bib_entry.ref_rx is not None:
-                    ref.attrib["rx"] = bib_entry.ref_rx
-                    ref.attrib["rxconf"] = str(bib_entry.ref_rx_confidence)
-                    msg = f"\t...Match for Bib ID {bib_entry.ref_id}. Set link to {bib_entry.ref_rx} confidence: {bib_entry.ref_rx_confidence})"
-                if bib_entry.ref_rxcf is not None:
-                    ref.attrib["rxcf"] = bib_entry.ref_rxcf
-                    ref.attrib["rxcfconf"] = str(bib_entry.ref_rxcf_confidence)
-                    msg = f"\t...Match for Bib ID {bib_entry.ref_id}. Set link to {bib_entry.ref_rxcf} confidence: {bib_entry.ref_rxcf_confidence})"
-                
-                if msg:
-                    log_everywhere_if(verbose, level="debug", msg=msg)
-   
+            bib_updated_from_db = bib_entry.compare_to_database(ocd)
+            if bib_updated_from_db or bib_entry.link_updated:
+                ret_val += 1
+                if bib_updated_from_db:
+                    if bib_entry.ref_rx is None or not bib_entry.ref_exists:
+                        try:
+                            del ref.attrib["rx"]
+                        except:
+                            pass
+                        else:
+                            msg = f"\t\tRemoved rx link {bib_entry.ref_rx} Exists: {bib_entry.ref_exists}"
+                            log_everywhere_if(verbose, level=log_level_for_trace, msg=msg)
+                            
+                    else:
+                        ref_rx = ref.attrib.get('rx', '')
+                        if ref_rx != bib_entry.ref_rx:
+                            # only display if it's not empty/None or the same
+                            msg = f"\t\tDB updates {bib_entry.ref_id} RX from '{ref_rx}' to {bib_entry.ref_rx} confidence: {bib_entry.ref_rx_confidence})"
+                            log_everywhere_if(verbose, level=log_level_for_trace, msg=msg)
+                        ref.attrib["rx"] = bib_entry.ref_rx
+                        ref.attrib["rxconf"] = str(bib_entry.ref_rx_confidence)
+                        
+                    if bib_entry.ref_rxcf is None:
+                        try:
+                            del ref.attrib["rxcf"]
+                        except:
+                            pass
+                        else:
+                            msg = f"\t\tRemoved rxcf link based on DB"
+                            log_everywhere_if(verbose, level=log_level_for_trace, msg=msg)
+                    else:
+                        ref_rxcf = ref.attrib.get('rxcf', '')
+                        if ref_rxcf != bib_entry.ref_rxcf:
+                            # only display if it's updated with value
+                            msg = f"\t\tDB updates {bib_entry.ref_id} RXCF from '{ref_rxcf}' to {bib_entry.ref_rxcf} confidence: {bib_entry.ref_rxcf_confidence})"
+                            log_everywhere_if(verbose, level=log_level_for_trace, msg=msg)
+                            
+                        ref.attrib["rxcf"] = bib_entry.ref_rxcf
+                        ref.attrib["rxcfconf"] = str(bib_entry.ref_rxcf_confidence)
+        
+        return ret_val                
 #------------------------------------------------------------------------------------------------------
 def update_bincs(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
     """
-    Walk through the content looking for binc update rx and rxcf links in the XML, using heuristics if necessary. 
+    Walk through the content looking for binc update rx and rxcf links in the XML, using heuristics if necessary.
+    
+    TBD: Seems to work well but needs to be reviewed and integrated into the new biblio checking flow.
+    
+    Good test examples:
+        AIM.030.0157A - all bincs!
+
     """
     known_books = PEPBookInfo.PEPBookInfo()
     
@@ -458,7 +494,7 @@ def update_bincs(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
     bibReferences = parsed_xml.xpath("/pepkbd3//binc")
     count = len(bibReferences)
     if count > 0:
-        if verbose: print(f"\t...Examining {count} inclusion refs (binc) for links (rx) and related titles (rxcf).")
+        if verbose: print(f"\t...opasXMLProcessor checking {count} inclusion refs (binc) for links (rx) and related titles (rxcf).")
         #processedFilesCount += 1
         bib_total_reference_count = 0
         for parsed_ref in bibReferences:
@@ -469,7 +505,7 @@ def update_bincs(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
             ref_id = parsed_ref.attrib.get("id", None)
             if ref_id is None:
                 if gDbg1:
-                    print (f"\t\t...Skipping attempted link of {ET.tostring(parsed_ref)}")
+                    print (f"\t\tSkipping attempted link of {ET.tostring(parsed_ref)}")
                 continue # no id, minor instance, skip
             # see if it's already in table
             bib_saved_entry_tuple = ocd.get_references_from_biblioxml_table(article_id=artInfo.art_id, ref_local_id=ref_id)
@@ -499,21 +535,22 @@ def update_bincs(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
                 
             if not bib_entry.ref_is_book: # journal or other
                 if opasgenlib.is_empty(bib_entry.ref_sourcecode):
-                    if bib_entry.ref_title:
-                        # find and store rxcf for related articles (side effect of function)
-                        if gDbg2 and verbose: print (f"\t...Finding related articles for bibliography based on ref_title")
-                        # called routine updates ref if found
-                        rxcf = find_related_articles(parsed_ref,
-                                                     art_or_source_title=bib_entry.ref_title,
-                                                     query_target="art_title_xml",
-                                                     max_words=opasConfig.MAX_WORDS,
-                                                     min_words=opasConfig.MIN_WORDS,
-                                                     word_len=opasConfig.MIN_WORD_LEN,
-                                                     max_cf_list=opasConfig.MAX_CF_LIST)                        
-                    else:
-                        locator = None
-                        msg = f"\t\t\t...Skipped: {bib_saved_entry}"
-                        log_everywhere_if(gDbg2, level="debug", msg=msg)                            
+                    pass # not during build. From DB only
+                    #if bib_entry.ref_title:
+                        ## find and store rxcf for related articles (side effect of function)
+                        #if gDbg2 and verbose: print (f"\t...Finding related articles for bibliography based on ref_title")
+                        ## called routine updates ref if found
+                        #rxcf = find_related_articles(parsed_ref,
+                                                     #art_or_source_title=bib_entry.ref_title,
+                                                     #query_target="art_title_xml",
+                                                     #max_words=opasConfig.MAX_WORDS,
+                                                     #min_words=opasConfig.MIN_WORDS,
+                                                     #word_len=opasConfig.MIN_WORD_LEN,
+                                                     #max_cf_list=opasConfig.MAX_CF_LIST)                        
+                    #else:
+                        #locator = None
+                        #msg = f"\t\tSkipped: {bib_saved_entry}"
+                        #log_everywhere_if(gDbg2, level="debug", msg=msg)                            
                     
                 else: # if not opasgenlib.is_empty(bib_entry.sourcecode):
                     locator = Locator(strLocator=None,
@@ -532,13 +569,13 @@ def update_bincs(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
                                        filename=artInfo.filename)
                     # need to check if it's whole, and if it works, but for now.
                     if not locator.valid:
-                        msg = f"\t\t\t...Binc Bib ID {ref_id} not enough link. {bib_entry.ref_year}.{bib_entry.ref_volume}.{bib_pgstart}"
+                        msg = f"\t\tBinc Bib ID {ref_id} not enough link. {bib_entry.ref_year}.{bib_entry.ref_volume}.{bib_pgstart}"
                         log_everywhere_if(gDbg2, level="info", msg=msg)
                         continue
                         
                     parsed_ref.attrib["rx"] = locator.articleID()
                     search_str = f"//binc[@id='{ref_id}']"
-                    msg = f"\t\t\t...Binc Matched Journal {opasxmllib.xml_xpath_return_xmlstringlist(parsed_xml, search_str)[0]}"
+                    msg = f"\t\tBinc Matched Journal {opasxmllib.xml_xpath_return_xmlstringlist(parsed_xml, search_str)[0]}"
                     log_everywhere_if(gDbg2, level="debug", msg=msg)
 
                 
@@ -547,7 +584,7 @@ def update_bincs(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
                 if bk_locator_str is not None:
                     parsed_ref.attrib["rx"] = bk_locator_str 
                     search_str = f"//binc[@id='{ref_id}']"
-                    msg = f"\t\t\t...Binc Matched Book {match_val}. {opasxmllib.xml_xpath_return_xmlstringlist(parsed_xml, search_str)[0]}"
+                    msg = f"\t\tBinc Matched Book {match_val}. {opasxmllib.xml_xpath_return_xmlstringlist(parsed_xml, search_str)[0]}"
                     log_everywhere_if(gDbg2, level="info", msg=msg)
                     
                 else:
@@ -561,26 +598,26 @@ def update_bincs(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
                         bib_entry.sourcecode = "GW"
                     
                     #try checking this anyway!
-                    if bib_entry.ref_sourcetitle:
-                        # find_related_articles assigns to ref attrib rxcf (hence no need to use return val)
-                        if gDbg2 and verbose: print (f"\t...Finding related articles for bibliography based on source_title")
-                        # called routine updates ref if found
-                        rxcf = find_related_articles(parsed_ref,
-                                                     art_or_source_title=bib_entry.ref_sourcetitle,
-                                                     query_target="art_title_xml",
-                                                     max_words=opasConfig.MAX_WORDS,
-                                                     min_words=opasConfig.MIN_WORDS,
-                                                     word_len=opasConfig.MIN_WORD_LEN,
-                                                     max_cf_list=opasConfig.MAX_CF_LIST)
+                    #if bib_entry.ref_sourcetitle:
+                        ## find_related_articles assigns to ref attrib rxcf (hence no need to use return val)
+                        #if gDbg2 and verbose: print (f"\t...Finding related articles for bibliography based on source_title")
+                        ## called routine updates ref if found
+                        #rxcf = find_related_articles(parsed_ref,
+                                                     #art_or_source_title=bib_entry.ref_sourcetitle,
+                                                     #query_target="art_title_xml",
+                                                     #max_words=opasConfig.MAX_WORDS,
+                                                     #min_words=opasConfig.MIN_WORDS,
+                                                     #word_len=opasConfig.MIN_WORD_LEN,
+                                                     #max_cf_list=opasConfig.MAX_CF_LIST)
 
-                        if rxcf == [] and bib_entry.ref_title:
-                            rxcf = find_related_articles(parsed_ref,
-                                                         art_or_source_title=bib_entry.ref_title,
-                                                         query_target="art_title_xml",
-                                                         max_words=opasConfig.MAX_WORDS,
-                                                         min_words=opasConfig.MIN_WORDS,
-                                                         word_len=opasConfig.MIN_WORD_LEN,
-                                                         max_cf_list=opasConfig.MAX_CF_LIST)
+                        #if rxcf == [] and bib_entry.ref_title:
+                            #rxcf = find_related_articles(parsed_ref,
+                                                         #art_or_source_title=bib_entry.ref_title,
+                                                         #query_target="art_title_xml",
+                                                         #max_words=opasConfig.MAX_WORDS,
+                                                         #min_words=opasConfig.MIN_WORDS,
+                                                         #word_len=opasConfig.MIN_WORD_LEN,
+                                                         #max_cf_list=opasConfig.MAX_CF_LIST)
                             
                             
                     # elif bib_entry.ref
@@ -623,7 +660,7 @@ def update_bincs(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
                             if base_info is not None:
                                 parsed_ref.attrib["rx"] = locator.articleID()
                                 search_str = f"//binc[@id='{ref_id}']"
-                                msg = f"\t\t\t...Matched Book {match_val}. {opasxmllib.xml_xpath_return_xmlstringlist(parsed_xml, search_str)[0]}"
+                                msg = f"\t\tMatched Book {match_val}. {opasxmllib.xml_xpath_return_xmlstringlist(parsed_xml, search_str)[0]}"
                                 log_everywhere_if(gDbg2, level="debug", msg=msg)
                             else:
                                 log_everywhere_if(gDbg2, level="debug", msg=f"didn't find this: {bib_entry.ref_sourcecode}")
@@ -631,7 +668,7 @@ def update_bincs(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
                         
                     else:     
                         locator = None
-                        msg = f"\t\t\t...Skipped: {bib_entry.ref_text}"
+                        msg = f"\t\tSkipped: {bib_entry.ref_text}"
                         log_everywhere_if(gDbg2, level="debug", msg=msg)
 
 #------------------------------------------------------------------------------------------------------
@@ -825,7 +862,7 @@ def xml_update(parsed_xml,
 
     # Walk through biblio, add links unless option is turned off
     if not no_database_update:
-        update_biblio_nonheuristic(parsed_xml, artInfo, ocd, verbose=verbose) # in reference section(s)
+        update_biblio_links(parsed_xml, artInfo, ocd, verbose=verbose) # in reference section(s)
         update_bincs(parsed_xml, artInfo, ocd, verbose=verbose)  # throught, embedded refs
     
     # Add page number markup (next and prev page info on page breaks)

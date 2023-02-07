@@ -542,7 +542,10 @@ class Locator:
         """
         self.valid = False
         try:
-            if opasgenlib.is_empty(self.jrnlCode) or self.jrnlVol is None or self.jrnlVol == 0 or (opasgenlib.is_empty(self.pgStart) and opasgenlib.is_empty(self.idxNamePrefix)):
+            if opasgenlib.is_empty(self.jrnlCode) \
+              or self.jrnlVol is None or self.jrnlVol == 0 \
+              or (opasgenlib.is_empty(self.pgStart) \
+              and opasgenlib.is_empty(self.idxNamePrefix)):
                 if self.jrnlVol is not None:
                     errStr = "Incomplete/Invalid ID: %s/v%s/p%s" % (self.jrnlCode, self.jrnlVol.volID(), self.pgStart)
                 else:

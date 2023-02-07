@@ -245,69 +245,21 @@ class PEPBookInfo:
     bookPatterns = {
         # minMatchLen, authPat, titlePat, yearPat, extraPat
 
-        "ZBK.061.0001A": (  10,
-                            "Thom(a|\&auml;)",
-                            "Psycho-?analytic Practi[cs]e"+patSubSep+"((Vol(ume|.)\s+(1|one))?("+patSubSep+"\s*Principles)?)?",
-                            "198[57]",
-                            None
-                            ),
-
-        "ZBK.062.0001A": (  10,
-                            "Thom(a|\&auml;)",
-                            "Psycho-?analytic Practi[cs]e"+patSubSep+"((Vol(ume|.)\s+(2|two))?("+"\s*Clinical\s+Studies)?)?",
-                            "1992",
-                            None
-                            ),
-        "ZBK.033.0001A": (  10,
-                            "Balint,? M\.?",
-                            "The Basic  Fault("+patSubSep+" Therapeutic Aspects of Regression)?",               #checked and fixed instances in the refcorrections db
-                            "1979|[12][0-9][0-9][0-9]",
-                            None
-                            ),
-
-        "ZBK.029.0000A": (  20,
-                            boehlichW+"|freud|silberstein", #"Boehlich,? W\.?",
-                            "The Letters of Sigmund Freud "+patAndTo+"  (Eduard|Edward) Silberstein("+patPunc+" 1871"+dashSep+"(18)?81)?",        #checked
-                            "1990|(1989|18[0-9][0-9])",
-                            None
-                            ),
-
-        "ZBK.025.0000A": (  0,
-                            "(Brabant|Freud|Ferenczi|Haynal)",
-                            "The Correspondence of  Sigmund Freud "+patAndTo+" S"+patAacute+"ndor Ferenczi("+patPunc+" "+patVol+patOne+patPunc+"("+patPunc+" 1908"+dashSep+"(19)?14)?)?",
-                            "199[0-5]|1908|1909|191[0-4]",
-                            None
-                            ),
-
-        "NLP.014.0001A": (  10,
-                            andersonR+"|britton|feldman|Spillius|steiner|malcom|O.?Shaughnessy|riesenberg",
-                            "Clinical Lectures  on Klein"+patAnd+" Bion",              #checked
-                            "1992|1991",
-                            None
-                            ),
-
-        "IPL.118.0001A": (  30,
-                            anzieuD,
-                            "(Freud"+patApos+"s Self"+dashSep+"Analys[ie]s)|(L"+patApos+"auto-analyse de freud)",          #checked
-                            "1986|1959|1975|1988",
-                            None
-                            ),
-
-        "ZBK.006.0001A": (  30,
+        "ZBK.002.0000A": (  30,
                             bionW,
-                            "(Experiences in Groups( "+patAnd+" Other Papers)?)|(Experi&ecirc;ncias com grupos)",     # no hits in refcorrections; ok in fullbiblioxml
-                            "(1959|1961|1962)",
+                            "Attention and Interpretation("+patPunc+" A Scientific Approach to Insight in "+patPsychoanalysis+" and Groups)?",
+                            "(1970|1975)",
                             None
                             ),
 
-        "ZBK.003.0001A": (  30,
+        "ZBK.003.0000A": (  30,
                             bionW,
                             "Learning from Experience",             #checked
                             "(1962|1970)",
                             None
                             ),
 
-        "ZBK.004.0001A": (  30,
+        "ZBK.004.0000A": (  30,
                             bionW,
                             "Elements of "+patPsychoanalysis+"",           #checked
                             "(1963)",
@@ -321,39 +273,170 @@ class PEPBookInfo:
                             None
                             ),
 
-        "ZBK.002.0001A": (  30,
+        "ZBK.006.0000A": (  30,
                             bionW,
-                            "Attention and Interpretation("+patPunc+" A Scientific Approach to Insight in "+patPsychoanalysis+" and Groups)?",
-                            "(1970|1975)",
+                            "(Experiences in Groups( "+patAnd+" Other Papers)?)|(Experi&ecirc;ncias com grupos)",     # no hits in refcorrections; ok in fullbiblioxml
+                            "(1959|1961|1962)",
                             None
                             ),
 
-        "IPL.079.0001A": (  30,
-                            bowlbyJ,
-                            "Attachment( and Loss)?("+patPunc+" "+patVol+patOne+"("+patPunc+" Attachment)?)?",
-                            "(1969|1982|1959)",
+        "ZBK.007.0000A": (  30,
+                            "fairbairn",
+                            patPsychoanalytic+" Stud(y|ies) "+patOfThe+"Personality",
+                            "(1952|19[34][0-9])",
                             None
                             ),
 
-
-        "IPL.095.0001A": (  30,
-                            bowlbyJ,
-                            "(Attachment and Loss("+patPunc+" "+patVol+patTwo+"("+patPunc+" Separation"+patPunc+" Anxiety"+patAnd+" Anger)?)?)|(Separation"+patPunc+" Anxiety"+patAnd+" Anger)",   # should be ok because vols have diff dates
-                            "(1973|1975|1999)",
-                            patVol+patTwo
+        "ZBK.015.0000A": (  30,
+                            spenceD, #"Spence,  D. P.",
+                            "Narrative  Truth"+patAnd+" Historical Truth(:? Meaning and Interpretation in "+patPsychoanalysis+")?",     #checked
+                            "(1982|1984)",
+                            None
                             ),
 
-        "IPL.109.0001A": (  30,
-                            bowlbyJ,
-                            "(Attachment and Loss("+patPunc+" "+patVol+patThree+"("+patPunc+" Loss"+patPunc+" Sadness"+patAnd+" Depression)?)?)|(Loss"+patPunc+" Sadness"+patAnd+"  Depression)",  # should be ok because vols have diff dates
-                            "(1980)",
-                            patVol+patThree
+        "ZBK.016.0000A": (  30,
+                            "Stern",
+                            patThe+"Interpersonal World of  the Infant("+patSubSep+" (A )?View from "+patPsychoanalysis+" and Developmental Psychology)?",     #checked
+                            "(1985|1986|1984)",
+                            None
                             ),
 
-        "ZBK.054.0000A": (  30,
-                            britton+"|Feldman|O.Shaughnessy|Steiner",      #checked
-                            patThe+"Oedipus Complex Today("+patSubSep+" Clinical Implications)?",
-                            "1989|1994",
+        "ZBK.017.0000A": (  30,
+                            winnicott,
+                            "Playing and Reality",
+                            "(1971|1974)",
+                            None
+                            ),
+
+        "ZBK.020.0000A": (  30,
+                            "Rodman(,?\s*F\.?)?",
+                            patThe+"Spontaneous Gesture("+patSubSep+" Selected Letters of D. W. Winnicott)?",              #checked
+                            "(1987)",
+                            None
+                            ),
+
+        "ZBK.025.0000A": (  0,
+                            "(Brabant|Freud|Ferenczi|Haynal)",
+                            "The Correspondence of  Sigmund Freud "+patAndTo+" S"+patAacute+"ndor Ferenczi("+patPunc+" "+patVol+patOne+patPunc+"("+patPunc+" 1908"+dashSep+"(19)?14)?)?",
+                            "199[0-5]|1908|1909|191[0-4]",
+                            None
+                            ),
+
+        "ZBK.026.0000A": (  30,
+                            "("+falzeder+"|Freud|Ferenczi|Hoffer)",
+                            patThe+"Correspondence  of Sigmund Freud "+patAndTo+" S"+patAacute+"ndor Ferenczi("+patPunc+" "+patVol+patTwo+patPunc+"( 1914"+dashSep+"(19)?19)?)?",
+                            "191[4-9]|199[6-7]",
+                            patVol+patTwo   # must be vol2
+                            ),
+
+        "ZBK.027.0000A": (  30,
+                            "("+falzeder+"|Freud|Ferenczi|Haynal)",
+                            patThe+"Correspondence  of Sigmund Freud "+patAndTo+" S"+patAacute+"ndor Ferenczi("+patPunc+" "+patVol+patThree+patPunc+"( 1920"+dashSep+"(19)?33)?)?",
+                            "19[23][0-9]|1998|1999|200[0-9]",
+                            patVol+patThree  #  must be vol3
+                            ),
+
+        "ZBK.028.0000A": (  30,
+                            "Paskauskas|Freud|Jones|Steiner",
+                            patThe+"Complete Correspondence "+patBetween+"  Sigmund Freud "+patAndTo+" Ernest Jones("+patSubSep+" 1908"+dashSep+"(19)?39)?",     #checked
+                            "1990|1993|1995|192[0-9]",
+                            None
+                            ),
+
+        "ZBK.029.0000A": (  20,
+                            boehlichW+"|freud|silberstein", #"Boehlich,? W\.?",
+                            "The Letters of Sigmund Freud "+patAndTo+"  (Eduard|Edward) Silberstein("+patPunc+" 1871"+dashSep+"(18)?81)?",        #checked
+                            "1990|(1989|18[0-9][0-9])",
+                            None
+                            ),
+
+        "ZBK.033.0000A": (  10,
+                            "Balint,? M\.?",
+                            "The Basic  Fault("+patSubSep+" Therapeutic Aspects of Regression)?",               #checked and fixed instances in the refcorrections db
+                            "1979|[12][0-9][0-9][0-9]",
+                            None
+                            ),
+
+        "ZBK.034.0001A": (  30,             #checked
+                            kohutH,
+                            "How does "+patPsychoanalysis+" cure(\?)?",
+                            "1984",
+                            None
+                            ),
+
+        "ZBK.038.0000A": (  30,
+                            "Sandler|Fonagy|Michels|Jacobs|Milrod|Rosenblatt|Compton|Schafer|Goldberg|Schlesinger|Viederman|Auchincloss|Person, E|Lester, E|Lester, O|Nersessian|Akhtar|Dalsimer|Vaillant|Luborsky|Gabbard|Paul,? R|Spillius|Shapiro|Canestri|Cavell|Mahoney|Stade|Peskin|Gay, P.|Tuckett||Makari",
+                            "Changing Ideas In  A Changing World("+patSubSep+" The Revolution in "+patPsychoanalysis+")?",       #no hitts in either table
+                            "2000",
+                            None
+                            ),
+
+        "ZBK.041.0000A": (  30,
+                            "McGuire|Freud|Jung",
+                            patThe+"Freud"+patDashSlash+"Jung Letters("+patSubSep+patThe+"Correspondence "+patBetween+" Sigmund Freud "+patAndTo+"  (C\.?(\s*G\.?)?)?\s*Jung)?",
+                            "1974|190[6-9]|191[0-4]",
+                            None
+                            ),
+
+        "ZBK.042.0000A": (  30,
+                            massonJ+"|Freud|Fliess",
+                            patThe+"Complete Letters of Sigmund Freud "+patAndTo+"  Wilhelm Fliess("+patSubSep+" 1887"+dashSep+"(19)?04)?",
+                            "1985|188[7-9]|189[0-9]|190[0-4]",
+                            None
+                            ),
+
+        "ZBK.045.0000A": (  30,
+                            jonesE,
+                            "(Life  "+patAnd+" Work (of )?Sigmund Freud)|(Sigmund Freud"+patSubSep+" Life "+patAnd+" Work)"+patSubSep+" "+patVol+patOne+"("+patSubSep+" The Young Freud( 1856"+dashSep+"1900)?)?",
+                            "1972|1954|1953",
+                            None
+                            ),
+
+        "ZBK.046.0000A": (  30,
+                            jonesE,
+                            "(Life  "+patAnd+" Work (of )?Sigmund Freud)|(Sigmund Freud"+patSubSep+" Life "+patAnd+" Work)"+patSubSep+" "+patVol+patTwo+"("+patSubSep+" Years of Maturity( 1901"+dashSep+"1919)?)?",
+                            "1955",
+                            None
+                            ),
+
+        "ZBK.047.0000A": (  30,
+                            jonesE,
+                            "(Life  "+patAnd+" Work (of )?Sigmund Freud)|(Sigmund Freud"+patSubSep+" Life "+patAnd+" Work)"+patSubSep+" "+patVol+patThree+"("+patSubSep+" The Last Phase( 1919"+dashSep+"1939)?)?",
+                            "1957|1980",
+                            None
+                            ),
+
+        "ZBK.048.0000A": (  30,
+                            "Meltzer|Money",
+                            patThe+"Collected Papers of (R(oger)?)? Money"+dashSep+"Kyrle",
+                            "1986|1978|1958|1977|1968",
+                            None,
+                            ),
+
+        "ZBK.049.0001A": (  30,
+                            kohutH,
+                            patThe+"Analysis of the Self("+patSubSep+"  A Systematic Approach to( the)? "+patPsychoanalytic+" Treatment of Narcissistic Personality Disorders?)?",
+                            "1971",
+                            None
+                            ),
+
+        "ZBK.048.0001A": (  30,
+                            "Money\-Kyrle",
+                            "The Collected Papers of Roger Money\-Kyrle",
+                            "1978",
+                            None
+                            ),
+
+        "ZBK.050.0000A": (  30,
+                            "Fichtner|Freud|Binswanger",
+                            patThe+"Sigmund Freud"+dashSepPlusComma+"Ludwig Binswanger( Correspondence(\s1908"+dashSep+"1938)?)?",
+                            "2003|1992",
+                            None
+                            ),
+        "ZBK.051.0000A": (  30,
+                            "Freud, E\.(\s+L\.)",
+                            patThe+"Letters of  Sigmund Freud(\s+1873"+dashSep+"1939)?",  # This is too short, and too common, a title to make the date optional!    Trying again.
+                            "1961|1960",
                             None
                             ),
 
@@ -364,28 +447,140 @@ class PEPBookInfo:
                             None
                             ),
 
-        "ZBK.027.0000A": (  30,
-                            "("+falzeder+"|Freud|Ferenczi|Haynal)",
-                            patThe+"Correspondence  of Sigmund Freud "+patAndTo+" S"+patAacute+"ndor Ferenczi("+patPunc+" "+patVol+patThree+patPunc+"( 1920"+dashSep+"(19)?33)?)?",
-                            "19[23][0-9]|1998|1999|200[0-9]",
-                            patVol+patThree  #  must be vol3
-                            ),
-
-        "ZBK.026.0000A": (  30,
-                            "("+falzeder+"|Freud|Ferenczi|Hoffer)",
-                            patThe+"Correspondence  of Sigmund Freud "+patAndTo+" S"+patAacute+"ndor Ferenczi("+patPunc+" "+patVol+patTwo+patPunc+"( 1914"+dashSep+"(19)?19)?)?",
-                            "191[4-9]|199[6-7]",
-                            patVol+patTwo   # must be vol2
-                            ),
-
-        "ZBK.007.0001A": (  30,
-                            "fairbairn",
-                            patPsychoanalytic+" Stud(y|ies) "+patOfThe+"Personality",
-                            "(1952|19[34][0-9])",
+        "ZBK.054.0000A": (  30,
+                            britton+"|Feldman|O.Shaughnessy|Steiner",      #checked
+                            patThe+"Oedipus Complex Today("+patSubSep+" Clinical Implications)?",
+                            "1989|1994",
                             None
                             ),
 
-        # Future <be id = "B004"> <a> <l>Fairbairn</l>, W.R.D.</a> (<y>1954</y>). <t>An Object Relations Theory of the Personality</t>.  New York: <bp>Basic Books</bp>.</be>
+        "ZBK.055.0000A": (  30,
+                            wallerstein,
+                            "((Forty"+dashSep+"two)|42) lives in treatment("+patSubSep+" A  study of "+patPsychoanalysis+" and psychotherapy)?",
+                            "(1985|1986|2000)",
+                            None
+                            ),
+
+        "ZBK.056.0000A": (  30,
+                            wallerstein,
+                            "Lay analysis("+patSubSep+" Life inside the controversy)?",
+                            "1998",
+                            None
+                            ),
+
+
+        "ZBK.061.0000A": (  10,
+                            "Thom(a|\&auml;)",
+                            "Psycho-?analytic Practi[cs]e"+patSubSep+"((Vol(ume|.)\s+(1|one))?("+patSubSep+"\s*Principles)?)?",
+                            "198[57]",
+                            None
+                            ),
+
+        "ZBK.062.0000A": (  10,
+                            "Thom(a|\&auml;)",
+                            "Psycho-?analytic Practi[cs]e"+patSubSep+"((Vol(ume|.)\s+(2|two))?("+"\s*Clinical\s+Studies)?)?",
+                            "1992",
+                            None
+                            ),
+
+        "ZBK.070.0000A": (  30,
+                            "Deutsch",
+                            "Selected Problems of Adolescence: With Special Emphasis on Group Formation",
+                            "(1967)",
+                            None
+                            ),
+
+        "ZBK.071.0000A": (  30,
+                            "Nagera",
+                            "Early Childhood Disturbances, the Infantile Neurosis, and the Adulthood Disturbances.e",
+                            "(1966)",
+                            None
+                            ),
+
+        "ZBK.072.0000A": (  30,
+                            "Hartmann",
+                            "Ego Psychology and the Problem of Adaptation",
+                            "(1958)",
+                            None
+                            ),
+
+        "ZBK.073.0000A": (  30,
+                            "Levy",
+                            "The Therapeutic Alliance",
+                            "(2000)",
+                            None
+                            ),
+
+        "ZBK.074.0000A": (  30,
+                            "Dowling",
+                            "Conflict and Compromise: Therapeutic Implications",
+                            "(1991)",
+                            None
+                            ),
+
+        "ZBK.075.0000A": (  30,
+                            "Dowling",
+                            "Child and Adolescent Analysis: its Significance for Clinical Work with Adults",
+                            "(1990)",
+                            None
+                            ),
+
+        "ZBK.076.0000A": (  30,
+                            "Shur",
+                            "The ID and the Regulatory Principles of Mental Functioning",
+                            "(1967)",
+                            None
+                            ),
+
+        "ZBK.077.0000A": (  30,
+                            "Kaplan-Solms",
+                            "Clinical Studies in Neuro-Psychoanalysis: Introduction to a Depth Neuropsychology",
+                            "(2002)",
+                            None
+                            ),
+
+        "ZBK.078.0000A": (  30,
+                            "Rothstein",
+                            "The Interpretation of Dreams in Clinical Work.",
+                            "(1987)",
+                            None
+                            ),
+
+        "ZBK.079.0000A": (  30,
+                            "Dowling",
+                            "The Psychology and Treatment of Addictive Behavior.",
+                            "(1985)",
+                            None
+                            ),
+
+        "ZBK.080.0000A": (  30,
+                            "Rothstein",
+                            "The Reconstruction of Trauma: its Significance in Clinical Work",
+                            "(1986)",
+                            None
+                            ),
+
+        "ZBK.081.0000A": (  30,
+                            "Rothstein",
+                            "Models of the Mind(\s|\-+)\s*Their Relationships to Clinical Work.",
+                            "(1985)",
+                            None
+                            ),
+
+        "ZBK.101.0001A": (  30,
+                            spenceD, #"Spence,  D. P.",   # FUTURE <be rxp = "ZBK.030.0001A" id = "B058"> <a> <l>Spence</l>, D. P.</a> (<y>1987</y>), <t>The Freudian Metaphor</t>.  New York: <bp>Norton</bp>.</be>
+                            patThe+"Freudian Metaphor",
+                            "(1987)",
+                            None
+                            ),
+
+        "ZBK.102.0001A": (  30,
+                            kohutH,
+                            patThe+"Restoration of  the Self",
+                            "1977",
+                            None
+                            ),
+
         "ZBK.103.0001A": (  30,
                             "fairbairn",
                             "An Object"+patDash+"Relations  Theory "+patOfThe+"Personality",
@@ -398,249 +593,6 @@ class PEPBookInfo:
                             "feiner|Epstein",
                             "Countertransference",
                             "(1979)",
-                            None
-                            ),
-
-        "NLP.009.0001A": (  30,
-                            "feldman|spillius|joseph",  #"Feldman, M. and Spillius, E. B.",
-                            "Psychic Equill?ibrium  "+patAnd+" Psychic Change("+patPunc+" Selected Papers of Betty Joseph)?",
-                            "(1975|198[0-9]|199[0-3])",
-                            None
-                            ),
-
-        "IPL.045.0001A": (  30,
-                            ferencziS,
-                            "First  Contributions? to "+patPsychoanalysis,
-                            "(1952)",
-                            None
-                            ),
-
-        # Ferenczi, S., Abraham, K., Simmel, E. and Jones, E. (1921). Psychoanalysis and the War Neurosis. Int. Psycho-Anal. Lib. , The International Psycho-Analytical Press, London, Vienna, New York
-
-        "IPL.002.0000A": (  30,
-                            ferencziS,  #"Ferenczi, S., Abraham, K., Simmel, E. and Jones, E.",
-                            patPsychoanalysis+patAnd+"\s+(the\s+?)?War\s+Neuros(i|e)s",
-                            "(1921)",
-                            None
-                            ),
-
-        "ZBK.050.0000A": (  30,
-                            "Fichtner|Freud|Binswanger",
-                            patThe+"Sigmund Freud"+dashSepPlusComma+"Ludwig Binswanger( Correspondence(\s1908"+dashSep+"1938)?)?",
-                            "2003|1992",
-                            None
-                            ),
-
-        "IPL.084.0000A": (  30,
-                            "Freud|Zweig",
-                            patThe+"Letters of  Sigmund Freud "+patAndTo+" Arnold Zweig",
-                            "(1970|19[0-9][0-9])",
-                            None
-                            ),
-
-        "ZBK.051.0000A": (  30,
-                            "Freud, E\.(\s+L\.)",
-                            patThe+"Letters of  Sigmund Freud(\s+1873"+dashSep+"1939)?",  # This is too short, and too common, a title to make the date optional!    Trying again.
-                            "1961|1960",
-                            None
-                            ),
-
-        "IPL.105.0001A": (  30,
-                            groddeckG,
-                            patThe+"Meaning of  Illness(:? Selected "+patPsychoanalytic+" Writings Including his Correspondence with Sigmund Freud)?",
-                            "(1977)",
-                            None
-                            ),
-
-        "ZBK.047.0001A": (  30,
-                            jonesE,
-                            "(Life  "+patAnd+" Work (of )?Sigmund Freud)|(Sigmund Freud"+patSubSep+" Life "+patAnd+" Work)"+patSubSep+" "+patVol+patThree+"("+patSubSep+" The Last Phase( 1919"+dashSep+"1939)?)?",
-                            "1957|1980",
-                            None
-                            ),
-
-        "ZBK.046.0001A": (  30,
-                            jonesE,
-                            "(Life  "+patAnd+" Work (of )?Sigmund Freud)|(Sigmund Freud"+patSubSep+" Life "+patAnd+" Work)"+patSubSep+" "+patVol+patTwo+"("+patSubSep+" Years of Maturity( 1901"+dashSep+"1919)?)?",
-                            "1955",
-                            None
-                            ),
-
-        "ZBK.045.0001A": (  30,
-                            jonesE,
-                            "(Life  "+patAnd+" Work (of )?Sigmund Freud)|(Sigmund Freud"+patSubSep+" Life "+patAnd+" Work)"+patSubSep+" "+patVol+patOne+"("+patSubSep+" The Young Freud( 1856"+dashSep+"1900)?)?",
-                            "1972|1954|1953",
-                            None
-                            ),
-
-        "NLP.011.0001A": (  30,
-                            kingP+"|Steiner|Glover|Freud|Hoffer", #"King, P. and Steiner, R.",
-                            patThe+"Freud"+patDashSlash+"Klein  Controversies("+patSubSep+" 1941"+dashSep+"(19)?45)?",
-                            "(1991|1990|194[1-5])",
-                            None
-                            ),
-
-        "IPL.022.0001A": (  30,
-                            kleinM,
-                            patThe+patPsychoanalysis+"  of Children",                                    #checked
-                            "(1932|1937|1948|1963)",
-                            None
-                            ),
-
-        "IPL.055.0001A": (  30,                                                             #checked
-                            kleinM,
-                            "Narrative  of a Child Analysis("+dashSep+" "+patThe+" Conduct of the "+patPsychoanalysis+" of Children (as seen)? in the Treatment of a "+patTen+" year[ \-]old Boy.)?",
-                            "(196[0-1])",
-                            None
-                            ),
-
-        "IPL.104.0001A": (  30,
-                            kleinM,
-                            "Envy and Gratitude("+patAnd+"  Other Works( 1946"+dashSep+"(19)?63)?)?",     #checked
-                            "(194[6-9]|1977|1964|195[0-9]|1975)",
-                            None
-                            ),
-
-        #   ZBK          049    ZBK.049.0001  Kohut, H. (1971). The Analysis of the Self. New York: Int. Univ. Press.
-        "ZBK.049.0001A": (  30,
-                            kohutH,
-                            patThe+"Analysis of the Self("+patSubSep+"  A Systematic Approach to( the)? "+patPsychoanalytic+" Treatment of Narcissistic Personality Disorders?)?",
-                            "1971",
-                            None
-                            ),
-
-        # FUTURE: <be> <a> <l>Kohut</l>, H.</a> (<y>1977</y>), <t>The Restoration of the Self</t>.  New York: <bp>International Universities Press</bp>.</be>
-        "ZBK.102.0001A": (  30,
-                            kohutH,
-                            patThe+"Restoration of  the Self",
-                            "1977",
-                            None
-                            ),
-
-        "ZBK.034.0001A": (  30,             #checked
-                            kohutH,
-                            "How does "+patPsychoanalysis+" cure(\?)?",
-                            "1984",
-                            None
-                            ),
-
-        "IPL.094.0001A": (  30,
-                            laplancheJ, #"Laplanche, J. and Pontalis, J. B.",
-                            patThe+"Language of "+patPsychoanalysis+"",
-                            "(1973|1975|1967)",
-                            None
-                            ),
-
-        "ZBK.042.0000A": (  30,
-                            massonJ+"|Freud|Fliess",
-                            patThe+"Complete Letters of Sigmund Freud "+patAndTo+"  Wilhelm Fliess("+patSubSep+" 1887"+dashSep+"(19)?04)?",
-                            "1985|188[7-9]|189[0-9]|190[0-4]",
-                            None
-                            ),
-
-        "NLP.005.0001A": (  30,
-                            matteblancoI+"|(Rayner|Tuckett)",
-                            "Thinking\,? Feeling\,? (and)?  Being("+patSubSep+" Clinical Reflections on the Fundamental Antinomy of Human Beings and World)?",         #checked
-                            "(1988|1989)",
-                            None
-                            ),
-
-        "ZBK.041.0000A": (  30,
-                            "McGuire|Freud|Jung",
-                            patThe+"Freud"+patDashSlash+"Jung Letters("+patSubSep+patThe+"Correspondence "+patBetween+" Sigmund Freud "+patAndTo+"  (C\.?(\s*G\.?)?)?\s*Jung)?",
-                            "1974|190[6-9]|191[0-4]",
-                            None
-                            ),
-
-        #This one accidentally taken from "future" list
-        "ZBK.048.0000A": (  30,
-                            "Meltzer|Money",
-                            patThe+"Collected Papers of (R(oger)?)? Money"+dashSep+"Kyrle",
-                            "1986|1978|1958|1977|1968",
-                            None,
-                            ),
-
-        "IPL.059.0000A": (  30,
-                            mengH+"|freud|pfister", #"Meng, H.  and Freud, E. L.",
-                            patPsychoanalysis+" "+patAnd+"  Faith("+patSubSep+" "+patThe+" (Letters of )?Sigmund Freud"+patAndTo+" O(\.?|skar) Pfister)?|"+patThe+" (Letters of )?Sigmund Freud"+patAndTo+" O(\.?|skar) Pfister|Briefe|Briefwechsel",   #checked
-                            "(1963|192[0-9])",
-                            None
-                            ),
-
-        "IPL.076.0001A": (  30,
-                            milnerM+"|Kahn|khan",
-                            patThe+"Hands?  of the Living Gods?("+patSubSep+" An Account of a "+patPsychoanalytic+" Treatment)?",    #Checked
-                            "(1969)",
-                            None
-                            ),
-
-        "NLP.003.0001A": (  30,
-                            milnerM,
-                            patThe+"Suppressed  Madness of Sane Men",    #Checked
-                            "(1987)",
-                            None
-                            ),
-
-        "ZBK.028.0000A": (  30,
-                            "Paskauskas|Freud|Jones|Steiner",
-                            patThe+"Complete Correspondence "+patBetween+"  Sigmund Freud "+patAndTo+" Ernest Jones("+patSubSep+" 1908"+dashSep+"(19)?39)?",     #checked
-                            "1990|1993|1995|192[0-9]",
-                            None
-                            ),
-
-        "IPL.089.0000A": (  30,
-                            pfeifferE+"|Freud|Andreas"+dashSep+"Salom", #"Pfeiffer, E.",
-                            "Sigmund Freud  "+patAndTo+" Lou Andreas"+dashSep+"Salom([\xef\bf\bde]|&eacute;)("+patSubSep+"Letters)?",    #checked
-                            "(1963|1972|1966)",
-                            None
-                            ),
-
-        "IPL.073.0001A": (  30,
-                            rackerH, #"Racker,  H.",
-                            "Transference "+patAndTo+"  Counter"+patDash+"transference",       #checked
-                            "(1988|1968|1960|1985|1957|1958)",
-                            None
-                            ),
-
-        "IPL.052.0000A": (  30,
-                            rickmanJ, #"Rickman, J.",
-                            "Selected Contributions "+patTo+" "+patPsychoanalysis,     #checked
-                            "(1957|1951)",
-                            None
-                            ),
-
-        "NLP.001.0001A": (  30,
-                            rosenfeldH, #"Rosenfeld, H.",    #checked
-                            "Impasse and Interpretation("+patSubSep+" Therapeutic and anti-therapeutic  factors in the "+patPsychoanalytic+" treatment of psychotic, borderline, and neurotic patients)?",
-                            "(1987)",
-                            None
-                            ),
-
-        "ZBK.020.0001A": (  30,
-                            "Rodman(,?\s*F\.?)?",
-                            patThe+"Spontaneous Gesture("+patSubSep+" Selected Letters of D. W. Winnicott)?",              #checked
-                            "(1987)",
-                            None
-                            ),
-
-        "ZBK.038.0000A": (  30,
-                            "Sandler|Fonagy|Michels|Jacobs|Milrod|Rosenblatt|Compton|Schafer|Goldberg|Schlesinger|Viederman|Auchincloss|Person, E|Lester, E|Lester, O|Nersessian|Akhtar|Dalsimer|Vaillant|Luborsky|Gabbard|Paul,? R|Spillius|Shapiro|Canestri|Cavell|Mahoney|Stade|Peskin|Gay, P.|Tuckett||Makari",
-                            "Changing Ideas In  A Changing World("+patSubSep+" The Revolution in "+patPsychoanalysis+")?",       #no hitts in either table
-                            "2000",
-                            None
-                            ),
-
-        "ZBK.015.0001A": (  30,
-                            spenceD, #"Spence,  D. P.",
-                            "Narrative  Truth"+patAnd+" Historical Truth(:? Meaning and Interpretation in "+patPsychoanalysis+")?",     #checked
-                            "(1982|1984)",
-                            None
-                            ),
-
-        "ZBK.101.0001A": (  30,
-                            spenceD, #"Spence,  D. P.",   # FUTURE <be rxp = "ZBK.030.0001A" id = "B058"> <a> <l>Spence</l>, D. P.</a> (<y>1987</y>), <t>The Freudian Metaphor</t>.  New York: <bp>Norton</bp>.</be>
-                            patThe+"Freudian Metaphor",
-                            "(1987)",
                             None
                             ),
 
@@ -672,13 +624,6 @@ class PEPBookInfo:
                             None
                             ),
 
-        "ZBK.113.0001A": (  30,
-                            "Stolorow",
-                            "Contests of being("+patSubSep+" The intersubjective foundations of psychological life)?",
-                            "(1992)",
-                            None
-                            ),
-
         "ZBK.109.0001A": (  30,
                             "Stern",
                             patThe+"First Relationship",
@@ -690,13 +635,6 @@ class PEPBookInfo:
                             "Stern",
                             "Unformulated Experience("+patSubSep+"  From Dissociation to Imagination in Psychoanalysis)?",
                             "(1997)",
-                            None
-                            ),
-
-        "ZBK.016.0001A": (  30,
-                            "Stern",
-                            patThe+"Interpersonal World of  the Infant("+patSubSep+" (A )?View from "+patPsychoanalysis+" and Developmental Psychology)?",     #checked
-                            "(1985|1986|1984)",
                             None
                             ),
 
@@ -714,225 +652,77 @@ class PEPBookInfo:
                             None
                             ),
 
-        "IPL.064.0001A": (  30,
-                            winnicott,
-                            patThe+"Maturational Process(es)? "+patAndThe+" Facilitating Environment("+patSubSep+"  Studies in the Theory of Emotional Development)?",
-                            "(195[7-8]|196[0-9])[a-z]?",
+        "ZBK.113.0001A": (  30,
+                            "Stolorow",
+                            "Contests of being("+patSubSep+" The intersubjective foundations of psychological life)?",
+                            "(1992)",
                             None
                             ),
 
-        "IPL.087.0001A": (  30,
-                            winnicott,
-                            "Therapeutic Consultations in Child Psychiatry.",
-                            "(1971)",
-                            None
-                            ),
-
-        "IPL.100.0001A": (  30,
-                            winnicott,
-                            "(Collected[ ]+Papers:?[ ]+|In:?\s+)?" + "Through\s+P(ae|e)diatrics\s+to\s+"+patPsychoanalysis,
-                            "(193[1-9]|194[0-9]|195[0-9]|1975)",
-                            None
-                            ),
-
-        "IPL.107.0001A": (  30,
-                            winnicott,
-                            "The Piggle("+patSubSep+" An Account of the "+patPsychoanalytic+" Treatment of  a Little Girl: Edited by Ishak Ramzy)?",
-                            "(1980)",
-                            None
-                            ),
-
-        "IPL.115.0001A": (  30,
-                            winnicott,
-                            "Holding and Interpretation("+patSubSep+" Fragment  of An Analysis)?",
-                            "(1986)",
-                            None
-                            ),
-
-        "ZBK.017.0001A": (  30,
-                            winnicott,
-                            "Playing and Reality",
-                            "(1971|1974)",
-                            None
-                            ),
-
-        "ZBK.048.0001A": (  30,
-                            "Money\-Kyrle",
-                            "The Collected Papers of Roger Money\-Kyrle",
-                            "1978",
-                            None
-                            ),
-
-        "ZBK.056.0000A": (  30,
-                            wallerstein,
-                            "Lay analysis("+patSubSep+" Life inside the controversy)?",
-                            "1998",
-                            None
-                            ),
-
-        "ZBK.055.0000A": (  30,
-                            wallerstein,
-                            "((Forty"+dashSep+"two)|42) lives in treatment("+patSubSep+" A  study of "+patPsychoanalysis+" and psychotherapy)?",
-                            "(1985|1986|2000)",
-                            None
-                            ),
-
-        "SE.014.0000A": (   9,
-                            "freud|Strachey|Tyson",
-                            "(\bSE\b|\&SE\;|(S\.E\.)|(Std\.|((Stand(\.|ard)))\s+Ed(\.|ition|it\.)),?)",
-                            "(1915|1957|1985|1986|2000)",
-                            None
-                            ),
-
-
-        "ZBK.070.0001A": (  30,
-                            "Deutsch",
-                            "Selected Problems of Adolescence: With Special Emphasis on Group Formation",
-                            "(1967)",
-                            None
-                            ),
-
-        "ZBK.071.0001A": (  30,
-                            "Nagera",
-                            "Early Childhood Disturbances, the Infantile Neurosis, and the Adulthood Disturbances.e",
-                            "(1966)",
-                            None
-                            ),
-
-        "ZBK.072.0001A": (  30,
-                            "Hartmann",
-                            "Ego Psychology and the Problem of Adaptation",
-                            "(1958)",
-                            None
-                            ),
-
-        "ZBK.073.0001A": (  30,
-                            "Levy",
-                            "The Therapeutic Alliance",
-                            "(2000)",
-                            None
-                            ),
-
-        "ZBK.074.0001A": (  30,
-                            "Dowling",
-                            "Conflict and Compromise: Therapeutic Implications",
-                            "(1991)",
-                            None
-                            ),
-
-        "ZBK.075.0001A": (  30,
-                            "Dowling",
-                            "Child and Adolescent Analysis: its Significance for Clinical Work with Adults",
-                            "(1990)",
-                            None
-                            ),
-
-        "ZBK.076.0001A": (  30,
-                            "Shur",
-                            "The ID and the Regulatory Principles of Mental Functioning",
-                            "(1967)",
-                            None
-                            ),
-
-        "ZBK.077.0001A": (  30,
-                            "Kaplan-Solms",
-                            "Clinical Studies in Neuro-Psychoanalysis: Introduction to a Depth Neuropsychology",
-                            "(2002)",
-                            None
-                            ),
-
-        "ZBK.078.0001A": (  30,
-                            "Rothstein",
-                            "The Interpretation of Dreams in Clinical Work.",
-                            "(1987)",
-                            None
-                            ),
-
-        "ZBK.079.0001A": (  30,
-                            "Dowling",
-                            "The Psychology and Treatment of Addictive Behavior.",
-                            "(1985)",
-                            None
-                            ),
-
-        "ZBK.080.0001A": (  30,
-                            "Rothstein",
-                            "The Reconstruction of Trauma: its Significance in Clinical Work",
-                            "(1986)",
-                            None
-                            ),
-
-        "ZBK.081.0001A": (  30,
-                            "Rothstein",
-                            "Models of the Mind(\s|\-+)\s*Their Relationships to Clinical Work.",
-                            "(1985)",
-                            None
-                            ),
-
-        "ZBK.131.0001A": (  30,
+        "ZBK.131.0000A": (  30,
                             "Bodtker",
                             "Beyond Words",
                             "(1990)",
                             None
                             ),
 
-        "ZBK.132.0001A": (  30,
+        "ZBK.132.0000A": (  30,
                             "Glover",
                             "Psychoanalytic Aesthetics",
                             "(2008)",
                             None
                             ),
 
-        "ZBK.133.0001A": (  30,
+        "ZBK.133.0000A": (  30,
                             "Harris",
                             "The Tavistock Model",
                             "(1991)",
                             None
                             ),
 
-        "ZBK.134.0001A": (  30,
+        "ZBK.134.0000A": (  30,
                             "Harris",
                             "Emily Dickinson in Time",
                             "(1999)",
                             None
                             ),
 
-        "ZBK.135.0001A": (  30,
+        "ZBK.135.0000A": (  30,
                             "Harris",
                             "Thinking about lnfants and Young Children",
                             "(1975|1983)",
                             None
                             ),
 
-        "ZBK.136.0001A": (  30,
+        "ZBK.136.0000A": (  30,
                             "Harris",
                             "Your Teenager",
                             "(1969|2007)",
                             None
                             ),
 
-        "ZBK.137.0001A": (  30,
+        "ZBK.137.0000A": (  30,
                             "Jain",
                             "The Mind's Extensive View",
                             "(1991)",
                             None
                             ),
 
-        "ZBK.138.0001A": (  30,
+        "ZBK.138.0000A": (  30,
                             "Meltzer",
                             "The\s+Psycho[\s\-]?analytic(al)? Process",
                             "(1967)",
                             None
                             ),
 
-        "ZBK.139.0001A": (  30,
+        "ZBK.139.0000A": (  30,
                             "Meltzer",
                             "Sexual States of Mind",
                             "(1967|1968|1971|1972|1973|1979)",
                             None
                             ),
 
-        "ZBK.140.0001A": (  30,
+        "ZBK.140.0000A": (  30,
                             "Meltzer",
                             "The Kleinian Development",
                             "(1978)",
@@ -946,21 +736,21 @@ class PEPBookInfo:
                             None
                             ),
 
-        "ZBK.142.0001A": (  30,
+        "ZBK.142.0000A": (  30,
                             "Meltzer",
                             "Dream-?Life",
                             "(1983|1984)",
                             None
                             ),
 
-        "ZBK.143.0001A": (  30,
+        "ZBK.143.0000A": (  30,
                             "Meltzer",
                             "Studies in Extended Metapsychology",
                             "(1986)",
                             None
                             ),
 
-        "ZBK.144.0001A": (  30,
+        "ZBK.144.0000A": (  30,
                             "Meltzer",
                             "The\s+Claustrum",
                             "(1990|1992)",
@@ -974,53 +764,53 @@ class PEPBookInfo:
                             None
                             ),
 
-        "ZBK.146.0001A": (  30,
+        "ZBK.146.0000A": (  30,
                             "Meltzer",
                             "The Apprehension of Beauty",
                             "(1988|1995|2008)",
                             None
                             ),
 
-        "ZBK.147.0001A": (  30,
+        "ZBK.147.0000A": (  30,
                             "Negri",
                             "The Story of lnfant Development",
                             "(2007)",
                             None
                             ),
 
-        "ZBK.148.0001A": (  30,
+        "ZBK.148.0000A": (  30,
                             "Negri",
                             "The Newborn in the lntensive Care Unit",
                             "(1994)",
                             None
                             ),
 
-        "ZBK.149.0001A": (  30,
+        "ZBK.149.0000A": (  30,
                             "Piontelli",
                             "Backwards in Time",
                             "(1985)",
                             None
                             ),
 
-        "ZBK.150.0001A": (  30,
+        "ZBK.150.0000A": (  30,
                             "Sanders",
                             "A Matter of lnterest",
                             "(1986)",
                             None
                             ),
-        "ZBK.151.0001A": (  30,
+        "ZBK.151.0000A": (  30,
                             "Sanders",
                             "Nine Lives: the emotional experience",
                             "(1999)",
                             None
                             ),
-        "ZBK.152.0001A": (  30,
+        "ZBK.152.0000A": (  30,
                             "Williams",
                             "The Chamber of Maiden Thought",
                             "(1991)",
                             None
                             ),
-        "ZBK.153.0001A": (  30,
+        "ZBK.153.0000A": (  30,
                             "Williams",
                             "A Strange Way of Killing",
                             "(1987)",
@@ -1032,18 +822,229 @@ class PEPBookInfo:
 #                            "(1997)",
 #                            None
                             #),
-        "ZBK.155.0001A": (  30,
+        "ZBK.155.0000A": (  30,
                             "Williams",
                             "The Vale of Soulmaking",
                             "(2005)",
                             None
                             ),
-        "ZBK.156.0001A": (  30,
+        "ZBK.156.0000A": (  30,
                             "Williams",
                             "The Aesthetic Development: The poetic spirit",
                             "(2009)",
                             None
                             ),
+        # IPL ************************************************************************************************
+        "IPL.002.0000A": (  30,
+                            ferencziS,  #"Ferenczi, S., Abraham, K., Simmel, E. and Jones, E.",
+                            patPsychoanalysis+patAnd+"\s+(the\s+?)?War\s+Neuros(i|e)s",
+                            "(1921)",
+                            None
+                            ),
+
+
+        "IPL.022.0000A": (  30,
+                            kleinM,
+                            patThe+patPsychoanalysis+"  of Children",                                    #checked
+                            "(1932|1937|1948|1963)",
+                            None
+                            ),
+
+        "IPL.045.0000A": (  30,
+                            ferencziS,
+                            "First  Contributions? to "+patPsychoanalysis,
+                            "(1952)",
+                            None
+                            ),
+
+        "IPL.052.0000A": (  30,
+                            rickmanJ, #"Rickman, J.",
+                            "Selected Contributions "+patTo+" "+patPsychoanalysis,     #checked
+                            "(1957|1951)",
+                            None
+                            ),
+
+        "IPL.055.0000A": (  30,                                                             #checked
+                            kleinM,
+                            "Narrative  of a Child Analysis("+dashSep+" "+patThe+" Conduct of the "+patPsychoanalysis+" of Children (as seen)? in the Treatment of a "+patTen+" year[ \-]old Boy.)?",
+                            "(196[0-1])",
+                            None
+                            ),
+
+        "IPL.059.0000A": (  30,
+                            mengH+"|freud|pfister", #"Meng, H.  and Freud, E. L.",
+                            patPsychoanalysis+" "+patAnd+"  Faith("+patSubSep+" "+patThe+" (Letters of )?Sigmund Freud"+patAndTo+" O(\.?|skar) Pfister)?|"+patThe+" (Letters of )?Sigmund Freud"+patAndTo+" O(\.?|skar) Pfister|Briefe|Briefwechsel",   #checked
+                            "(1963|192[0-9])",
+                            None
+                            ),
+
+        "IPL.064.0000A": (  30,
+                            winnicott,
+                            patThe+"Maturational Process(es)? "+patAndThe+" Facilitating Environment("+patSubSep+"  Studies in the Theory of Emotional Development)?",
+                            "(195[7-8]|196[0-9])[a-z]?",
+                            None
+                            ),
+
+        "IPL.073.0000A": (  30,
+                            rackerH, #"Racker,  H.",
+                            "Transference "+patAndTo+"  Counter"+patDash+"transference",       #checked
+                            "(1988|1968|1960|1985|1957|1958)",
+                            None
+                            ),
+
+        "IPL.076.0000A": (  30,
+                            milnerM+"|Kahn|khan",
+                            patThe+"Hands?  of the Living Gods?("+patSubSep+" An Account of a "+patPsychoanalytic+" Treatment)?",    #Checked
+                            "(1969)",
+                            None
+                            ),
+
+        "IPL.079.0000A": (  30,
+                            bowlbyJ,
+                            "Attachment( and Loss)?("+patPunc+" "+patVol+patOne+"("+patPunc+" Attachment)?)?",
+                            "(1969|1982|1959)",
+                            None
+                            ),
+
+
+        "IPL.084.0000A": (  30,
+                            "Freud|Zweig",
+                            patThe+"Letters of  Sigmund Freud "+patAndTo+" Arnold Zweig",
+                            "(1970|19[0-9][0-9])",
+                            None
+                            ),
+
+        "IPL.087.0000A": (  30,
+                            winnicott,
+                            "Therapeutic Consultations in Child Psychiatry.",
+                            "(1971)",
+                            None
+                            ),
+
+        "IPL.089.0000A": (  30,
+                            pfeifferE+"|Freud|Andreas"+dashSep+"Salom", #"Pfeiffer, E.",
+                            "Sigmund Freud  "+patAndTo+" Lou Andreas"+dashSep+"Salom([\xef\bf\bde]|&eacute;)("+patSubSep+"Letters)?",    #checked
+                            "(1963|1972|1966)",
+                            None
+                            ),
+
+        "IPL.094.0000A": (  30,
+                            laplancheJ, #"Laplanche, J. and Pontalis, J. B.",
+                            patThe+"Language of "+patPsychoanalysis+"",
+                            "(1973|1975|1967)",
+                            None
+                            ),
+
+        "IPL.095.0000A": (  30,
+                            bowlbyJ,
+                            "(Attachment and Loss("+patPunc+" "+patVol+patTwo+"("+patPunc+" Separation"+patPunc+" Anxiety"+patAnd+" Anger)?)?)|(Separation"+patPunc+" Anxiety"+patAnd+" Anger)",   # should be ok because vols have diff dates
+                            "(1973|1975|1999)",
+                            patVol+patTwo
+                            ),
+        "IPL.100.0000A": (  30,
+                            winnicott,
+                            "(Collected[ ]+Papers:?[ ]+|In:?\s+)?" + "Through\s+P(ae|e)diatrics\s+to\s+"+patPsychoanalysis,
+                            "(193[1-9]|194[0-9]|195[0-9]|1975)",
+                            None
+                            ),
+
+        "IPL.104.0000A": (  30,
+                            kleinM,
+                            "Envy and Gratitude("+patAnd+"  Other Works( 1946"+dashSep+"(19)?63)?)?",     #checked
+                            "(194[6-9]|1977|1964|195[0-9]|1975)",
+                            None
+                            ),
+
+        "IPL.105.0000A": (  30,
+                            groddeckG,
+                            patThe+"Meaning of  Illness(:? Selected "+patPsychoanalytic+" Writings Including his Correspondence with Sigmund Freud)?",
+                            "(1977)",
+                            None
+                            ),
+
+        "IPL.107.0001A": (  30,
+                            winnicott,
+                            "The Piggle("+patSubSep+" An Account of the "+patPsychoanalytic+" Treatment of  a Little Girl: Edited by Ishak Ramzy)?",
+                            "(1980)",
+                            None
+                            ),
+
+        "IPL.109.0000A": (  30,
+                            bowlbyJ,
+                            "(Attachment and Loss("+patPunc+" "+patVol+patThree+"("+patPunc+" Loss"+patPunc+" Sadness"+patAnd+" Depression)?)?)|(Loss"+patPunc+" Sadness"+patAnd+"  Depression)",  # should be ok because vols have diff dates
+                            "(1980)",
+                            patVol+patThree
+                            ),
+
+        "IPL.115.0001A": (  30,
+                            winnicott,
+                            "Holding and Interpretation("+patSubSep+" Fragment  of An Analysis)?",
+                            "(1986)",
+                            None
+                            ),
+
+        "IPL.118.0000A": (  30,
+                            anzieuD,
+                            "(Freud"+patApos+"s Self"+dashSep+"Analys[ie]s)|(L"+patApos+"auto-analyse de freud)",          #checked
+                            "1986|1959|1975|1988",
+                            None
+                            ),
+
+        # NLP ************************************************************************************************
+        "NLP.001.0000A": (  30,
+                            rosenfeldH, #"Rosenfeld, H.",    #checked
+                            "Impasse and Interpretation("+patSubSep+" Therapeutic and anti-therapeutic  factors in the "+patPsychoanalytic+" treatment of psychotic, borderline, and neurotic patients)?",
+                            "(1987)",
+                            None
+                            ),
+
+        "NLP.003.0000A": (  30,
+                            milnerM,
+                            patThe+"Suppressed  Madness of Sane Men",    #Checked
+                            "(1987)",
+                            None
+                            ),
+
+        "NLP.005.0000A": (  30,
+                            matteblancoI+"|(Rayner|Tuckett)",
+                            "Thinking\,? Feeling\,? (and)?  Being("+patSubSep+" Clinical Reflections on the Fundamental Antinomy of Human Beings and World)?",         #checked
+                            "(1988|1989)",
+                            None
+                            ),
+
+        "NLP.009.0001A": (  30,
+                            "feldman|spillius|joseph",  #"Feldman, M. and Spillius, E. B.",
+                            "Psychic Equill?ibrium  "+patAnd+" Psychic Change("+patPunc+" Selected Papers of Betty Joseph)?",
+                            "(1975|198[0-9]|199[0-3])",
+                            None
+                            ),
+
+        "NLP.011.0000A": (  30,
+                            kingP+"|Steiner|Glover|Freud|Hoffer", #"King, P. and Steiner, R.",
+                            patThe+"Freud"+patDashSlash+"Klein  Controversies("+patSubSep+" 1941"+dashSep+"(19)?45)?",
+                            "(1991|1990|194[1-5])",
+                            None
+                            ),
+
+        "NLP.014.0000A": (  10,
+                            andersonR+"|britton|feldman|Spillius|steiner|malcom|O.?Shaughnessy|riesenberg",
+                            "Clinical Lectures  on Klein"+patAnd+" Bion",              #checked
+                            "1992|1991",
+                            None
+                            ),
+
+        # SE ************************************************************************************************
+        "SE.014.0000A": (   9,
+                            "freud|Strachey|Tyson",
+                            "(\bSE\b|\&SE\;|(S\.E\.)|(Std\.|((Stand(\.|ard)))\s+Ed(\.|ition|it\.)),?)",
+                            "(1915|1957|1985|1986|2000)",
+                            None
+                            ),
+
+        # Future <be id = "B004"> <a> <l>Fairbairn</l>, W.R.D.</a> (<y>1954</y>). <t>An Object Relations Theory of the Personality</t>.  New York: <bp>Basic Books</bp>.</be>
+        # Future <be id = "B004"> <a> <l>Fairbairn</l>, W.R.D.</a> (<y>1954</y>). <t>An Object Relations Theory of the Personality</t>.  New York: <bp>Basic Books</bp>.</be>
+        # Ferenczi, S., Abraham, K., Simmel, E. and Jones, E. (1921). Psychoanalysis and the War Neurosis. Int. Psycho-Anal. Lib. , The International Psycho-Analytical Press, London, Vienna, New York
+
     }
 
     #--------------------------------------------------------------------------------

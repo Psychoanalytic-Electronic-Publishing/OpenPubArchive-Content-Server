@@ -2,8 +2,12 @@
 # -*- coding: UTF-8 -*-
 #Copyright 2012-2018 Neil R. Shapiro
 
-"""
-"""
+__author__      = "Neil R. Shapiro"
+__copyright__   = "Copyright 2023"
+__license__     = "Apache 2.0"
+__version__     = "2023.0206/v1.0.006"   
+__status__      = "Development"
+
 import sys
 sys.path.append('../libs')
 sys.path.append('../config')
@@ -12,26 +16,26 @@ sys.path.append('../libs/configLib')
 # import string, sys, copy, re
 import logging
 logger = logging.getLogger(__name__)
-# from io import StringIO
 import re
 import time
 
-import opasGenSupportLib as opasgenlib
 from loggingDebugStream import log_everywhere_if
 
-import opasBiblioSupport
-import opasPySolrLib
-from opasLocator import Locator
-import opasCentralDBLib
-#import opasXMLHelper
-import opasXMLProcessor
 import opasConfig
-#import opasArticleIDSupport
-import models
-import PEPJournalData
+# import opasGenSupportLib as opasgenlib
+import opasBiblioSupport
+import opasCentralDBLib
 import PEPBookInfo
 known_books = PEPBookInfo.PEPBookInfo()
-import PEPReferenceParserStr
+
+# import opasPySolrLib
+# from opasLocator import Locator
+#import opasXMLHelper
+# import opasXMLProcessor
+#import opasArticleIDSupport
+# import models
+# import PEPJournalData
+# import PEPReferenceParserStr
 
 gDbg1 = 0	# details
 gDbg2 = 1	# High level
@@ -45,18 +49,18 @@ sqlSelect = ""
 parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True)
 
 def walk_through_reference_set(ocd=ocd,
-                               sql_set_select = "select * from api_biblioxml where art_id='CPS.031.0617A'",
+                               sql_set_select = "select * from api_biblioxml where art_id='CPS.031.0617A' and ref_local_id='B022'",
                                set_description = "All"
                                ):
     """
     >> walk_set = "SingleTest1", "select * from api_biblioxml where art_id='CPS.031.0617A' and ref_local_id='B024'"
     >> walk_through_reference_set(ocd, sql_set_select=walk_set[1], set_description=walk_set[0])
 
-    >>> walk_set = "SingleTest1", "select * from api_biblioxml where art_id='CPS.031.0617A'"
-    >>> walk_through_reference_set(ocd, sql_set_select=walk_set[1], set_description=walk_set[0])
-
-    >> walk_set = "Freud", "select * from api_biblioxml where ref_rx is NULL and ref_authors like '%Freud%'"
+    >> walk_set = "SingleTest1", "select * from api_biblioxml where art_id='CPS.031.0617A' and ref_local_id='B022'"
     >> walk_through_reference_set(ocd, sql_set_select=walk_set[1], set_description=walk_set[0])
+
+    >>> walk_set = "Freud", "select * from api_biblioxml where ref_rx is NULL and ref_authors like '%Freud%' and ref_rx_confidence=0"
+    >>> walk_through_reference_set(ocd, sql_set_select=walk_set[1], set_description=walk_set[0])
     
     """
     fname = "walk_through_reference_set"
@@ -69,11 +73,11 @@ def walk_through_reference_set(ocd=ocd,
         # rows = self.SQLSelectGenerator(sqlSelect)
         biblio_entries = ocd.get_references_select_biblioxml(sql_set_select)
         counter = 0
-        for ref in biblio_entries:
+        for ref_model in biblio_entries:
             counter += 1
-            print (ref.ref_text)
-            parsed_ref = ET.fromstring(ref.ref_xml, parser=parser)
-            bib_entry = opasBiblioSupport.BiblioEntry(ref.art_id, db_bib_entry=ref)
+            print (ref_model.ref_text)
+            parsed_ref = ET.fromstring(ref_model.ref_xml, parser=parser)
+            bib_entry = opasBiblioSupport.BiblioEntry(ref_model.art_id, db_bib_entry=ref_model)
             art_id = bib_entry.art_id
             if bib_entry.ref_rx is None:
                 print (bib_entry.ref_text)

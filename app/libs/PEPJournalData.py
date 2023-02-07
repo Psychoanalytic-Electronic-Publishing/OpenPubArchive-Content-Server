@@ -1981,7 +1981,7 @@ class PEPJournalData:
         if opasgenlib.is_empty(ret_val):
             # don't bother reporting if jrnlYear is 0; just not interesting!
             if jrnlYear!=0 and jrnlYear!="0":
-                logger.warn("getVol: Cannot find vol for %s/%s" % (jrnlCode, jrnlYear))
+                logger.debug("getVol: Cannot find vol for %s/%s" % (jrnlCode, jrnlYear))
 
         #print "CurrVol, type: ", ret_val, type(ret_val)
         return ret_val, ret_val_list

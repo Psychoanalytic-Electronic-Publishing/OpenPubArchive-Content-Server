@@ -9,6 +9,20 @@ OPAS - opasBiblioSupport
 
 Support for information contained in references in bibliographies.
 
+Module Assumptions:
+
+   BibEntry class is general to accommodate be, maybe binc (TBD)
+
+   During a compile to EXP_ARCH files from KBD files:
+      - we want to do the minimum for speed.
+      - we need to check if the DB has an overriding locator
+      - we need to check to ensure all locator's (rx) exist
+   
+   During a "load" from EXP_ARCH compiled files:
+      - we want to do the minimum for speed.
+      - we need to check if the DB has an overriding locator
+      - we need to check to ensure all locator's (rx) exist
+
 """
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2022, Psychoanalytic Electronic Publishing"
@@ -36,7 +50,7 @@ import logging
 logger = logging.getLogger(__name__)
 from loggingDebugStream import log_everywhere_if    # log as usual, but if first arg is true, also put to stdout for watching what's happening
 
-gDbg2 = False
+gDbg2 = True
 gDbg3 = True
 
 parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=False)
@@ -64,6 +78,7 @@ jrnlData = PEPJournalData.PEPJournalData()
 import PEPBookInfo
 known_books = PEPBookInfo.PEPBookInfo()
 from PEPReferenceParserStr import StrReferenceParser
+SPECIAL_BOOK_NAMES = ("Ges. Schr.", )
 
 #------------------------------------------------------------------------------------------------------------
 #  Support functions
@@ -124,7 +139,7 @@ def check_for_vol_suffix(ocd, loc_str, verbose):
             new_locs = ocd.article_exists(new_loc_str)
             if len(new_locs) == 1:
                 ret_val = new_locs[0][0]
-                log_everywhere_if(verbose, level="info", msg=f"\t\t...Bib ID with vol variant found.  Returning it: {ret_val}.")
+                log_everywhere_if(verbose, level="info", msg=f"\t\tCorrecting Bib ID with vol variant: {ret_val}.")
 
     return ret_val    
 
@@ -143,7 +158,7 @@ def check_for_page_start(ocd, loc_str, page_offset=-1, verbose=False):
                 new_locs = ocd.article_exists(new_loc_str)
                 if len(new_locs) == 1:
                     ret_val = new_locs[0][0]
-                    log_everywhere_if(verbose, level="info", msg=f"\t\t...Bib ID with page-1 found.  Returning it: {ret_val}.")
+                    log_everywhere_if(verbose, level="info", msg=f"\t\tCorrecting Bib ID with page-1: {ret_val}.")
                 #else:
                     #log_everywhere_if(verbose, "warning", f"Bad locator in reference {loc_str}->{new_loc_str}(article doesn't exist)")
     return ret_val    
@@ -167,6 +182,7 @@ class BiblioMatch(object):
     ref_rxcf: str = Field(None, title="List of possible article ID codes for this reference")
     ref_rxcf_confidence: float = Field(0, title="Max confidence level of rxcf codes")
     ref_xml: str = Field(None)
+    ref_exists: bool = Field(False, title="Indicates this ref link has been verified")
     link_source: str = Field(None, title="Source of rx link, 'xml', 'database', or 'pattern'")
     link_updated: bool = Field(False, title="Indicates whether the data was corrected during load. If so, may need to update DB.  See link_source for method")
     record_updated: bool = Field(False, title="Indicates whether the data was corrected during load. If so, may need to update DB.")
@@ -382,13 +398,17 @@ class BiblioEntry(object):
         journal_title = opasxmllib.xml_get_subelement_textsingleton(self.parsed_ref, "j")
         book_title = opasxmllib.xml_get_subelement_textsingleton(self.parsed_ref, "bst")
         self.ref_sourcetitle = None
-        if journal_title in ("Ges. Schr.", ):
-            book_title = journal_title
-            journal_title = None
-
         # worth the check here for books since not all books are tagged.
         book_markup = self.parsed_ref.xpath("//bst|bp|bsy|bpd")
         journal = self.parsed_ref.xpath("//j")
+
+        # special book handling
+        if journal_title in SPECIAL_BOOK_NAMES:
+            book_title = journal_title
+            journal_title = None
+            # set below since now we have book_title and not journal title
+            #self.ref_is_book = True
+            #self.ref_sourcetype = "book"
 
         if (book_markup or book_title or self.ref_publisher) and not journal_title:
             self.ref_is_book = True
@@ -403,16 +423,18 @@ class BiblioEntry(object):
             self.ref_is_book = False
             self.ref_sourcetitle = f"{journal_title} / {book_title}"
 
+        # see if we have info to link SE/GW etc., these are in a sense like journals
+        if opasgenlib.is_empty(self.ref_sourcecode):
+            if PEPJournalData.PEPJournalData.rgxSEPat2.search(self.ref_text):
+                self.ref_in_pep = True
+                self.ref_sourcecode = "SE"
+                self.ref_is_book = True
+            elif PEPJournalData.PEPJournalData.rgxGWPat2.search(self.ref_text):
+                self.ref_in_pep = True
+                self.ref_sourcecode = "GW"
+                self.ref_is_book = True
+        
         if self.ref_is_book:
-            # see if we have info to link SE/GW etc., these are in a sense like journals
-            if opasgenlib.is_empty(self.ref_sourcecode):
-                if PEPJournalData.PEPJournalData.rgxSEPat2.search(self.ref_text):
-                    self.ref_in_pep = True
-                    self.ref_sourcecode = "SE"
-                elif PEPJournalData.PEPJournalData.rgxGWPat2.search(self.ref_text):
-                    self.ref_in_pep = True
-                    self.ref_sourcecode = "GW"
-            
             year_of_publication = opasxmllib.xml_get_subelement_textsingleton(self.parsed_ref, "bpd")
             if year_of_publication == "":
                 year = opasxmllib.xml_get_subelement_textsingleton(self.parsed_ref, "y")
@@ -765,14 +787,15 @@ class BiblioEntry(object):
 
                 if self.ref_in_pep and not self.ref_exists:
                     if locator.valid == 0:
-                        msg = f"\t\t...Bib ID {ref_id} loc not valid {locator.articleID()} (components: {self.ref_sourcecode}/{self.ref_volume}/{self.ref_pgstart}) {opasgenlib.text_slice(self.ref_text, start_chr_count=25, end_chr_count=50)}"
+                        msg = f"\t\tBib ID {ref_id} loc not valid {locator.articleID()} (components: {self.ref_sourcecode}/{self.ref_volume}/{self.ref_pgstart}) {opasgenlib.text_slice(self.ref_text, start_chr_count=25, end_chr_count=50)}"
                     else:
-                        msg = f"\t\t...Bib ID {ref_id} loc valid {locator.articleID()} but doesn't exist (components: {self.ref_sourcecode}/{self.ref_volume}/{self.ref_pgstart}) {opasgenlib.text_slice(self.ref_text, start_chr_count=25, end_chr_count=50)}"
+                        msg = f"\t\tBib ID {ref_id} loc valid {locator.articleID()} but doesn't exist (components: {self.ref_sourcecode}/{self.ref_volume}/{self.ref_pgstart}) {opasgenlib.text_slice(self.ref_text, start_chr_count=25, end_chr_count=50)}"
                         log_everywhere_if(verbose, level="info", msg=msg[:opasConfig.MAX_LOGMSG_LEN])
         
         self.link_updated = link_updated
         #ret_val = self.ref_rx, self.ref_rx_confidence, self.link_updated
         ret_val = BiblioMatch()
+        ret_val.ref_exists = self.ref_exists
         ret_val.ref_rx = self.ref_rx
         ret_val.ref_rx_confidence = self.ref_rx_confidence
         ret_val.link_updated = self.link_updated
@@ -821,13 +844,21 @@ class BiblioEntry(object):
             art_or_source_title = self.ref_title
         
         # prev_rxcf = None
-        if art_or_source_title:
+        if not opasgenlib.is_empty(art_or_source_title):
             art_or_source_title = opasgenlib.remove_all_punct(art_or_source_title)
-            query = f"{query_target}:({art_or_source_title})"
+            art_or_source_title = art_or_source_title.strip()
+            if art_or_source_title:
+                query = f"{query_target}:({art_or_source_title})"
+            else:
+                query = ""
+                
             authors = self.ref_authors
             if authors:
                 authors = opasgenlib.remove_all_punct(authors)
-                query = query + f" AND authors:{authors}"
+                if query == "":
+                    query = f"authors:{authors}"
+                else:
+                    query = query + f" AND authors:{authors}"
         
             #title_words = re.findall(r'\b\w{%s,}\b' % word_len, art_or_source_title)[:max_words]
                 
@@ -836,7 +867,7 @@ class BiblioEntry(object):
         
             if self.ref_volume and not self.ref_is_book:
                 # list of last name of authors with AND, search field art_authors_xml
-                query = query + f" AND art_vol:{opasgenlib.remove_all_punct(self.ref_volume)}"
+                query = query + f" AND art_vol:{self.ref_volume_int}"
         
             if gDbg2: print (f"Solr Query: {query}")
             result, return_status = opasPySolrLib.search_text(query=query, limit=10, offset=0, full_text_requested=False, req_url=opasConfig.CACHEURL)
@@ -863,7 +894,7 @@ class BiblioEntry(object):
                     if title_list:
                         title_list = sorted(title_list, key=lambda d: d["score"], reverse=True)
                         rx_confidence = title_list[0]["score"]
-                        if rx_confidence > .80:
+                        if rx_confidence > .70:
                             self.ref_rx = title_list[0]["rx"]
                             self.ref_rx_confidence = rx_confidence # opasConfig.RX_CONFIDENCE_PROBABLE
                             self.link_updated = True
@@ -1104,39 +1135,35 @@ class BiblioEntry(object):
 
 
         """
-        ret_val = self.ref_rx, self.ref_rx_confidence, self.link_updated
+        # ret_val = self.ref_rx, self.ref_rx_confidence, self.link_updated
+        ret_val = False
+        db_bibref = ocd.get_references_from_biblioxml_table(self.art_id, self.ref_local_id)
         
-        if self.ref_rx is not None or self.ref_rxcf is not None:
-            db_bibref = ocd.get_references_from_biblioxml_table(self.art_id, self.ref_local_id)
-            if db_bibref:
-                bib_refdb_model = db_bibref[0]   
-                if bib_refdb_model.ref_rx:
-                    if bib_refdb_model.ref_rx_confidence > self.ref_rx_confidence:
-                        # make sure it's clean
-                        self.ref_rx = Locator(bib_refdb_model.ref_rx).articleID()
+        if db_bibref:
+            bib_refdb_model = db_bibref[0]   
+            if bib_refdb_model.ref_rx:
+                if bib_refdb_model.ref_rx_confidence > self.ref_rx_confidence:
+                    # make sure it's clean
+                    loc_str = Locator(bib_refdb_model.ref_rx).articleID()
+                    if ocd.article_exists(loc_str):
+                        self.ref_exists = True
+                        self.ref_rx = loc_str
                         self.ref_rx_confidence = bib_refdb_model.ref_rx_confidence
                         self.link_updated = True
                         self.link_source = opasConfig.RX_LINK_SOURCE_DB
-                        ret_val = self.ref_rx, self.ref_rx_confidence, self.link_updated
-    
-                if bib_refdb_model.ref_rxcf:
-                    if bib_refdb_model.ref_rxcf_confidence > self.ref_rxcf_confidence:
-                        # make sure it's clean
-                        self.ref_rxcf = bib_refdb_model.ref_rxcf
-                        self.ref_rxcf_confidence = bib_refdb_model.ref_rxcf_confidence
-                        self.link_updated = True
-                        self.link_source = opasConfig.RX_LINK_SOURCE_DB
-                        ret_val = self.ref_rx, self.ref_rx_confidence, self.link_updated
-        
-                #ret_val = self.ref_rx, self.ref_rx_confidence, self.link_updated, self.ref_rxcf, self.ref_rxcf_confidence, self.link_source
-                ret_val = BiblioMatch()
-                ret_val.ref_rx = self.ref_rx
-                ret_val.ref_rx_confidence = self.ref_rx_confidence
-                ret_val.link_updated = self.link_updated
-                ret_val.link_source = self.link_source
-                ret_val.ref_rxcf = self.ref_rxcf
-                ret_val.ref_rxcf_confidence = self.ref_rxcf_confidence
-                ret_val.ref_xml = self.ref_xml
+                        ret_val = True
+                        #ret_val = self.ref_rx, self.ref_rx_confidence, self.link_updated
+
+            if bib_refdb_model.ref_rxcf:
+                if bib_refdb_model.ref_rxcf_confidence > self.ref_rxcf_confidence:
+                    # make sure it's clean
+                    self.ref_rxcf = bib_refdb_model.ref_rxcf
+                    self.ref_rxcf_confidence = bib_refdb_model.ref_rxcf_confidence
+                    self.link_updated = True
+                    self.link_source = opasConfig.RX_LINK_SOURCE_DB
+                    ret_val = True
+                    #ret_val = self.ref_rx, self.ref_rx_confidence, self.link_updated
+   
 
         return ret_val
 
