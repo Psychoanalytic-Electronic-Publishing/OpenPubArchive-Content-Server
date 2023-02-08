@@ -557,7 +557,11 @@ class ArticleInfo(BaseModel):
             #else:
                 #self.art_vol_suffix = None
             self.src_code = basic_art_info.src_code
-            self.art_issue = str(basic_art_info.art_issue_int)
+            if basic_art_info.art_issue_int is not None and basic_art_info.art_issue_int != 0:
+                self.art_issue = str(basic_art_info.art_issue_int)
+            else:
+                self.art_issue = None
+
             self.art_pgstart = basic_art_info.art_pgstart
         else:
             raise ValueError(f"Fatal Error: {filename_base} is improperly named and does not have a valid article ID: {basic_art_info.dict()}")
