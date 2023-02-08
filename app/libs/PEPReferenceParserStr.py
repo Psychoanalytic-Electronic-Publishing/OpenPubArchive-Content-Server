@@ -321,7 +321,7 @@ class StrReferenceParser(object):
         self.reDictInitd = 1
 
     #--------------------------------------------------------------------------------
-    def parse_str(self, ref_entry_text, art_id=None, bib_local_id=None, probable_source="", report=0, reset_data=1):
+    def parse_str(self, ref_text, art_id=None, bib_local_id=None, probable_source="", report=0, reset_data=1):
         """
         ------------------------------------------------------------------
         Parse an untagged reference entry and build a component dictionary
@@ -348,8 +348,8 @@ class StrReferenceParser(object):
         self.art_id = art_id
         self.bib_local_id = bib_local_id
         
-        self.full_ref_text = ref_entry_text
-        m = self.gRegcVolPages.search(ref_entry_text)
+        self.full_ref_text = ref_text
+        m = self.gRegcVolPages.search(ref_text)
         if m != None:
             bvol = m.group("vol")
             bpgrg = m.group("pgrg")
@@ -363,7 +363,7 @@ class StrReferenceParser(object):
         else:
             # just note this, don't raise error, because this could be a book
             if gDbg1:
-                print("Ref - No Vol Info: %s" % (ref_entry_text))
+                print("Ref - No Vol Info: %s" % (ref_text))
 
         if bissue != None:
             bissue = trimPunctAndSpaces(bissue)
@@ -371,10 +371,10 @@ class StrReferenceParser(object):
         # volume might not be part of a vol:pgrg group, so look again if not found
         if bvol == "":
             #print "Trying/Getting Book Vol"
-            bvol = self.__get_book_vol(ref_entry_text)
+            bvol = self.__get_book_vol(ref_text)
 
         # get PEP Journal Info
-        (jrnlCode, pepCode, fullJournalName) = gJrnlData.getPEPJournalCode(ref_entry_text)
+        (jrnlCode, pepCode, fullJournalName) = gJrnlData.getPEPJournalCode(ref_text)
         if jrnlCode != None and jrnlCode not in gJrnlData.notInPEPList:
             #"PEP Journal!!!"
             self.bib_sourcecode = jrnlCode
@@ -383,7 +383,7 @@ class StrReferenceParser(object):
             self.ref_source_type = "journal"
             self.bib_ref_in_pep = True                        # Journal is in PEP!
         else:
-            seException = get_se_volexceptions(ref_entry_text)
+            seException = get_se_volexceptions(ref_text)
             if seException != None:
                 # then it's the poor way of saying SE, and we have a vol.
                 #print "Special SE Notation Exception Recognized"
@@ -400,7 +400,7 @@ class StrReferenceParser(object):
                     #bjournal = opasgenlib.doEscapes(bjournal)
                 else:
                     # see if we recognize the non-PEP journal in this using patterns
-                    m = self.gRegcJournal.search(ref_entry_text)
+                    m = self.gRegcJournal.search(ref_text)
                     if m != None: #matched.
                         bjournal = m.group("journal")
                         #bjournal = bjournal.strip()
@@ -408,22 +408,22 @@ class StrReferenceParser(object):
                             self.bib_sourcetitle = trimPunctAndSpaces(bjournal)
                     else:
                         #print self.gRegcJournal.pattern
-                        if gDbg1: print("Ref - No Journal Info: %s" % (ref_entry_text))
+                        if gDbg1: print("Ref - No Journal Info: %s" % (ref_text))
 
         # Get Year, (1965)
-        m = self.gRegcYear.search(ref_entry_text)
+        m = self.gRegcYear.search(ref_text)
         if m != None:
             byear = m.group("year")
             noYear = 0
             if byear != None:
                 byear = trimPunctAndSpaces(byear)
         else:
-            if gDbg1: raise "No Year: %s" % (ref_entry_text)
-            logger.debug("Reference has no year information: %s" % (ref_entry_text))
+            if gDbg1: raise "No Year: %s" % (ref_text)
+            logger.debug("Reference has no year information: %s" % (ref_text))
             noYear = 1
 
 
-        m = self.gRegcAuthors.search(ref_entry_text)
+        m = self.gRegcAuthors.search(ref_text)
         if m != None:
             #bauthors = opasgenlib.doEscapes(string.strip(m.group("authors")))
             bauthors = m.group("authors")
@@ -436,11 +436,11 @@ class StrReferenceParser(object):
                     self.bib_authors = bauthors
                     self.bib_author_list = self.__parse_authors(bauthors)
                 else:
-                    logger.debug(f"Ref - No Authors (quoted text removed!): {ref_entry_text}")
+                    logger.debug(f"Ref - No Authors (quoted text removed!): {ref_text}")
             else:
-                logger.debug("Ref - No Authors: %s" % (ref_entry_text))
+                logger.debug("Ref - No Authors: %s" % (ref_text))
         else:
-            err = "Ref - No Author Info: %s" % (ref_entry_text)
+            err = "Ref - No Author Info: %s" % (ref_text)
             if noYear == 0: #can't find authors without year
                 logger.debug(err)
             else:
@@ -450,7 +450,7 @@ class StrReferenceParser(object):
         self.bib_pgrg = trimPunctAndSpaces(bpgrg)
 
         # look for special page range
-        m = self.gRegcppPgRg.search(ref_entry_text)
+        m = self.gRegcppPgRg.search(ref_text)
         if m != None:
             bpgrg = m.group("pgrg")
             bpgstart = m.group("pgstart")
@@ -474,17 +474,17 @@ class StrReferenceParser(object):
             else:
                 if self.bib_sourcecode == "SE":
                     # the number found is probably the volume, so grab it and look for the year
-                    if gDbg1: print("Ref - Trying to get the SE Volume in ", ref_entry_text)
+                    if gDbg1: print("Ref - Trying to get the SE Volume in ", ref_text)
                     patSE = "(?P<se>((<i>)?\&SE\;|SE[\.,]|(S\.\s*E\.)|(Std\.|((Stand(\.|ard)))\s+Ed(\.|ition|it\.))(</i>)?))"
                     patSEVol = patSE + ",?\s+" + "(?P<vol>[1-2][0-9])(\s|,)"
-                    m = re.search(patSEVol, ref_entry_text, re.IGNORECASE)
+                    m = re.search(patSEVol, ref_text, re.IGNORECASE)
                     if m != None:
                         vol = m.group("vol")
                         if not opasgenlib.is_empty(vol):
                             self.bib_volume = repr(opasgenlib.convertStringToArabic(vol))
                             if gDbg1: print ("Found SE Volume!")
 
-                logger.debug("Ref - No year or volume information: %s" % (ref_entry_text))
+                logger.debug("Ref - No year or volume information: %s" % (ref_text))
 
         if self.bib_volume==None:
             if self.bib_year != None:
@@ -501,7 +501,7 @@ class StrReferenceParser(object):
             if self.bib_volume == None:
                 # try a special vol search for labeled volume)
                 roman = "(?P<romannum>m*(cm|dc{0,3}|cd|c{0,3})(xc|lx{0,3}|xl|x{0,3})(ix|vi{0,3}|iv|i{0,3}))"
-                m = re.search("vol[\.:]?\s*(?P<vol>[0-9]{1-4}|" + roman + ")", ref_entry_text, re.IGNORECASE)
+                m = re.search("vol[\.:]?\s*(?P<vol>[0-9]{1-4}|" + roman + ")", ref_text, re.IGNORECASE)
                 if m != None:
                     # new vol
                     vol = m.group("vol")
@@ -573,21 +573,21 @@ class StrReferenceParser(object):
                 else:
                     rgP = "\s*\.?\s*'?(?P<title>[A-Z][^\.]+?)\."
 
-                m = re.search(rgP, ref_entry_text, flags=re.IGNORECASE | re.VERBOSE)
+                m = re.search(rgP, ref_text, flags=re.IGNORECASE | re.VERBOSE)
                 if m != None:
                     self.bib_title = trimPunctAndSpaces(m.group("title"))
                     #print "PICKED UP TITLE!!!!", self.bib_title
                 else: # see if there was a year, but it was in the wrong place
                     str1 = self.bib_authors
                     rgP = "\s*\.?\s*'?(?P<title>[A-Z][^\.]+?)\."
-                    m = re.compile(opasgenlib.do_re_escapes(str1) + rgP, re.VERBOSE).search(ref_entry_text)
+                    m = re.compile(opasgenlib.do_re_escapes(str1) + rgP, re.VERBOSE).search(ref_text)
                     if m != None:
                         self.bib_title = trimPunctAndSpaces(m.group("title"))
             else:
                 # what do we use!
-                logger.debug("PEPReferenceParserStr - Not enough info in ref to search for title: '%s'." % ref_entry_text.rstrip())
+                logger.debug("PEPReferenceParserStr - Not enough info in ref to search for title: '%s'." % ref_text.rstrip())
 
-        bookCode, sRatio, refObj = bookInfo.getPEPBookCodeStr(ref_entry_text)
+        bookCode, sRatio, refObj = bookInfo.getPEPBookCodeStr(ref_text)
         if bookCode != None:
             #print "BookCode: ", bookCode
             ret_val = bookCode

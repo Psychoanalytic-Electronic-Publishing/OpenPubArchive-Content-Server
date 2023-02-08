@@ -50,7 +50,8 @@ parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=T
 
 def walk_through_reference_set(ocd=ocd,
                                sql_set_select = "select * from api_biblioxml where art_id='CPS.031.0617A' and ref_local_id='B022'",
-                               set_description = "All"
+                               set_description = "All",
+                               verbose=True
                                ):
     """
     >> walk_set = "SingleTest1", "select * from api_biblioxml where art_id='CPS.031.0617A' and ref_local_id='B024'"
@@ -59,8 +60,8 @@ def walk_through_reference_set(ocd=ocd,
     >> walk_set = "SingleTest1", "select * from api_biblioxml where art_id='CPS.031.0617A' and ref_local_id='B022'"
     >> walk_through_reference_set(ocd, sql_set_select=walk_set[1], set_description=walk_set[0])
 
-    >>> walk_set = "Freud", "select * from api_biblioxml where ref_rx is NULL and ref_authors like '%Freud%' and ref_rx_confidence=0"
-    >>> walk_through_reference_set(ocd, sql_set_select=walk_set[1], set_description=walk_set[0])
+    >> walk_set = "Freud", "select * from api_biblioxml where ref_rx is NULL and ref_authors like '%Freud%' and ref_rx_confidence=0"
+    >> walk_through_reference_set(ocd, sql_set_select=walk_set[1], set_description=walk_set[0])
     
     """
     fname = "walk_through_reference_set"
@@ -75,22 +76,24 @@ def walk_through_reference_set(ocd=ocd,
         counter = 0
         for ref_model in biblio_entries:
             counter += 1
-            print (ref_model.ref_text)
+            print (80*"-")
+            print (f"{counter} Analyzing {ref_model.art_id}/{ref_model.ref_local_id}: {ref_model.ref_xml}")
             parsed_ref = ET.fromstring(ref_model.ref_xml, parser=parser)
             bib_entry = opasBiblioSupport.BiblioEntry(ref_model.art_id, db_bib_entry=ref_model)
             art_id = bib_entry.art_id
             if bib_entry.ref_rx is None:
-                print (bib_entry.ref_text)
+                if verbose: print (f"Ref text: {bib_entry.ref_text}")
                 bib_match = bib_entry.lookup_title_in_db(ocd)
-                if bib_match.ref_rx is None:
-                    bib_match = bib_entry.identify_heuristic()
-                else:
-                    print (f"\t..Reference ID: {bib_match.ref_rx} Confidence {bib_match.ref_rx_confidence} Link Updated: link")
-                    #time.sleep(2)
+                bib_match = bib_entry.identify_heuristic(verbose=verbose)
+                if bib_match.ref_rx is not None:
+                    if verbose: print (f"\t...Matched Reference ID: {bib_match.ref_rx} Confidence {bib_match.ref_rx_confidence} Link Updated: {bib_match.link_updated}")
+                # to watch
+                #if verbose: time.sleep(.5) # Pause
             else:
+                if verbose: print (f"Checking ref_rx from xml for accuracy")
                 bib_match = bib_entry.compare_to_database(ocd)
                 bib_match = bib_entry.lookup_more_exact_artid_in_db(ocd)
-                print (f"\t..Reference ID: {bib_entry.ref_rx} Confidence {bib_entry.ref_rx_confidence} Link Updated: link")
+                if verbose: print (f"\t...Reference ID: {bib_entry.ref_rx} Confidence {bib_entry.ref_rx_confidence} Link Updated: {bib_match.link_updated}")
                 #if ref_rx is not None:
                     #success = bib_entry.update_db_links(art_id,
                                                         #local_id,
@@ -259,12 +262,16 @@ def clean_reference_links(ocd=ocd,
 
 if __name__ == "__main__":
 
-    do_walk_set = False
+    do_walk_set = True
     do_clean = False
-    do_doctest = True
+    do_doctest = False
+    walk_set = [
+                  ("Freud", "select * from api_biblioxml where ref_rx is NULL and ref_authors like '%Freud%' and ref_rx_confidence=0")
+               ]
+        
 
     if do_walk_set:
-        walk_through_reference_set(ocd, sql_set_select=walk_set[1], set_description=walk_set[0])
+        walk_through_reference_set(ocd, set_description=walk_set[0][0], sql_set_select=walk_set[0][1])
 
     if do_clean:
         clean_set = "Freud", "select * from api_biblioxml where ref_rx is not NULL and ref_authors like '%Freud%'"

@@ -124,7 +124,7 @@ class Biblioxml(BaseModel):
     ref_sourcecode: str = Field(None)
     ref_authors: str = Field(None)
     ref_authors_xml: str = Field(None)
-    ref_articletitle: str = Field(None)
+    # ref_articletitle: str = Field(None)
     ref_text: str = Field(None)
     ref_sourcetype: str = Field(None, title="journal, book, unknown") # could add video
     ref_is_book: bool = Field(False)
@@ -304,6 +304,7 @@ class DocumentListItem(BaseModel):
     authorMast: str = Field(None, title="Author Names", description="The author names as displayed below the title in an article.")
     #2020-10-19, new convenience listing of author info (requires Field change to parse during load)
     authorList: list = Field(None, title="List of individual author data parsed from documentInfoXML", description="List of individual author data parsed from documentInfoXML")
+    authorCitation: str = Field(None, title="Author Names Citation style", description="The author names as they would appear in a reference.")
     origrx: str = Field(None, title="Original Document (documentID)", description="Document idref (documentID) linking this to an original document, e.g, this is a translation of...")
     relatedrx: str = Field(None, title="Closely Related Documents (documentID)", description="Document idref (documentID) associating all closely related documents to this one, e.g., this is a commentary on...")
     PEPCode: str = Field(None, title="Source Acronym", description="Acronym-type code assigned to the document source e.g., CPS, IJP, ANIJP-EL, ZBK. (The first part of the document ID.)")

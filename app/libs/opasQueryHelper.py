@@ -2022,6 +2022,11 @@ def get_base_article_info_from_search_result(result: dict, documentListItem: mod
                 documentListItem.authorMast = result.get("art_authors_mast", "")
             else:
                 documentListItem.authorMast = opasgenlib.derive_author_mast(author_ids)
+
+            author_cited = result.get("art_authors_citation", None)
+            if author_cited is not None:
+                documentListItem.authorCitation = author_cited
+                
             if result.get("art_newsecnm", None): documentListItem.newSectionName=result.get("art_newsecnm", None)
             ## Usually we put the abbreviated title here, but that won't always work here.
             # for reference, art_citeas_xml is both legal xml and html

@@ -1037,6 +1037,10 @@ def remove_all_punct(input_str, additional_chars=''):
     return ret_val
 
 # ----------------------------------------------------------------------------------------
+def remove_these_chars(input_str, these_chars=''):
+    ret_val = input_str.translate(str.maketrans('', '', these_chars))
+    return ret_val
+# ----------------------------------------------------------------------------------------
 def removeAllPunct(input_str, punct_set=[',', '.', ':', ';', '(', ')', '\t', r'/', '"', "'", "[", "]", '”', '“']):
     # Beginning in Python 2.2.3 you can do this
     #ret_val = string.rstrip(input_str, ",.\t ")

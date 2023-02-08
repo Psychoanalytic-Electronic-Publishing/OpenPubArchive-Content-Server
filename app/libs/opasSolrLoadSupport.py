@@ -146,8 +146,8 @@ def strip_extra_spaces(textstr:str):
         #if self.ref_entry_xml is not None:
             #self.ref_entry_xml = self.ref_entry_xml.decode("utf8") # convert from bytes
             #self.ref_entry_xml = re.sub(" +", " ", self.ref_entry_xml)
-        #self.ref_entry_text = opasxmllib.xml_elem_or_str_to_text(ref)
-        #self.ref_entry_text = strip_extra_spaces(self.ref_entry_text)
+        #self.ref_text = opasxmllib.xml_elem_or_str_to_text(ref)
+        #self.ref_text = strip_extra_spaces(self.ref_text)
         #self.art_id = art_id
         #self.sourcecode = ""
         #self.ref_source_type = ""
@@ -282,7 +282,7 @@ def strip_extra_spaces(textstr:str):
                                     #bib_authors = self.author_list_str, 
                                     #bib_articletitle = self.ref_title, 
                                     #title = self.ref_title, 
-                                    #full_ref_text = self.ref_entry_text, 
+                                    #full_ref_text = self.ref_text, 
                                     #bib_sourcetype = self.ref_source_type, 
                                     #bib_sourcetitle = self.source_title, 
                                     #bib_authors_xml = self.authors_xml, 
@@ -988,7 +988,7 @@ def process_info_for_author_core(pepxml, artInfo, solrAuthor, verbose=None):
                                         #%(publishers)s,
                                         #%(ref_doi)s,
                                         #%(ref_entry_xml)s,
-                                        #%(ref_entry_text)s
+                                        #%(ref_text)s
                                         #);
                             #"""
     #query_param_dict = bib_entry.__dict__
@@ -1182,7 +1182,9 @@ def add_to_tracker_table(ocd, art_id, verbose=None):
 #--------------------------------------------------------------------------------
 def check_if_start_of_section(ocd, art_id, fname=None):
     """
-
+    2023-02-08 This may not be needed anymore, if we remove "start of section" flagging from the
+      server, which was a workaround.
+    
     """
     ret_val = False
     sql = f"select * from vw_article_firstsectnames where art_id='{art_id}'"

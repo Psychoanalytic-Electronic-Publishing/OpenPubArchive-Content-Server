@@ -40,11 +40,12 @@ import re
 import statistics
 from typing import List, Generic, TypeVar, Optional
 import models
+import time
 
 import lxml
 from lxml import etree
 import roman
-import jellyfish
+# import jellyfish
 
 import logging
 logger = logging.getLogger(__name__)
@@ -78,7 +79,11 @@ jrnlData = PEPJournalData.PEPJournalData()
 import PEPBookInfo
 known_books = PEPBookInfo.PEPBookInfo()
 from PEPReferenceParserStr import StrReferenceParser
-SPECIAL_BOOK_NAMES = ("Ges. Schr.", )
+SPECIAL_BOOK_NAME_PATTERN = "((Ges|Gs)\.?\s+Schr\.?)|(Collected Papers)"
+book_titles_mismarked = re.compile(SPECIAL_BOOK_NAME_PATTERN, flags=re.I)
+SPECIAL_BOOK_RECOGNITION_PATTERN = "Wien" # Wien=Vienna
+BOOK_PUBLISHERS = "hogarth|basic books|harper|other press|analytic press|dover publications|france\:|london\:|norton|press|random house|new york\:|UK\:|routledge|paris|munich|university press|karnac|henry holt"
+SOLR_RESTRICTED_PUNCT = '\:\"\'\,/\[\]'
 
 #------------------------------------------------------------------------------------------------------------
 #  Support functions
@@ -129,7 +134,7 @@ def check_for_known_books(ref_text):
     return ret_val
 
 #------------------------------------------------------------------------------------------------------
-def check_for_vol_suffix(ocd, loc_str, verbose):
+def check_for_vol_suffix(ocd, loc_str, verbose=False):
     ret_val = None
     newloc = Locator(loc_str)
     if newloc.validate():
@@ -139,7 +144,7 @@ def check_for_vol_suffix(ocd, loc_str, verbose):
             new_locs = ocd.article_exists(new_loc_str)
             if len(new_locs) == 1:
                 ret_val = new_locs[0][0]
-                log_everywhere_if(verbose, level="info", msg=f"\t\tCorrecting Bib ID with vol variant: {ret_val}.")
+                log_everywhere_if(verbose, level="debug", msg=f"\t\tCorrecting Bib ID with vol variant: {ret_val}.")
 
     return ret_val    
 
@@ -158,7 +163,7 @@ def check_for_page_start(ocd, loc_str, page_offset=-1, verbose=False):
                 new_locs = ocd.article_exists(new_loc_str)
                 if len(new_locs) == 1:
                     ret_val = new_locs[0][0]
-                    log_everywhere_if(verbose, level="info", msg=f"\t\tCorrecting Bib ID with page-1: {ret_val}.")
+                    log_everywhere_if(verbose, level="debug", msg=f"\t\tCorrecting Bib ID with page-1: {ret_val}.")
                 #else:
                     #log_everywhere_if(verbose, "warning", f"Bad locator in reference {loc_str}->{new_loc_str}(article doesn't exist)")
     return ret_val    
@@ -214,13 +219,31 @@ class BiblioEntry(object):
        
     >>> import opasCentralDBLib
     >>> ocd = opasCentralDBLib.opasCentralDB()  
-   
+
+    >>> ref = '<be id="B036"><a><l>Freud</l>, S.</a> &amp; <a><l>Ferenczi</l>, S.</a> (<y>1993</y>). <bst>Correspondence</bst> (Vol. <v>1</v>, 1908-1914). Cambridge, MA: <bp>Harvard University Press</bp>.</be>'   
+    >>> parsed_ref = etree.fromstring(ref, parser=parser)
+    >>> be_journal = BiblioEntry(art_id="AJP.072.0016A", ref_or_parsed_ref=parsed_ref)
+    >>> result = be_journal.identify_heuristic(verbose=False)
+    >>> be_journal.ref_rx
+
+    >>> ref = '<be id="B070"><a><l>Money-Kyrle</l>, R.</a> (<y>1968</y>). <t>Cognitive development.</t> <j>The International Journal of Psycho-Analysis</j>, <v>49</v>, <pp>691-698</pp>.</be>'
+    >>> parsed_ref = etree.fromstring(ref, parser=parser)
+    >>> be_journal = BiblioEntry(art_id="ANIJP-TR.007.0157A", ref_or_parsed_ref=parsed_ref)
+    >>> # reset them if in database or pattern per above
+    >>> be_journal.ref_rx = None
+    >>> be_journal.ref_rx_confidence = 0
+    >>> result = be_journal.identify_nonheuristic()
+    >>> be_journal.ref_rx
+    'IJP.049.0691A'
+
     >>> be_journal = BiblioEntry(art_id="CPS.031.0617A", ref_or_parsed_ref='<be lang="en" id="B024">Freud, S. 1905 On psychotherapy Standard Edition 7</be>')
     >>> be_journal.ref_rx
 
     >>> be_journal = BiblioEntry(art_id="CPS.031.0617A", ref_or_parsed_ref='<be lang="en" id="B054">Klein, M. 1946 Notes on some schizoid mechanisms In:The writings of Melanie Klein Ed. R.E. Money-Kyrle et al. London: Hogarth Press, 1975</be>')
     >>> be_journal.ref_rx
     
+    >>> be_journal.identify_heuristic(verbose=False)
+    {'ref_rx': 'IPL.104.0001A', 'ref_rx_confidence': 0.88, 'link_updated': True, 'link_source': 'heuristic', 'ref_rxcf': 'IJP.027.0099A:0.87, PAQ.018.0122A:0.46, IJP.088.0387A:0.46', 'ref_rxcf_confidence': 0.87}
     
     >>> check_for_page_start(ocd, "AIM.014.0194A", page_offset=-1)
     'AIM.014.0193A'
@@ -247,12 +270,11 @@ class BiblioEntry(object):
     ref_sourcecode: str = None
     ref_authors: str = Field(None)
     ref_authors_xml: str = Field(None)
-    ref_articletitle: str = Field(None)
+    # ref_articletitle: str = Field(None)
     ref_text: str = Field(None)
     ref_sourcetype: str = Field(None)
     ref_is_book: bool = Field(False)
     ref_sourcetitle: str = Field(None)
-    ref_authors_xml: str = Field(None)
     ref_xml: str = Field(None)
     ref_pgrg: str = Field("")
     ref_pgstart: str = Field("")
@@ -403,7 +425,7 @@ class BiblioEntry(object):
         journal = self.parsed_ref.xpath("//j")
 
         # special book handling
-        if journal_title in SPECIAL_BOOK_NAMES:
+        if book_titles_mismarked.match(journal_title):
             book_title = journal_title
             journal_title = None
             # set below since now we have book_title and not journal title
@@ -419,9 +441,17 @@ class BiblioEntry(object):
             self.ref_is_book = False
             self.ref_sourcetitle = journal_title
         else:
-            self.ref_sourcetype = "unknown"
-            self.ref_is_book = False
-            self.ref_sourcetitle = f"{journal_title} / {book_title}"
+            if re.search(BOOK_PUBLISHERS, ref_text, flags=re.I) or not journal:
+                self.ref_sourcetype = "book"
+                self.ref_is_book = True
+            else:
+                self.ref_sourcetype = "unknown"
+                self.ref_is_book = False
+
+            if journal_title and book_title:
+                self.ref_sourcetitle = f"{journal_title} / {book_title}"
+            else:
+                self.ref_sourcetitle = f"{journal_title}{book_title}"
 
         # see if we have info to link SE/GW etc., these are in a sense like journals
         if opasgenlib.is_empty(self.ref_sourcecode):
@@ -668,31 +698,40 @@ class BiblioEntry(object):
           >>> be_journal = BiblioEntry(art_id="FA.013A.0120A", ref_or_parsed_ref=parsed_ref)
           >>> be_journal.ref_rx, be_journal.ref_rx_confidence, be_journal.link_source
           ('JICAP.002D.0061A', 0.91, 'variation')
+
           >>> # reset them if in database or pattern per above
           >>> be_journal.ref_rx = None
           >>> be_journal.ref_rx_confidence = 0
-          >>> be_journal.identify_nonheuristic(ocd)
-          {'ref_rx': 'JICAP.002D.0061A', 'ref_rx_confidence': 0.91, 'link_updated': True, 'link_source': 'variation', 'ref_rxcf': None, 'ref_rxcf_confidence': 0}
-
+          >>> result = be_journal.identify_nonheuristic()
+          >>> be_journal.ref_rx
+          'JICAP.002D.0061A'
+          
           >>> ref = '<be id="B070"><a><l>Money-Kyrle</l>, R.</a> (<y>1968</y>). <t>Cognitive development.</t> <j>The International Journal of Psycho-Analysis</j>, <v>49</v>, <pp>691-698</pp>.</be>'
           >>> parsed_ref = etree.fromstring(ref, parser=parser)
           >>> be_journal = BiblioEntry(art_id="ANIJP-TR.007.0157A", ref_or_parsed_ref=parsed_ref)
           >>> be_journal.ref_rx, be_journal.ref_rx_confidence, be_journal.link_source
           ('IJP.049.0691A', 0.91, 'pattern')
+
+          >>> ref = '<be id="B070"><a><l>Money-Kyrle</l>, R.</a> (<y>1968</y>). <t>Cognitive development.</t> <j>The International Journal of Psycho-Analysis</j>, <v>49</v>, <pp>691-698</pp>.</be>'
+          >>> parsed_ref = etree.fromstring(ref, parser=parser)
+          >>> be_journal = BiblioEntry(art_id="ANIJP-TR.007.0157A", ref_or_parsed_ref=parsed_ref)
           >>> # reset them if in database or pattern per above
           >>> be_journal.ref_rx = None
           >>> be_journal.ref_rx_confidence = 0
-          >>> be_journal.identify_nonheuristic(ocd)
-          {'ref_rx': 'IJP.049.0691A', 'ref_rx_confidence': 0.91, 'link_updated': True, 'link_source': 'pattern', 'ref_rxcf': None, 'ref_rxcf_confidence': 0}
+          >>> result = be_journal.identify_nonheuristic()
+          >>> be_journal.ref_rx
+          'IJP.049.0691A'
       
           >>> be_journal = BiblioEntry(art_id="FA.013A.0120A", ref_or_parsed_ref='<be id="B009"><a><l>Sternberg</l>, J</a> &amp; <a><l>Scott</l>, A</a> (<y>2009</y>) <t>Editorial.</t> <j>British Journal of Psychotherapy</j>, <v>25</v> (<bs>2</bs>): <pp>143-5</pp>.</be>')
           >>> be_journal.ref_rx, be_journal.ref_rx_confidence, be_journal.link_source
           ('BJP.025.0143A', 0.91, 'pattern')
+
           >>> # reset them if in database or pattern per above
           >>> be_journal.ref_rx = None
           >>> be_journal.ref_rx_confidence = 0
-          >>> be_journal.identify_nonheuristic(ocd)
-          {'ref_rx': 'BJP.025.0143A', 'ref_rx_confidence': 0.91, 'link_updated': True, 'link_source': 'pattern', 'ref_rxcf': None, 'ref_rxcf_confidence': 0}
+          >>> result = be_journal.identify_nonheuristic()
+          >>> be_journal.ref_rx
+          'BJP.025.0143A'
 
           >>> ref = '<be label="19" id="B019"><a><l>Freud</l></a>, <bst>Beyond the Pleasure Principle</bst> (London, <y>1950</y>), pp. <pp>17</pp> ff.</be>'
           >>> be_journal = BiblioEntry(art_id="FA.013A.0120A", ref_or_parsed_ref=ref)
@@ -701,14 +740,15 @@ class BiblioEntry(object):
           >>> # reset them if in database or pattern per above
           >>> be_journal.ref_rx = None
           >>> be_journal.ref_rx_confidence = 0
-          >>> be_journal.identify_nonheuristic()
-          {'ref_rx': None, 'ref_rx_confidence': 0, 'link_updated': False, 'link_source': None, 'ref_rxcf': None, 'ref_rxcf_confidence': 0}
+          >>> result = be_journal.identify_nonheuristic()
+          >>> be_journal.ref_rx
+
         """
     
         pep_ref = False
         ref_id = self.ref_local_id
         ret_val = None, None
-        link_updated = self.link_updated
+        link_updated = False
         
         if self.ref_rx is None:
             # still no known rx
@@ -788,9 +828,10 @@ class BiblioEntry(object):
                 if self.ref_in_pep and not self.ref_exists:
                     if locator.valid == 0:
                         msg = f"\t\tBib ID {ref_id} loc not valid {locator.articleID()} (components: {self.ref_sourcecode}/{self.ref_volume}/{self.ref_pgstart}) {opasgenlib.text_slice(self.ref_text, start_chr_count=25, end_chr_count=50)}"
+                        log_everywhere_if(verbose, level="debug", msg=msg[:opasConfig.MAX_LOGMSG_LEN])
                     else:
                         msg = f"\t\tBib ID {ref_id} loc valid {locator.articleID()} but doesn't exist (components: {self.ref_sourcecode}/{self.ref_volume}/{self.ref_pgstart}) {opasgenlib.text_slice(self.ref_text, start_chr_count=25, end_chr_count=50)}"
-                        log_everywhere_if(verbose, level="info", msg=msg[:opasConfig.MAX_LOGMSG_LEN])
+                        log_everywhere_if(verbose, level="debug", msg=msg[:opasConfig.MAX_LOGMSG_LEN])
         
         self.link_updated = link_updated
         #ret_val = self.ref_rx, self.ref_rx_confidence, self.link_updated
@@ -806,115 +847,130 @@ class BiblioEntry(object):
         return ret_val
 
     #------------------------------------------------------------------------------------------------------------
-    def identify_heuristic(self, 
-                           query_target="art_title_xml",
-                           max_words=opasConfig.MAX_WORDS,
-                           min_words=opasConfig.MIN_WORDS,
-                           word_len=opasConfig.MIN_WORD_LEN,
-                           max_cf_list=opasConfig.MAX_CF_LIST,
-                           verbose=False):
+    def identify_heuristic(self, minrx_similarity_title=0.65, minrxcf_wtd_similarity=0.45, minrx_similarity_author=0.5, verbose=False):
         """
-        For the current biblioentry, find matching articles via
-         Solr search of the title, year and author.
-           and return a matched rx and confidence
-           and a list of possible matches, rxcf, and confidences.
+        >> ref='<be id="B072"><a><l>Freud</l>, Sigmund.</a> (<y>1917</y>). <t>&#8216;Mourning and Melancholia.&#8217;</t> <bst>Collected Papers</bst>. Vol. <v>IV</v>. London: <bp>Hogarth Press</bp>.</be>'
+        >> be_journal = BiblioEntry(art_id="PAQ.084.0589A", ref_or_parsed_ref=ref)
+        >> result = be_journal.identify_heuristic(verbose=False)
+        >> be_journal.ref_rx
+        'SE.014.0237A'
+        >> be_journal.ref_rxcf
+        'IJPSP.008.0363A:0.6, IJPOPEN.002.0090A:0.53, ZBK.038.0095A:0.49, ZBK.140.0078A:0.49, PAQ.074.0083A:0.47'
 
-        >>> import opasCentralDBLib
-        >>> ocd = opasCentralDBLib.opasCentralDB()  
-
-        >>> ref = '<be label="19" id="B019"><a><l>Freud</l></a>, <bst>Beyond the Pleasure Principle</bst> (London, <y>1950</y>), pp. <pp>17</pp> ff.</be>'
+        >>> ref = '<be label="19" id="B019"><a><l>Freud</l></a>, <bst>Beyond the Pleasure Principle</bst> (London, <y>1950</y>), pp. <pp>17</pp> ff.</be>'       
         >>> be_journal = BiblioEntry(art_id="FA.013A.0120A", ref_or_parsed_ref=ref)
-        >>> be_journal.ref_rx, be_journal.ref_rx_confidence, be_journal.link_source
-        (None, 0, None)
-        >>> # reset them if in database or pattern per above
-        >>> be_journal.ref_rx = None
-        >>> be_journal.ref_rx_confidence = 0
-        >>> be_journal.identify_heuristic()
-        {'ref_rx': 'SE.018.0001A', 'ref_rx_confidence': 0.83, 'link_updated': True, 'link_source': 'heuristic', 'ref_rxcf': 'PAH.017.0151A:0.53', 'ref_rxcf_confidence': 0.53}
-
+        >>> result = be_journal.identify_heuristic()
+        >>> be_journal.ref_rx
+        'SE.018.0001A'
         
         """
-        # title is either bib_entry.art_title_xml or bib_entry.source_title
-        rx_confidence = 0
-        title_list = []
-        solr_adverse_punct_set = ':\"\'\,/'
-        if self.ref_is_book:
-            art_or_source_title = self.ref_sourcetitle
+
+        ref_sourcetitle = ""
+        ref_title = ""
+        query = "art_id:*"
+        #if self.ref_sourcetitle:
+            #source_title = self.ref_sourcetitle
+            #query += f" AND art_sourcetitlefull:({self.ref_sourcetitle})"
+            
+        if self.ref_title:
+            ref_title = opasgenlib.remove_these_chars(self.ref_title, SOLR_RESTRICTED_PUNCT)
+            query = f"art_title:({ref_title}) OR art_sourcetitlefull:({ref_title})"
+            art_or_source_title = ref_title
+            words = len(ref_title.split(" "))
+            skip = False
+        elif self.ref_sourcetitle:
+            ref_sourcetitle = opasgenlib.remove_these_chars(self.ref_sourcetitle, SOLR_RESTRICTED_PUNCT)
+            if self.ref_is_book:
+                ref_title = ref_sourcetitle
+            query = f"art_title:({ref_sourcetitle}) OR art_sourcetitlefull:({ref_sourcetitle})"
+            art_or_source_title = ref_sourcetitle
+            words = len(ref_sourcetitle.split(" "))
+            skip = False
         else:
-            art_or_source_title = self.ref_title
-        
-        # prev_rxcf = None
-        if not opasgenlib.is_empty(art_or_source_title):
-            art_or_source_title = opasgenlib.remove_all_punct(art_or_source_title)
-            art_or_source_title = art_or_source_title.strip()
-            if art_or_source_title:
-                query = f"{query_target}:({art_or_source_title})"
-            else:
-                query = ""
-                
-            authors = self.ref_authors
-            if authors:
-                authors = opasgenlib.remove_all_punct(authors)
-                if query == "":
-                    query = f"authors:{authors}"
-                else:
-                    query = query + f" AND authors:{authors}"
-        
-            #title_words = re.findall(r'\b\w{%s,}\b' % word_len, art_or_source_title)[:max_words]
-                
-            #if self.ref_year_int:
-                #query = query + f" AND art_year:{self.ref_year_int}"
-        
-            if self.ref_volume and not self.ref_is_book:
-                # list of last name of authors with AND, search field art_authors_xml
-                query = query + f" AND art_vol:{self.ref_volume_int}"
-        
-            if gDbg2: print (f"Solr Query: {query}")
-            result, return_status = opasPySolrLib.search_text(query=query, limit=10, offset=0, full_text_requested=False, req_url=opasConfig.CACHEURL)
+            words = ""
+            if verbose: print (f"\tNo title or source title ({self.ref_xml}")
+            skip = True
+            
+            
+        if not skip:
+            title_list = []
+            result, return_status = opasPySolrLib.search_text(query=query,
+                                                              limit=opasConfig.HEURISTIC_SEARCH_MAX_COUNT,
+                                                              similar_count=opasConfig.HEURISTIC_SEARCH_MAX_COUNT, 
+                                                              offset=0,
+                                                              full_text_requested=False,
+                                                              req_url=opasConfig.CACHEURL)
             if return_status[0] == 200:
-                result_count = result.documentList.responseInfo.count
-                if result_count > 0 and result_count < opasConfig.HEURISTIC_SEARCH_MAX_COUNT:
-                    #rxcfs = [item.documentID for item in result.documentList.responseSet[0:max_cf_list]]
-                    #rxcfs_confidence = []
-                    title_list = []
-                    for item in result.documentList.responseSet[0:max_cf_list]:
-                        similarity_score_title = opasgenlib.similarityText(art_or_source_title, item.title)
-                        similarity_score_ref = opasgenlib.similarityText(self.ref_text, item.documentRef)
-                        # rxcfs_confidence.append(similarity_score)
-                        locator = Locator(item.documentID)
-                        type_match = locator.isBook() and self.ref_is_book
-                        similarity_score = statistics.mean((similarity_score_title, similarity_score_ref, type_match))
-                        if similarity_score_title > .70:
-                            title_list.append({ "score": min(.99,
-                                                             round(similarity_score, 2)),
-                                                "art_title": item.title,
-                                                "rx": item.documentID,
-                                                "source_title": {art_or_source_title}, } )
-                            
-                    if title_list:
-                        title_list = sorted(title_list, key=lambda d: d["score"], reverse=True)
-                        rx_confidence = title_list[0]["score"]
-                        if rx_confidence > .70:
-                            self.ref_rx = title_list[0]["rx"]
-                            self.ref_rx_confidence = rx_confidence # opasConfig.RX_CONFIDENCE_PROBABLE
-                            self.link_updated = True
-                            self.link_source = opasConfig.RX_LINK_SOURCE_TITLE_HEURISTIC
-                            title_list = title_list[1:]
-                            
-                        if title_list: # take the rest as rxcf
+                if result.documentList.responseInfo.fullCount > 350 and words <= 3:
+                    if verbose: print (f"\tToo many hits ({result.documentList.responseInfo.fullCount} and too few words in title {words}")
+                else:
+                    result_count = result.documentList.responseInfo.count
+                    if result_count > 0 and result_count <= opasConfig.HEURISTIC_SEARCH_MAX_COUNT:
+                        for item in result.documentList.responseSet[0:opasConfig.MAX_CF_LIST]:
+                            similarity_score_solr = item.score / 10
+                            similarity_score_source_title = opasgenlib.similarityText(self.ref_sourcetitle, item.sourceTitle)
+                            similarity_score_ref_title = opasgenlib.similarityText(ref_title, item.title)
+                            similarity_score_ref = opasgenlib.similarityText(self.ref_text, item.documentRef)
+                            similarity_score_auth = opasgenlib.similarityText(self.ref_authors, item.authorCitation)
+                            #if gDbg2 and verbose: print (f"\tSimilarity score title: {similarity_score_ref_title} ({ref_title}/{item.title})")
+                            #if gDbg2 and verbose: print (f"\tSimilarity score ref: {similarity_score_ref} ({opasgenlib.text_slice(self.ref_text)}/{opasgenlib.text_slice(item.documentRef)})")
+                            # rxcfs_confidence.append(similarity_score)
+                            locator = Locator(item.documentID)
+                            type_match = locator.isBook() and self.ref_is_book
+                            weighted_score = (8*similarity_score_ref_title + \
+                                              5*similarity_score_solr + \
+                                              3*similarity_score_source_title + \
+                                              3*similarity_score_ref + \
+                                              3*similarity_score_auth + \
+                                              3*type_match) / 25
+                            if weighted_score >= minrxcf_wtd_similarity:
+                                score = min(.99, round(weighted_score, 2))
+                                #if gDbg2 and verbose: print (f"\tOverall Similarity score: {score}")
+                                #if gDbg2 and verbose: print (f"\tTypeMatch: {type_match}")
+                                considered = { "score": score,
+                                               "solrscore": similarity_score_solr,
+                                               "sim_auth": similarity_score_auth,
+                                               "sim_ref": similarity_score_ref,
+                                               "sim_reftitle": similarity_score_ref_title,
+                                               "sim_srctitle": similarity_score_source_title,
+                                               "rx": item.documentID,
+                                               "art_title": item.title,
+                                               "source_title": art_or_source_title,
+                                               "ref_text": self.ref_text, 
+                                               "ref_text_match": item.documentRef
+                                             }
+                                # if gDbg2 and verbose: print (f"\tMatch {score} Considered: {considered}")
+                                title_list.append(considered)
+                        
+                        if title_list:
+                            title_list = sorted(title_list, key=lambda d: d["score"], reverse=True)
+                            rx_confidence = title_list[0]["score"]
+                            if rx_confidence >= minrx_similarity_title and similarity_score_auth >= minrx_similarity_author:
+                                self.ref_rx = title_list[0]["rx"]
+                                self.ref_rx_confidence = rx_confidence # opasConfig.RX_CONFIDENCE_PROBABLE
+                                self.link_updated = True
+                                self.link_source = opasConfig.RX_LINK_SOURCE_TITLE_HEURISTIC
+                                title_list = title_list[1:]
+                                if verbose:
+                                    print (f"\t***Found: {self.ref_rx}:{self.ref_rx_confidence}")
+                                    #if gDbg2: time.sleep(2) # Pause
+                                
+                            if title_list: # take the rest as rxcf
                                 self.ref_rxcf = [f'{item["rx"]}:{item["score"]}' for item in title_list]
                                 self.ref_rxcf = self.ref_rxcf[:opasConfig.HEURISTIC_SEARCH_LIST_MAX_LEN]
                                 self.ref_rxcf = ", ".join(self.ref_rxcf)
                                 self.ref_rxcf_confidence = max([item["score"] for item in title_list])
                                 self.link_updated = True
                                 self.link_source = opasConfig.RX_LINK_SOURCE_HEURISTIC
-                else:
-                    if verbose: print (f"Not Found: {self.ref_entry_text}")
-            else:
-                log_everywhere_if(True, "warning", return_status)
-    
-        # ret_val = self.ref_rx, self.ref_rx_confidence, self.link_updated, self.ref_rxcf, self.ref_rxcf_confidence
+                                if verbose:
+                                    print (f"\t***Related: {self.ref_rxcf}")
+                                    if gDbg2:
+                                        for n in title_list:
+                                            print (f"\t\tRelated: rxcf: {n['rx']} - {opasgenlib.text_slice(n['ref_text_match'])}")
+                                        #time.sleep(1) # Pause
+        
         ret_val = BiblioMatch()
+        ret_val.record_updated = self.record_updated
         ret_val.ref_rx = self.ref_rx
         ret_val.ref_rx_confidence = self.ref_rx_confidence
         ret_val.link_updated = self.link_updated
@@ -935,16 +991,16 @@ class BiblioEntry(object):
         >>> be_journal.ref_rx
         
         >>> result = be_journal.lookup_title_in_db(ocd)
-        >>> result
-        {'ref_rx': 'SE.022.0001A', 'ref_rx_confidence': 0.82, 'link_updated': True, 'link_source': 'title and year', 'ref_rxcf': None, 'ref_rxcf_confidence': 0}
+        >>> be_journal.ref_rx
+        'SE.022.0001A'
         
         >>> # wrong page number supplied below, so no RX at first.  Then we look up title
-        >>> be_journal = BiblioEntry(art_id="ANIJP-TR.007.0157A", ref_or_parsed_ref='<be id="B008"><a><l>Freud</l>, S.</a>, (<y>1917</y>), <t>“Mourning and melancholia”,</t> <bst>SE</bst> <v>14</v>, <pp>242-58</pp>.</be>')
+        >>> be_journal = BiblioEntry(art_id="ANIJP-TR.007.0157A", ref_or_parsed_ref='<be id="B008"><a><l>Freud</l>, S.</a>, (<y>1917</y>), <t>“Mourning and melancholia”,</t> <bst>SE</bst> <v>14</v>, <pp>242-58</pp>.</be>', verbose=False)
         >>> be_journal.ref_rx   
 
         >>> result = be_journal.lookup_title_in_db(ocd)
-        >>> result
-        {'ref_rx': 'SE.014.0237A', 'ref_rx_confidence': 0.89, 'link_updated': True, 'link_source': 'title and year', 'ref_rxcf': None, 'ref_rxcf_confidence': 0}
+        >>> result.ref_rx
+        'SE.014.0237A'
 
         """
         ret_val = None
@@ -1034,11 +1090,11 @@ class BiblioEntry(object):
         'SE.012.0000A'
         >>> result = be_journal.lookup_more_exact_artid_in_db(ocd)
         >>> result
-        {'ref_rx': 'SE.012.0289A', 'ref_rx_confidence': 0.91, 'link_updated': True, 'link_source': 'title', 'ref_rxcf': None, 'ref_rxcf_confidence': 0}
+        {'ref_rx': 'SE.012.0289A', 'ref_rx_confidence': 0.91, 'link_updated': True, 'link_source': 'title', 'ref_rxcf': None, 'ref_rxcf_confidence': 0, 'ref_xml': '<be label="7" id="B007"><a>S. <l>Freud</l></a>, <t>&#8216;The Theme of the Three Caskets&#8217;,</t> <bst>Standard Edition</bst> <v>12</v>.</be>'}
         
         >>> result = be_journal.compare_to_database(ocd)
-        >>> result
-        {'ref_rx': 'SE.012.0289A', 'ref_rx_confidence': 0.98, 'link_updated': True, 'link_source': 'database', 'ref_rxcf': None, 'ref_rxcf_confidence': 0}
+        >>> be_journal.ref_rx
+        'SE.012.0289A'
     
         >>> be_journal = BiblioEntry(art_id="PAQ.084.0589A", ref_or_parsed_ref='<be id="B034"><a><l>Freud</l>, S.</a> (<y>1937</y>). <t>Analysis terminable and interminable.</t> <bst>S. E.</bst>, <v>23</v>.</be>')
         >>> be_journal.ref_rx
@@ -1046,7 +1102,8 @@ class BiblioEntry(object):
         
         >>> result = be_journal.lookup_more_exact_artid_in_db(ocd)
         >>> result
-        {'ref_rx': 'SE.023.0209A', 'ref_rx_confidence': 0.99, 'link_updated': True, 'link_source': 'title', 'ref_rxcf': None, 'ref_rxcf_confidence': 0}
+        {'ref_rx': 'SE.023.0209A', 'ref_rx_confidence': 0.99, 'link_updated': True, 'link_source': 'title', 'ref_rxcf': None, 'ref_rxcf_confidence': 0, 'ref_xml': '<be id="B034"><a><l>Freud</l>, S.</a> (<y>1937</y>). <t>Analysis terminable and interminable.</t> <bst>S. E.</bst>, <v>23</v>.</be>'}
+        
         """
         ret_val = self.ref_rx
         if self.ref_rx is not None:
@@ -1122,16 +1179,18 @@ class BiblioEntry(object):
         >>> be_journal = BiblioEntry(art_id="ANIJP-TR.007.0157A", ref_or_parsed_ref=parsed_ref)
         >>> be_journal.ref_rx
         'IJP.085.0285A'
+
         >>> result = be_journal.compare_to_database(ocd)
-        >>> result
-        {'ref_rx': 'IJP.085.0285A', 'ref_rx_confidence': 0.98, 'link_updated': True, 'link_source': 'database', 'ref_rxcf': None, 'ref_rxcf_confidence': 0}
+        >>> be_journal.ref_rx
+        'IJP.085.0285A'
     
         >>> be_journal = BiblioEntry(art_id="IJPOPEN.003.0061A", ref_or_parsed_ref='<be label="34)" id="B034"><a><l>Joseph</l>, B.</a> (<y>1982</y>). <t>Addiction to Near-Death.</t> In: <bst>Psychic Equilibrium and Psychic Change</bst>. Hove:<bp>Routledge</bp>, <bpd>1989</bpd>.</be>')
         >>> be_journal.ref_rx
         'NLP.009.0001A'
+
         >>> result = be_journal.compare_to_database(ocd)
-        >>> result
-        {'ref_rx': 'NLP.009.0001A', 'ref_rx_confidence': 0.98, 'link_updated': True, 'link_source': 'database', 'ref_rxcf': None, 'ref_rxcf_confidence': 0}
+        >>> be_journal.ref_rx
+        'NLP.009.0001A'
 
 
         """
@@ -1167,33 +1226,33 @@ class BiblioEntry(object):
 
         return ret_val
 
-#------------------------------------------------------------------------------------------------------------
-def get_ref_correction(self, ocd, verbose=False):
-    """
-    Compare the rx for this with the Database table api_biblioxml stored ref_rx and ref_rx_confidence
-    Update the object links if database is a higher confidence level
+    #------------------------------------------------------------------------------------------------------------
+    def get_ref_correction(self, ocd, verbose=False):
+        """
+        Compare the rx for this with the Database table api_biblioxml stored ref_rx and ref_rx_confidence
+        Update the object links if database is a higher confidence level
+        
+        Return the final ref_rx or None if it's not available in either place
+        
+        >>> import opasCentralDBLib
+        >>> ocd = opasCentralDBLib.opasCentralDB()  
     
-    Return the final ref_rx or None if it's not available in either place
+        >>> ref = '<be id="B018"><a><l>Ogden</l>, TH.</a>, (<y>2004a</y>), <t>“An introduction to the reading of Bion”,</t> <j>Int J Psychoanal</j>, <v>85</v>: <pp>285-300</pp>.</be>'
+        >>> parsed_ref = etree.fromstring(ref, parser=parser)
+        >>> be_journal = BiblioEntry(art_id="ANIJP-TR.007.0157A", ref_or_parsed_ref=parsed_ref)
+        >>> be_journal.ref_rx
+        'IJP.085.0285A'
+        >>> result = be_journal.get_ref_correction(ocd)
+        >>> be_journal.ref_rx
+        'IJP.085.0285A'
     
-    >>> import opasCentralDBLib
-    >>> ocd = opasCentralDBLib.opasCentralDB()  
-
-    >>> ref = '<be id="B018"><a><l>Ogden</l>, TH.</a>, (<y>2004a</y>), <t>“An introduction to the reading of Bion”,</t> <j>Int J Psychoanal</j>, <v>85</v>: <pp>285-300</pp>.</be>'
-    >>> parsed_ref = etree.fromstring(ref, parser=parser)
-    >>> be_journal = BiblioEntry(art_id="ANIJP-TR.007.0157A", ref_or_parsed_ref=parsed_ref)
-    >>> be_journal.ref_rx
-    'IJP.085.0285A'
-    >>> result = be_journal.compare_to_database(ocd)
-    >>> result
-    {'ref_rx': 'IJP.085.0285A', 'ref_rx_confidence': 0.98, 'link_updated': True, 'link_source': 'database', 'ref_rxcf': None, 'ref_rxcf_confidence': 0}
-
-
-    """
-    if self.ref_rx is not None or self.ref_rxcf is not None:
-        db_bibref = ocd.get_reference_correction(self.art_id, self.ref_local_id)
     
-    return ret_val
-
+        """
+        ret_val = self
+        if self.ref_rx is not None or self.ref_rxcf is not None:
+            ret_val = get_reference_correction(ocd, self.art_id, self.ref_local_id)
+        
+        return ret_val
 
 #------------------------------------------------------------------------------------------------------------
 if __name__ == "__main__":
