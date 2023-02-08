@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2023, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2023.0111b/v2.0.047b"   # semver versioning after date.
+__version__     = "2023.0111b/v2.0.047c"   # semver versioning after date.
 __status__      = "Development"
 
 programNameShort = "opasDataLoader"
@@ -976,11 +976,11 @@ def main():
                     # Uses new views: vw_article_firstsectnames which is based on the new view vw_article_sectnames
                     #  if an article id is found in that view, it's the first in the section, otherwise it isn't
                     # check database to see if this is the first in the section
-                    if not opasSolrLoadSupport.check_if_start_of_section(ocd, artInfo.art_id):
-                        # print (f"\t\t...NewSec Workaround: Clearing newsecnm for {artInfo.art_id}")
-                        artInfo.start_sectname = None # clear it so it's not written to solr, this is not the first article
-                    else:
-                        if options.display_verbose: print (f"\t\t...NewSec {artInfo.start_sectname} found in {artInfo.art_id}")
+                    #if not opasSolrLoadSupport.check_if_start_of_section(ocd, artInfo.art_id):
+                        ## print (f"\t\t...NewSec Workaround: Clearing newsecnm for {artInfo.art_id}")
+                        #artInfo.start_sectname = None # clear it so it's not written to solr, this is not the first article
+                    #else:
+                        #if options.display_verbose: print (f"\t\t...NewSec {artInfo.start_sectname} found in {artInfo.art_id}")
                     # -----
 
                     # load the docs (pepwebdocs) core
