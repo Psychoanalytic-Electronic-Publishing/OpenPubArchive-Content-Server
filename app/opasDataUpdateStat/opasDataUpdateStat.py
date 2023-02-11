@@ -43,7 +43,7 @@ sys.path.append('../libs')
 sys.path.append('../config')
 sys.path.append('../libs/configLib')
 
-UPDATE_AFTER = 2500
+UPDATE_AFTER = 100
 
 import logging
 import time
@@ -57,7 +57,7 @@ from opasArticleIDSupport import ArticleID
 
 # logFilename = programNameShort + "_" + datetime.today().strftime('%Y-%m-%d') + ".log"
 FORMAT = '%(asctime)s %(name)s %(funcName)s %(lineno)d - %(levelname)s %(message)s'
-logging.basicConfig(format=FORMAT, level=logging.WARNING, datefmt='%Y-%m-%d %H:%M:%S')
+logging.basicConfig(format=FORMAT, level=logging.ERROR, datefmt='%Y-%m-%d %H:%M:%S')
 logger = logging.getLogger(programNameShort)
 start_notice = f"{programNameShort} version {__version__} started at {datetime.today().strftime('%Y-%m-%d %H:%M:%S')}."
 print (start_notice)
@@ -345,10 +345,10 @@ def update_solr_stat_data(solrcon, all_records:bool=False):
                 if results.raw_response["response"]["numFound"] == 1:  # only accept alternative if there's only one match (otherwise, not known which)
                     # odds are good this is what was cited.
                     found = True
-                    logger.info(f"Document ID {doc_id} not in Solr.  The correct ID seems to be {parsed_id.alt_standard}. Using that instead!")
+                    logger.debug(f"Document ID {doc_id} not in Solr.  The correct ID seems to be {parsed_id.alt_standard}. Using that instead!")
                     doc_id = parsed_id.alt_standard
                 else:
-                    logger.warning(f"Document ID {doc_id} not in Solr.  No alternative ID found.")
+                    logger.debug(f"Document ID {doc_id} not in Solr.  No alternative ID found.")
                 
         except Exception as e:
             logger.error(f"Issue finding Document ID {doc_id} in Solr...Exception: {e}")
@@ -426,7 +426,7 @@ def update_solr_stat_data(solrcon, all_records:bool=False):
             else:
                 errStr = (f"Document {doc_id} not in Solr...skipping")
                 #print (errStr)
-                logger.warning(errStr)
+                logger.debug(errStr)
                 if ".jpg" in errStr:
                     print (f"Todo: eliminate these jpgs from the table driving the stat {doc_id}")
 
@@ -448,13 +448,12 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser() 
     parser.add_argument('--version', action='version',
                         version='%(prog)s {version}'.format(version=__version__))    
-    parser.add_argument("--loglevel", "-l", dest="logLevel", default=logging.ERROR,
+    parser.add_argument("--loglevel", "-l", dest="logLevel", default='ERROR',
                         help="Level at which events should be logged (DEBUG, INFO, WARNING, ERROR")
     parser.add_argument("-a", "--all", dest="all_records", default=False, action="store_true",
                         help="Update records with views and any citation data (takes significantly longer)")
     
     args = parser.parse_args()
-    logger = logging.getLogger(programNameShort)
     logger.setLevel(args.logLevel)
 
     updates = 0

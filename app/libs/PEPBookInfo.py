@@ -52,44 +52,44 @@ class PEPBookInfo:
         >>> pepBInfo = PEPBookInfo()
         >>> tgt = "Ferenczi, S., Abraham, K., Simmel, E., & Jones, E. (1921). Psychoanalysis and the War Neuroses. London: Int. Psychoanal. Press."
         >>> pepBInfo.getPEPBookCodeStr(tgt) # doctest: +ELLIPSIS
-        ('IPL.002.0000A', 0.87..., None)
+        ('IPL.002.0000A', 0.91, None)
 
         >>> tgt = "Winnicott, D. W. (1965). On the contribution of direct child observation to psycho-analysis. In <bst>The Maturational Processes and the Facilitating Environment. New York: Int. Univ. Press, 1965, pp. 109-114."
         >>> pepBInfo.getPEPBookCodeStr(tgt) # doctest: +ELLIPSIS
-        ('IPL.064.0001A', 0.87..., None)
+        ('IPL.064.0000A', 0.91, None)
 
         >>> tgt = "Rosenfeld, H. (1987). Impasse and Interpretation. London and New York: Tavistock."
         >>> pepBInfo.getPEPBookCodeStr(tgt) # doctest: +ELLIPSIS
-        ('NLP.001.0001A', 0.87..., None)
+        ('NLP.001.0000A', 0.91, None)
 
         >>> pepBInfo.getPEPBookCodeStr("Anderson, R. (1992). Introduction to Clinical Lectures on Klein and Bion.")[0]
-        'NLP.014.0001A'
+        'NLP.014.0000A'
         >>> pepBInfo.getPEPBookCodeStr("Anzieu, D. (1986). Freud's Self-Analysis: Translated from the French by Peter Graham.  With a Preface by M. Masud R. Khan.")[0]
-        'IPL.118.0001A'
+        'IPL.118.0000A'
         >>> pepBInfo.getPEPBookCodeStr("Balint, M. (1979). The Basic Fault: Therapeutic Aspects of Regression.")[0]
-        'ZBK.033.0001A'
+        'ZBK.033.0000A'
         >>> pepBInfo.getPEPBookCodeStr("Bion, W. R. (1959). Experiences in Groups And Other Papers.")[0]
-        'ZBK.006.0001A'
+        'ZBK.006.0000A'
         >>> pepBInfo.getPEPBookCodeStr("Bion, W. R. (1962). Learning from Experience.")[0]
-        'ZBK.003.0001A'
+        'ZBK.003.0000A'
         >>> pepBInfo.getPEPBookCodeStr("Bion, W. R. (1963). Elements of Psycho-Analysis.")[0]
-        'ZBK.004.0001A'
+        'ZBK.004.0000A'
         >>> pepBInfo.getPEPBookCodeStr("Bion, W. R. (1965). Transformations: Change from Learning to Growth.")[0]
         'ZBK.005.0001A'
         >>> pepBInfo.getPEPBookCodeStr("Bion, W. R. (1970). Attention and Interpretation: A Scientific Approach to Insight in Psycho-Analysis and Groups.")[0]
-        'ZBK.002.0001A'
+        'ZBK.002.0000A'
         >>> pepBInfo.getPEPBookCodeStr("Boehlich, W. (1990). The Letters of Sigmund Freud to Eduard Silberstein 1871-1881.")[0]
         'ZBK.029.0000A'
         >>> pepBInfo.getPEPBookCodeStr("Bowlby, J. (1969). Attachment and Loss: Volume 1: Attachment.")[0]
-        'IPL.079.0001A'
+        'IPL.079.0000A'
         >>> pepBInfo.getPEPBookCodeStr("Bowlby, J. (1973). Attachment and Loss: Volume II: Separation, Anxiety and Anger.")[0]
-        'IPL.095.0001A'
+        'IPL.095.0000A'
         >>> pepBInfo.getPEPBookCodeStr("Bowlby, J. (1980). Attachment and Loss: Volume III: Loss, Sadness and Depression.")[0]
-        'IPL.109.0001A'
+        'IPL.109.0000A'
         >>> pepBInfo.getPEPBookCodeStr("Brabant, E., Falzeder, E. and Giampieri-Deutsch, P. (1993). The Correspondence of Sigmund Freud and Sandor Ferenczi Volume 1, 1908-1914.")[0]
         'ZBK.025.0000A'
         >>> pepBInfo.getPEPBookCodeStr("Fairbairn, W. D. (1952). Psychoanalytic Studies of the Personality.")[0]
-        'ZBK.007.0001A'
+        'ZBK.007.0000A'
         >>> pepBInfo.getPEPBookCodeStr("Falzeder, E. (2002). The Complete Correspondence of Sigmund Freud and Karl Abraham 1907-1925.")[0]
         'ZBK.052.0000A'
         >>> pepBInfo.getPEPBookCodeStr("Falzeder, E. and Brabant, E. (1996). The Correspondence of Sigmund Freud and Sandor Ferenczi Volume 2, 1914-1919.")[0]
@@ -99,7 +99,7 @@ class PEPBookInfo:
         >>> pepBInfo.getPEPBookCodeStr("Feldman, M. and Spillius, E. B. (1989). Psychic Equilibrium and Psychic Change: Selected Papers of Betty Joseph.")[0]
         'NLP.009.0001A'
         >>> pepBInfo.getPEPBookCodeStr("Ferenczi, S. (1952). First Contributions to Psycho-Analysis.")[0]
-        'IPL.045.0001A'
+        'IPL.045.0000A'
         >>> pepBInfo.getPEPBookCodeStr("Ferenczi, S., Abraham, K., Simmel, E. and Jones, E. (1921). Psychoanalysis and the War Neurosis.")[0]
         'IPL.002.0000A'
         >>> pepBInfo.getPEPBookCodeStr("Freud, E. L. (1961). Letters of Sigmund Freud 1873-1939.")[0]
@@ -107,65 +107,65 @@ class PEPBookInfo:
         >>> pepBInfo.getPEPBookCodeStr("Freud, E. L. (1970). The Letters of Sigmund Freud and Arnold Zweig.")[0]
         'IPL.084.0000A'
         >>> pepBInfo.getPEPBookCodeStr("Groddeck, G. (1977). The Meaning of Illness: Selected Psychoanalytic Writings Including his Correspondence with Sigmund Freud.")[0]
-        'IPL.105.0001A'
+        'IPL.105.0000A'
         >>> pepBInfo.getPEPBookCodeStr("Jones, E. (1955). Sigmund Freud Life and Work, Volume Two: Years of Maturity 1901-1919.")[0]
-        'ZBK.046.0001A'
+        'ZBK.046.0000A'
         >>> pepBInfo.getPEPBookCodeStr("Jones, E. (1957). Sigmund Freud Life And Work, Volume Three: The Last Phase 1919-1939.")[0]
-        'ZBK.047.0001A'
+        'ZBK.047.0000A'
         >>> pepBInfo.getPEPBookCodeStr("Jones, E. (1972). Sigmund Freud Life and Work, Volume One: The Young Freud 1856-1900.")[0]
-        'ZBK.045.0001A'
+        'ZBK.045.0000A'
         >>> pepBInfo.getPEPBookCodeStr("King, P. and Steiner, R. (1991). The Freud/Klein Controversies 1941-45")[0]
-        'NLP.011.0001A'
+        'NLP.011.0000A'
         >>> pepBInfo.getPEPBookCodeStr("Klein, M. (1932). The Psycho-Analysis of Children.")[0]
-        'IPL.022.0001A'
+        'IPL.022.0000A'
         >>> pepBInfo.getPEPBookCodeStr("Klein, M. (1961). Narrative of a Child Analysis: The Conduct of the Psycho-Analysis of Children as seen in the Treatment of a Ten year old Boy.")[0]
-        'IPL.055.0001A'
+        'IPL.055.0000A'
         >>> pepBInfo.getPEPBookCodeStr("Klein, M. (1975). Envy and Gratitude and Other Works 1946\xef\xbf\xbd1963: Edited By:  M. Masud R. Khan.")[0]
-        'IPL.104.0001A'
+        'IPL.104.0000A'
         >>> #pepBInfo.getPEPBookCodeStr("Kohut, H. (1971). The Analysis of the self: A Systematic Approach to the Psychoanalytic Treatment of Narcissistic Personality Disorders.")[0]
         >>> #'ZBK.049.0001A'
         >>> pepBInfo.getPEPBookCodeStr("Kohut, H. (1984). How does psychoanalysis cure?.")[0]
         'ZBK.034.0001A'
         >>> pepBInfo.getPEPBookCodeStr("Laplanche, J. and Pontalis, J. B. (1973). The Language of Psycho-Analysis: Translated by Donald Nicholson-Smith.")[0]
-        'IPL.094.0001A'
+        'IPL.094.0000A'
         >>> pepBInfo.getPEPBookCodeStr("Masson, J. M. (1985). The Complete Letters of Sigmund Freud to Wilhelm Fliess, 1887-1904.")[0]
         'ZBK.042.0000A'
         >>> pepBInfo.getPEPBookCodeStr("Matte-Blanco, I. (1988). Thinking, Feeling, and Being: Clinical Reflections on the Fundamental Antinomy of Human Beings and World.")[0]
-        'NLP.005.0001A'
+        'NLP.005.0000A'
         >>> pepBInfo.getPEPBookCodeStr("McGuire, W. (1974). The Freud/Jung Letters: The Correspondence Between Sigmund Freud and C. G. Jung.")[0]
         'ZBK.041.0000A'
         >>> pepBInfo.getPEPBookCodeStr("Meng, H. and Freud, E. L. (1963). Psychoanalysis and Faith: The Letters of Sigmund Freud and Oskar Pfister.")[0]
         'IPL.059.0000A'
         >>> pepBInfo.getPEPBookCodeStr("Milner, M. (1969). The Hands of the Living God: An Account of a Psycho-analytic Treatment.")[0]
-        'IPL.076.0001A'
+        'IPL.076.0000A'
         >>> pepBInfo.getPEPBookCodeStr("Paskauskas, R. A. (1993). The Complete Correspondence of Sigmund Freud and Ernest Jones 1908-1939.")[0]
         'ZBK.028.0000A'
         >>> pepBInfo.getPEPBookCodeStr("Pfeiffer, E. (1963). Sigmund Freud and Lou Andreas-Salom\xef\bf\bde Letters.")[0]
         'IPL.089.0000A'
         >>> pepBInfo.getPEPBookCodeStr("Racker, H. (1988). Transference and Countertransference.")[0]
-        'IPL.073.0001A'
+        'IPL.073.0000A'
         >>> pepBInfo.getPEPBookCodeStr("Rickman, J. (1957). Selected Contributions to Psycho-Analysis.")[0]
         'IPL.052.0000A'
         >>> pepBInfo.getPEPBookCodeStr("Roberts, T. (2003). Translator' Notes to the English Edition of The Sigmund Freud-Ludwig Binswanger Correspondence 1908-1938.")[0]
         'ZBK.050.0000A'
         >>> pepBInfo.getPEPBookCodeStr("Rodman, F. (1987). The Spontaneous Gesture: Selected Letters of D. W. Winnicott.")[0]
-        'ZBK.020.0001A'
+        'ZBK.020.0000A'
         >>> pepBInfo.getPEPBookCodeStr("Rosenfeld, H. (1987). Impasse and Interpretation: Therapeutic and anti-therapeutic factors in the psychoanalytic treatment of psychotic, borderline, and neurotic patients.")[0]
-        'NLP.001.0001A'
+        'NLP.001.0000A'
         >>> pepBInfo.getPEPBookCodeStr("Sandler, J., Michels, R. and Fonagy, P. (2000). Changing Ideas In A Changing World: The Revolution in Psychoanalysis.: Essays in Honour of Arnold Cooper.")[0]
         'ZBK.038.0000A'
         >>> pepBInfo.getPEPBookCodeStr("Spence, D. P. (1982). Narrative Truth and Historical Truth: Meaning and Interpretation in Psychoanalysis.")[0]
-        'ZBK.015.0001A'
+        'ZBK.015.0000A'
         >>> pepBInfo.getPEPBookCodeStr("Stern, D. N. (1985). The Interpersonal World of the Infant: A View from Psychoanalysis and Developmental Psychology.")[0]
-        'ZBK.016.0001A'
+        'ZBK.016.0000A'
         >>> pepBInfo.getPEPBookCodeStr("Winnicott, D. W. (1965). The Maturational Processes and the Facilitating Environment: Studies in the Theory of Emotional Development.")[0]
-        'IPL.064.0001A'
+        'IPL.064.0000A'
         >>> pepBInfo.getPEPBookCodeStr("Winnicott, D. W. (1971). Therapeutic Consultations in Child Psychiatry.")[0]
-        'IPL.087.0001A'
+        'IPL.087.0000A'
         >>> pepBInfo.getPEPBookCodeStr("Winnicott, D. W. (1971). Playing and Reality.")[0]
-        'ZBK.017.0001A'
+        'ZBK.017.0000A'
         >>> pepBInfo.getPEPBookCodeStr("Winnicott, D. W. (1975). Through Paediatrics to Psycho-Analysis.")[0]
-        'IPL.100.0001A'
+        'IPL.100.0000A'
         >>> pepBInfo.getPEPBookCodeStr("Winnicott, D. W. (1980). The Piggle: An Account of the Psychoanalytic Treatment of a Little Girl: Edited by Ishak Ramzy.")[0]
         'IPL.107.0001A'
         >>> pepBInfo.getPEPBookCodeStr("Winnicott, D. W. (1986). Holding and Interpretation: Fragment of An Analysis.")[0]
@@ -175,11 +175,11 @@ class PEPBookInfo:
         >>> pepBInfo.getPEPBookCodeStr("Wallerstein, R. (1986): 42 Lives in Treatment")[0]
         'ZBK.055.0000A'
         >>> pepBInfo.getPEPBookCodeStr("Thoma, H., & Kachele, H. (1985), Psychoanalytic Practise. Berlin: Springer Verlag.")[0]
-        'ZBK.061.0001A'
+        'ZBK.061.0000A'
         >>> pepBInfo.getPEPBookCodeStr("Thoma, H., & Kachele, H. (1992), Psychoanalytic Practice: Volume 2. Berlin: Springer Verlag.")[0]
-        'ZBK.062.0001A'
+        'ZBK.062.0000A'
         >>> pepBInfo.getPEPBookCodeStr("Thom&auml;, H., & K&auml;chele, H. (1992), Psychoanalytic Practice: Volume 2. Berlin: Springer Verlag.")[0]
-        'ZBK.062.0001A'
+        'ZBK.062.0000A'
         >>> pepBInfo.getPEPBookCodeStr('<be rxp = "PAQ.027.0253A" id = "B060" rxps = "81.12"><a><l>Zilboorg</l>, G.</a> (<y>1958</y>). <t>Review of The Life and Work of Sigmund Freud</t>. <i>Volume III. The Lasi Phase 1919&ndash;1939</i>. <j>Psychoanal. Q.</j>, <v>21</v>:<pp>253-262</pp>.</be>')
         (None, None, None)
 
@@ -1353,6 +1353,7 @@ if __name__ == "__main__":
     import doctest
 
     doctest.testmod()
+    print ("All Tests Complete. Fini!")
     sys.exit()
 
 

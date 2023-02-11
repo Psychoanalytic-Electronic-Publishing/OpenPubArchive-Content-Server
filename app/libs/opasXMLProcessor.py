@@ -435,11 +435,12 @@ def update_biblio_links(parsed_xml, artInfo, ocd, pretty_print=False, verbose=Fa
                 parent = ref.getparent()
                 parent.replace(ref, bib_entry.parsed_ref)
                 bib_entry.link_updated = True
+                ref = bib_entry.parsed_ref
                 
             bib_updated_from_db = bib_entry.compare_to_database(ocd)
-            if bib_updated_from_db or bib_entry.link_updated:
+            if bib_entry.link_updated:
                 ret_val += 1
-                if bib_updated_from_db:
+                if bib_entry.link_updated:
                     if bib_entry.ref_rx is None or not bib_entry.ref_exists:
                         try:
                             del ref.attrib["rx"]
@@ -453,7 +454,7 @@ def update_biblio_links(parsed_xml, artInfo, ocd, pretty_print=False, verbose=Fa
                         ref_rx = ref.attrib.get('rx', '')
                         if ref_rx != bib_entry.ref_rx:
                             # only display if it's not empty/None or the same
-                            msg = f"\t\tDB updates {bib_entry.ref_id} RX from '{ref_rx}' to {bib_entry.ref_rx} confidence: {bib_entry.ref_rx_confidence})"
+                            msg = f"\t\tDB updates {bib_entry.art_id}.{bib_entry.ref_local_id} RX from '{ref_rx}' to {bib_entry.ref_rx} confidence: {bib_entry.ref_rx_confidence})"
                             log_everywhere_if(verbose, level=log_level_for_trace, msg=msg)
                         ref.attrib["rx"] = bib_entry.ref_rx
                         ref.attrib["rxconf"] = str(bib_entry.ref_rx_confidence)
@@ -470,7 +471,7 @@ def update_biblio_links(parsed_xml, artInfo, ocd, pretty_print=False, verbose=Fa
                         ref_rxcf = ref.attrib.get('rxcf', '')
                         if ref_rxcf != bib_entry.ref_rxcf:
                             # only display if it's updated with value
-                            msg = f"\t\tDB updates {bib_entry.ref_id} RXCF from '{ref_rxcf}' to {bib_entry.ref_rxcf} confidence: {bib_entry.ref_rxcf_confidence})"
+                            msg = f"\t\tDB updates {bib_entry.art_id}.{bib_entry.ref_local_id} RXCF from '{ref_rxcf}' to {bib_entry.ref_rxcf} confidence: {bib_entry.ref_rxcf_confidence})"
                             log_everywhere_if(verbose, level=log_level_for_trace, msg=msg)
                             
                         ref.attrib["rxcf"] = bib_entry.ref_rxcf

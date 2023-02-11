@@ -5,9 +5,32 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2023"
 __license__     = "Apache 2.0"
-__version__     = "2023.0206/v1.0.006"   
+__version__     = "2023.0211/v1.0.007"   
 __status__      = "Development"
 
+programNameShort = "opasDataLinker"
+
+border = 80 * "*"
+print (f"""\n
+        {border}
+            {programNameShort} - Open Publications-Archive Server (OPAS) Reference Linker
+                            Version {__version__}
+        {border}
+        """)
+
+help_text = (
+    fr""" 
+        - Read the api_biblioxml table and link articles in PEP.
+        
+        Example Invocation:
+                $ python opasDataLinker.py
+                
+        Important option choices:
+         -h, --help         List all help options
+         -a                 Process all records
+         --key:             Do just records with the specified PEP locator (e.g., --key AIM.076.0309A)
+""")
+    
 import sys
 sys.path.append('../libs')
 sys.path.append('../config')
@@ -16,9 +39,9 @@ sys.path.append('../libs/configLib')
 # import string, sys, copy, re
 import logging
 logger = logging.getLogger(__name__)
-import re
-import time
-
+# import re
+# import time
+from optparse import OptionParser
 from loggingDebugStream import log_everywhere_if
 
 import opasConfig
@@ -46,7 +69,6 @@ ocd = opasCentralDBLib.opasCentralDB()
 import lxml.etree as ET
 import lxml
 sqlSelect = ""
-parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True)
 
 def walk_through_reference_set(ocd=ocd,
                                sql_set_select = "select * from api_biblioxml where art_id='CPS.031.0617A' and ref_local_id='B022'",
@@ -70,6 +92,7 @@ def walk_through_reference_set(ocd=ocd,
     #artInfo = opasArticleIDSupport.ArticleInfo(art_id="IJP.100.0001A",
                                                #art_year="2022")
     
+    parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True)
     if ocd.db is not None:
         # rows = self.SQLSelectGenerator(sqlSelect)
         biblio_entries = ocd.get_references_select_biblioxml(sql_set_select)
@@ -93,7 +116,7 @@ def walk_through_reference_set(ocd=ocd,
                 if verbose: print (f"Checking ref_rx from xml for accuracy")
                 bib_match = bib_entry.compare_to_database(ocd)
                 bib_match = bib_entry.lookup_more_exact_artid_in_db(ocd)
-                if verbose: print (f"\t...Reference ID: {bib_entry.ref_rx} Confidence {bib_entry.ref_rx_confidence} Link Updated: {bib_match.link_updated}")
+                if verbose: print (f"\t...Reference ID: {bib_entry.ref_rx} Confidence {bib_entry.ref_rx_confidence} Link Updated: {bib_match.link_updated} Record Updated: {bib_match.record_updated}")
                 #if ref_rx is not None:
                     #success = bib_entry.update_db_links(art_id,
                                                         #local_id,
@@ -102,7 +125,7 @@ def walk_through_reference_set(ocd=ocd,
             if bib_entry.ref_rx is None and bib_match.ref_rx is not None:
                 bib_entry.update_bib_entry(bib_match)
 
-            if bib_entry.link_updated:
+            if bib_entry.link_updated or bib_entry.record_updated:
                 # make sure database isn't better
                 bib_match = bib_entry.compare_to_database(ocd)
                 bib_match = bib_entry.lookup_more_exact_artid_in_db(ocd)
@@ -114,18 +137,24 @@ def walk_through_reference_set(ocd=ocd,
                     match2 = f"rxcf: {bib_match.ref_rxcf} "
                 else:
                     match2 = ""
-                print (f"\t...{match1} {match2} considered a match ({bib_match.link_source}) Updating DB record.")
-                if bib_match.link_source != "database" and bib_match.link_updated == True:
-                    success = ocd.update_biblioxml_links(bib_entry.art_id,
-                                                         bib_entry.ref_local_id,
-                                                         bib_entry=bib_match, 
+                if bib_entry.record_updated or bib_match.link_updated:
+                    if bib_match.link_updated:
+                        print (f"\t...{match1} {match2} considered a match ({bib_match.ref_link_source}) Updating DB record.")
+                    else:
+                        print (f"\t...Record updated. Updating DB record.")
+                    success = ocd.save_ref_to_biblioxml_table(bib_entry)                
+
+                #if bib_match.link_updated or bib_entry.record_updated:
+                    #success = ocd.update_biblioxml_links(bib_entry.art_id,
+                                                         #bib_entry.ref_local_id,
+                                                         #bib_entry=bib_match, 
                                                          #rx=bib_match.ref_rx,
                                                          #rx_confidence=bib_match.ref_rx_confidence,
                                                          #rxcfs=bib_match.ref_rxcf,
                                                          #rxcfs_confidence=bib_match.ref_rxcf_confidence,
                                                          #rx_link_source=bib_match.link_source,
                                                          #ref_xml=bib_match.ref_xml
-                                                        )
+                                                        #)
         
     ocd.close_connection(caller_name=fname) # make sure connection is closed
     
@@ -172,106 +201,17 @@ def clean_reference_links(ocd=ocd,
     # return session model object
     return ret_val # None or Session Object
 
-# --------------------------------------------------------------------------------------------
-# TBD: These next two routines should now be handled automatically by biblioxml.  
-#    Delete in a future build after confirming
-# 
-# --------------------------------------------------------------------------------------------
-#def check_for_locator_page_mismatch(self, rx: str, rx_confidence: float):
-    #ret_val = (1, rx, rx_confidence)
-    #if rx_confidence == .99:
-        #ret_val = (1, rx, opasConfig.RX_CONFIDENCE_EXISTS)
-    #elif rx_confidence != 1:
-        #ret_val = (1, rx, opasConfig.RX_CONFIDENCE_EXISTS)
-        #if not self.article_exists(rx):
-            #newLocator = Locator(rx)
-            #if newLocator.articleID() is not None:
-                #newLocator.pgStart -= 1
-                #if self.article_exists(str(newLocator)):
-                    #ret_val = (2, newLocator.articleID(), opasConfig.RX_CONFIDENCE_PAGE_ADJUSTED)
-                #else:
-                    #ret_val = (0, rx, rx_confidence)
-            #else:
-                #ret_val = (0, rx, rx_confidence)
-                
-    ## validation check values:
-    ## 0 = Not valid, No fix  
-    ## 1 = Already correct
-    ## 2 = Fixed page mismatch, 
-    #return ret_val # (validation check, locator, confidence)
-
-#def fix_pgstart_errors_in_reflinks(ocd=ocd,
-                                   #sql_set_select = "select * from api_biblioxml where ref_rx is not NULL",
-                                   #set_description = "All"
-                                   #):
-    #"""
-    #Checks for a bad locator and tries to fix it if
-      #it's a page start error.  Otherwise leaves it alone
-    
-    #"""
-    #fname = "find_start_page_errors"
-    #ocd.open_connection(caller_name=fname) # make sure connection is open
-    #ret_val = 0
-    ##artInfo = opasArticleIDSupport.ArticleInfo(art_id="IJP.100.0001A",
-                                               ##art_year="2022")
-    
-    #if ocd.db is not None:
-        ## rows = self.SQLSelectGenerator(sqlSelect)
-        #curs = ocd.db.cursor(buffered=True, dictionary=True)
-        #curs.execute(sql_set_select)
-        #warnings = curs.fetchwarnings()
-        #if warnings:
-            #for warning in warnings:
-                #logger.warning(warning)
-        
-        #rows = curs.fetchall()
-        #print (f"Checking {len(rows)} rows")
-        #for row in rows:
-            #art_id = row["art_id"]
-            #ref_local_id = row["ref_local_id"]
-            #ref_rx = row["ref_rx"]
-            #ref_rx_confidence = row["ref_rx_confidence"]
-            #ref_text = row["ref_text"]
-            #if ref_rx:
-                #result, rx, rx_confidence = check_for_locator_page_mismatch(ref_rx, ref_rx_confidence)
-                #if result == 2:
-                    ## correct it
-                    #print (f"\t...{art_id}/{ref_local_id} - {ref_rx} doesn't exist. Chgto:{newLocator} for {ref_text}.")
-                    #success = ocd.update_biblioxml_links(art_id, ref_local_id,
-                                                          #rx=str(rx),
-                                                          #rx_confidence=rx_confidence,
-                                                          #verbose=False)
-                    #ret_val += 1
-                #elif result == 1:
-                    #if rx_confidence != ref_rx_confidence:
-                        #success = ocd.update_biblioxml_links(art_id, ref_local_id,
-                                                              #rx=str(rx),
-                                                              #rx_confidence=rx_confidence,
-                                                              #verbose=False)
-                        ##print (f"Updated {rx_confidence} != {ref_rx_confidence}")
-                        
-                    
-    #print (f"Corrected {ret_val} biblioxml records where rx was off by one page!")
-    #ocd.close_connection(caller_name=fname) # make sure connection is closed
-    
-    ## return session model object
-    #return ret_val # number of updated rows
-# --------------------------------------------------------------------------------------------
-# End TBD
-# --------------------------------------------------------------------------------------------
-
-if __name__ == "__main__":
-
+def test_runs():
     do_walk_set = True
     do_clean = False
     do_doctest = False
     walk_set = [
-                  ("Freud", "select * from api_biblioxml where ref_rx is NULL and ref_authors like '%Freud%' and ref_rx_confidence=0")
+                  ("Freud", "select * from api_biblioxml where ref_rx is NULL and ref_authors like '%Freud%' and ref_rx_confidence=0"),
+                  ("FreudTest", "select * from api_biblioxml where art_id LIKE 'APA.017.0421A'")
                ]
         
-
     if do_walk_set:
-        walk_through_reference_set(ocd, set_description=walk_set[0][0], sql_set_select=walk_set[0][1])
+        walk_through_reference_set(ocd, set_description=walk_set[1][0], sql_set_select=walk_set[1][1])
 
     if do_clean:
         clean_set = "Freud", "select * from api_biblioxml where ref_rx is not NULL and ref_authors like '%Freud%'"
@@ -282,3 +222,66 @@ if __name__ == "__main__":
         doctest.testmod(optionflags=doctest.ELLIPSIS|doctest.NORMALIZE_WHITESPACE)
     
     print ("Fini. Tests or Processing complete.")
+    
+# -------------------------------------------------------------------------------------------------------
+# run it!
+if __name__ == "__main__":
+    global options  # so the information can be used in support functions
+
+    options = None
+    parser = OptionParser(usage="%prog [options] - PEP Data Linker", version=f"%prog ver. {__version__}")
+
+    parser.add_option("-a", "--all", action="store_true", dest="process_all", default=False,
+                      help="Option to force all records to be checked.")
+
+    parser.add_option("--after", dest="added_after", default=None,
+                      help="Check records created or modifed after this datetime (use YYYY-MM-DD format).")
+
+    parser.add_option("--key", dest="file_key", default=None,
+                      help="Key for a single file to load, e.g., AIM.076.0269A.  Use in conjunction with --sub for faster processing of single files on AWS")
+
+    parser.add_option("-l", "--loglevel", dest="logLevel", default=logging.ERROR,
+                      help="Level at which events should be logged (DEBUG, INFO, WARNING, ERROR")
+
+    # --load option still the default.  Need to keep for backwards compatibility, at least for now (7/2022)
+
+    parser.add_option("--test", dest="testmode", action="store_true", default=False,
+                      help="Run Doctests")
+
+    parser.add_option("--verbose", action="store_true", dest="display_verbose", default=False,
+                      help="Display status and operational timing info as load progresses.")
+
+    (options, args) = parser.parse_args()
+    # set toplevel logger to specified loglevel
+    logger = logging.getLogger()
+    logger.setLevel(options.logLevel)
+    # get local logger
+    logger = logging.getLogger(programNameShort)
+    
+    print (help_text)
+
+    process_matching_query = "select * from api_biblioxml where art_id RLIKE '%s'"
+    process_bydate_afer_query = """select * from api_biblioxml as bib, api_articles as art
+                                   where bib.art_id=art.art_id
+                                   and art.last_update >= '%s'"""
+    
+    if options.testmode:
+        import doctest
+        doctest.testmod()
+        print ("Fini. opasDataLoader Tests complete.")
+        sys.exit()
+
+    if options.file_key:
+        query = process_matching_query % options.file_key
+
+    if options.process_all:
+        query = process_matching_query % '.*'
+
+    if options.added_after:
+        query = process_bydate_afer_query % options.added_after
+
+        
+        
+    walk_through_reference_set(ocd, set_description=f"Key: {options.file_key}", sql_set_select=query)
+    print ("Finished!")
+        

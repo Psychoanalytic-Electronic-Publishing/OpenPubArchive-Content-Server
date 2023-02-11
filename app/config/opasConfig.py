@@ -294,8 +294,9 @@ def normalize_val(val, val_dict, default=None):
 RELATED_RX_FIELDNAME = "art_qual"
 # standard confidence values with implied meaning
 RX_CONFIDENCE_POSITIVE = 1                        # human verified
-RX_CONFIDENCE_AUTO_POSITIVE = .99                 # as sure as possible, automatically
+RX_CONFIDENCE_AUTO_VERY_LIKELY = .99              # as sure as possible, automatically
 RX_CONFIDENCE_PROBABLE = .91                      # target exists and likely right
+RX_CONFIDENCE_PARSED_PROBABLE = .89               # string parsed (missing markup) target likely right
 RX_CONFIDENCE_PAGE_ADJUSTED = .88                 # matched by page adjusting
 RX_CONFIDENCE_EXISTS = .85                        # target exists
 RX_CONFIDENCE_SAME_AUT_TITLE_OTH_SRC = .81        # matched by page adjusting

@@ -15,6 +15,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field # removed Field, causing an error on AWS
 
+import opasConfig
 import opasGenSupportLib as opasgenlib
 from opasGenSupportLib import trimPunctAndSpaces, is_empty, atoiYear
 import PEPJournalData
@@ -610,7 +611,7 @@ class StrReferenceParser(object):
                     print(f"Ref - Can't form locator for str_parse")
         
         self.bib_rx = ret_val
-        self.bib_rx_confidence = .99
+        self.bib_rx_confidence = opasConfig.RX_CONFIDENCE_PARSED_PROBABLE
         return ret_val
 
     #--------------------------------------------------------------------------------

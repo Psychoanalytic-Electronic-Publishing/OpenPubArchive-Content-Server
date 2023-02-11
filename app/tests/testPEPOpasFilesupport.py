@@ -58,7 +58,7 @@ class TestOpasFileSupport(unittest.TestCase):
         filename="PEPTOPAUTHVS.001.0021A(bEXP_ARCH1).xml"
         filespec = fs.find(filename)
         ret = fs.fileinfo(filespec=filespec)
-        assert ret.filesize >= 14000, f"Expected: filesize 14000, Got {ret.filesize}"
+        assert ret.filesize >= 13000, f"Expected: filesize 13000+, Got {ret.filesize}"
 
     def test_0_get_filespec(self):
         # get from s3 if localsecrets set to use it

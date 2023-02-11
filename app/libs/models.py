@@ -35,6 +35,7 @@ import opasConfig
 # from pysolr import Results
 
 from enum import Enum
+from lxml import etree
 
 class ExtendedEnum(Enum):
     @classmethod
@@ -121,6 +122,8 @@ class Biblioxml(BaseModel):
     ref_rx_confidence: float = Field(0, title="Confidence level of assigned rx. Manual QA = 1, code parsed = .99, Heuristic = .1 to .97")
     ref_rxcf: str = Field(None, title="List of possible article ID codes for this reference")
     ref_rxcf_confidence: float = Field(0, title="Max confidence level of rxcf codes")
+    ref_rxp: str = Field(None, title="Previous system method to correct rx value without overwriting.  Will now use to figure correct rx")
+    ref_rxp_confidence: float = Field(0, title="rxp confidence value")
     ref_sourcecode: str = Field(None)
     ref_authors: str = Field(None)
     ref_authors_xml: str = Field(None)
@@ -132,6 +135,7 @@ class Biblioxml(BaseModel):
     ref_authors_xml: str = Field(None)
     ref_xml: str = Field(None)
     ref_pgrg: str = Field(None)
+    ref_pgstart: str = Field("")
     ref_doi: Optional[str]
     ref_title: str = Field(None)
     ref_year: str = Field(None)
@@ -140,8 +144,13 @@ class Biblioxml(BaseModel):
     ref_volume_int: Optional[int]
     ref_volume_isroman: bool = Field(False, title="True if ref_volume is roman")
     ref_publisher: str = Field(None)
-    link_source: str = Field(None, title="Source of rx link, 'xml', 'database', or 'pattern'")
+    ref_in_pep: bool = Field(False, title="Indicates this is a PEP reference")
+    ref_exists: bool = Field(False, title="Indicates this ref link has been verified")
+    ref_link_source: str = Field(None, title="Source of rx link, 'xml', 'database', or 'pattern'")
+    link_updated: bool = Field(False, title="Indicates whether the data was corrected during load. If so, may need to update DB.")
+    record_updated: bool = Field(False)
     link_updated: bool = Field(False, title="Indicates whether the data was corrected during load. If so, may need to update DB.  See link_source for method")
+    parsed_ref: Optional[object]
     last_update: datetime = Field(None)
 
 #-------------------------------------------------------

@@ -14,18 +14,18 @@ Module Assumptions:
    BibEntry class is general to accommodate be, maybe binc (TBD)
 
    During a compile to EXP_ARCH files from KBD files:
-      - we want to do the minimum for speed.
-      - we need to check if the DB has an overriding locator
-      - we need to check to ensure all locator's (rx) exist
+      - we need to check if the DB has an overriding locator (rx, rxcf) 
+      - we may NOT want to check if rx exists, because it may simply not have been loaded yet. (TBD)
+      - we need to save to DB
    
    During a "load" from EXP_ARCH compiled files:
       - we want to do the minimum for speed.
-      - we need to check if the DB has an overriding locator
-      - we need to check to ensure all locator's (rx) exist
+      - we need to check if the DB has an overriding locator (rx, rxcf)
+      - we need to check to ensure all locator's (rx) exist (rxcf TBD)
 
 """
 __author__      = "Neil R. Shapiro"
-__copyright__   = "Copyright 2019-2022, Psychoanalytic Electronic Publishing"
+__copyright__   = "Copyright 2019-2023, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 
 import sys
@@ -85,9 +85,31 @@ SPECIAL_BOOK_RECOGNITION_PATTERN = "Wien" # Wien=Vienna
 BOOK_PUBLISHERS = "hogarth|basic books|harper|other press|analytic press|dover publications|france\:|london\:|norton|press|random house|new york\:|UK\:|routledge|paris|munich|university press|karnac|henry holt"
 SOLR_RESTRICTED_PUNCT = '\:\"\'\,/\[\]'
 
+# Heuristic Settings for Biblio matching
+SAME_REF_WTD_LIKELY = 0.45
+SAME_REF_WTD_VERY_LIKELY = 0.55
+SAME_AUTH_LIKELY = 0.50
+SAME_AUTH_VERY_LIKELY = 0.75    # used to ensure right match for rx, otherwise rxcf
+SAME_TITLE_LIKELY = 0.65        
+SAME_TITLE_VERY_LIKELY = 0.80    # used to ensure right match for rx, otherwise rxcf
+SAME_YEAR_VERY_LIKELY = 0.75
+SAME_FULLCITE_VERY_LIKELY = 0.50  # Reference text vs citeastext from RDS database
+
+
 #------------------------------------------------------------------------------------------------------------
 #  Support functions
 #------------------------------------------------------------------------------------------------------------
+
+def copy_model(model):
+    """
+    Copy a pydantic model
+    """
+    return type(model)(**model.dict())
+
+def copy_model_fields(model, sub_model):
+    for field_name, field in model.__dict__.items():
+        setattr(sub_model, field_name, field)
+    return sub_model
 
 #------------------------------------------------------------------------------------------------------
 def get_reference_correction(ocd, article_id, ref_local_id=None, verbose=None):
@@ -188,14 +210,15 @@ class BiblioMatch(object):
     ref_rxcf_confidence: float = Field(0, title="Max confidence level of rxcf codes")
     ref_xml: str = Field(None)
     ref_exists: bool = Field(False, title="Indicates this ref link has been verified")
-    link_source: str = Field(None, title="Source of rx link, 'xml', 'database', or 'pattern'")
+    ref_link_source: str = Field(None, title="Source of rx link, 'xml', 'database', or 'pattern'")
     link_updated: bool = Field(False, title="Indicates whether the data was corrected during load. If so, may need to update DB.  See link_source for method")
     record_updated: bool = Field(False, title="Indicates whether the data was corrected during load. If so, may need to update DB.")
     last_update: datetime = Field(None)
     
     def __init__(self, bib_entry=None, verbose=False):
         if bib_entry:
-            self.__dict__ = bib_entry.__dict__.copy()    # just a shallow copy
+            #self.__dict__ = bib_entry.__dict__.copy()    # just a shallow copy
+            copy_model_fields(bib_entry, self)
 
     def __str__(self):
         #return f"{self.ref_rx}, {self.ref_rx_confidence}, {self.link_updated}, '{self.ref_rxcf}', {self.ref_rxcf_confidence}"
@@ -210,7 +233,7 @@ class BiblioMatch(object):
 #------------------------------------------------------------------------------------------------------------
 #  BiblioEntry Class
 #------------------------------------------------------------------------------------------------------------
-class BiblioEntry(object):
+class BiblioEntry(models.Biblioxml):
     """
     An entry from a documents bibliography.
     
@@ -258,55 +281,59 @@ class BiblioEntry(object):
         
     """
     # Transitional, until I change this class to the model
-    art_id: str = Field(None)
-    ref_local_id: str = Field(None)
-    art_year: int = Field(0)              # containing article year
-    ref_rx: str = Field(None)
-    ref_rx_confidence: float = Field(0)
-    ref_rxp: str = Field(None, title="Previous system method to correct rx value without overwriting.  Will now use to figure correct rx")
-    ref_rxp_confidence: float = Field(0, title="rxp confidence value")
-    ref_rxcf: str = Field(None, title="list of possible related references, with confidence appended to each via :")
-    ref_rxcf_confidence: float = Field(0, title="maximum rxcf confidence value from list")
-    ref_sourcecode: str = None
-    ref_authors: str = Field(None)
-    ref_authors_xml: str = Field(None)
-    # ref_articletitle: str = Field(None)
-    ref_text: str = Field(None)
-    ref_sourcetype: str = Field(None)
-    ref_is_book: bool = Field(False)
-    ref_sourcetitle: str = Field(None)
-    ref_xml: str = Field(None)
-    ref_pgrg: str = Field("")
-    ref_pgstart: str = Field("")
-    ref_doi: Optional[str]
-    ref_title: str = Field(None)
-    ref_year: str = Field(None)
-    ref_year_int: Optional[int]
-    ref_volume: str = Field(None)
-    ref_volume_int: Optional[int]
-    ref_volume_isroman: bool = Field(False, title="True if bib_volume is roman")
-    ref_publisher: str = Field(None)
-    ref_in_pep: bool = Field(False, title="Indicates this is a PEP reference")
-    ref_exists: bool = Field(False, title="Indicates this ref link has been verified")
-    link_source: str = Field(None, title="Source of rx link, 'xml', 'database', or 'pattern'")
-    link_updated: bool = Field(False, title="Indicates whether the data was corrected during load. If so, may need to update DB.")
-    record_updated: bool = Field(False, title="Indicates whether the data was corrected during load. If so, may need to update DB.")
-    parsed_ref:etree = Field(None)
-    last_update: datetime = Field(None)
+    #art_id: str = Field(None)
+    #ref_local_id: str = Field(None)
+    #art_year: int = Field(0)              # containing article year
+    #ref_rx: str = Field(None)
+    #ref_rx_confidence: float = Field(0)
+    #ref_rxp: str = Field(None, title="Previous system method to correct rx value without overwriting.  Will now use to figure correct rx")
+    #ref_rxp_confidence: float = Field(0, title="rxp confidence value")
+    #ref_rxcf: str = Field(None, title="list of possible related references, with confidence appended to each via :")
+    #ref_rxcf_confidence: float = Field(0, title="maximum rxcf confidence value from list")
+    #ref_sourcecode: str = None
+    #ref_authors: str = Field(None)
+    #ref_authors_xml: str = Field(None)
+    ## ref_articletitle: str = Field(None)
+    #ref_text: str = Field(None)
+    #ref_sourcetype: str = Field(None)
+    #ref_is_book: bool = Field(False)
+    #ref_sourcetitle: str = Field(None)
+    #ref_xml: str = Field(None)
+    #ref_pgrg: str = Field("")
+    #ref_pgstart: str = Field("")
+    #ref_doi: Optional[str]
+    #ref_title: str = Field(None)
+    #ref_year: str = Field(None)
+    #ref_year_int: Optional[int]
+    #ref_volume: str = Field(None)
+    #ref_volume_int: Optional[int]
+    #ref_volume_isroman: bool = Field(False, title="True if bib_volume is roman")
+    #ref_publisher: str = Field(None)
+    #ref_in_pep: bool = Field(False, title="Indicates this is a PEP reference")
+    #ref_exists: bool = Field(False, title="Indicates this ref link has been verified")
+    #ref_link_source: str = Field(None, title="Source of rx link, 'xml', 'database', or 'pattern'")
+    #link_updated: bool = Field(False, title="Indicates whether the data was corrected during load. If so, may need to update DB.")
+    #record_updated: bool = Field(False, title="Indicates whether the data was corrected during load. If so, may need to update DB.")
+    #parsed_ref:etree = Field(None)
+    #last_update: datetime = Field(None)
     
-    def __init__(self, art_id, art_year=None, ref_or_parsed_ref=None, db_bib_entry=None, verbose=False):
-        self.link_source = None
+    def __init__(self, art_id, art_year=None, ref_or_parsed_ref=None, db_bib_entry=None, verbose=False, **kwargs):
+        super().__init__(**kwargs)
+        self.ref_link_source = None
         self.link_updated = False
         self.ref_in_pep = False
         self.ref_pgstart = ""
         self.ref_pgrg = ""
         self.ref_exists = False
+        self.ref_title = ""
 
         # allow either string xml ref or parsed ref
         if ref_or_parsed_ref is None and not db_bib_entry:
             raise ValueError("You must provide a ref or parsed ref")
         elif db_bib_entry:
-            self.__dict__ = db_bib_entry.__dict__.copy()    # just a shallow copy
+            #self.__dict__ = db_bib_entry.__dict__.copy()    # just a shallow copy
+            #self = copy_model(db_bib_entry)
+            copy_model_fields(db_bib_entry, self)
             ref_or_parsed_ref = self.ref_xml
 
         if isinstance(ref_or_parsed_ref, str):
@@ -323,7 +350,7 @@ class BiblioEntry(object):
            
         self.art_id = art_id
         self.ref_local_id = opasxmllib.xml_get_element_attr(parsed_ref, "id")
-        self.ref_id = art_id + "." + self.ref_local_id
+        # ref_id = art_id + "." + self.ref_local_id
         
         # see if the xml for this has been replaced.
         ref_corrected_entry = get_reference_correction(ocd, art_id, self.ref_local_id)
@@ -337,12 +364,11 @@ class BiblioEntry(object):
             
         self.parsed_ref = parsed_ref
         self.ref_xml = re.sub(" +", " ", self.ref_xml)
-        self.art_year = art_year
         if art_year is not None:
             try:
-                self.art_year_int = int(art_year)
+                self.art_year = int(art_year)
             except Exception as e:
-                self.art_year_int = 0
+                self.art_year = 0
 
         ref_text = opasxmllib.xml_elem_or_str_to_text(self.parsed_ref)
         ref_text = strip_extra_spaces(ref_text)
@@ -387,10 +413,10 @@ class BiblioEntry(object):
         self.ref_is_book = False
         # self.art_year = 0 # artInfo.art_year_int
         
-        if self.ref_rx is not None:
-            self.ref_rx_sourcecode = re.search("(.*?)\.", self.ref_rx, re.IGNORECASE).group(1)
-        else:
-            self.ref_rx_sourcecode = None
+        #if self.ref_rx:
+            #self.ref_rx_sourcecode = re.search("(.*?)\.", self.ref_rx, re.IGNORECASE).group(1)
+        #else:
+            #self.ref_rx_sourcecode = None
 
         self.ref_volume = opasxmllib.xml_get_subelement_textsingleton(self.parsed_ref, "v")
         self.ref_volume = self.ref_volume[:23]
@@ -435,7 +461,7 @@ class BiblioEntry(object):
         if (book_markup or book_title or self.ref_publisher) and not journal_title:
             self.ref_is_book = True
             self.ref_sourcetype = "book"
-            self.sourcetitle = book_title  # book title
+            self.ref_sourcetitle = book_title  # book title
         elif journal_title or journal:
             self.ref_sourcetype = "journal"
             self.ref_is_book = False
@@ -459,28 +485,30 @@ class BiblioEntry(object):
                 self.ref_in_pep = True
                 self.ref_sourcecode = "SE"
                 self.ref_is_book = True
+                self.record_updated = True
             elif PEPJournalData.PEPJournalData.rgxGWPat2.search(self.ref_text):
                 self.ref_in_pep = True
                 self.ref_sourcecode = "GW"
                 self.ref_is_book = True
+                self.record_updated = True
         
         if self.ref_is_book:
             year_of_publication = opasxmllib.xml_get_subelement_textsingleton(self.parsed_ref, "bpd")
             if year_of_publication == "":
                 year = opasxmllib.xml_get_subelement_textsingleton(self.parsed_ref, "y")
                 year_of_publication = opasgenlib.remove_all_punct(year) # punct_set=[',', '.', ':', ';', '(', ')', '\t', r'/', '"', "'", "[", "]"])
+                self.record_updated = True
             if self.ref_sourcetitle is None or self.ref_sourcetitle == "":
                 ## sometimes has markup
                 self.ref_sourcetitle = book_title  # book title (bst)
+                self.record_updated = True
+                
         else:
             year_of_publication = opasxmllib.xml_get_subelement_textsingleton(self.parsed_ref, "y")
             sourcecode, dummy, dummy = jrnlData.getPEPJournalCode(self.ref_sourcetitle)
             if sourcecode is not None:
                 self.ref_sourcecode = sourcecode
-                #if rx_sourcecode is None and self.ref_sourcecode is not None:
-                    #rx_sourcecode = self.ref_sourcecode
-                #if rx_sourcecode != self.ref_sourcecode:
-                    #logger.warning(f"Parsed title source code {self.ref_sourcetitle} does not match rx_sourcecode {self.ref_sourcecode}")
+                self.record_updated = True
                 
         if year_of_publication != "":
             # make sure it's not a range or list of some sort.  Grab first year
@@ -514,29 +542,42 @@ class BiblioEntry(object):
             ref_title = strip_extra_spaces(ref_title)
             ref_title = ref_title[:1023]
             self.ref_title = ref_title
+        elif self.ref_sourcetitle and self.ref_is_book:
+            ref_title = self.ref_sourcetitle
+            self.ref_title = ref_title 
         else:
             # if it's PEP reference, try harder using a string parse to get the title and link
             # otherwise, wait for it to be updated by opasDataLinker.
             if self.ref_in_pep:
                 parsed_str = StrReferenceParser()
                 ref_rx = parsed_str.parse_str(self.ref_text)
-                if ref_rx:
+                if ref_rx and ocd.article_exists(ref_rx):
                     if self.ref_rx is None:
                         self.ref_rx = ref_rx
-                    if parsed_str.bib_authors:
-                        ref_title = self.ref_text.replace(parsed_str.bib_authors, "")
-                    if parsed_str.bib_volume:
-                        ref_title = ref_title.replace(str(parsed_str.bib_volume), "")
-                    if parsed_str.bib_year:
-                        ref_title = ref_title.replace(str(parsed_str.bib_year), "")
-                    if parsed_str.bib_sourcetitle:
-                        ref_title = ref_title.replace(str(parsed_str.bib_sourcetitle), "")
+                        self.ref_rx_confidence = parsed_str.bib_rx_confidence
+                        self.link_updated = True
+                
+                if parsed_str.bib_rxcf:
+                    if self.ref_rxcf is None:
+                        self.ref_rxcf = parsed_str.bib_rxcf
+                        self.ref_rx_confidence = parsed_str.bib_rxcf_confidence
+                        self.link_updated = True
+            
+                if parsed_str.bib_authors:
+                    ref_title = self.ref_text.replace(parsed_str.bib_authors, "")
+                if parsed_str.bib_volume:
+                    ref_title = ref_title.replace(str(parsed_str.bib_volume), "")
+                if parsed_str.bib_year:
+                    ref_title = ref_title.replace(str(parsed_str.bib_year), "")
+                if parsed_str.bib_sourcetitle:
+                    ref_title = ref_title.replace(str(parsed_str.bib_sourcetitle), "")
                     ref_title = ref_title.strip()
+
+                if ref_title:
                     self.ref_title = ref_title
+                    self.record_updated = True
                 else:
                     self.ref_title = ""
-            else:
-                self.ref_title = ""
         
         author_name_list = [etree.tostring(x, with_tail=False).decode("utf8") for x in self.parsed_ref.findall("a") if x is not None]
         self.ref_authors_xml = '; '.join(author_name_list)
@@ -573,7 +614,8 @@ class BiblioEntry(object):
                                     #last_update = self.last_update                               
                                     #)
         try:
-            self.identify_nonheuristic(verbose=verbose)
+            if self.ref_rx is None:
+                self.identify_nonheuristic(verbose=verbose)
         except:
             log_everywhere_if(verbose, "debug", f"Biblio Entry ID issues {art_id, self.ref_local_id}")
         else:
@@ -583,7 +625,10 @@ class BiblioEntry(object):
     #------------------------------------------------------------------------------------------------------------
     def update_bib_entry(self, bib_match, verbose=False):
         if bib_match:
-            self.__dict__ = bib_match.__dict__.copy()    # just a shallow copy
+            #self.__dict__ = bib_match.__dict__.copy()    # just a shallow copy
+            #self = copy_model(bib_match)
+            copy_model_fields(bib_match, self)            
+
     #------------------------------------------------------------------------------------------------------------
     def update_db_links(self, art_id, local_id, verbose=False):
         """
@@ -613,7 +658,7 @@ class BiblioEntry(object):
                                 self.ref_rx_confidence,
                                 self.ref_rxcf,
                                 self.ref_rxcf_confidence,
-                                self.link_source, 
+                                self.ref_link_source, 
                                 art_id,
                                 local_id)
             elif self.ref_rx is not None and self.ref_rxcf is not None:
@@ -632,7 +677,7 @@ class BiblioEntry(object):
                                 self.ref_rx_confidence,
                                 self.ref_rxcf,
                                 self.ref_rxcf_confidence,
-                                self.link_source, 
+                                self.ref_link_source, 
                                 art_id,
                                 local_id)
             elif self.ref_rx is not None:
@@ -647,7 +692,7 @@ class BiblioEntry(object):
                 
                 query_params = (self.ref_rx,
                                 self.ref_rx_confidence,
-                                self.link_source, 
+                                self.ref_link_source, 
                                 art_id,
                                 local_id)
                 
@@ -662,7 +707,7 @@ class BiblioEntry(object):
                           """
                 query_params = (self.ref_rxcf,
                                 self.ref_rxcf_confidence,
-                                self.link_source, 
+                                self.ref_link_source, 
                                 art_id,
                                 local_id)
             else:
@@ -757,7 +802,7 @@ class BiblioEntry(object):
                 if loc_str is not None:
                     self.ref_rx = loc_str 
                     self.ref_rx_confidence = opasConfig.RX_CONFIDENCE_PROBABLE
-                    self.link_source = opasConfig.RX_LINK_SOURCE_PATTERN
+                    self.ref_link_source = opasConfig.RX_LINK_SOURCE_PATTERN
                     msg = f"\t\t\t...Matched Book {match_val}."
                     log_everywhere_if(verbose, level="debug", msg=msg)
             
@@ -800,7 +845,7 @@ class BiblioEntry(object):
                             self.ref_exists = True
                             self.ref_rx_confidence = opasConfig.RX_CONFIDENCE_PROBABLE
                             link_updated = True
-                            self.link_source = opasConfig.RX_LINK_SOURCE_PATTERN
+                            self.ref_link_source = opasConfig.RX_LINK_SOURCE_PATTERN
                         else:
                             # see if there's a vol variant
                             self.ref_exists = False
@@ -812,7 +857,7 @@ class BiblioEntry(object):
                                 self.ref_rx = newloc
                                 self.ref_rx_confidence = opasConfig.RX_CONFIDENCE_PROBABLE
                                 link_updated = True
-                                self.link_source = opasConfig.RX_LINK_SOURCE_VARIATION
+                                self.ref_link_source = opasConfig.RX_LINK_SOURCE_VARIATION
                             else:
                                 newloc = check_for_vol_suffix(ocd, loc_str, verbose=False) # log it here, not there
                                 if newloc is not None:
@@ -821,7 +866,7 @@ class BiblioEntry(object):
                                     self.ref_rx = newloc
                                     self.ref_rx_confidence = opasConfig.RX_CONFIDENCE_PROBABLE
                                     link_updated = True
-                                    self.link_source = opasConfig.RX_LINK_SOURCE_VARIATION
+                                    self.ref_link_source = opasConfig.RX_LINK_SOURCE_VARIATION
                 else:
                     locator = None
 
@@ -840,21 +885,25 @@ class BiblioEntry(object):
         ret_val.ref_rx = self.ref_rx
         ret_val.ref_rx_confidence = self.ref_rx_confidence
         ret_val.link_updated = self.link_updated
-        ret_val.link_source = self.link_source
+        ret_val.ref_link_source = self.ref_link_source
         ret_val.ref_rxcf = self.ref_rxcf
         ret_val.ref_rxcf_confidence = self.ref_rxcf_confidence
         
         return ret_val
 
     #------------------------------------------------------------------------------------------------------------
-    def identify_heuristic(self, minrx_similarity_title=0.65, minrxcf_wtd_similarity=0.45, minrx_similarity_author=0.5, verbose=False):
+    def identify_heuristic(self,
+                           minrx_similarity_title=SAME_TITLE_LIKELY,
+                           minrxcf_wtd_similarity=SAME_REF_WTD_LIKELY,
+                           minrx_similarity_author=SAME_AUTH_LIKELY,
+                           verbose=False):
         """
-        >> ref='<be id="B072"><a><l>Freud</l>, Sigmund.</a> (<y>1917</y>). <t>&#8216;Mourning and Melancholia.&#8217;</t> <bst>Collected Papers</bst>. Vol. <v>IV</v>. London: <bp>Hogarth Press</bp>.</be>'
-        >> be_journal = BiblioEntry(art_id="PAQ.084.0589A", ref_or_parsed_ref=ref)
-        >> result = be_journal.identify_heuristic(verbose=False)
-        >> be_journal.ref_rx
+        >>> ref='<be id="B072"><a><l>Freud</l>, Sigmund.</a> (<y>1917</y>). <t>&#8216;Mourning and Melancholia.&#8217;</t> <bst>Collected Papers</bst>. Vol. <v>IV</v>. London: <bp>Hogarth Press</bp>.</be>'
+        >>> be_journal = BiblioEntry(art_id="PAQ.084.0589A", ref_or_parsed_ref=ref)
+        >>> result = be_journal.identify_heuristic(verbose=False)
+        >>> be_journal.ref_rx
         'SE.014.0237A'
-        >> be_journal.ref_rxcf
+        >>> be_journal.ref_rxcf
         'IJPSP.008.0363A:0.6, IJPOPEN.002.0090A:0.53, ZBK.038.0095A:0.49, ZBK.140.0078A:0.49, PAQ.074.0083A:0.47'
 
         >>> ref = '<be label="19" id="B019"><a><l>Freud</l></a>, <bst>Beyond the Pleasure Principle</bst> (London, <y>1950</y>), pp. <pp>17</pp> ff.</be>'       
@@ -907,50 +956,42 @@ class BiblioEntry(object):
                     result_count = result.documentList.responseInfo.count
                     if result_count > 0 and result_count <= opasConfig.HEURISTIC_SEARCH_MAX_COUNT:
                         for item in result.documentList.responseSet[0:opasConfig.MAX_CF_LIST]:
-                            similarity_score_solr = item.score / 10
-                            similarity_score_source_title = opasgenlib.similarityText(self.ref_sourcetitle, item.sourceTitle)
-                            similarity_score_ref_title = opasgenlib.similarityText(ref_title, item.title)
-                            similarity_score_ref = opasgenlib.similarityText(self.ref_text, item.documentRef)
-                            similarity_score_auth = opasgenlib.similarityText(self.ref_authors, item.authorCitation)
-                            #if gDbg2 and verbose: print (f"\tSimilarity score title: {similarity_score_ref_title} ({ref_title}/{item.title})")
-                            #if gDbg2 and verbose: print (f"\tSimilarity score ref: {similarity_score_ref} ({opasgenlib.text_slice(self.ref_text)}/{opasgenlib.text_slice(item.documentRef)})")
-                            # rxcfs_confidence.append(similarity_score)
                             locator = Locator(item.documentID)
-                            type_match = locator.isBook() and self.ref_is_book
-                            weighted_score = (8*similarity_score_ref_title + \
-                                              5*similarity_score_solr + \
-                                              3*similarity_score_source_title + \
-                                              3*similarity_score_ref + \
-                                              3*similarity_score_auth + \
-                                              3*type_match) / 25
+                            weighted_score, considered = \
+                                self.get_weighted_confidence(item_score=item.score,            # solr_score
+                                                             item_title=item.title,
+                                                             item_sourcetitle=item.sourceTitle,
+                                                             item_reftext=item.documentRef,
+                                                             item_authors=item.authorCitation,
+                                                             item_isbook=locator.isBook()
+                                                             )
+                            considered["rx"] = item.documentID
+                            considered["source_title"] =  art_or_source_title
+                            
                             if weighted_score >= minrxcf_wtd_similarity:
-                                score = min(.99, round(weighted_score, 2))
                                 #if gDbg2 and verbose: print (f"\tOverall Similarity score: {score}")
                                 #if gDbg2 and verbose: print (f"\tTypeMatch: {type_match}")
-                                considered = { "score": score,
-                                               "solrscore": similarity_score_solr,
-                                               "sim_auth": similarity_score_auth,
-                                               "sim_ref": similarity_score_ref,
-                                               "sim_reftitle": similarity_score_ref_title,
-                                               "sim_srctitle": similarity_score_source_title,
-                                               "rx": item.documentID,
-                                               "art_title": item.title,
-                                               "source_title": art_or_source_title,
-                                               "ref_text": self.ref_text, 
-                                               "ref_text_match": item.documentRef
-                                             }
                                 # if gDbg2 and verbose: print (f"\tMatch {score} Considered: {considered}")
                                 title_list.append(considered)
                         
                         if title_list:
                             title_list = sorted(title_list, key=lambda d: d["score"], reverse=True)
                             rx_confidence = title_list[0]["score"]
-                            if rx_confidence >= minrx_similarity_title and similarity_score_auth >= minrx_similarity_author:
+                            if rx_confidence >= minrx_similarity_title and considered["sim_auth"] >= minrx_similarity_author:
                                 self.ref_rx = title_list[0]["rx"]
                                 self.ref_rx_confidence = rx_confidence # opasConfig.RX_CONFIDENCE_PROBABLE
                                 self.link_updated = True
-                                self.link_source = opasConfig.RX_LINK_SOURCE_TITLE_HEURISTIC
-                                title_list = title_list[1:]
+                                self.ref_link_source = opasConfig.RX_LINK_SOURCE_TITLE_HEURISTIC
+                                
+                                if 0: # leave it in, so a reviewer can decide to manually 
+                                      # remove it from rx in the table, if not a good match, 
+                                      # and there will still be a link to it in rxcf
+                                    if considered["sim_auth"] >= SAME_AUTH_VERY_LIKELY:
+                                        # if the authors are likely the same, remove rx link from title list
+                                        #   otherwise, leave it.  That way, the rx can be manually deleted,
+                                        #   but this likely related reference stays in the rxcf list.
+                                        #   Minor downside: the link will stay in both if it's not deleted.
+                                        title_list = title_list[1:]
                                 if verbose:
                                     print (f"\t***Found: {self.ref_rx}:{self.ref_rx_confidence}")
                                     #if gDbg2: time.sleep(2) # Pause
@@ -961,7 +1002,7 @@ class BiblioEntry(object):
                                 self.ref_rxcf = ", ".join(self.ref_rxcf)
                                 self.ref_rxcf_confidence = max([item["score"] for item in title_list])
                                 self.link_updated = True
-                                self.link_source = opasConfig.RX_LINK_SOURCE_HEURISTIC
+                                self.ref_link_source = opasConfig.RX_LINK_SOURCE_HEURISTIC
                                 if verbose:
                                     print (f"\t***Related: {self.ref_rxcf}")
                                     if gDbg2:
@@ -974,7 +1015,7 @@ class BiblioEntry(object):
         ret_val.ref_rx = self.ref_rx
         ret_val.ref_rx_confidence = self.ref_rx_confidence
         ret_val.link_updated = self.link_updated
-        ret_val.link_source = self.link_source
+        ret_val.ref_link_source = self.ref_link_source
         ret_val.ref_rxcf = self.ref_rxcf
         ret_val.ref_rxcf_confidence = self.ref_rxcf_confidence
         
@@ -1018,8 +1059,6 @@ class BiblioEntry(object):
                                 art_auth_citation,
                                 art_citeas_text,
                                 bk_info_xml,
-                                soundex('{ref_title}') as ref_title_soundex,
-                                soundex(art_title) as title_soundex,
                                 art_title
                          from api_articles
                          where art_title sounds like '{ref_title}'
@@ -1037,10 +1076,7 @@ class BiblioEntry(object):
                     else:
                         pub_type_match = False
                     
-                    #ref_title_soundex = result[5]
-                    #title_soundex = result[6]
-                    #title_soundex_confidence = opasgenlib.similarityText(title_soundex, ref_title_soundex)
-                    art_title = result[7]
+                    art_title = result[5]
                     art_title = opasgenlib.remove_all_punct(art_title)
 
                     title_confidence = opasgenlib.similarityText(art_title, ref_title)
@@ -1048,19 +1084,19 @@ class BiblioEntry(object):
                     author_confidence = opasgenlib.similarityText(self.ref_authors, art_author_citation)
                     full_citation_confidence = opasgenlib.similarityText(self.ref_text, art_citation)
                     
-                    weighted_confidence = (title_confidence + year_confidence + author_confidence + full_citation_confidence) / 4
+                    avg_confidence = (title_confidence + year_confidence + author_confidence + full_citation_confidence) / 4
                     
-                    if pub_type_match and title_confidence > .9 and  author_confidence > 0.7 and year_confidence > 0.7 and full_citation_confidence > 0.5:
+                    if pub_type_match and title_confidence >= SAME_TITLE_VERY_LIKELY and  author_confidence >= SAME_AUTH_VERY_LIKELY and year_confidence >= SAME_YEAR_VERY_LIKELY and full_citation_confidence >= SAME_FULLCITE_VERY_LIKELY:
                         self.ref_rx = ret_val
                         if ref_year == self.ref_year_int:
-                            self.ref_rx_confidence = round(weighted_confidence, 2)
+                            self.ref_rx_confidence = round(avg_confidence, 2)
                             self.link_updated = True
-                            self.link_source = opasConfig.RX_LINK_SOURCE_TITLE_AND_YEAR                            
+                            self.ref_link_source = opasConfig.RX_LINK_SOURCE_TITLE_AND_YEAR                            
                             break
                         else:
-                            self.ref_rx_confidence = round(weighted_confidence, 2)
+                            self.ref_rx_confidence = round(avg_confidence, 2)
                             self.link_updated = True
-                            self.link_source = opasConfig.RX_LINK_SOURCE_TITLE
+                            self.ref_link_source = opasConfig.RX_LINK_SOURCE_TITLE
                             break
                     else:
                         continue
@@ -1072,7 +1108,7 @@ class BiblioEntry(object):
         ret_val.ref_rx = self.ref_rx
         ret_val.ref_rx_confidence = self.ref_rx_confidence
         ret_val.link_updated = self.link_updated
-        ret_val.link_source = self.link_source
+        ret_val.ref_link_source = self.ref_link_source
         ret_val.ref_rxcf = self.ref_rxcf
         ret_val.ref_rxcf_confidence = self.ref_rxcf_confidence
         ret_val.ref_xml = self.ref_xml
@@ -1106,7 +1142,7 @@ class BiblioEntry(object):
         
         """
         ret_val = self.ref_rx
-        if self.ref_rx is not None:
+        if self.ref_rx:
             ref_id_parts = self.ref_rx.split('.')
             art_id_prefix_match = f"{ref_id_parts[0]}.{ref_id_parts[1]}.%"
             like_clause = f"AND art_id LIKE '{art_id_prefix_match}'"
@@ -1127,9 +1163,7 @@ class BiblioEntry(object):
             select = f"""SELECT art_id,
                                 art_year,
                                 art_title,
-                                art_auth_citation,
-                                soundex(art_title) as soundex1,
-                                soundex('{ref_title}') as soundex2
+                                art_auth_citation
                          FROM api_articles
                          WHERE
                               art_title sounds like '{ref_title}'
@@ -1146,9 +1180,12 @@ class BiblioEntry(object):
                 author_similarity = opasgenlib.similarityText(art_auth_citaton, self.ref_authors)
                 title_similarity = opasgenlib.similarityText(art_title, ref_title)
                 self.link_updated = True
-                self.link_source = opasConfig.RX_LINK_SOURCE_TITLE
-                if ref_year == self.ref_year_int and author_similarity > .80 and title_similarity > .80:
-                    self.ref_rx_confidence = opasConfig.RX_CONFIDENCE_AUTO_POSITIVE
+                self.record_updated = True
+                self.ref_link_source = opasConfig.RX_LINK_SOURCE_TITLE
+                if ref_year == self.ref_year_int \
+                  and author_similarity >= SAME_AUTH_VERY_LIKELY \
+                  and title_similarity >= SAME_TITLE_VERY_LIKELY:
+                    self.ref_rx_confidence = opasConfig.RX_CONFIDENCE_AUTO_VERY_LIKELY
                 else:
                     self.ref_rx_confidence = opasConfig.RX_CONFIDENCE_PROBABLE
         
@@ -1157,7 +1194,8 @@ class BiblioEntry(object):
         ret_val.ref_rx = self.ref_rx
         ret_val.ref_rx_confidence = self.ref_rx_confidence
         ret_val.link_updated = self.link_updated
-        ret_val.link_source = self.link_source
+        ret_val.record_updated = self.record_updated
+        ret_val.ref_link_source = self.ref_link_source
         ret_val.ref_rxcf = self.ref_rxcf
         ret_val.ref_rxcf_confidence = self.ref_rxcf_confidence
         ret_val.ref_xml = self.ref_xml
@@ -1209,7 +1247,7 @@ class BiblioEntry(object):
                         self.ref_rx = loc_str
                         self.ref_rx_confidence = bib_refdb_model.ref_rx_confidence
                         self.link_updated = True
-                        self.link_source = opasConfig.RX_LINK_SOURCE_DB
+                        self.ref_link_source = opasConfig.RX_LINK_SOURCE_DB
                         ret_val = True
                         #ret_val = self.ref_rx, self.ref_rx_confidence, self.link_updated
 
@@ -1219,13 +1257,93 @@ class BiblioEntry(object):
                     self.ref_rxcf = bib_refdb_model.ref_rxcf
                     self.ref_rxcf_confidence = bib_refdb_model.ref_rxcf_confidence
                     self.link_updated = True
-                    self.link_source = opasConfig.RX_LINK_SOURCE_DB
+                    self.ref_link_source = opasConfig.RX_LINK_SOURCE_DB
                     ret_val = True
                     #ret_val = self.ref_rx, self.ref_rx_confidence, self.link_updated
    
 
         return ret_val
 
+    #------------------------------------------------------------------------------------------------------------
+    def get_weighted_confidence(self,
+                                item_score=None,  # solr_score
+                                item_title=None,
+                                item_sourcetitle=None,
+                                item_reftext=None,
+                                item_authors=None,
+                                item_isbook=None, 
+                                verbose=False):
+
+        total_weights = 0
+        weight_title = 8
+        weight_score = 5
+        weight_sourcetitle = 3
+        weight_text = 3
+        weight_author = 3
+        weight_typematch = 3
+        similarity_score_ref_title_wt = 0
+        similarity_score_ref_sourcetitle_wt = 0
+        similarity_score_ref_text_wt = 0
+        similarity_score_ref_authors_wt = 0
+        similarity_score_type_match_wt = 0
+        similarity_score_ref_title = 0
+        similarity_score_ref_sourcetitle = 0
+        similarity_score_ref_text = 0
+        similarity_score_ref_authors = 0
+        similarity_score_type_match = 0
+
+        if item_score:
+            similarity_score_solr = item_score / 10
+            similarity_score_solrF = similarity_score_solr * weight_score
+            total_weights += weight_score
+
+        ref_title = opasgenlib.remove_all_punct(self.ref_title, additional_chars=SOLR_RESTRICTED_PUNCT)
+        item_title = opasgenlib.remove_all_punct(item_title, additional_chars=SOLR_RESTRICTED_PUNCT)
+        
+        if ref_title:
+            similarity_score_ref_title = opasgenlib.similarityText(ref_title, item_title)
+            similarity_score_ref_title_wt = similarity_score_ref_title * weight_title
+            total_weights += weight_title
+            
+            
+        if item_sourcetitle:
+            similarity_score_ref_sourcetitle = opasgenlib.similarityText(self.ref_sourcetitle, item_sourcetitle)
+            similarity_score_ref_sourcetitle_wt = similarity_score_ref_sourcetitle * weight_sourcetitle
+            total_weights += weight_sourcetitle
+            
+        if item_reftext:
+            similarity_score_ref_text = opasgenlib.similarityText(self.ref_text, item_reftext)
+            similarity_score_ref_text_wt = similarity_score_ref_text * weight_text
+            total_weights += weight_text
+
+        if item_authors:
+            similarity_score_ref_authors = opasgenlib.similarityText(self.ref_authors, item_authors)
+            similarity_score_ref_authors_wt = similarity_score_ref_authors * weight_author
+            total_weights += weight_author
+            
+        similarity_score_type_match = item_isbook and self.ref_is_book
+        similarity_score_type_match_wt = similarity_score_type_match * weight_typematch
+        total_weights += weight_typematch
+        
+        ret_val = (similarity_score_ref_title_wt + \
+                   similarity_score_solrF + \
+                   similarity_score_ref_sourcetitle_wt + \
+                   similarity_score_ref_text_wt + \
+                   similarity_score_ref_authors_wt + \
+                   similarity_score_type_match_wt) / total_weights
+
+        score = min(.99, round(ret_val, 2))        
+        considered = { "score": score,
+                       "solrscore": similarity_score_solr,
+                       "sim_auth": similarity_score_ref_authors,
+                       "sim_ref": similarity_score_ref_text,
+                       "sim_reftitle": similarity_score_ref_title,
+                       "sim_srctitle": similarity_score_ref_sourcetitle,
+                       "art_title": item_title,
+                       "ref_text": self.ref_text, 
+                       "ref_text_match": item_reftext
+                     }
+        return ret_val, considered
     #------------------------------------------------------------------------------------------------------------
     def get_ref_correction(self, ocd, verbose=False):
         """
