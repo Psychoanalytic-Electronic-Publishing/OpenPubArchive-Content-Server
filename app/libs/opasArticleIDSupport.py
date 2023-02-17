@@ -237,8 +237,8 @@ class ArticleID(BaseModel):
                 if self.art_issue_int is not None:
                     if self.art_issue_int > 0:
                         altVolSuffix = string.ascii_uppercase[self.art_issue_int-1]
-                
-            if not self.is_supplement and self.art_issue_alpha_code != "":
+
+            if self.art_issue_alpha_code != "":
                 # an issue code was specified (but not supplement or "S")
                 converted = parse_issue_code(self.art_issue_alpha_code, source_code=self.src_code, vol=self.art_vol_int)
                 if converted.isdecimal() and self.art_issue_int is None:
@@ -559,6 +559,8 @@ class ArticleInfo(BaseModel):
             self.src_code = basic_art_info.src_code
             if basic_art_info.art_issue_int is not None and basic_art_info.art_issue_int != 0:
                 self.art_issue = str(basic_art_info.art_issue_int)
+            elif basic_art_info.is_supplement:
+                self.art_issue = "Supplement"
             else:
                 self.art_issue = None
 
@@ -998,7 +1000,7 @@ class ArticleInfo(BaseModel):
                 if isinstance(self.art_qual, list):
                     self.art_qual = str(self.art_qual[0])
                     
-                if self.art_qual != self.art_id:
+                if self.art_qual != self.art_id and self.src_is_book:
                     self.bk_subdoc = True
                 else:
                     self.bk_subdoc = False

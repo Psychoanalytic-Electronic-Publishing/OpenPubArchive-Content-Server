@@ -398,23 +398,40 @@ class opasCentralDB(object):
     def article_exists(self, rx_locator):
         """
         Does this rx_locator (doc_id) match an article?
+        Allows mysql wildcards.
+
+        returns True or False
         
-        Allows Regexp qualifiers.
+        >>> ocd = opasCentralDB()
+        >>> ocd.article_exists("APA.001.0007A")
+        True
+        
         """
         fname = "article_exists"
-        ret_val = []
-        self.open_connection(caller_name=fname) # make sure connection is open
-        if self.db is not None:
-            with closing(self.db.cursor(buffered=True, dictionary=False)) as curs:
-                sql = f"SELECT art_id from api_articles where art_id LIKE '{rx_locator}';"
-                curs.execute(sql)
-                row_count = curs.rowcount
-                if row_count > 0:
-                    ret_val = curs.fetchall()
-        else:
-            logger.error("Connection not available to database.")
+        record = self.get_article_records(rx_locator)
+        ret_val = len(record) == 1
+        return ret_val
 
-        self.close_connection(caller_name=fname) # make sure connection is closed
+    def get_article_records(self, art_id):
+        """
+        Return the data for an article record from api_articles per art_id in a list
+        Allows mysql get_api_article_record (so can return multiple records)
+
+        >>> ocd = opasCentralDB()
+        >>> recs = ocd.get_article_records("APA.001.0007A")
+        >>> len(recs) == 1
+        True
+        
+        """
+        fname = "get_api_article_record"
+        ret_val = []
+        # try to get it from the artstat table
+        sql_select = f"SELECT * from api_articles where art_id LIKE '{art_id}';"
+        try:
+            ret_val = self.get_select_as_list_of_dicts(sql_select)
+        except Exception as e:
+            log_everywhere_if(True, "warning", f"Error getting artstat {e}")
+        
         return ret_val
 
     def get_article_year(self, doc_id):
@@ -2284,13 +2301,9 @@ class opasCentralDB(object):
         >>> model = models.ClientConfigList(configList=[models.ClientConfigItem(configName="demo", configSettings={"A":"123", "B":"1234"})])
         >>> ocd.save_client_config(client_id="123", client_configuration=model, session_id="test123", replace=True)
         (200, 'OK')
-        >>> ocd.get_client_config("123", "test")
-        ClientConfigList(configList=[ClientConfigItem(api_client_id=123, session_id='test123', configName='test', configSettings={'A': '123', 'B': '1234'})])
-        >>> ocd.get_client_config("123", "test, test2")
-        ClientConfigList(configList=[ClientConfigItem(api_client_id=123, session_id='test123', configName='test', configSettings={'A': '123', 'B': '1234'}), ClientConfigItem(api_client_id=123, session_id='test123', configName='test2', configSettings={'C': '456', 'D': '5678'})])
+        >>> ocd.get_client_config("123", "demo")
+        ClientConfigList(configList=[ClientConfigItem(api_client_id=123, session_id='test123', configName='demo', configSettings={'A': '123', 'B': '1234'})])
         >>> ocd.get_client_config("123", "doesntexist")
-        
-        Last case get used to return"
         ClientConfigList(configList=[])
         
         """

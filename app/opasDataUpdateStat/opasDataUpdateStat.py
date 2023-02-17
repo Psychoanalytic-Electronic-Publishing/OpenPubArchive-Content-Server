@@ -3,9 +3,9 @@
 # To run:
 #     python3 updateSolrviewData
 __author__      = "Neil R. Shapiro"
-__copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
+__copyright__   = "Copyright 2019-2023, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.0618/v1.1.8"
+__version__     = "2023.0212/v1.1.10" # watch/avoid empty ids
 __status__      = "Beta"
 
 programNameShort = "opasDataUpdateStat"
@@ -244,8 +244,9 @@ class opasCentralDBMini(object):
             # Get citation lookup table
             try:
                 cursor = self.db.cursor(pymysql.cursors.DictCursor)
+                # 2023-02-12 Watch out for Null and empty doc ids
                 sql = """
-                      SELECT cited_document_id, count5, count10, count20, countAll from vw_stat_cited_crosstab; 
+                      SELECT cited_document_id, count5, count10, count20, countAll from vw_stat_cited_crosstab where cited_document_id is not Null and cited_document_id != ''; 
                       """
                 success = cursor.execute(sql)
                 if success:
@@ -285,16 +286,19 @@ def load_unified_article_stat():
         except Exception as e:
             logger.error("opasDataUpdateStatLoadError: no document id")
         else:
-            unified_article_stat[doc_id] = ArticleStat(
-                art_cited_5 = n.get("count5", 0), 
-                art_cited_10 = n.get("count10", 0), 
-                art_cited_20 = n.get("count20", 0), 
-                art_cited_all = n.get("countAll", 0)
-            ) 
+            if doc_id:
+                unified_article_stat[doc_id] = ArticleStat(
+                    art_cited_5 = n.get("count5", 0), 
+                    art_cited_10 = n.get("count10", 0), 
+                    art_cited_20 = n.get("count20", 0), 
+                    art_cited_all = n.get("countAll", 0)
+                )
+            else:
+                logger.error(f"Doc ID Error: '{doc_id}'")
             
     for n in most_viewed:
         doc_id = n.get("document_id", None)
-        if doc_id is not None:
+        if doc_id:
             try:
                 unified_article_stat[doc_id].art_views_update = True
                 unified_article_stat[doc_id].art_views_lastcalyear = n.get("lastcalyear", None)
@@ -310,6 +314,8 @@ def load_unified_article_stat():
                 unified_article_stat[doc_id].art_views_last6mos = n.get("last6months", None) 
                 unified_article_stat[doc_id].art_views_last1mos = n.get("lastmonth", None)
                 unified_article_stat[doc_id].art_views_lastweek = n.get("lastweek", None)
+        else:
+            logger.error(f"Doc ID Error: '{doc_id}'")
                 
 def update_solr_stat_data(solrcon, all_records:bool=False):
     """
@@ -324,6 +330,9 @@ def update_solr_stat_data(solrcon, all_records:bool=False):
     
     for key, art_stat in unified_article_stat.items():
         remaining_count -= 1
+        if not key or "?" in key:
+            print (f"Key Error (skipping): '{key}': {art_stat}")
+            continue
             
         if all_records==False:
             if not art_stat.art_views_update:

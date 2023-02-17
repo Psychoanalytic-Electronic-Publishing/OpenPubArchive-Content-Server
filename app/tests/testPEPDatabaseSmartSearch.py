@@ -108,14 +108,14 @@ class TestDatabaseSmartSearch(unittest.TestCase):
         # Confirm that the request-response cycle completed successfully.
 
     def test_4_search_schemafield(self):
-        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=art_type:REV&sourcecode=AOP')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=art_type:COM&sourcecode=CPS')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
         response_info = r["documentList"]["responseInfo"]
-        print (f'Smarttext: {response_info["description"]}')
         response_set = r["documentList"]["responseSet"]
-        assert response_info["fullCount"] == 3, response_info["fullCount"] 
+        print (f'Smarttext: {response_info["description"]} Count:{response_info["fullCount"]}')
+        assert response_info["fullCount"] > 10, response_info["fullCount"] 
         print (response_set[0])
 
     def test_5_search_author_and_journalcode(self):

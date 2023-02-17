@@ -108,6 +108,14 @@ class TimePeriod(Enum):
     alltime = 'all'
 
 #--------------------------------------------------------------------
+# ArticleIfno, pydantic model defined in opasArticleIDSupport
+#--------------------------------------------------------------------
+#class ArticleInfo(BaseModel):
+    #"""
+    #An entry from a documents metadata.
+    #See opasArticleIDSupport for model and supporting functions
+    #"""    
+#--------------------------------------------------------------------
 # Biblio records, moved from modelsOpasCentralPydantic
 #--------------------------------------------------------------------
 class BiblioxmlGeneric(BaseModel):
@@ -117,23 +125,26 @@ class Biblioxml(BaseModel):
     art_id: str = Field(None, title="Article ID (locator) of the instance containing the reference")
     ref_local_id: str = Field(None, title="ID of the be or binc element in the instance")
     art_year: Optional[int]
-    art_title: str = Field(None)
     ref_rx: str = Field(None)
     ref_rx_confidence: float = Field(0, title="Confidence level of assigned rx. Manual QA = 1, code parsed = .99, Heuristic = .1 to .97")
     ref_rxcf: str = Field(None, title="List of possible article ID codes for this reference")
     ref_rxcf_confidence: float = Field(0, title="Max confidence level of rxcf codes")
-    ref_rxp: str = Field(None, title="Previous system method to correct rx value without overwriting.  Will now use to figure correct rx")
-    ref_rxp_confidence: float = Field(0, title="rxp confidence value")
     ref_sourcecode: str = Field(None)
+    last_update: datetime = Field(None)
     ref_authors: str = Field(None)
     ref_authors_xml: str = Field(None)
+    ref_link_source: str = Field(None, title="Source of rx link, 'xml', 'database', or 'pattern'")
     # ref_articletitle: str = Field(None)
+    art_title: str = Field(None)
+    ref_rxp: str = Field(None, title="Previous system method to correct rx value without overwriting.  Will now use to figure correct rx")
+    ref_rxp_confidence: float = Field(0, title="rxp confidence value")
     ref_text: str = Field(None)
     ref_sourcetype: str = Field(None, title="journal, book, unknown") # could add video
     ref_is_book: bool = Field(False)
     ref_sourcetitle: str = Field(None)
     ref_authors_xml: str = Field(None)
     ref_xml: str = Field(None)
+    # ref_xml_corrected: bool = Field(False) No longer needed 2023-02-16 (references have been integrated into KBD3 XML)
     ref_pgrg: str = Field(None)
     ref_pgstart: str = Field("")
     ref_doi: Optional[str]
@@ -146,12 +157,12 @@ class Biblioxml(BaseModel):
     ref_publisher: str = Field(None)
     ref_in_pep: bool = Field(False, title="Indicates this is a PEP reference")
     ref_exists: bool = Field(False, title="Indicates this ref link has been verified")
-    ref_link_source: str = Field(None, title="Source of rx link, 'xml', 'database', or 'pattern'")
     link_updated: bool = Field(False, title="Indicates whether the data was corrected during load. If so, may need to update DB.")
     record_updated: bool = Field(False)
     link_updated: bool = Field(False, title="Indicates whether the data was corrected during load. If so, may need to update DB.  See link_source for method")
+    skip_incremental_scans: Optional[bool] # Field(False, title="Use to skip for speed during normal scans. Can reset it (in bulk) for a full rescan--in that way it's different than NEVERMORE")
+    skip_reason: str = Field(None)
     parsed_ref: Optional[object]
-    last_update: datetime = Field(None)
 
 #-------------------------------------------------------
 # Error Return classes (Can also return "No Error", 200 httpcode)

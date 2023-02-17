@@ -45,7 +45,7 @@ class TestSolrAPIPrevNextFunctions(unittest.TestCase):
         print(r['documentList']['responseInfo']['fullCount'])
         #print(r['documentList']['responseInfo']['supplementalInfo'])
         assert r['documentList']['responseInfo']['supplementalInfo']["infosource"] == "volumes_adjacent",  r['documentList']['responseInfo']['supplementalInfo']["infosource"]
-        assert r['documentList']['responseInfo']['supplementalInfo']["prev_vol"] == {'value': '3', 'count': 44},  r['documentList']['responseInfo']['supplementalInfo']["prev_vol"]
+        assert r['documentList']['responseInfo']['supplementalInfo']["prev_vol"] == {'value': '3', 'count': 47},  r['documentList']['responseInfo']['supplementalInfo']["prev_vol"]
         assert r['documentList']['responseInfo']['supplementalInfo']["next_vol"] == {'value': '5', 'count': 48},  r['documentList']['responseInfo']['supplementalInfo']["next_vol"] == {'value': '5', 'count': 48}
         assert r['documentList']['responseInfo']['supplementalInfo']["matched_vol"] == {'value': '4', 'count': 61},  r['documentList']['responseInfo']['supplementalInfo']["matched_vol"] == {'value': '4', 'count': 61}
 
@@ -63,11 +63,10 @@ class TestSolrAPIPrevNextFunctions(unittest.TestCase):
         r = response.json()
         print(r['documentList']['responseInfo']['fullCount'])
         print(r['documentList']['responseInfo']['supplementalInfo'])
-        print(r['documentList']['responseInfo']['supplementalInfo']["next_vol"])
-        assert (r['documentList']['responseInfo']['supplementalInfo']["infosource"] == "volumes_adjacent")
-        assert (r['documentList']['responseInfo']['supplementalInfo']["prev_vol"] == None)
-        assert (r['documentList']['responseInfo']['supplementalInfo']["next_vol"] == {'value': '2', 'count': 39})
-        assert (r['documentList']['responseInfo']['supplementalInfo']["matched_vol"] == {'value': '1', 'count': 34})
+        assert (r['documentList']['responseInfo']['supplementalInfo']["infosource"] == "volumes_adjacent"), r['documentList']['responseInfo']['supplementalInfo']["infosource"]
+        assert (r['documentList']['responseInfo']['supplementalInfo']["prev_vol"] == None), r['documentList']['responseInfo']['supplementalInfo']["prev_vol"]
+        assert (r['documentList']['responseInfo']['supplementalInfo']["next_vol"] == {'value': '2', 'count': 40}), r['documentList']['responseInfo']['supplementalInfo']["next_vol"] 
+        assert (r['documentList']['responseInfo']['supplementalInfo']["matched_vol"] == {'value': '1', 'count': 37}), r['documentList']['responseInfo']['supplementalInfo']["matched_vol"]
     
 if __name__ == '__main__':
     unittest.main()

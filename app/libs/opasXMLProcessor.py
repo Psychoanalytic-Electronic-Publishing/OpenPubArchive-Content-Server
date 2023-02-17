@@ -440,7 +440,7 @@ def update_biblio_links(parsed_xml, artInfo, ocd, pretty_print=False, verbose=Fa
             bib_updated_from_db = bib_entry.compare_to_database(ocd)
             if bib_entry.link_updated:
                 ret_val += 1
-                if bib_entry.link_updated:
+                if bib_entry.link_updated: # update xml (not db, info was from db))
                     if bib_entry.ref_rx is None or not bib_entry.ref_exists:
                         try:
                             del ref.attrib["rx"]
@@ -517,11 +517,7 @@ def update_bincs(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
             
             # merge record info
             bib_total_reference_count += 1
-            #bib_entry = opasSolrLoadSupport.BiblioEntry(artInfo.art_id, parsed_ref)
             bib_entry = opasBiblioSupport.BiblioEntry(art_id=artInfo.art_id, art_year=artInfo.art_year_int, ref_or_parsed_ref=parsed_ref)
-            #if bib_entry.sourcecode is None:
-                #if isinstance(bib_entry.source_title, str) and not opasgenlib.is_empty(bib_entry.source_title):
-                    #bib_entry.sourcecode, dummy, dummy = gJrnlData.getPEPJournalCode(strText=bib_entry.source_title) 
 
             try:
                 if not opasgenlib.is_empty(bib_entry.ref_pgrg):
@@ -593,39 +589,14 @@ def update_bincs(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
                     pep_ref = False
                     if PEPJournalData.PEPJournalData.rgxSEPat2.match(bib_entry.ref_sourcetitle) or PEPJournalData.PEPJournalData.rgxSEPat.match(bib_entry.ref_sourcetitle):
                         pep_ref = True
-                        bib_entry.sourcecode = "SE"
+                        bib_entry.ref_sourcecode = "SE"
                     elif PEPJournalData.PEPJournalData.rgxGWPat2.match(bib_entry.ref_sourcetitle):
                         pep_ref = True
-                        bib_entry.sourcecode = "GW"
-                    
-                    #try checking this anyway!
-                    #if bib_entry.ref_sourcetitle:
-                        ## find_related_articles assigns to ref attrib rxcf (hence no need to use return val)
-                        #if gDbg2 and verbose: print (f"\t...Finding related articles for bibliography based on source_title")
-                        ## called routine updates ref if found
-                        #rxcf = find_related_articles(parsed_ref,
-                                                     #art_or_source_title=bib_entry.ref_sourcetitle,
-                                                     #query_target="art_title_xml",
-                                                     #max_words=opasConfig.MAX_WORDS,
-                                                     #min_words=opasConfig.MIN_WORDS,
-                                                     #word_len=opasConfig.MIN_WORD_LEN,
-                                                     #max_cf_list=opasConfig.MAX_CF_LIST)
-
-                        #if rxcf == [] and bib_entry.ref_title:
-                            #rxcf = find_related_articles(parsed_ref,
-                                                         #art_or_source_title=bib_entry.ref_title,
-                                                         #query_target="art_title_xml",
-                                                         #max_words=opasConfig.MAX_WORDS,
-                                                         #min_words=opasConfig.MIN_WORDS,
-                                                         #word_len=opasConfig.MIN_WORD_LEN,
-                                                         #max_cf_list=opasConfig.MAX_CF_LIST)
-                            
-                            
-                    # elif bib_entry.ref
-    
+                        bib_entry.ref_sourcecode = "GW"
+                       
                     if pep_ref:
                         locator = Locator(strLocator=None,
-                                           jrnlCode=bib_entry.sourcecode, 
+                                           jrnlCode=bib_entry.ref_sourcecode, 
                                            jrnlVolSuffix="", 
                                            jrnlVol=bib_entry.ref_volume, 
                                            jrnlIss=None, 

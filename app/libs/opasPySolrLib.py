@@ -2436,7 +2436,7 @@ def metadata_get_next_and_prev_articles(art_id=None,
     if article_id.art_vol_int is not None:
         query += f" && art_vol:{article_id.art_vol_int}"
         
-    if article_id.art_issue_int != 0:
+    if article_id.art_issue_int:
         query += f" && art_iss:{article_id.art_issue_int}"  # just the number representation, 1-n
     elif article_id.art_issue_alpha_code != '':
         query += f" && art_iss:{article_id.art_issue_alpha_code}*" # could be S, or A, B, C..., but issue_code could be spelled out supplement
@@ -2474,6 +2474,7 @@ def metadata_get_next_and_prev_articles(art_id=None,
                     next_art = results.docs[count+1]
                 except:
                     next_art = {}
+                break
             else:
                 count += 1
                 continue
@@ -2772,7 +2773,7 @@ def metadata_get_volumes(source_code=None,
                 "facet.mincount":1,
                 "facet.sort":"art_year asc",
                 "facet.limit": facet_limit,
-                "rows":row_limit, 
+                "rows":20 # row_limit, 
                 #"start":offset
               }
 

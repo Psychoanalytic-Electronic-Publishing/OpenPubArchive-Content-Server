@@ -749,7 +749,30 @@ def find_s3_file(bucket=r'pep-web-xml',
                     break
 
     return ret_val            
+
+def get_build_name(filename, with_markup=True):
+    """
+    Return the build name with the encapsulating markup (parens and b prefix) by default,
+    e.g.,
+      (bEXP_ARCH1)
+      
+    >>> get_build_name("GW.001.0000A(bEXP_ARCH1).xml")
+    '(bEXP_ARCH1)'
+    
+    >>> get_build_name("GW.001.0000A(bEXP_ARCH1).xml", with_markup=False)
+    'EXP_ARCH1'
+
+    """
+    m = re.search(r"\(b(?P<bldname>.*?)\)", filename)
+    if m:
+        if with_markup:
+            ret_val = f'(b{m.group("bldname")})'
+        else:
+            ret_val = m.group("bldname")
+    else:
+        ret_val = None
         
+    return ret_val
 
 def iterate_bucket_items(bucket):
     """

@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2023, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2023.0211/v2.1.009"   # Requires update to api_biblioxml and views based on it.
+__version__     = "2023.0215/v2.1.010"   # Requires update to api_biblioxml and views based on it.
 __status__      = "Development"
 
 # !!! IMPORTANT: Increment opasXMLProcessor version (if version chgd). It's written to the XML !!!
@@ -791,7 +791,8 @@ def main():
                 except KeyError as e:
                     inputfilename = str(n.filespec)
                 
-                outputfilename = inputfilename.replace(opasConfig.DEFAULT_INPUT_BUILD, selected_output_build) # was opasConfig.DEFAULT_OUTPUT_BUILD)
+                outputfilename = inputfilename.replace(opasFileSupport.get_build_name(inputfilename),
+                                                       selected_output_build) # was opasConfig.DEFAULT_OUTPUT_BUILD)
                 # ###############################################################################
                 # Check if:
                 #   - output (precompiled markup) file doesn't exist

@@ -293,7 +293,11 @@ def normalize_val(val, val_dict, default=None):
 # Special relatedrx field name from Solr schema
 RELATED_RX_FIELDNAME = "art_qual"
 # standard confidence values with implied meaning
-RX_CONFIDENCE_POSITIVE = 1                        # human verified
+RX_CONFIDENCE_POSITIVE = 1                        # human verified, no need to update
+RX_CONFIDENCE_NEVERMORE = .01                     # use this value to manually flag a reference so 
+                                                  # it is not included in scans, it will NEVER be in PEP.
+                                                  # (if wrong, just delete the value and it will 
+                                                  # be included again!)
 RX_CONFIDENCE_AUTO_VERY_LIKELY = .99              # as sure as possible, automatically
 RX_CONFIDENCE_PROBABLE = .91                      # target exists and likely right
 RX_CONFIDENCE_PARSED_PROBABLE = .89               # string parsed (missing markup) target likely right
@@ -315,6 +319,7 @@ RX_LINK_SOURCE_PATTERN = "pattern"
 RX_LINK_SOURCE_VARIATION = "variation"
 RX_LINK_SOURCE_HEURISTIC = "heuristic"
 RX_LINK_SOURCE_TITLE_HEURISTIC = "title heuristic"
+RX_LINK_SOURCE_TITLE_WEIGHTED = "title wtd heuristic"
 RX_LINK_SOURCE_RX = "in rx"
 
 # OR'd list RE of terms to not match in the documents for glossary items
@@ -1117,7 +1122,7 @@ gSplitBooks = {
     "IPL118" : 0,
     "NLP001" : 0,
     "NLP003" : 0,
-    "NLP005" : 1,
+    "NLP005" : 0,
     "NLP011" : 0,
     "NLP014" : 0,
     "GW001"  : 0,
