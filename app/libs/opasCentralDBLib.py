@@ -950,7 +950,7 @@ class opasCentralDB(object):
         self.open_connection(caller_name="get_select_count") # make sure connection is open
         ret_val = None
 
-        sqlSelect = re.sub("SELECT .+? FROM", "SELECT COUNT(*) AS FULLCOUNT FROM", sqlSelect, count=1, flags=re.IGNORECASE)
+        sqlSelect = re.sub("SELECT[ \n\*]*?FROM", "SELECT COUNT(*) AS FULLCOUNT FROM", sqlSelect, count=1, flags=re.IGNORECASE)
         try:
             if self.db is not None:
                 with closing(self.db.cursor(buffered=True, dictionary=True)) as cursor:

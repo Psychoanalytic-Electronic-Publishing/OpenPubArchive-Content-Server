@@ -5,7 +5,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2023"
 __license__     = "Apache 2.0"
-__version__     = "2023.0216/v1.0.008"   
+__version__     = "2023.0217/v1.0.009"   
 __status__      = "Development"
 
 programNameShort = "opasDataLinker"
@@ -26,9 +26,24 @@ help_text = (
                 $ python opasDataLinker.py
                 
         Important option choices:
-         -h, --help         List all help options
-         -a                 Process all records
-         --key:             Do just records with the specified PEP locator (e.g., --key AIM.076.0309A)
+         -h, --help        List all help options
+         -a                Process all records
+         
+         Filters
+         --nightly         Process records added since the day before
+         --key             Process records with the specified PEP article id, regex allowed (e.g., --key AIM.076.0309A)
+         --type            Process type 'books' or 'journals' only (abbr. b or j)
+         --where           Process by conditional against api_biblioxml table, e.g., ref_year > 2010
+         
+         
+         Processing Order
+         --reverse         Process in reverse order by article id, local id
+         --oldest          Process oldest (in terms of last updated) biblio records first
+
+        After running opasDataLinker, running opasDataLoader with the --smartbuild option will
+            reprocess any articles which have new links in api_biblioxml, building new compiled (output)
+            xml files for those with the link data embedded.
+         
 """)
     
 import sys
@@ -39,8 +54,12 @@ sys.path.append('../libs/configLib')
 # import string, sys, copy, re
 import logging
 logger = logging.getLogger(__name__)
-# import re
+import re
 import time
+import datetime
+today = datetime.date.today()  # Get today's date
+yesterday = today - datetime.timedelta(days=1)  # Subtract one day from today's date
+
 from optparse import OptionParser
 from loggingDebugStream import log_everywhere_if
 
@@ -73,6 +92,7 @@ sqlSelect = ""
 def walk_through_reference_set(ocd=ocd,
                                sql_set_select = "select * from api_biblioxml where art_id='CPS.031.0617A' and ref_local_id='B022'",
                                set_description = "All",
+                               halfway=False, 
                                verbose=True
                                ):
     """
@@ -96,7 +116,16 @@ def walk_through_reference_set(ocd=ocd,
     if ocd.db is not None:
         cumulative_time_start = time.time()
         # rows = self.SQLSelectGenerator(sqlSelect)
-        biblio_entries = ocd.get_references_select_biblioxml(sql_set_select)
+        print ("Finding candidate references...")
+        if halfway:
+            total_count = ocd.get_select_count(sql_set_select)
+            count = round(total_count / 2)
+            limit_clause = f" \nLIMIT {count}"
+            print (f"Limiting to halfway--{count} of {total_count} references.")
+        else:
+            limit_clause = ""
+            
+        biblio_entries = ocd.get_references_select_biblioxml(sql_set_select + limit_clause)
         print (f"Scanning {len(biblio_entries)} references in api_biblioxml to find new links.")
         counter = 0
         updated_record_count = 0
@@ -124,11 +153,11 @@ def walk_through_reference_set(ocd=ocd,
                     bib_entry.lookup_title_in_db(ocd)
                     bib_entry.identify_heuristic(verbose=verbose)
                     if bib_entry.ref_rx is not None:
-                        if verbose: print (f"\t...Matched Reference ID: {bib_entry.ref_rx} Confidence {bib_entry.ref_rx_confidence} Link Updated: {bib_match.link_updated}")
+                        if verbose: print (f"\t...Matched Reference ID: {bib_entry.ref_rx} Confidence {bib_entry.ref_rx_confidence} Link Updated: {bib_entry.link_updated}")
                 elif bib_entry.ref_rx == .01:
-                    if verbose: print (f"\t...Skipping Marked 'RX_CONFIDENCE_NEVERMORE (.01)' Reference ID: {bib_match.ref_rx} Confidence {bib_match.ref_rx_confidence}")
+                    if verbose: print (f"\t...Skipping Marked 'RX_CONFIDENCE_NEVERMORE (.01)' Reference ID: {bib_entry.ref_rx} Confidence {bib_entry.ref_rx_confidence}")
                 else:
-                    if verbose: print (f"Checking ref_rx from xml for accuracy")
+                    if verbose: print (f"\t...Checking ref_rx from xml for accuracy")
                     bib_entry.compare_to_database(ocd)
                     bib_entry.lookup_more_exact_artid_in_db(ocd)
                     if verbose: print (f"\t...Reference ID: {bib_entry.ref_rx} Confidence {bib_entry.ref_rx_confidence} Link Updated: {bib_entry.link_updated} Record Updated: {bib_entry.record_updated}")
@@ -236,13 +265,16 @@ if __name__ == "__main__":
                       help="Option to force all records to be checked.")
 
     parser.add_option("--after", dest="added_after", default=None,
-                      help="Check art biblios created or modifed after this datetime (use YYYY-MM-DD format).")
+                      help="Check biblio records last modified AFTER after this datetime (use YYYY-MM-DD format).")
 
     parser.add_option("--before", dest="scanned_before", default=None,
-                      help="Check records scanned before this datetime (use YYYY-MM-DD format).")
+                      help="Check biblio records last modified BEFORE this datetime (use YYYY-MM-DD format).")
 
     parser.add_option("--key", dest="file_key", default=None,
                       help="Key for a single file to load, e.g., AIM.076.0269A.  Use in conjunction with --sub for faster processing of single files on AWS")
+
+    parser.add_option("--type, -t", dest="source_type", default=None,
+                      help="Source Type to analyze, i.e., book or journal")
 
     parser.add_option("-u", "--unlinked", action="store_true", dest="unlinked_refs", default=False,
                       help="Check unlinked references")
@@ -252,9 +284,18 @@ if __name__ == "__main__":
 
     parser.add_option("--where", dest="where_condition", default=None,
                       help="Add your own SQL clause to the search of api_biblioxml")
+    
+    parser.add_option("-n", "--nightly", dest="nightly_includes", action="store_true", default=False,
+                      help="Check references in only the new articles added since yesterday")
+    
+    parser.add_option("-o", "--oldest", dest="run_oldest_first", action="store_true", default=False,
+                      help="Whether to run the selected files in reverse order of last update (otherwise by art_id/local_id)")
+
+    parser.add_option("--halfway", action="store_true", dest="halfway", default=False,
+                      help="Only process halfway through (e.g., when running forward and reverse.")
 
     parser.add_option("-r", "--reverse", dest="run_in_reverse", action="store_true", default=False,
-                      help="Whether to run the selected files in reverse order of last update (otherwise by art_id/local_id)")
+                      help="Whether to run the selected files in reverse order")
 
     # --load option still the default.  Need to keep for backwards compatibility, at least for now (7/2022)
 
@@ -278,17 +319,35 @@ if __name__ == "__main__":
     else:
         unlinked_ref_clause = ''
 
+    #suggested by chatdpt as legal in mysql but doesn't work in mysql
+    #limit_clause = ""
+    #if options.halfway:
+        ## need to see how many references there are and divide by 2
+        #limit_clause = "LIMIT (SELECT COUNT(*) * 0.5 FROM api_biblioxml)"
+
+    type_clause = ""
+    if options.source_type:
+        if options.source_type[0].upper() == "B":
+            type_clause = "and ref_sourcetype = 'book'"
+            print ("Checking reference type = books")
+        elif options.source_type[0].upper() == "J":
+            type_clause = "and ref_sourcetype = 'journal'"
+            print ("Checking reference type = journals")
+
     skip_for_incremental_scans = "and skip_incremental_scans is NULL"
 
+    # scan articles matching art_id (single) or with regex wildcard (multiple)
     biblio_refs_matching_artid = f"""select *
                                      from api_biblioxml
                                      where art_id RLIKE '%s'
                                      and ref_rx_confidence != {opasConfig.RX_CONFIDENCE_NEVERMORE}
                                      {skip_for_incremental_scans}
                                      {unlinked_ref_clause}
+                                     {type_clause}
                                      %s
                                   """
-    
+
+    # scan articles added after date
     biblios_for_articles_after = f"""select *
                                      from api_biblioxml as bib, api_articles as art
                                      where bib.art_id=art.art_id
@@ -296,56 +355,80 @@ if __name__ == "__main__":
                                      and art.last_update >= '%s'
                                      and ref_rx_confidence != {opasConfig.RX_CONFIDENCE_NEVERMORE}
                                      {unlinked_ref_clause}
+                                     {type_clause}
                                      %s
                                   """
-    
+    # scan articles with bib entries updated before date
     biblio_refs_updated_before = f"""select *
                                      from api_biblioxml as bib
                                      where bib.last_update < '%s'
                                      {skip_for_incremental_scans}
                                      and ref_rx_confidence != {opasConfig.RX_CONFIDENCE_NEVERMORE}
                                      {unlinked_ref_clause}
+                                     {type_clause}
                                      %s
                                   """
 
+    # user supplied conditional clause
     biblio_refs_advanced_query = f"""select *
                                      from api_biblioxml as bib
                                      where ref_rx_confidence != {opasConfig.RX_CONFIDENCE_NEVERMORE}
                                      {skip_for_incremental_scans}
                                      {unlinked_ref_clause}
+                                     {type_clause}
                                      %s
                                   """
-    
-    if options.run_in_reverse:
-        print ("Scanning records by last update--oldest first.")
-        addon_to_query = "order by last_update ASC" # oldest first
-    else:
-        addon_to_query = "order by art_id ASC, ref_local_id ASC"
 
+    biblio_refs_nightly = f"""SELECT api_biblioxml.*
+                             FROM
+                             api_biblioxml, article_tracker
+                             WHERE
+                             article_tracker.art_id = api_biblioxml.art_id
+                             and article_tracker.date_inserted >= '{yesterday}'
+                             {type_clause}
+                             {unlinked_ref_clause}
+                           """
+
+    if options.run_in_reverse:
+        print ("Reverse order option selected.")
+        direction = "DESC"
+    else:
+        direction = "ASC"
+
+    # run in order of article bib entry updates least recently updated first
+    if options.run_oldest_first:
+        print ("Scanning biblio table records by last update--oldest first.")
+        addon_to_query = f"order by last_update ASC" # oldest first
+    else:
+        print (f"Scanning biblio table records in {direction} order.")
+        addon_to_query = f"order by art_id {direction}, ref_local_id {direction}"
+        
     if options.testmode:
         import doctest
         doctest.testmod()
         print ("Fini. opasDataLoader Tests complete.")
         sys.exit()
 
-    if options.file_key:
+    if options.nightly_includes:
+        query = biblio_refs_nightly
+        print (f"Nightly build option selected. Processing article references added since {yesterday}")
+    elif options.file_key:
         query = biblio_refs_matching_artid % (options.file_key, addon_to_query)
-
-    if options.process_all:
-        query = biblio_refs_matching_artid % ('.*', addon_to_query)
-
-    if options.added_after:
+        print (f"Article ID specified. Processing articles matching {options.file_key} ")
+    elif options.added_after:
         query = biblios_for_articles_after % (options.added_after, addon_to_query)
-
-    if options.scanned_before:
+        print (f"Nightly build option selected. Processing articles added after {options.added_after}")
+    elif options.scanned_before:
         query = biblio_refs_updated_before % (options.scanned_before, addon_to_query)
-        
-    if options.unlinked_refs:
+    elif options.unlinked_refs:
         query = biblio_refs_updated_before % (options.scanned_before, addon_to_query)
-
-    if options.where_condition:
+    elif options.where_condition:
         query = biblio_refs_advanced_query % (f" AND {options.where_condition}")
+        print (f"Processed records limited by --where condition: ' AND {options.where_condition}'")
+    else: # options.process_all:
+        query = biblio_refs_matching_artid % ('.*', addon_to_query)
+        print (f"Processing ALL article references")
     
-    walk_through_reference_set(ocd, set_description=f"Key: {options.file_key}", sql_set_select=query)
+    walk_through_reference_set(ocd, set_description=f"Key: {options.file_key}", sql_set_select=query, halfway=options.halfway)
     print ("Finished!")
     
