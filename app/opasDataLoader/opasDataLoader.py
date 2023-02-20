@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2023, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2023.0215/v2.1.010"   # Requires update to api_biblioxml and views based on it.
+__version__     = "2023.0220/v2.1.011"   # Requires update to api_biblioxml and views based on it.
 __status__      = "Development"
 
 # !!! IMPORTANT: Increment opasXMLProcessor version (if version chgd). It's written to the XML !!!
@@ -1049,11 +1049,12 @@ def main():
                     # Uses new views: vw_article_firstsectnames which is based on the new view vw_article_sectnames
                     #  if an article id is found in that view, it's the first in the section, otherwise it isn't
                     # check database to see if this is the first in the section
-                    #if not opasSolrLoadSupport.check_if_start_of_section(ocd, artInfo.art_id):
-                        ## print (f"\t\t...NewSec Workaround: Clearing newsecnm for {artInfo.art_id}")
-                        #artInfo.start_sectname = None # clear it so it's not written to solr, this is not the first article
-                    #else:
-                        #if options.display_verbose: print (f"\t\t...NewSec {artInfo.start_sectname} found in {artInfo.art_id}")
+                    if 0: # make it switchable for now (newsecnm workaround) in case the workaround needs to stick around a while
+                        if not opasSolrLoadSupport.check_if_start_of_section(ocd, artInfo.art_id):
+                            # print (f"\t\t...NewSec Workaround: Clearing newsecnm for {artInfo.art_id}")
+                            artInfo.start_sectname = None # clear it so it's not written to solr, this is not the first article
+                        else:
+                            if options.display_verbose: print (f"\t\t...NewSec {artInfo.start_sectname} found in {artInfo.art_id}")
                     # -----
 
                     # load the docs (pepwebdocs) core
@@ -1276,7 +1277,9 @@ def main():
 if __name__ == "__main__":
     global options  # so the information can be used in support functions
     options = None
-    parser = OptionParser(usage="%prog [options] - PEP Solr Data Loader", version=f"%prog ver. {__version__}")
+    description = "Load preprocessed XML Data to the PEP-Web Solr and SQL databases (preprocess and load in one step via --smartbuild). "
+    
+    parser = OptionParser(usage="%prog [options]", version=f"%prog ver. {__version__}", description=description)
 
     parser.add_option("-a", "--allfiles", action="store_true", dest="forceRebuildAllFiles", default=False,
                       help="Option to force all files to be loaded to the specified cores.")
@@ -1364,10 +1367,14 @@ will start skipping files since they have already been loaded into Solr in the c
                       dest="randomizer_seed", default=None,
                       help="Seed so data update files don't collide if they start writing at exactly the same time.")
 
-    msg = f"""Rebuild from source (e.g., bKBD3) if necessary, load precompiled XML (e.g., bEXP_ARCH1) if necessary. If inputbuild file is newer, output is missing, or there are changes to 
-the api_biblioxml records, compile and then load into database.  Use together with load to smartbuild if needed AND force
-reload. You can manually fix links in api_biblioxml and they will be loaded into the precompiled XML.
-Set rxcf to 1 for manually corrected links."""
+    msg = f"""Rebuild from source (e.g., bKBD3) if necessary, and load precompiled XML (e.g., bEXP_ARCH1) to
+the databases when new or updated. If inputbuild file is newer, output is missing, or there are changes to 
+the api_biblioxml records, compile and then load into database. Run opasDataLinker once files have been initially
+processed and it will use heuristics to find reference links to articles beyond the basic links added here.
+At any time you can manually fix links in api_biblioxml and they will be loaded into the precompiled XML when
+opasDataLoader is run. Use --smartbuild to automatically check for reference updates in the api_biblioxml table.
+Manually set rx_confidence to 1 for manually corrected links, or to .01 to ignore, and the automated process
+will skip these from then on."""
     parser.add_option("--smartload", "--smartbuild", action="store_true", dest="smartload", default=False,
                       help=msg)
     

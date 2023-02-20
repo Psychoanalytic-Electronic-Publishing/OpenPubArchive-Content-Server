@@ -5,11 +5,10 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2023"
 __license__     = "Apache 2.0"
-__version__     = "2023.0217/v1.0.009"   
+__version__     = "2023.0220/v1.0.010"   
 __status__      = "Development"
 
 programNameShort = "opasDataLinker"
-
 border = 80 * "*"
 print (f"""\n
         {border}
@@ -28,21 +27,33 @@ help_text = (
         Important option choices:
          -h, --help        List all help options
          -a                Process all records
+         --halfway         Process only half the records, so you can run two
+                              instances, one forward, one in reverse
          
          Filters
-         --nightly         Process records added since the day before
-         --key             Process records with the specified PEP article id, regex allowed (e.g., --key AIM.076.0309A)
+         --key             Process biblio records with the key=article-id
+                              or regex (e.g., --key AIM.076.0309A, or AIM.*)
+         --nightly         Process biblio records added since the day before
+         --oldest          Process biblio records least recently updated last
          --type            Process type 'books' or 'journals' only (abbr. b or j)
-         --where           Process by conditional against api_biblioxml table, e.g., ref_year > 2010
+         --unlinked        Process only unlinked (no rx and rxcf data) records
+         --where           Process by conditional against api_biblioxml
+                              table, e.g., ref_year > 2010
          
          
          Processing Order
-         --reverse         Process in reverse order by article id, local id
-         --oldest          Process oldest (in terms of last updated) biblio records first
+         --reverse         Process biblio records in reverse order by
+                              article id, local id
+         --oldest          Process oldest (in terms of last updated) biblio
+                              records first
 
-        After running opasDataLinker, running opasDataLoader with the --smartbuild option will
-            reprocess any articles which have new links in api_biblioxml, building new compiled (output)
-            xml files for those with the link data embedded.
+        After running opasDataLinker, run opasDataLoader with the
+        
+              --smartbuild
+        
+        option to reprocess any articles which have new links
+        from opasDataLinker. This will build new compiled (output) xml files for those
+        with the link data embedded.
          
 """)
     
@@ -117,13 +128,14 @@ def walk_through_reference_set(ocd=ocd,
         cumulative_time_start = time.time()
         # rows = self.SQLSelectGenerator(sqlSelect)
         print ("Finding candidate references...")
+        total_count = ocd.get_select_count(sql_set_select)
         if halfway:
-            total_count = ocd.get_select_count(sql_set_select)
             count = round(total_count / 2)
             limit_clause = f" \nLIMIT {count}"
             print (f"Limiting to halfway--{count} of {total_count} references.")
         else:
             limit_clause = ""
+            count = total_count
             
         biblio_entries = ocd.get_references_select_biblioxml(sql_set_select + limit_clause)
         print (f"Scanning {len(biblio_entries)} references in api_biblioxml to find new links.")
@@ -137,7 +149,7 @@ def walk_through_reference_set(ocd=ocd,
             if ref_model.ref_text:
                 one_line_text = ref_model.ref_text.replace('\n', '')
             last_updated = ref_model.last_update.strftime("%m/%d/%Y")
-            print (f"{counter}:Analyzing Record Last Updated:{last_updated} ID:{ref_model.art_id}/{ref_model.ref_local_id}\nRef:{one_line_text}")
+            print (f"{counter}/{count}:Analyzing Record Last Updated:{last_updated} ID:{ref_model.art_id}/{ref_model.ref_local_id}\nRef:{one_line_text}")
             # parsed_ref = ET.fromstring(ref_model.ref_xml, parser=parser)
             bib_entry = opasBiblioSupport.BiblioEntry(ref_model.art_id, db_bib_entry=ref_model, verbose=verbose)
             art_id = bib_entry.art_id
@@ -257,9 +269,13 @@ def test_runs():
 # run it!
 if __name__ == "__main__":
     global options  # so the information can be used in support functions
-
     options = None
-    parser = OptionParser(usage="%prog [options] - PEP Data Linker", version=f"%prog ver. {__version__}")
+    description = """Process the api_biblioxml table of SQL database opasCentral to find links (and potentially related links) to PEP articles.
+    After running opasDataLinker, run opasDataLoader with the --smartbuild option to reprocess any articles which updated links
+    from opasDataLinker. This will build new compiled (output) xml files for those with the link data embedded.
+    """
+    parser = OptionParser(usage="%prog [options]", version=f"%prog ver. {__version__}",
+                          description=description)
 
     parser.add_option("-a", "--all", action="store_true", dest="process_all", default=False,
                       help="Option to force all records to be checked.")
@@ -277,7 +293,7 @@ if __name__ == "__main__":
                       help="Source Type to analyze, i.e., book or journal")
 
     parser.add_option("-u", "--unlinked", action="store_true", dest="unlinked_refs", default=False,
-                      help="Check unlinked references")
+                      help="Check only unlinked (no rx or rxcf) references")
 
     parser.add_option("-l", "--loglevel", dest="logLevel", default=logging.ERROR,
                       help="Level at which events should be logged (DEBUG, INFO, WARNING, ERROR")
@@ -292,7 +308,7 @@ if __name__ == "__main__":
                       help="Whether to run the selected files in reverse order of last update (otherwise by art_id/local_id)")
 
     parser.add_option("--halfway", action="store_true", dest="halfway", default=False,
-                      help="Only process halfway through (e.g., when running forward and reverse.")
+                      help="Only process half of the references (e.g., to run two instances, one forward and one reverse.)")
 
     parser.add_option("-r", "--reverse", dest="run_in_reverse", action="store_true", default=False,
                       help="Whether to run the selected files in reverse order")
@@ -305,6 +321,13 @@ if __name__ == "__main__":
     parser.add_option("--verbose", action="store_true", dest="display_verbose", default=True,
                       help="Display status and operational timing info as load progresses.")
 
+    import optparse
+    parser.formatter = optparse.IndentedHelpFormatter()
+    # Set the width of the help output
+    parser.formatter.width = 100
+    # Set the width of the option column
+    parser.formatter.help_position = 40
+    parser.formatter.max_help_position = 40
     (options, args) = parser.parse_args()
     # set toplevel logger to specified loglevel
     logger = logging.getLogger()
