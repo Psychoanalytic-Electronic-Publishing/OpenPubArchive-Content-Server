@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2023, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2023.0220/v2.1.011"   # Requires update to api_biblioxml and views based on it.
+__version__     = "2023.0221/v2.1.012"   # Requires update to api_biblioxml2 and views based on it.
 __status__      = "Development"
 
 # !!! IMPORTANT: Increment opasXMLProcessor version (if version chgd). It's written to the XML !!!
@@ -54,7 +54,7 @@ help_text = (
          --inputbuildpattern selection by build of what files to include
          --smartload         see if inputbuild file is newer or missing from db,
                              if so then compile and load, or
-                             if there's changes to this article's records in api_biblioxml
+                             if there's changes to this article's records in api_biblioxml2
                              then compile and load
                              otherwise skip
          --nohelp            Turn off front-matter help (that displays when you run)
@@ -272,7 +272,7 @@ def output_file_needs_rebuilding(outputfilename, inputfilename=None, inputfilesp
     Checks and returns true if:
        - output (precompiled markup) file doesn't exist
        - input file is dated after the output file
-       - if a reference in the biblio (via api_biblioxml) has been updated
+       - if a reference in the biblio (via api_biblioxml2) has been updated
        
     Returns tuple with info:
          input_file_was_updated, infile_exists, outfile_exists, both_same
@@ -306,7 +306,7 @@ def output_file_needs_rebuilding(outputfilename, inputfilename=None, inputfilesp
                 ret_val = True
 
             elif art_id is not None:
-                # get api_biblioxml last add date
+                # get api_biblioxml2 last add date
                 last_update = ocd.get_max_bibrecord_update(art_id)
                     
                 if last_update is None:
@@ -582,7 +582,7 @@ def main():
                 #selected_input_build = options.input_build
                 
             if options.resetCoreData:
-                print("Reset Core Data option selected. As of 2023, it does not clear api_articles nor api_biblioxml. They are cleared via a postprocess program: ", options.resetCoreData)
+                print("Reset Core Data option selected. As of 2023, it does not clear api_articles nor api_biblioxml2. They are cleared via a postprocess program: ", options.resetCoreData)
             
             print(80*"*")
             print(f"Database will be updated. Location: {localsecrets.DBHOST}")
@@ -665,7 +665,7 @@ def main():
             logger.warning(msg)
             print (msg)
             # As of 2023, do not delete RDS/MySQL article data during build
-            # The api_biblioxml table is critical to linking, and is adjusted though opasDataLinker and manually to fix links
+            # The api_biblioxml2 table is critical to linking, and is adjusted though opasDataLinker and manually to fix links
             # we may be able to delete the article data from api_articles, but I believe we have referential integrity constraints
             # on online which will delete the records from the bibliotable.
             # DISABLED: ocd.delete_all_article_data()
@@ -797,7 +797,7 @@ def main():
                 # Check if:
                 #   - output (precompiled markup) file doesn't exist
                 #   - input file is dated after the output file
-                #   - if a reference in the biblio (via api_biblioxml) has been updated
+                #   - if a reference in the biblio (via api_biblioxml2) has been updated
                 # ###############################################################################
                 file_status_tuple = output_file_needs_rebuilding(inputfilespec=n,
                                                                  inputfilename=inputfilename,
@@ -1369,10 +1369,10 @@ will start skipping files since they have already been loaded into Solr in the c
 
     msg = f"""Rebuild from source (e.g., bKBD3) if necessary, and load precompiled XML (e.g., bEXP_ARCH1) to
 the databases when new or updated. If inputbuild file is newer, output is missing, or there are changes to 
-the api_biblioxml records, compile and then load into database. Run opasDataLinker once files have been initially
+the api_biblioxml2 records, compile and then load into database. Run opasDataLinker once files have been initially
 processed and it will use heuristics to find reference links to articles beyond the basic links added here.
-At any time you can manually fix links in api_biblioxml and they will be loaded into the precompiled XML when
-opasDataLoader is run. Use --smartbuild to automatically check for reference updates in the api_biblioxml table.
+At any time you can manually fix links in api_biblioxml2 and they will be loaded into the precompiled XML when
+opasDataLoader is run. Use --smartbuild to automatically check for reference updates in the api_biblioxml2 table.
 Manually set rx_confidence to 1 for manually corrected links, or to .01 to ignore, and the automated process
 will skip these from then on."""
     parser.add_option("--smartload", "--smartbuild", action="store_true", dest="smartload", default=False,

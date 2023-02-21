@@ -66,9 +66,11 @@ logger = logging.getLogger(programNameShort)
 
 from optparse import OptionParser
 
+import configLib
 import configLib.opasCoreConfig
 import opasCentralDBLib
 import opasFileSupport
+import opasPySolrLib
 
 #detect data is on *nix or windows system
 if "AWS" in localsecrets.CONFIG or re.search("/", localsecrets.IMAGE_SOURCE_PATH) is not None:
@@ -78,6 +80,42 @@ else:
 
 # Module Globals
 fs_flex = None
+
+def remove_solr_erroneous_records_seen_in_some_builds(self):
+    
+    def input_with_timeout(prompt, timeout):
+        def alarm_handler(signum, frame):
+            raise TimeoutError
+    
+        signal.signal(signal.SIGALRM, alarm_handler)
+        signal.alarm(timeout)
+    
+        try:
+            user_input = input(prompt)
+            signal.alarm(0)
+            return user_input
+        except TimeoutError:
+            print('Timeout!')
+            return None
+    
+    solrurl_docs = localsecrets.SOLRURL + configLib.opasCoreConfig.SOLR_DOCS  # e.g., http://localhost:8983/solr/    + pepwebdocs'
+    if localsecrets.SOLRUSER is not None and localsecrets.SOLRPW is not None:
+        if 1: # options.fulltext_core_update:
+            solr_docs2 = pysolr.Solr(solrurl_docs, auth=(localsecrets.SOLRUSER, localsecrets.SOLRPW))
+    else: #  no user and password needed
+        solr_docs2 = pysolr.Solr(solrurl_docs)
+
+    query = "-art_id:* AND -id:GW* AND -id:SE*"
+    r1, status = opasPySolrLib.search_text(query=query)
+    r1_count = r1.documentList.responseInfo.fullCount
+    if r1_count > 0:
+        cont = input_with_timeout (prompt=f"Do you want to delete the rogue records matching: '-art_id:* AND -id:GW* AND -id:SE*'", timeout=50)
+        if len(cont) >= 1:
+            if cont[0].lower() == "y":
+                solr_docs2.delete(q="-art_id:* AND -id:GW* AND -id:SE*")
+            else:
+                print ("User requested exit.  No data changed.")
+
 
 #------------------------------------------------------------------------------------------------------
 def main():
@@ -113,10 +151,10 @@ def main():
             print("Article ID Prefix: ", options.artid_prefix)
 
             print(80*"*")
-            print(f"Database tables api_articles and api_biblioxml will be updated. Location: {localsecrets.DBHOST}")
+            print(f"Database tables api_articles and api_biblioxml2 will be updated. Location: {localsecrets.DBHOST}")
             print("Solr Full-Text Core will be updated: ", solrurl_docs)
             print("Solr Authors Core will be updated: ", solrurl_authors)
-
+            
             print(80*"*")
             if not options.no_check:
                 cont = ""
@@ -149,7 +187,17 @@ def main():
     filenames = []
     name_str = ""
 
-    if 1:
+    if options.remove_rogues:
+        query = "-art_id:* AND -id:GW* AND -id:SE*"
+        r1, status = opasPySolrLib.search_text(query=query)
+        r1_count = r1.documentList.responseInfo.fullCount
+        if r1_count > 0:
+            print (f"There are {r1_count} rogue records without an art_id in Solr.")
+            if not options.testmode:
+                solr_docs2.delete(q="-art_id:* AND -id:GW* AND -id:SE*")
+                solr_docs2.commit()
+
+    if options.no_cleaning == False: # default
         print((80*"-"))
         timeStart = time.time()
         print (f"Processing started at ({time.ctime()}).")
@@ -245,11 +293,12 @@ if __name__ == "__main__":
     # New OpasLoader2 Options
     parser.add_option("--outputbuild", dest="output_build", default=opasConfig.DEFAULT_OUTPUT_BUILD,
                       help=f"Specific output build specification, default='{opasConfig.DEFAULT_OUTPUT_BUILD}'. e.g., (bEXP_ARCH1) or just bEXP_ARCH1.")
-    
-    # --load option still the default.  Need to keep for backwards compatibility, at least for now (7/2022)
     parser.add_option("--nohelp", action="store_true", dest="no_help", default=False,
                       help="Turn off front-matter help")
-
+    parser.add_option("--rogues", dest="remove_rogues", action="store_true", default=False,
+                      help="Delete roque records in Solr")
+    parser.add_option("--noclean", dest="no_cleaning", action="store_true", default=False,
+                      help="Delete roque records in Solr")
 
     (options, args) = parser.parse_args()
     

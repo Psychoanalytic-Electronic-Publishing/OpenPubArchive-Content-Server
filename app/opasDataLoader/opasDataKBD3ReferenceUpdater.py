@@ -91,7 +91,7 @@ def update_via_correction_set(ocd=ocd,
                               verbose=True
                              ):
     """
-    >> update_set = "SingleTest1", "select * from api_biblioxml where art_id='APA.001.0007A' and ref_local_id='B002'"
+    >> update_set = "SingleTest1", "select * from api_biblioxml2 where art_id='APA.001.0007A' and ref_local_id='B002'"
     >> update_via_correction_set(ocd, sql_set_select=update_set[1])
 
     """
@@ -175,8 +175,8 @@ def test_runs():
     do_clean = False
     do_doctest = False
     walk_set = [
-                  ("Freud", "select * from api_biblioxml where ref_rx is NULL and ref_authors like '%Freud%' and ref_rx_confidence=0"),
-                  ("FreudTest", "select * from api_biblioxml where art_id LIKE 'APA.017.0421A'")
+                  ("Freud", "select * from api_biblioxml2 where ref_rx is NULL and ref_authors like '%Freud%' and ref_rx_confidence=0"),
+                  ("FreudTest", "select * from api_biblioxml2 where art_id LIKE 'APA.017.0421A'")
                ]
         
     if do_doctest:

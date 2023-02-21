@@ -31,6 +31,8 @@ class TestSQLStructure(unittest.TestCase):
         tables = ["vw_api_messages", 
                   "vw_api_productbase_instance_counts", 
                   "vw_api_sourceinfodb",
+                  "vw_article_firstsectnames",
+                  "vw_article_sectnames", 
                   "vw_instance_counts_books", #  (used indirectly, by vw_api_productbase_instance_counts)
                   "vw_instance_counts_src",   #  (used indirectly, by vw_api_productbase_instance_counts)
                   "vw_jrnl_vols", 
@@ -41,12 +43,12 @@ class TestSQLStructure(unittest.TestCase):
                   "vw_reports_session_activity_not_logged_in", 
                   "vw_reports_session_activity_not_logged_in_desc", 
                   "vw_reports_user_searches", 
-                  "vw_stat_cited_crosstab",
-                  "vw_stat_cited_crosstab_with_details",
-                  "vw_stat_cited_in_all_years",
-                  "vw_stat_cited_in_last_10_years",
-                  "vw_stat_cited_in_last_20_years",
-                  "vw_stat_cited_in_last_5_years",
+                  "vw_stat_cited_crosstab2",
+                  "vw_stat_cited_crosstab_with_details2",
+                  "vw_stat_cited_in_all_years2",
+                  "vw_stat_cited_in_last_10_years2",
+                  "vw_stat_cited_in_last_20_years2",
+                  "vw_stat_cited_in_last_5_years2",
                   "vw_stat_docviews_crosstab",
                   "vw_stat_docviews_last12months",
                   "vw_stat_docviews_lastmonth",
@@ -54,7 +56,7 @@ class TestSQLStructure(unittest.TestCase):
                   "vw_stat_docviews_lastweek",    # (used indirectly, in vw_stat_docviews_crosstab)                 
                   "vw_stat_most_viewed",
                   # "vw_active_sessions",               # deprecated
-                  # # "vw_api_productbase",                # deprecated
+                  # "vw_api_productbase",               # deprecated view (use ..._instance_counts)
                   # "vw_api_volume_limits",             # deprecated
                   # "vw_latest_session_activity",
                   # "vw_stat_to_update_solr_docviews",  # deprecated

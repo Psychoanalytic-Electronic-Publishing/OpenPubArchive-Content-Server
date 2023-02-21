@@ -91,7 +91,7 @@ from pydantic import BaseModel
     
 #class MostCitedArticles(BaseModel): # [Not used anymore from here (local copy in opasDataUpdateStat)]
     #"""
-    #__Table vw_stat_cited_crosstab__
+    #__Table vw_stat_cited_crosstab2__
 
     #A view with rxCode counts derived from the fullbiblioxml table and the articles table
       #for citing sources in one of the date ranges.
@@ -136,9 +136,9 @@ from pydantic import BaseModel
 # Deleted since article table being deprecated 2020-08-09    
 #class MostCitedArticlesWithDetails(MostCitedArticles):
     #"""
-    #__Table vw_stat_cited_crosstab_with_details__ # was MostCitedArticlesWithDetails
+    #__Table vw_stat_cited_crosstab_with_details2__ # was MostCitedArticlesWithDetails
     #based on 
-    #__Table vw_stat_cited_crosstab__
+    #__Table vw_stat_cited_crosstab2__
 
     #A view with rxCode counts derived from the fullbiblioxml table and the articles table
       #for citing sources in one of the date ranges.

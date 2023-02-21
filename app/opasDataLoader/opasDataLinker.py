@@ -5,7 +5,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2023"
 __license__     = "Apache 2.0"
-__version__     = "2023.0220/v1.0.010"   
+__version__     = "2023.0221/v1.0.011"   
 __status__      = "Development"
 
 programNameShort = "opasDataLinker"
@@ -19,7 +19,7 @@ print (f"""\n
 
 help_text = (
     fr""" 
-        - Read the api_biblioxml table and link articles in PEP.
+        - Read the api_biblioxml2 table and link articles in PEP.
         
         Example Invocation:
                 $ python opasDataLinker.py
@@ -37,7 +37,7 @@ help_text = (
          --oldest          Process biblio records least recently updated last
          --type            Process type 'books' or 'journals' only (abbr. b or j)
          --unlinked        Process only unlinked (no rx and rxcf data) records
-         --where           Process by conditional against api_biblioxml
+         --where           Process by conditional against api_biblioxml2
                               table, e.g., ref_year > 2010
          
          
@@ -101,19 +101,19 @@ import lxml
 sqlSelect = ""
 
 def walk_through_reference_set(ocd=ocd,
-                               sql_set_select = "select * from api_biblioxml where art_id='CPS.031.0617A' and ref_local_id='B022'",
+                               sql_set_select = "select * from api_biblioxml2 where art_id='CPS.031.0617A' and ref_local_id='B022'",
                                set_description = "All",
                                halfway=False, 
                                verbose=True
                                ):
     """
-    >> walk_set = "SingleTest1", "select * from api_biblioxml where art_id='CPS.031.0617A' and ref_local_id='B024'"
+    >> walk_set = "SingleTest1", "select * from api_biblioxml2 where art_id='CPS.031.0617A' and ref_local_id='B024'"
     >> walk_through_reference_set(ocd, sql_set_select=walk_set[1], set_description=walk_set[0])
 
-    >> walk_set = "SingleTest1", "select * from api_biblioxml where art_id='CPS.031.0617A' and ref_local_id='B022'"
+    >> walk_set = "SingleTest1", "select * from api_biblioxml2 where art_id='CPS.031.0617A' and ref_local_id='B022'"
     >> walk_through_reference_set(ocd, sql_set_select=walk_set[1], set_description=walk_set[0])
 
-    >> walk_set = "Freud", "select * from api_biblioxml where ref_rx is NULL and ref_authors like '%Freud%' and ref_rx_confidence=0"
+    >> walk_set = "Freud", "select * from api_biblioxml2 where ref_rx is NULL and ref_authors like '%Freud%' and ref_rx_confidence=0"
     >> walk_through_reference_set(ocd, sql_set_select=walk_set[1], set_description=walk_set[0])
     
     """
@@ -138,7 +138,7 @@ def walk_through_reference_set(ocd=ocd,
             count = total_count
             
         biblio_entries = ocd.get_references_select_biblioxml(sql_set_select + limit_clause)
-        print (f"Scanning {len(biblio_entries)} references in api_biblioxml to find new links.")
+        print (f"Scanning {len(biblio_entries)} references in api_biblioxml2 to find new links.")
         counter = 0
         updated_record_count = 0
         for ref_model in biblio_entries:
@@ -204,7 +204,7 @@ def walk_through_reference_set(ocd=ocd,
     return ret_val # None or Session Object
 
 def clean_reference_links(ocd=ocd,
-                          sql_set_select = "select * from api_biblioxml where bib_rx is not NULL",
+                          sql_set_select = "select * from api_biblioxml2 where bib_rx is not NULL",
                           set_description = "All"
                           ):
     """
@@ -248,15 +248,15 @@ def test_runs():
     do_clean = False
     do_doctest = False
     walk_set = [
-                  ("Freud", "select * from api_biblioxml where ref_rx is NULL and ref_authors like '%Freud%' and ref_rx_confidence=0"),
-                  ("FreudTest", "select * from api_biblioxml where art_id LIKE 'APA.017.0421A'")
+                  ("Freud", "select * from api_biblioxml2 where ref_rx is NULL and ref_authors like '%Freud%' and ref_rx_confidence=0"),
+                  ("FreudTest", "select * from api_biblioxml2 where art_id LIKE 'APA.017.0421A'")
                ]
         
     if do_walk_set:
         walk_through_reference_set(ocd, set_description=walk_set[1][0], sql_set_select=walk_set[1][1])
 
     if do_clean:
-        clean_set = "Freud", "select * from api_biblioxml where ref_rx is not NULL and ref_authors like '%Freud%'"
+        clean_set = "Freud", "select * from api_biblioxml2 where ref_rx is not NULL and ref_authors like '%Freud%'"
         clean_reference_links(ocd, clean_set[1])
     
     if do_doctest:
@@ -270,7 +270,7 @@ def test_runs():
 if __name__ == "__main__":
     global options  # so the information can be used in support functions
     options = None
-    description = """Process the api_biblioxml table of SQL database opasCentral to find links (and potentially related links) to PEP articles.
+    description = """Process the api_biblioxml2 table of SQL database opasCentral to find links (and potentially related links) to PEP articles.
     After running opasDataLinker, run opasDataLoader with the --smartbuild option to reprocess any articles which updated links
     from opasDataLinker. This will build new compiled (output) xml files for those with the link data embedded.
     """
@@ -299,7 +299,7 @@ if __name__ == "__main__":
                       help="Level at which events should be logged (DEBUG, INFO, WARNING, ERROR")
 
     parser.add_option("--where", dest="where_condition", default=None,
-                      help="Add your own SQL clause to the search of api_biblioxml")
+                      help="Add your own SQL clause to the search of api_biblioxml2")
     
     parser.add_option("-n", "--nightly", dest="nightly_includes", action="store_true", default=False,
                       help="Check references in only the new articles added since yesterday")
@@ -346,7 +346,7 @@ if __name__ == "__main__":
     #limit_clause = ""
     #if options.halfway:
         ## need to see how many references there are and divide by 2
-        #limit_clause = "LIMIT (SELECT COUNT(*) * 0.5 FROM api_biblioxml)"
+        #limit_clause = "LIMIT (SELECT COUNT(*) * 0.5 FROM api_biblioxml2)"
 
     type_clause = ""
     if options.source_type:
@@ -361,7 +361,7 @@ if __name__ == "__main__":
 
     # scan articles matching art_id (single) or with regex wildcard (multiple)
     biblio_refs_matching_artid = f"""select *
-                                     from api_biblioxml
+                                     from api_biblioxml2
                                      where art_id RLIKE '%s'
                                      and ref_rx_confidence != {opasConfig.RX_CONFIDENCE_NEVERMORE}
                                      {skip_for_incremental_scans}
@@ -372,7 +372,7 @@ if __name__ == "__main__":
 
     # scan articles added after date
     biblios_for_articles_after = f"""select *
-                                     from api_biblioxml as bib, api_articles as art
+                                     from api_biblioxml2 as bib, api_articles as art
                                      where bib.art_id=art.art_id
                                      {skip_for_incremental_scans}
                                      and art.last_update >= '%s'
@@ -383,7 +383,7 @@ if __name__ == "__main__":
                                   """
     # scan articles with bib entries updated before date
     biblio_refs_updated_before = f"""select *
-                                     from api_biblioxml as bib
+                                     from api_biblioxml2 as bib
                                      where bib.last_update < '%s'
                                      {skip_for_incremental_scans}
                                      and ref_rx_confidence != {opasConfig.RX_CONFIDENCE_NEVERMORE}
@@ -394,7 +394,7 @@ if __name__ == "__main__":
 
     # user supplied conditional clause
     biblio_refs_advanced_query = f"""select *
-                                     from api_biblioxml as bib
+                                     from api_biblioxml2 as bib
                                      where ref_rx_confidence != {opasConfig.RX_CONFIDENCE_NEVERMORE}
                                      {skip_for_incremental_scans}
                                      {unlinked_ref_clause}
@@ -402,11 +402,11 @@ if __name__ == "__main__":
                                      %s
                                   """
 
-    biblio_refs_nightly = f"""SELECT api_biblioxml.*
+    biblio_refs_nightly = f"""SELECT api_biblioxml2.*
                              FROM
-                             api_biblioxml, article_tracker
+                             api_biblioxml2, article_tracker
                              WHERE
-                             article_tracker.art_id = api_biblioxml.art_id
+                             article_tracker.art_id = api_biblioxml2.art_id
                              and article_tracker.date_inserted >= '{yesterday}'
                              {type_clause}
                              {unlinked_ref_clause}

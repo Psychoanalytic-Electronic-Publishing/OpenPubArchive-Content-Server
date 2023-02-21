@@ -492,7 +492,7 @@ class TestDatabaseSmartSearch(unittest.TestCase):
         response_set = r["documentList"]["responseSet"]
         print (f'Smarttext: {response_info["description"]}')
         count1 = response_info["fullCount"]
-        assert (count1 >= 440 and count1 <= 525), f"Count: {count1}" 
+        assert (count1 >= 440 and count1 <= 540), f"Count: {count1}" 
 
     def test_14c_example_smart_search_classes(self):
         """

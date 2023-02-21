@@ -39,7 +39,12 @@ class TestDoDatabaseCompare(unittest.TestCase):
         col_list = [
             "config_settings", 
         ]
-        ret_val = compareTables.compare_critical_column_lists("api_client_configs","config_name", col_list, db1Name="STAGE", db2Name="PRODUCTION", key_where_clause='WHERE config_name="en-us"')
+        ret_val = compareTables.compare_critical_column_lists("api_client_configs",
+                                                              "config_name",
+                                                              col_list,
+                                                              db1Name="STAGE",
+                                                              db2Name="PRODUCTION",
+                                                              key_where_clause='WHERE config_name="en-us"')
         print (f"Difference Count ={ret_val}")
         assert(ret_val == 0)
 

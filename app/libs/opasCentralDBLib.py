@@ -19,18 +19,18 @@ OPASCENTRAL TABLES (and Views) CURRENTLY USED:
                                          vw_stat_docviews_last12months
                                          )
 
-   vw_stat_cited_crosstab (depends on fullbiblioxml - table copied from PEP XML Processing db pepa1db
-                           vw_stat_cited_in_last_5_years,
-                           vw_stat_cited_in_last_10_years,
-                           vw_stat_cited_in_last_20_years,
-                           vw_stat_cited_in_all_years
+   vw_stat_cited_crosstab2 (depends on fullbiblioxml - table copied from PEP XML Processing db pepa1db
+                           vw_stat_cited_in_last_5_years2,
+                           vw_stat_cited_in_last_10_years2,
+                           vw_stat_cited_in_last_20_years2,
+                           vw_stat_cited_in_all_years2
                            )                                        
     
     vw_api_productbase_instance_counts (this is the ISSN table from pepa1vdb used during processing)
     
     Used in generators:
     
-      vw_stat_cited_crosstab_with_details (depeds on vw_stat_cited_crosstab + articles)
+      vw_stat_cited_crosstab_with_details2 (depeds on vw_stat_cited_crosstab2 + articles)
       vw_stat_most_viewed
 
 """
@@ -682,15 +682,15 @@ class opasCentralDB(object):
         Reinstated because downloading from Solr is too slow!
          
         ------------------------------------
-         vw_stat_cited_crosstab_with_details
+         vw_stat_cited_crosstab_with_details2
         ------------------------------------
          
          SELECT
-            `vw_stat_cited_crosstab`.`cited_document_id` AS `cited_document_id`,
-            `vw_stat_cited_crosstab`.`count5` AS `count5`,
-            `vw_stat_cited_crosstab`.`count10` AS `count10`,
-            `vw_stat_cited_crosstab`.`count20` AS `count20`,
-            `vw_stat_cited_crosstab`.`countAll` AS `countAll`,
+            `vw_stat_cited_crosstab2`.`cited_document_id` AS `cited_document_id`,
+            `vw_stat_cited_crosstab2`.`count5` AS `count5`,
+            `vw_stat_cited_crosstab2`.`count10` AS `count10`,
+            `vw_stat_cited_crosstab2`.`count20` AS `count20`,
+            `vw_stat_cited_crosstab2`.`countAll` AS `countAll`,
             `api_articles`.`art_auth_citation` AS `hdgauthor`,
             `api_articles`.`art_title` AS `hdgtitle`,
             `api_articles`.`src_title_abbr` AS `srctitleseries`,
@@ -702,12 +702,12 @@ class opasCentralDB(object):
             `api_articles`.`art_citeas_text` AS `art_citeas_text` 
          FROM
             (
-                `vw_stat_cited_crosstab`
+                `vw_stat_cited_crosstab2`
                 JOIN `api_articles` ON ((
-                        `vw_stat_cited_crosstab`.`cited_document_id` = `api_articles`.`art_id` 
+                        `vw_stat_cited_crosstab2`.`cited_document_id` = `api_articles`.`art_id` 
                     ))) 
          ORDER BY
-            `vw_stat_cited_crosstab`.`countAll` DESC
+            `vw_stat_cited_crosstab2`.`countAll` DESC
          
         """
         fname = "most_cited_generator"
@@ -786,7 +786,7 @@ class opasCentralDB(object):
                 
             # Note that WHERE 1 = 1 is used since clauses all start with AND
             sql = f"""SELECT DISTINCT {select_clause} 
-                      FROM vw_stat_cited_crosstab_with_details
+                      FROM vw_stat_cited_crosstab_with_details2
                       WHERE 1 = 1
                       {doc_type_clause}
                       {author_clause}
@@ -810,12 +810,12 @@ class opasCentralDB(object):
 
     def get_citation_counts(self) -> dict:
         """
-         Using the opascentral vw_stat_cited_crosstab view, based on the api_biblioxml which is used to detect citations,
+         Using the opascentral vw_stat_cited_crosstab2 view, based on the api_biblioxml2 which is used to detect citations,
            return the cited counts for each art_id
            
            Primary view definition copied here for safe keeping.
            ----------------------
-           vw_stat_cited_crosstab
+           vw_stat_cited_crosstab2
            ----------------------
            
            SELECT
@@ -831,23 +831,23 @@ class opasCentralDB(object):
            FROM
                (((((
                                SELECT DISTINCT
-                                   `api_biblioxml`.`art_id` AS `articleID`,
-                                   `api_biblioxml`.`bib_local_id` AS `internalID`,
-                                   `api_biblioxml`.`full_ref_xml` AS `fullReference`,
-                                   `api_biblioxml`.`bib_rx` AS `cited_document_id` 
+                                   `api_biblioxml2`.`art_id` AS `articleID`,
+                                   `api_biblioxml2`.`bib_local_id` AS `internalID`,
+                                   `api_biblioxml2`.`full_ref_xml` AS `fullReference`,
+                                   `api_biblioxml2`.`bib_rx` AS `cited_document_id` 
                                FROM
-                                   `api_biblioxml` 
+                                   `api_biblioxml2` 
                                    ) `r0`
-                               LEFT JOIN `vw_stat_cited_in_last_5_years` `r1` ON ((
+                               LEFT JOIN `vw_stat_cited_in_last_5_years2` `r1` ON ((
                                        `r1`.`cited_document_id` = `r0`.`cited_document_id` 
                                    )))
-                           LEFT JOIN `vw_stat_cited_in_last_10_years` `r2` ON ((
+                           LEFT JOIN `vw_stat_cited_in_last_10_years2` `r2` ON ((
                                    `r2`.`cited_document_id` = `r0`.`cited_document_id` 
                                )))
-                       LEFT JOIN `vw_stat_cited_in_last_20_years` `r3` ON ((
+                       LEFT JOIN `vw_stat_cited_in_last_20_years2` `r3` ON ((
                                `r3`.`cited_document_id` = `r0`.`cited_document_id` 
                            )))
-                   LEFT JOIN `vw_stat_cited_in_all_years` `r4` ON ((
+                   LEFT JOIN `vw_stat_cited_in_all_years2` `r4` ON ((
                            `r4`.`cited_document_id` = `r0`.`cited_document_id` 
                        ))) 
            WHERE
@@ -872,7 +872,7 @@ class opasCentralDB(object):
             try:
                 with closing(self.db.cursor(buffered=True, dictionary=True)) as cursor:
                     sql = """
-                          SELECT cited_document_id, count5, count10, count20, countAll from vw_stat_cited_crosstab; 
+                          SELECT cited_document_id, count5, count10, count20, countAll from vw_stat_cited_crosstab2; 
                           """
                     cursor.execute(sql)
                     if cursor.rowcount:
@@ -1053,8 +1053,8 @@ class opasCentralDB(object):
 
     def get_max_bibrecord_update(self, art_id):
         sel = f"""
-                SELECT max( `api_biblioxml`.`last_update` ) AS `max` 
-                FROM `api_biblioxml`
+                SELECT max( `api_biblioxml2`.`last_update` ) AS `max` 
+                FROM `api_biblioxml2`
                 WHERE art_id = '{art_id}'
 		"""
         fname = "max_bibrecord_update"
@@ -1302,7 +1302,7 @@ class opasCentralDB(object):
     #------------------------------------------------------------------------------------------------------
     def get_ref_from_db(self, art_id, ref_local_id, verbose=None):
         """
-        Return a reference model from the api_biblioxml table in opascentral
+        Return a reference model from the api_biblioxml2 table in opascentral
         
         >>> ocd = opasCentralDB()
         >>> ref = ocd.get_ref_from_db(art_id="FA.013A.0120A", ref_local_id='B009')
@@ -1312,7 +1312,7 @@ class opasCentralDB(object):
         """
         ret_val = None
     
-        select = f"""SELECT * from api_biblioxml
+        select = f"""SELECT * from api_biblioxml2
                      WHERE art_id = '{art_id}'
                      AND ref_local_id = '{ref_local_id}'
                      """
@@ -1326,7 +1326,7 @@ class opasCentralDB(object):
     #------------------------------------------------------------------------------------------------------
     def get_references_select_biblioxml(self, select, verbose=None):
         """
-        Return a list of references as BiblioEntry's from the api_biblioxml table in opascentral
+        Return a list of references as BiblioEntry's from the api_biblioxml2 table in opascentral
         """
         ret_val = None
 
@@ -1339,7 +1339,7 @@ class opasCentralDB(object):
     #------------------------------------------------------------------------------------------------------
     def get_references_from_biblioxml_table(self, article_id, ref_local_id=None, verbose=None):
         """
-        Return a list of references as BiblioEntry's from the api_biblioxml table in opascentral
+        Return a list of references as BiblioEntry's from the api_biblioxml2 table in opascentral
         """
         ret_val = None
 
@@ -1355,7 +1355,7 @@ class opasCentralDB(object):
         else:
             local_id_clause = ""
             
-        select = f"""SELECT * from api_biblioxml
+        select = f"""SELECT * from api_biblioxml2
                      {art_id_clause}
                      {local_id_clause}
                      """
@@ -1556,7 +1556,7 @@ class opasCentralDB(object):
         
         if bib_entry.link_updated or bib_entry.record_updated:
             sqlcpy = f"""
-                        UPDATE api_biblioxml
+                        UPDATE api_biblioxml2
                             SET ref_rx = %s,
                                 ref_rx_confidence = %s,
                                 ref_rxcf = %s,
@@ -2494,17 +2494,17 @@ class opasCentralDB(object):
         > ocd.delete_all_article_data()
         """
         # commit automatically handled by do_action_query
-        self.do_action_query(querytxt="DELETE FROM api_biblioxml", queryparams=None)
+        self.do_action_query(querytxt="DELETE FROM api_biblioxml2", queryparams=None)
         self.do_action_query(querytxt="DELETE FROM api_articles", queryparams=None)
         
     def delete_specific_article_data(self, art_id):
         """
-        Delete the information for art_id from the api_articles and api_biblioxml table
+        Delete the information for art_id from the api_articles and api_biblioxml2 table
         """
         query_param_dict = {}
         query_param_dict["art_id"] = art_id
         # commit automatically handled by do_action_query        
-        self.do_action_query(querytxt="DELETE FROM api_biblioxml WHERE art_id=%(art_id)s;", queryparams=query_param_dict)
+        self.do_action_query(querytxt="DELETE FROM api_biblioxml2 WHERE art_id=%(art_id)s;", queryparams=query_param_dict)
         self.do_action_query(querytxt="DELETE FROM api_articles WHERE art_id=%(art_id)s;", queryparams=query_param_dict)
 
     #----------------------------------------------------------------------------------------
@@ -2647,7 +2647,7 @@ class opasCentralDB(object):
             bib_entry.ref_rxcf_confidence = 0
     
         insert_if_not_exists = r"""REPLACE
-                                   INTO api_biblioxml (
+                                   INTO api_biblioxml2 (
                                         art_id,
                                         ref_local_id,
                                         art_year,

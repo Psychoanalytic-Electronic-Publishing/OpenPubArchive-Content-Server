@@ -766,7 +766,7 @@ def process_info_for_author_core(pepxml, artInfo, solrAuthor, verbose=None):
             ##bib_entry.bib_rxcf_confidence = old_bib_entry.bib_rxcf_confidence 
         
     #insert_if_not_exists = r"""REPLACE
-                               #INTO api_biblioxml (
+                               #INTO api_biblioxml2 (
                                     #art_id,
                                     #bib_local_id,
                                     #art_year,

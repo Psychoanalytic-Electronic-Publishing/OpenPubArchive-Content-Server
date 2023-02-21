@@ -14,6 +14,9 @@ from opasPySolrLib import search_text
 
 ocd = opasCentralDBLib.opasCentralDB()
 
+import signal
+
+
 class TestSolrRecsWthoutArtID(unittest.TestCase):
     """
     Tests
@@ -30,8 +33,7 @@ class TestSolrRecsWthoutArtID(unittest.TestCase):
         r1, status = search_text(query="-art_id:* AND -id:GW* AND -id:SE*")
         r1_count = r1.documentList.responseInfo.fullCount
         assert(r1_count == 0)
-        
-        
+                
 if __name__ == '__main__':
     unittest.main()
     print ("Tests Complete.")

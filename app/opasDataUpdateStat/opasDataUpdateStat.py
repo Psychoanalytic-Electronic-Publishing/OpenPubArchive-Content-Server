@@ -29,7 +29,7 @@ print(
 
       The records added are controlled by the database views:
          vw_stat_docviews_crosstab
-         vw_stat_cited_crosstab
+         vw_stat_cited_crosstab2
          
       2020-11-21 Added library numbers display to main startup to monitor what it's running under.
       
@@ -79,7 +79,7 @@ class ArticleStat(BaseModel):
 
 class MostCitedArticles(BaseModel):
     """
-    __Table vw_stat_cited_crosstab__
+    __Table vw_stat_cited_crosstab2__
 
     A view with rxCode counts derived from the fullbiblioxml table and the articles table
       for citing sources in one of the date ranges.
@@ -184,12 +184,12 @@ class opasCentralDBMini(object):
 
     def get_citation_counts(self) -> dict:
         """
-         Using the opascentral vw_stat_cited_crosstab view, based on the api_biblioxml which is used to detect citations,
+         Using the opascentral vw_stat_cited_crosstab2 view, based on the api_biblioxml2 which is used to detect citations,
            return the cited counts for each art_id
            
            Primary view definition copied here for safe keeping.
            ----------------------
-           vw_stat_cited_crosstab
+           vw_stat_cited_crosstab2
            ----------------------
            
            SELECT
@@ -205,23 +205,23 @@ class opasCentralDBMini(object):
            FROM
                (((((
                                SELECT DISTINCT
-                                   `api_biblioxml`.`art_id` AS `articleID`,
-                                   `api_biblioxml`.`bib_local_id` AS `internalID`,
-                                   `api_biblioxml`.`full_ref_xml` AS `fullReference`,
-                                   `api_biblioxml`.`bib_rx` AS `cited_document_id` 
+                                   `api_biblioxml2`.`art_id` AS `articleID`,
+                                   `api_biblioxml2`.`bib_local_id` AS `internalID`,
+                                   `api_biblioxml2`.`full_ref_xml` AS `fullReference`,
+                                   `api_biblioxml2`.`bib_rx` AS `cited_document_id` 
                                FROM
-                                   `api_biblioxml` 
+                                   `api_biblioxml2` 
                                    ) `r0`
-                               LEFT JOIN `vw_stat_cited_in_last_5_years` `r1` ON ((
+                               LEFT JOIN `vw_stat_cited_in_last_5_years2` `r1` ON ((
                                        `r1`.`cited_document_id` = `r0`.`cited_document_id` 
                                    )))
-                           LEFT JOIN `vw_stat_cited_in_last_10_years` `r2` ON ((
+                           LEFT JOIN `vw_stat_cited_in_last_10_years2` `r2` ON ((
                                    `r2`.`cited_document_id` = `r0`.`cited_document_id` 
                                )))
-                       LEFT JOIN `vw_stat_cited_in_last_20_years` `r3` ON ((
+                       LEFT JOIN `vw_stat_cited_in_last_20_years2` `r3` ON ((
                                `r3`.`cited_document_id` = `r0`.`cited_document_id` 
                            )))
-                   LEFT JOIN `vw_stat_cited_in_all_years` `r4` ON ((
+                   LEFT JOIN `vw_stat_cited_in_all_years2` `r4` ON ((
                            `r4`.`cited_document_id` = `r0`.`cited_document_id` 
                        ))) 
            WHERE
@@ -246,7 +246,7 @@ class opasCentralDBMini(object):
                 cursor = self.db.cursor(pymysql.cursors.DictCursor)
                 # 2023-02-12 Watch out for Null and empty doc ids
                 sql = """
-                      SELECT cited_document_id, count5, count10, count20, countAll from vw_stat_cited_crosstab where cited_document_id is not Null and cited_document_id != ''; 
+                      SELECT cited_document_id, count5, count10, count20, countAll from vw_stat_cited_crosstab2 where cited_document_id is not Null and cited_document_id != ''; 
                       """
                 success = cursor.execute(sql)
                 if success:
@@ -367,34 +367,36 @@ def update_solr_stat_data(solrcon, all_records:bool=False):
                 update_rec = False
                 try:
                     result = results.raw_response["response"]["docs"][0]
-                    if result["art_cited_5"] != art_stat.art_cited_5 or \
-                       result["art_cited_10"] != art_stat.art_cited_10 or \
-                       result["art_cited_20"] != art_stat.art_cited_20 or \
-                       result["art_cited_all"] != art_stat.art_cited_all or \
-                       result["art_views_lastcalyear"] != art_stat.art_views_lastcalyear or \
-                       result["art_views_last12mos"] != art_stat.art_views_last12mos or \
-                       result["art_views_last6mos"] != art_stat.art_views_last6mos or \
-                       result["art_views_last1mos"] != art_stat.art_views_last1mos or \
-                       result["art_views_lastweek"] != art_stat.art_views_lastweek:
+                    solr_art_cited_5 = result.get("art_cited_5", 0)
+                    solr_art_cited_10 = result.get("art_cited_10", 0)
+                    solr_art_cited_20 = result.get("art_cited_20", 0)
+                    solr_art_cited_all = result.get("art_cited_all", 0)
+                    solr_art_cited_lastcalyear = result.get("art_cited_lastcalyear", 0)
+                    solr_art_cited_last12mos = result.get("art_cited_last12mos", 0)
+                    solr_art_cited_last6mos = result.get("art_cited_last6mos", 0)
+                    solr_art_cited_last1mos = result.get("art_cited_last1mos", 0)
+                    solr_art_cited_lastweek = result.get("art_cited_lastweek", 0)
+                    if solr_art_cited_5 != art_stat.art_cited_5 or \
+                       solr_art_cited_10 != art_stat.art_cited_10 or \
+                       solr_art_cited_20 != art_stat.art_cited_20 or \
+                       solr_art_cited_all != art_stat.art_cited_all or \
+                       solr_art_cited_lastcalyear != art_stat.art_views_lastcalyear or \
+                       solr_art_cited_last12mos != art_stat.art_views_last12mos or \
+                       solr_art_cited_last6mos != art_stat.art_views_last6mos or \
+                       solr_art_cited_last1mos != art_stat.art_views_last1mos or \
+                       solr_art_cited_lastweek != art_stat.art_views_lastweek:
                         update_rec = True
-
+                    else:
+                        update_rec = False
                 except Exception as e:
-                    logger.info(f"...No data for document {doc_id}.")
-                    if 0 != art_stat.art_cited_5 or \
-                       0 != art_stat.art_cited_10 or \
-                       0 != art_stat.art_cited_20 or \
-                       0 != art_stat.art_cited_all or \
-                       0 != art_stat.art_views_lastcalyear or \
-                       0 != art_stat.art_views_last12mos or \
-                       0 != art_stat.art_views_last6mos or \
-                       0 != art_stat.art_views_last1mos or \
-                       0 != art_stat.art_views_lastweek:
-                        update_rec = True
-                    
+                    logger.error(f"...Updating stat for {doc_id} in Solr...Error: {e}.")
+                    continue
+                        
                 if doc_id is not None and update_rec:
                     logger.info(f"...Updating stat for {doc_id} in Solr...{remaining_count} more to check.")
                     upd_rec = {
                                 "id":doc_id,
+                                "art_id": doc_id,
                                 "art_cited_5": art_stat.art_cited_5, 
                                 "art_cited_10": art_stat.art_cited_10, 
                                 "art_cited_20": art_stat.art_cited_20, 

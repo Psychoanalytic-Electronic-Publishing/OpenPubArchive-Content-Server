@@ -360,7 +360,7 @@ def compare_tables(db_tables=None):
                      {"name": "api_endpoints", "key": "api_endpoint_id"},
                      {"name": "vw_api_messages", "key": "msg_num_code, msg_language"},
                      {"name": "api_client_apps", "key": "api_client_id"},
-                     {"name": "api_articles", "key": "article_id"}
+                     {"name": "api_articles", "key": "art_id"}
     ]
     
     if db_tables is None:

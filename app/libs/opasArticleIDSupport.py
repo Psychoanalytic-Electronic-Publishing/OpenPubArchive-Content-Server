@@ -238,6 +238,9 @@ class ArticleID(BaseModel):
                     if self.art_issue_int > 0:
                         altVolSuffix = string.ascii_uppercase[self.art_issue_int-1]
 
+            if self.art_vol_suffix == "?":
+                self.art_vol_suffix = ""
+
             if self.art_issue_alpha_code != "":
                 # an issue code was specified (but not supplement or "S")
                 converted = parse_issue_code(self.art_issue_alpha_code, source_code=self.src_code, vol=self.art_vol_int)
@@ -293,10 +296,10 @@ class ArticleID(BaseModel):
             self.alt_standard = f"{self.src_code}.{self.art_vol_str}"
             if self.standardized == self.alt_standard:
                 # there's no alpha issue code in the standard one. Try adding one:
-                if altVolSuffix != "" and not self.art_vol_str[-1].isalpha():
+                if altVolSuffix != "" and altVolSuffix != "?" and not self.art_vol_str[-1].isalpha():
                     self.alt_standard = f"{self.src_code}.{self.art_vol_str}{altVolSuffix}"
-                else: # use 1 character wildcard
-                    self.alt_standard = f"{self.src_code}.{self.art_vol_str}?"
+                #else: # use 1 character wildcard
+                    #self.alt_standard = f"{self.src_code}.{self.art_vol_str}?"
             
             if volumeWildcardOverride == '':
                 if pageWildcard == '':

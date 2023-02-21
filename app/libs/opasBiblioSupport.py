@@ -330,7 +330,7 @@ class BiblioEntry(models.Biblioxml):
     """
     An entry from a documents bibliography.
     
-    Used to populate the MySQL table api_biblioxml for statistical gathering
+    Used to populate the MySQL table api_biblioxml2 for statistical gathering
        and the Solr core pepwebrefs for searching in special cases.
        
     >>> import opasCentralDBLib
@@ -705,7 +705,7 @@ class BiblioEntry(models.Biblioxml):
         if self.link_updated or self.record_updated:
             if self.record_updated:
                 sqlcpy = f"""
-                            UPDATE api_biblioxml
+                            UPDATE api_biblioxml2
                                 SET ref_xml = %s,
                                     ref_rx = %s,
                                     ref_rx_confidence = %s,
@@ -726,7 +726,7 @@ class BiblioEntry(models.Biblioxml):
                                 local_id)
             elif self.ref_rx is not None and self.ref_rxcf is not None:
                 sqlcpy = f"""
-                            UPDATE api_biblioxml
+                            UPDATE api_biblioxml2
                                 SET ref_rx = %s,
                                     ref_rx_confidence = %s,
                                     ref_rxcf = %s,
@@ -745,7 +745,7 @@ class BiblioEntry(models.Biblioxml):
                                 local_id)
             elif self.ref_rx is not None:
                 sqlcpy = f"""
-                            UPDATE api_biblioxml
+                            UPDATE api_biblioxml2
                                 SET ref_rx = %s,
                                     ref_rx_confidence = %s,
                                     ref_link_source = %s
@@ -761,7 +761,7 @@ class BiblioEntry(models.Biblioxml):
                 
             elif self.ref_rxcf is not None:
                 sqlcpy = f"""
-                            UPDATE api_biblioxml
+                            UPDATE api_biblioxml2
                                 SET ref_rxcf = %s,
                                     ref_rxcf_confidence = %s,
                                     ref_link_source = %s
@@ -1285,7 +1285,7 @@ class BiblioEntry(models.Biblioxml):
     #------------------------------------------------------------------------------------------------------------
     def compare_to_database(self, ocd, verbose=False):
         """
-        Compare the rx for this with the Database table api_biblioxml stored ref_rx and ref_rx_confidence
+        Compare the rx for this with the Database table api_biblioxml2 stored ref_rx and ref_rx_confidence
         
         => Update the object links if database is a higher confidence level
         => Return False if it's not updated in either place
@@ -1437,7 +1437,7 @@ class BiblioEntry(models.Biblioxml):
     #------------------------------------------------------------------------------------------------------------
     def get_ref_correction(self, ocd, verbose=False):
         """
-        Compare the rx for this with the Database table api_biblioxml stored ref_rx and ref_rx_confidence
+        Compare the rx for this with the Database table api_biblioxml2 stored ref_rx and ref_rx_confidence
         Update the object links if database is a higher confidence level
         
         Return the final ref_rx or None if it's not available in either place

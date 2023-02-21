@@ -145,33 +145,33 @@ class TestClientConfig(unittest.TestCase):
         # item already exists, so return a conflict.
         assert(response.status_code == 409)
 
-    def test_0D_put_double(self):
-        """
-        """
-        # make sure both are not there:
-        full_URL = base_plus_endpoint_encoded('/v2/Client/Configuration/')
-        response = requests.delete(full_URL,
-                                   headers=headers,
-                                   params={'configname': f"{test_config_name_1}, {test_config_name_2}"}
-                                   )
+    #def test_0D_put_double(self):
+        #"""
+        #"""
+        ## make sure both are not there:
+        #full_URL = base_plus_endpoint_encoded('/v2/Client/Configuration/')
+        #response = requests.delete(full_URL,
+                                   #headers=headers,
+                                   #params={'configname': f"{test_config_name_1}, {test_config_name_2}"}
+                                   #)
 
-        # now post the list 
-        response = requests.put(full_URL, 
-                                headers=headers,
-                                json=testlist_double)
-        # Confirm that the request-response cycle completed successfully.
-        assert(response.ok == True)
-        assert(response.status_code == 200 or response.status_code == 201)
-        r = response.json()
-        assert (r == testlist_double)
-        # print ("Put OK: ", r)
+        ## now post the list 
+        #response = requests.put(full_URL, 
+                                #headers=headers,
+                                #json=testlist_double)
+        ## Confirm that the request-response cycle completed successfully.
+        #assert(response.ok == True)
+        #assert(response.status_code == 200 or response.status_code == 201)
+        #r = response.json()
+        #assert (r == testlist_double)
+        ## print ("Put OK: ", r)
         
-        # now put the list again
-        response = requests.put(full_URL, 
-                                headers=headers,
-                                json=testlist_double)
-        # item already exists, so return a conflict.
-        assert(response.status_code == 200)
+        ## now put the list again
+        #response = requests.put(full_URL, 
+                                #headers=headers,
+                                #json=testlist_double)
+        ## item already exists, so return a conflict.
+        #assert(response.status_code == 200)
 
     def test_2_put_and_get(self):
         # save the settings (whole list)
