@@ -19,18 +19,18 @@ OPASCENTRAL TABLES (and Views) CURRENTLY USED:
                                          vw_stat_docviews_last12months
                                          )
 
-   vw_stat_cited_crosstab (depends on fullbiblioxml - table copied from PEP XML Processing db pepa1db
-                           vw_stat_cited_in_last_5_years,
-                           vw_stat_cited_in_last_10_years,
-                           vw_stat_cited_in_last_20_years,
-                           vw_stat_cited_in_all_years
+   vw_stat_cited_crosstab2 (depends on fullbiblioxml - table copied from PEP XML Processing db pepa1db
+                           vw_stat_cited_in_last_5_years2,
+                           vw_stat_cited_in_last_10_years2,
+                           vw_stat_cited_in_last_20_years2,
+                           vw_stat_cited_in_all_years2
                            )                                        
     
     vw_api_productbase_instance_counts (this is the ISSN table from pepa1vdb used during processing)
     
     Used in generators:
     
-      vw_stat_cited_crosstab_with_details (depeds on vw_stat_cited_crosstab + articles)
+      vw_stat_cited_crosstab_with_details2 (depeds on vw_stat_cited_crosstab2 + articles)
       vw_stat_most_viewed
 
 """
@@ -48,21 +48,14 @@ __status__      = "Development"
 
 import sys
 import re
-# import fnmatch
 
-# import os.path
 from contextlib import closing
 
 sys.path.append('../libs')
 sys.path.append('../config')
 
-from fastapi import Depends
-
 import opasConfig
-from opasConfig import normalize_val # use short form everywhere
-
 import localsecrets
-# from localsecrets import DBHOST, DBUSER, DBPW, DBNAME
 
 import logging
 logger = logging.getLogger(__name__)
@@ -74,17 +67,13 @@ import datetime as dtime
 from datetime import datetime # , timedelta
 import time
 
-# import secrets
-# from pydantic import BaseModel
 from passlib.context import CryptContext
-# from pydantic import ValidationError
-
 import mysql.connector
 import json
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+gDbg3 = False
 
-import xml.etree.ElementTree as ET
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # All opasCentral Database Models here
 import models
@@ -161,12 +150,7 @@ def date_to_db_date(std_date):
             logger.error(e)
             
     return ret_val
-    
-
-#def verifyAccessToken(session_id, username, access_token):
-    #return pwd_context.verify(session_id+username, access_token)
-    #removed 2021-12-07
-    
+       
 def verify_password(plain_password, hashed_password):
     """
     >>> verify_password("secret", get_password_hash("secret"))
@@ -216,8 +200,6 @@ class opasCentralDB(object):
     > ocd.delete_session(session_id=random_session_id)
     True
     """
-    connection_count = 0
-    
     def __init__(self, session_id=None,
                  host=localsecrets.DBHOST,
                  port=localsecrets.DBPORT,
@@ -234,6 +216,8 @@ class opasCentralDB(object):
         self.db = None
         # self.library_version = self.get_mysql_version() # Removed since it's rarely needed and yet requires a db call to get
         self.session_id = session_id # deprecate?
+        self.connection_count = 0
+        
 
     def __del__(self):
         pass
@@ -247,45 +231,48 @@ class opasCentralDB(object):
         >>> ocd.open_connection("my name")
         True
         >>> ocd.close_connection("my name")
+        True
         """
         pause_len = 30
-        try:
-            opasCentralDB.connection_count += 1
-            self.db = mysql.connector.connect(user=self.user, password=self.password, database=self.database, host=self.host)
-            self.connected = True
-            # logger.debug(f"Opened connection #{opasCentralDB.connection_count}")
-
-        except Exception as e:
-            self.connected = False
-            opasCentralDB.connection_count -= 1
-            logger.error(f"Database connection could not be opened ({caller_name}) ({e}). Opening connection number: {opasCentralDB.connection_count}. Will retry after {pause_len} seconds")
+        if not self.connected:
             try:
-                time.sleep(pause_len)
                 self.db = mysql.connector.connect(user=self.user, password=self.password, database=self.database, host=self.host)
             except Exception as e:
-                log_everywhere_if(DBGSTDOUT, level="warning", msg=f"open_connection: retrying connection failed ({caller_name}) ({e}). Connection number: {opasCentralDB.connection_count}")
+                self.connected = False
+                logger.error(f"Database connection could not be opened ({caller_name}) ({e}). Opening connection number: {self.connection_count}. Will retry after {pause_len} seconds")
+                try:
+                    time.sleep(pause_len)
+                    self.db = mysql.connector.connect(user=self.user, password=self.password, database=self.database, host=self.host)
+                except Exception as e:
+                    log_everywhere_if(DBGSTDOUT, level="warning", msg=f"open_connection: retrying connection failed ({caller_name}) ({e}). Connection number: {self.connection_count}")
+                else:
+                    log_everywhere_if(DBGSTDOUT, level="debug", msg=f"open_connection: retrying connection succeeded: {self.connection_count}")
+                    self.connection_count += 1
+                    if gDbg3: print (f"New Connection: Current Connection count {self.connection_count}")
             else:
-                log_everywhere_if(DBGSTDOUT, level="debug", msg=f"open_connection: retrying connection succeeded: {opasCentralDB.connection_count}")
-                
+                self.connected = True
+                self.connection_count += 1
+                if gDbg3: print (f"New Connection: Current Connection count {self.connection_count}")
         
-        # if 1: print (f"Connection_count: {opasCentralDB.connection_count}")
+        # if 1: print (f"Connection_count: {self.connection_count}")
         return self.connected
-
+        
     def close_connection(self, caller_name=""):
         ret_val = False # failed, or not open
-        try:
-            # 1: print (f"Connection_count: {opasCentralDB.connection_count}")
-            opasCentralDB.connection_count -= 1
-            if self.db is not None:
-                self.db.close()
-                self.db = None
+        if self.connected and self.connection_count > 1: # try to keep connection count to 1
+            try:
+                if self.db is not None:
+                    self.db.close()
+                    self.db = None
+            except Exception as e:
+                #self.connection_count = 0
+                log_everywhere_if(DBGSTDOUT, level="debug", msg=f"caller: {caller_name} the db is not open ({e}).")
+            else:
+                self.connected = False
+                self.connection_count -= 1
+                if gDbg3: print (f"Close Connection: Current Connection count {self.connection_count}")
                 ret_val = True # success
-                
-        except Exception as e:
-            opasCentralDB.connection_count = 0
-            log_everywhere_if(DBGSTDOUT, level="debug", msg=f"caller: {caller_name} the db is not open ({e}).")
 
-        self.connected = False
         return ret_val
 
     def end_session(self, session_id, session_end=datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')):
@@ -408,11 +395,50 @@ class opasCentralDB(object):
         self.close_connection(caller_name=fname) # make sure connection is closed
         return ret_val
 
+    def article_exists(self, rx_locator):
+        """
+        Does this rx_locator (doc_id) match an article?
+        Allows mysql wildcards.
+
+        returns True or False
+        
+        >>> ocd = opasCentralDB()
+        >>> ocd.article_exists("APA.001.0007A")
+        True
+        
+        """
+        fname = "article_exists"
+        record = self.get_article_records(rx_locator)
+        ret_val = len(record) == 1
+        return ret_val
+
+    def get_article_records(self, art_id):
+        """
+        Return the data for an article record from api_articles per art_id in a list
+        Allows mysql get_api_article_record (so can return multiple records)
+
+        >>> ocd = opasCentralDB()
+        >>> recs = ocd.get_article_records("APA.001.0007A")
+        >>> len(recs) == 1
+        True
+        
+        """
+        fname = "get_api_article_record"
+        ret_val = []
+        # try to get it from the artstat table
+        sql_select = f"SELECT * from api_articles where art_id LIKE '{art_id}';"
+        try:
+            ret_val = self.get_select_as_list_of_dicts(sql_select)
+        except Exception as e:
+            log_everywhere_if(True, "warning", f"Error getting artstat {e}")
+        
+        return ret_val
+
     def get_article_year(self, doc_id):
         """
         Load the article data for a document id
         """
-        fname = "get_productbase_data"
+        fname = "get_article_year"
         ret_val = None
         self.open_connection(caller_name=fname) # make sure connection is open
         if self.db is not None:
@@ -431,6 +457,22 @@ class opasCentralDB(object):
         self.close_connection(caller_name=fname) # make sure connection is closed
         return ret_val
         
+    def get_vols_for_source_and_year(self, src_code, year):
+        """
+        Return a set of years per a volume number for a source code
+        """
+        ret_val = None
+        sql = f"""
+                SELECT art_vol
+                FROM api_articles
+                WHERE src_code = '{src_code}'
+                      and art_year = {year};
+               """				            
+        ret_val = self.get_select_as_list(sql)
+        ret_val = [n[0] for n in ret_val]
+        return ret_val
+
+
     def most_viewed_generator( self,
                                publication_period: int=5,  # Number of publication years to include (counting back from current year, 0 means current year)
                                viewperiod: int=4,          # used here for sort and limiting viewcount results (more_than_clause)
@@ -640,15 +682,15 @@ class opasCentralDB(object):
         Reinstated because downloading from Solr is too slow!
          
         ------------------------------------
-         vw_stat_cited_crosstab_with_details
+         vw_stat_cited_crosstab_with_details2
         ------------------------------------
          
          SELECT
-            `vw_stat_cited_crosstab`.`cited_document_id` AS `cited_document_id`,
-            `vw_stat_cited_crosstab`.`count5` AS `count5`,
-            `vw_stat_cited_crosstab`.`count10` AS `count10`,
-            `vw_stat_cited_crosstab`.`count20` AS `count20`,
-            `vw_stat_cited_crosstab`.`countAll` AS `countAll`,
+            `vw_stat_cited_crosstab2`.`cited_document_id` AS `cited_document_id`,
+            `vw_stat_cited_crosstab2`.`count5` AS `count5`,
+            `vw_stat_cited_crosstab2`.`count10` AS `count10`,
+            `vw_stat_cited_crosstab2`.`count20` AS `count20`,
+            `vw_stat_cited_crosstab2`.`countAll` AS `countAll`,
             `api_articles`.`art_auth_citation` AS `hdgauthor`,
             `api_articles`.`art_title` AS `hdgtitle`,
             `api_articles`.`src_title_abbr` AS `srctitleseries`,
@@ -660,12 +702,12 @@ class opasCentralDB(object):
             `api_articles`.`art_citeas_text` AS `art_citeas_text` 
          FROM
             (
-                `vw_stat_cited_crosstab`
+                `vw_stat_cited_crosstab2`
                 JOIN `api_articles` ON ((
-                        `vw_stat_cited_crosstab`.`cited_document_id` = `api_articles`.`art_id` 
+                        `vw_stat_cited_crosstab2`.`cited_document_id` = `api_articles`.`art_id` 
                     ))) 
          ORDER BY
-            `vw_stat_cited_crosstab`.`countAll` DESC
+            `vw_stat_cited_crosstab2`.`countAll` DESC
          
         """
         fname = "most_cited_generator"
@@ -744,7 +786,7 @@ class opasCentralDB(object):
                 
             # Note that WHERE 1 = 1 is used since clauses all start with AND
             sql = f"""SELECT DISTINCT {select_clause} 
-                      FROM vw_stat_cited_crosstab_with_details
+                      FROM vw_stat_cited_crosstab_with_details2
                       WHERE 1 = 1
                       {doc_type_clause}
                       {author_clause}
@@ -768,12 +810,12 @@ class opasCentralDB(object):
 
     def get_citation_counts(self) -> dict:
         """
-         Using the opascentral vw_stat_cited_crosstab view, based on the api_biblioxml which is used to detect citations,
+         Using the opascentral vw_stat_cited_crosstab2 view, based on the api_biblioxml2 which is used to detect citations,
            return the cited counts for each art_id
            
            Primary view definition copied here for safe keeping.
            ----------------------
-           vw_stat_cited_crosstab
+           vw_stat_cited_crosstab2
            ----------------------
            
            SELECT
@@ -789,23 +831,23 @@ class opasCentralDB(object):
            FROM
                (((((
                                SELECT DISTINCT
-                                   `api_biblioxml`.`art_id` AS `articleID`,
-                                   `api_biblioxml`.`bib_local_id` AS `internalID`,
-                                   `api_biblioxml`.`full_ref_xml` AS `fullReference`,
-                                   `api_biblioxml`.`bib_rx` AS `cited_document_id` 
+                                   `api_biblioxml2`.`art_id` AS `articleID`,
+                                   `api_biblioxml2`.`bib_local_id` AS `internalID`,
+                                   `api_biblioxml2`.`full_ref_xml` AS `fullReference`,
+                                   `api_biblioxml2`.`bib_rx` AS `cited_document_id` 
                                FROM
-                                   `api_biblioxml` 
+                                   `api_biblioxml2` 
                                    ) `r0`
-                               LEFT JOIN `vw_stat_cited_in_last_5_years` `r1` ON ((
+                               LEFT JOIN `vw_stat_cited_in_last_5_years2` `r1` ON ((
                                        `r1`.`cited_document_id` = `r0`.`cited_document_id` 
                                    )))
-                           LEFT JOIN `vw_stat_cited_in_last_10_years` `r2` ON ((
+                           LEFT JOIN `vw_stat_cited_in_last_10_years2` `r2` ON ((
                                    `r2`.`cited_document_id` = `r0`.`cited_document_id` 
                                )))
-                       LEFT JOIN `vw_stat_cited_in_last_20_years` `r3` ON ((
+                       LEFT JOIN `vw_stat_cited_in_last_20_years2` `r3` ON ((
                                `r3`.`cited_document_id` = `r0`.`cited_document_id` 
                            )))
-                   LEFT JOIN `vw_stat_cited_in_all_years` `r4` ON ((
+                   LEFT JOIN `vw_stat_cited_in_all_years2` `r4` ON ((
                            `r4`.`cited_document_id` = `r0`.`cited_document_id` 
                        ))) 
            WHERE
@@ -830,7 +872,7 @@ class opasCentralDB(object):
             try:
                 with closing(self.db.cursor(buffered=True, dictionary=True)) as cursor:
                     sql = """
-                          SELECT cited_document_id, count5, count10, count20, countAll from vw_stat_cited_crosstab; 
+                          SELECT cited_document_id, count5, count10, count20, countAll from vw_stat_cited_crosstab2; 
                           """
                     cursor.execute(sql)
                     if cursor.rowcount:
@@ -900,15 +942,15 @@ class opasCentralDB(object):
         Generic retrieval from database, just the count
         
         >>> ocd = opasCentralDB()
-        >>> count = ocd.get_select_count(sqlSelect="SELECT * from vw_reports_user_searches;")
-        >>> count > 1000
+        >>> count = ocd.get_select_count(sqlSelect="SELECT * from vw_article_sectnames limit 102;")
+        >>> count > 100
         True
         
         """
         self.open_connection(caller_name="get_select_count") # make sure connection is open
         ret_val = None
 
-        sqlSelect = re.sub("SELECT .+? FROM", "SELECT COUNT(*) AS FULLCOUNT FROM", sqlSelect, count=1, flags=re.IGNORECASE)
+        sqlSelect = re.sub("SELECT[ \n\*]*?FROM", "SELECT COUNT(*) AS FULLCOUNT FROM", sqlSelect, count=1, flags=re.IGNORECASE)
         try:
             if self.db is not None:
                 with closing(self.db.cursor(buffered=True, dictionary=True)) as cursor:
@@ -971,30 +1013,31 @@ class opasCentralDB(object):
                     else:
                         ret_val = []
                     
-            self.close_connection(caller_name=fname) # make sure connection is closed
         else:
             logger.warning(f"RDS DB was not successfully opened ({caller_name}). WhatsNew check skipped.")
 
+        self.close_connection(caller_name=fname) # make sure connection is closed
         # return session model object
         return ret_val # List of records or empty list
 
-    def get_last_record_insertion_date(self):
+    def get_last_record_insertion_date(self, table_name="api_articles"):
         """
-        Return list of articles newer than the current date - days_back.
+        Return the latest record update date
        
         >>> ocd = opasCentralDB()
-        >>> articles = ocd.get_last_record_insertion_date() 
-        >>> len(articles) > 1
+        >>> ret=ocd.get_last_record_insertion_date()
+        >>> ret is not None
         True
 
         """
+        ret_val = None
         fname = "get_last_record_insertion_date"
         self.open_connection(caller_name=fname) # make sure connection is open
         if self.db is not None:
             try:
                 cursor = self.db.cursor()
-                sql = """
-                        SELECT max(last_update) FROM api_articles;
+                sql = f"""
+                        SELECT max(last_update) FROM {table_name};
                       """
                 cursor.execute(sql)
                 result = cursor.fetchone()
@@ -1007,6 +1050,40 @@ class opasCentralDB(object):
 
         self.close_connection(caller_name=fname) # make sure connection is closed
         return ret_val 
+
+    def get_max_bibrecord_update(self, art_id):
+        sel = f"""
+                SELECT max( `api_biblioxml2`.`last_update` ) AS `max` 
+                FROM `api_biblioxml2`
+                WHERE art_id = '{art_id}'
+		"""
+        fname = "max_bibrecord_update"
+        self.open_connection(caller_name=fname) # make sure connection is open
+        ret_val = None
+        if self.db is not None:
+            try:
+                with closing(self.db.cursor(buffered=True, dictionary=True)) as cursor:
+                    try:
+                        cursor.execute(sel)
+                    except ValueError as e:
+                        logger.error(f"DB Value Error {e} - {errmsg}")
+                    except mysql.connector.IntegrityError as e:
+                        logger.error(f"Integrity Error {e} - {errmsg}")
+                    except mysql.connector.InternalError as e:
+                        logger.error(f"Internal Error {e} - {errmsg}")
+                    except mysql.connector.DatabaseError as e:
+                        logger.error(f"Database Error {e} - {errmsg}")
+                    except Exception as e:
+                        logger.error(f"DB Error  {e} - {errmsg}")
+                    else:
+                        ret_val = cursor.fetchall()
+                        ret_val = ret_val[0]["max"]
+            except Exception as e:
+                logger.error(f"DB Error {e}")
+    
+        self.close_connection(caller_name=fname) # make sure connection is closed
+
+        return ret_val
     
     def get_min_max_volumes(self, source_code):
         sel = f"""
@@ -1071,6 +1148,85 @@ class opasCentralDB(object):
             log_everywhere_if(True, "warning", f"Error getting artstat {e}")
         
         return ret_val
+
+    ##------------------------------------------------------------------------------------------------------
+    #def xxx_add_art_relations(self, art_id, origrx, language_code="EN", relation_type="Translation"):
+        #"""
+        #01/24 - CORRECTION: I don't think this table is needed.  The problem with showing
+                #translations was elsewhere!
+        #Add this article's language info to the article qualifier table (linkartqual)
+        #if you supply a document_id returns the origrxID if there are multiple relations
+         #according to the opasloader_art_relations table.
+        
+        #>> ocd = opasCentralDB()
+        #>> ocd.add_art_relations(art_id='ANIJP-FR.2006.0161A', language_code="FR", origrx='IJP.086.1523A')
+        #True
+        #>> ocd = opasCentralDB()
+        #>> ocd.add_art_relations(art_id='IJP.086.1523A', language_code="EN", origrx='IJP.086.1523A')
+        #True
+        #"""
+        #ret_val = False
+        #sel_insert = r"""REPLACE INTO opasloader_art_relations
+                        #(
+                            #articleID, 
+                            #origrxID, 
+                            #languageCode, 
+                            #relationType
+                        #)
+                        #values
+                        #(
+                            #%(articleID)s,
+                            #%(origrxID)s,
+                            #%(languageCode)s, 
+                            #%(relationType)s                              
+                        #)
+                        #"""
+        #query_params = {
+                           #"articleID":art_id,
+                           #"origrxID":origrx, 
+                           #"languageCode":language_code, 
+                           #"relationType": relation_type                     # reflinks
+                        #}
+        
+        #try:
+            ## commit automatically handled by do_action_query
+            #res = ocd.do_action_query(querytxt=sel_insert, queryparams=query_params)
+        #except Exception as e:
+            #errStr = f"DBError: insert error {e}"
+            #logger.error(errStr)
+            #if opasConfig.LOCAL_TRACE: print (errStr)
+        #else:
+            #ret_val = True
+    
+        #return ret_val  # return True for success
+
+    ##------------------------------------------------------------------------------------------------------
+    #def get_art_relations(self, the_id, relation_type="Translation"):
+        #"""
+        #01/24 - CORRECTION: I don't think this table is needed.  The problem with showing
+                #translations was elsewhere!
+        
+        #if you supply a document_id returns the origrxID if there are multiple relations
+         #according to the opasloader_art_relations table.
+         
+        #>>> ocd = opasCentralDB()
+        #>>> ocd.get_art_relations(the_id='IJP.086.1523A')
+        #'IJP.086.1523A'
+        #>>> ocd.get_art_relations(the_id='ANIJP-FR.2006.0161A')
+        #'IJP.086.1523A'
+
+        #"""
+        #ret_val = None
+
+        #sql_select = f"select * from opasloader_art_relations where articleID = '{the_id}' and relationType='{relation_type}'"
+        #ret_val = self.get_select_as_list_of_dicts(sql_select)
+        #if len(ret_val) == 1:
+            ## found, get origrx
+            #ret_val = origrx_id = ret_val[0].get("origrxID", the_id)
+        #else:
+            #ret_val = origrx_id = the_id
+        
+        #return origrx_id
         
     #------------------------------------------------------------------------------------------------------
     def get_select_as_list_of_dicts(self, sqlSelect: str):
@@ -1078,10 +1234,8 @@ class opasCentralDB(object):
         Generic retrieval from database, into dict
         
         >>> ocd = opasCentralDB()
-        >>> rows = ocd.get_select_as_list_of_dicts(sqlSelect="SELECT * from vw_reports_session_activity;")
-        >>> len(rows) >= 1
-        True
-        >>> type(rows[0]) == dict
+        >>> cnt = ocd.get_select_as_list_of_dicts(sqlSelect="SELECT * from vw_reports_session_activity limit 3;")
+        >>> len(cnt) == 3
         True
         """
         fname = "get_selection_as_list_of_dicts"
@@ -1117,7 +1271,7 @@ class opasCentralDB(object):
         Not sure why!  But only call this with a generic dict based model
         
         >>> ocd = opasCentralDB()
-        >>> records = ocd.get_select_as_list_of_models(sqlSelect="SELECT * from vw_reports_session_activity;", model=models.ReportListItem)
+        >>> records = ocd.get_select_as_list_of_models(sqlSelect="SELECT * from vw_reports_session_activity limit 10;", model=models.ReportListItem)
         >>> len(records) > 1
         True
         >>> type(records[0]) == models.ReportListItem
@@ -1146,19 +1300,64 @@ class opasCentralDB(object):
         return ret_val # None or Session Object
         
     #------------------------------------------------------------------------------------------------------
-    def get_references_from_biblioxml_table(self, article_id, ref_local_id=None, verbose=None):
+    def get_ref_from_db(self, art_id, ref_local_id, verbose=None):
         """
-        Return a list of references from the api_biblioxml table in opascentral
+        Return a reference model from the api_biblioxml2 table in opascentral
+        
+        >>> ocd = opasCentralDB()
+        >>> ref = ocd.get_ref_from_db(art_id="FA.013A.0120A", ref_local_id='B009')
+        >>> ref.ref_rx
+        'BJP.025.0143A'
+        
+        """
+        ret_val = None
+    
+        select = f"""SELECT * from api_biblioxml2
+                     WHERE art_id = '{art_id}'
+                     AND ref_local_id = '{ref_local_id}'
+                     """
+    
+        results = self.get_select_as_list_of_models(select, model=models.Biblioxml)
+        if results:
+            ret_val = results[0]
+    
+        return ret_val
+
+    #------------------------------------------------------------------------------------------------------
+    def get_references_select_biblioxml(self, select, verbose=None):
+        """
+        Return a list of references as BiblioEntry's from the api_biblioxml2 table in opascentral
         """
         ret_val = None
 
+        results = self.get_select_as_list_of_models(select, model=models.Biblioxml)
+        
+        ret_val = results
+    
+        return ret_val  # return True for success
+
+    #------------------------------------------------------------------------------------------------------
+    def get_references_from_biblioxml_table(self, article_id, ref_local_id=None, verbose=None):
+        """
+        Return a list of references as BiblioEntry's from the api_biblioxml2 table in opascentral
+        """
+        ret_val = None
+
+        if article_id is not None:
+            art_id_clause = f"WHERE art_id = '{article_id}'"
+        elif "*" in article_id or "?" in article_id:
+            art_id_clause = f"WHERE art_id RLIKE '{article_id}'"
+        else:
+            art_id_clause = ""
+            
         if ref_local_id is not None:
-            local_id_clause = f"AND bib_local_id RLIKE '{ref_local_id}'"
+            local_id_clause = f"AND ref_local_id RLIKE '{ref_local_id}'"
         else:
             local_id_clause = ""
             
-        select = f"""SELECT * from api_biblioxml
-                     WHERE art_id = '{article_id}' {local_id_clause}
+        select = f"""SELECT * from api_biblioxml2
+                     {art_id_clause}
+                     {local_id_clause}
                      """
     
         results = self.get_select_as_list_of_models(select, model=models.Biblioxml)
@@ -1173,7 +1372,7 @@ class opasCentralDB(object):
         Generic retrieval from database
         
         >>> ocd = opasCentralDB()
-        >>> records = ocd.get_select_as_list(sqlSelect="SELECT * from vw_reports_session_activity;")
+        >>> records = ocd.get_select_as_list(sqlSelect="SELECT * from vw_reports_session_activity limit 10;")
         >>> len(records) > 1
         True
         >>> type(records[0]) == tuple
@@ -1317,12 +1516,77 @@ class opasCentralDB(object):
                     else:
                         ret_val = ""
                     
-            self.close_connection(caller_name=fname) # make sure connection is closed
         else:
             logger.warning(f"RDS DB was not successfully opened ({caller_name}). WhatsNew check skipped.")
 
+        self.close_connection(caller_name=fname) # make sure connection is closed
         # return session model object
         return ret_val # List of records or empty list
+
+    def update_biblioxml_links(self, art_id,
+                               bib_id,
+                               bib_entry=None, 
+                               #rx=None,
+                               #rx_confidence=0,
+                               #rxcfs=None,
+                               #rxcfs_confidence=0,
+                               #rx_link_source="",
+                               #ref_xml="", 
+                               verbose=False):
+        """
+        Call with BiblioMatch or BiblioEntry object
+        
+        """
+        ret_val = False
+        caller_name = "update_biblioxml_record"
+        msg = f"\t...Updating biblio record to add rx and rx_confidence."
+        log_everywhere_if(verbose, "info", msg)
+            
+        #if rx == "":
+            #rx = None
+
+        #if rx_confidence is None:
+            #rx_confidence = 0
+
+        #if rxcfs == '':
+            #rxcfs = None
+            
+        #if rxcfs_confidence is None:
+            #rxcfs_confidence = 0
+        
+        if bib_entry.link_updated or bib_entry.record_updated:
+            sqlcpy = f"""
+                        UPDATE api_biblioxml2
+                            SET ref_rx = %s,
+                                ref_rx_confidence = %s,
+                                ref_rxcf = %s,
+                                ref_rxcf_confidence = %s,
+                                ref_link_source = %s,
+                                ref_xml = %s
+                            WHERE art_id = %s
+                            AND ref_local_id = %s
+                      """
+            
+            query_params = (bib_entry.ref_rx,
+                            bib_entry.ref_rx_confidence,
+                            bib_entry.ref_rxcf,
+                            bib_entry.ref_rxcf_confidence,
+                            bib_entry.ref_link_source,
+                            bib_entry.ref_xml, 
+                            art_id,
+                            bib_id)
+        
+            try:
+                # commit automatically handled by do_action_query
+                res = self.do_action_query(querytxt=sqlcpy, queryparams=query_params)
+            except Exception as e:
+                errStr = f"{caller_name}: update error {e}"
+                logger.error(errStr)
+                if opasConfig.LOCAL_TRACE: print (errStr)
+            else:
+                ret_val = True
+        
+        return ret_val
 
     def update_session(self,
                        session_id,
@@ -1836,12 +2100,12 @@ class opasCentralDB(object):
         
         Returns True of False
 
-        >>> ocd = opasCentralDB()
-        >>> model = models.ClientConfigList(configList=[models.ClientConfigItem(configName="demo", configSettings={"A":"123", "B":"1234"})])
-        >>> ocd.save_client_config(client_id="123", client_configuration=model, session_id="test123", replace=True)
+        >> ocd = opasCentralDB()
+        >> model = models.ClientConfigList(configList=[models.ClientConfigItem(configName="demo", configSettings={"A":"123", "B":"1234"})])
+        >> ocd.save_client_config(client_id="123", client_configuration=model, session_id="test123", replace=True)
         (200, 'OK')
-        >>> model = models.ClientConfigList(configList=[models.ClientConfigItem(configName="test", configSettings={"A":"123", "B":"1234"}), models.ClientConfigItem(configName="test2", configSettings={"C":"456", "D":"5678"})])
-        >>> ocd.save_client_config(client_id="123", client_configuration=model, session_id="test123", replace=True)
+        >> model = models.ClientConfigList(configList=[models.ClientConfigItem(configName="test", configSettings={"A":"123", "B":"1234"}), models.ClientConfigItem(configName="test2", configSettings={"C":"456", "D":"5678"})])
+        >> ocd.save_client_config(client_id="123", client_configuration=model, session_id="test123", replace=True)
         (200, 'OK')
         """
         fname = "save_client_config"
@@ -2037,13 +2301,9 @@ class opasCentralDB(object):
         >>> model = models.ClientConfigList(configList=[models.ClientConfigItem(configName="demo", configSettings={"A":"123", "B":"1234"})])
         >>> ocd.save_client_config(client_id="123", client_configuration=model, session_id="test123", replace=True)
         (200, 'OK')
-        >>> ocd.get_client_config("123", "test")
-        ClientConfigList(configList=[ClientConfigItem(api_client_id=123, session_id='test123', configName='test', configSettings={'A': '123', 'B': '1234'})])
-        >>> ocd.get_client_config("123", "test, test2")
-        ClientConfigList(configList=[ClientConfigItem(api_client_id=123, session_id='test123', configName='test', configSettings={'A': '123', 'B': '1234'}), ClientConfigItem(api_client_id=123, session_id='test123', configName='test2', configSettings={'C': '456', 'D': '5678'})])
+        >>> ocd.get_client_config("123", "demo")
+        ClientConfigList(configList=[ClientConfigItem(api_client_id=123, session_id='test123', configName='demo', configSettings={'A': '123', 'B': '1234'})])
         >>> ocd.get_client_config("123", "doesntexist")
-        
-        Last case get used to return"
         ClientConfigList(configList=[])
         
         """
@@ -2116,8 +2376,7 @@ class opasCentralDB(object):
                 logger.error(f"self.db connection is not set/missing. Can't get client config.")
                 
                 
-            self.close_connection(caller_name=fname) # make sure connection is closed
-    
+        self.close_connection(caller_name=fname) # make sure connection is closed
         return ret_val
 
     def del_client_config(self, client_id: int, client_config_name: str):
@@ -2159,8 +2418,7 @@ class opasCentralDB(object):
                         else:
                             ret_val = None
                 
-            self.close_connection(caller_name=fname) # make sure connection is closed
-
+        self.close_connection(caller_name=fname) # make sure connection is closed
         return ret_val
 
     def record_document_view(self, document_id, session_info=None, view_type="Abstract"):
@@ -2214,7 +2472,6 @@ class opasCentralDB(object):
             logger.error(f"Error checking document view type {view_type}: {e}")
 
         self.close_connection(caller_name=fname) # make sure connection is closed
-
         return ret_val
    
     def verify_admin(self, session_info):
@@ -2236,17 +2493,18 @@ class opasCentralDB(object):
         > ocd = opasCentralDB()
         > ocd.delete_all_article_data()
         """
-        self.do_action_query(querytxt="DELETE FROM api_biblioxml", queryparams=None)
+        # commit automatically handled by do_action_query
+        self.do_action_query(querytxt="DELETE FROM api_biblioxml2", queryparams=None)
         self.do_action_query(querytxt="DELETE FROM api_articles", queryparams=None)
         
     def delete_specific_article_data(self, art_id):
         """
-        Delete the information for art_id from the api_articles and api_biblioxml table
+        Delete the information for art_id from the api_articles and api_biblioxml2 table
         """
         query_param_dict = {}
         query_param_dict["art_id"] = art_id
-        
-        self.do_action_query(querytxt="DELETE FROM api_biblioxml WHERE art_id=%(art_id)s;", queryparams=query_param_dict)
+        # commit automatically handled by do_action_query        
+        self.do_action_query(querytxt="DELETE FROM api_biblioxml2 WHERE art_id=%(art_id)s;", queryparams=query_param_dict)
         self.do_action_query(querytxt="DELETE FROM api_articles WHERE art_id=%(art_id)s;", queryparams=query_param_dict)
 
     #----------------------------------------------------------------------------------------
@@ -2254,11 +2512,8 @@ class opasCentralDB(object):
     
         fname = "do_action_query"
         ret_val = False
-        localDisconnectNeeded = False
-        if self.connected != True:
-            self.open_connection(caller_name=fname) # make sure connection is open
-            localDisconnectNeeded = True
-            
+        self.open_connection(caller_name=fname) # make sure connection is open
+        
         with closing(self.db.cursor(buffered=True, dictionary=True)) as dbc:
             try:
                 if queryparams is not None:
@@ -2292,9 +2547,7 @@ class opasCentralDB(object):
                 self.db.commit()
                 ret_val = True
         
-        if localDisconnectNeeded == True:
-            # if so, commit any changesand close.  Otherwise, it's up to caller.
-            self.close_connection(caller_name=fname) # make sure connection is open
+        self.close_connection(caller_name=fname) # make sure connection is open
         
         return ret_val
 
@@ -2340,6 +2593,130 @@ class opasCentralDB(object):
         logger.debug (f"Track Calls to PaDS ({time.time()}): Session ID: {session_id}; ip address: {ip_address}. PaDS Call: {pads_call}")
     
         return 
+
+    #------------------------------------------------------------------------------------------------------
+    def save_ref_to_biblioxml_table(self, bib_entry, verbose=None):
+        """
+        Adds the bibliography data from a single document to the biblioxml table in mysql database opascentral.
+        
+        This database table is used as the basis for the cited_crosstab views, which show most cited articles
+          by period.  It replaces fullbiblioxml which was being imported from the non-OPAS document database
+          pepa1db, which is generated during document conversion from KBD3 to EXP_ARCH1.  That was being used
+          as an easy bridge to start up OPAS.
+          
+        Note: This data is in addition to the Solr pepwebrefs (biblio) core which is added elsewhere.  The SQL table is
+              primarily used for the cross-tabs, since the Solr core is more easily joined with
+              other Solr cores in queries.  (TODO: Could later experiment with bridging Solr/SQL.)
+              
+        Note: More info than needed for crosstabs is captured to this table, but that's as a bridge
+              to potential future uses.
+              
+              TODO: Finish redefining crosstab queries to use this base table.
+              
+        >>> ocd = opasCentralDB()
+        >>> art_id="FA.013A.0120A"
+        >>> ref_local_id='B009'
+        >>> bib_entry = ocd.get_ref_from_db(art_id=art_id, ref_local_id=ref_local_id)
+        >>> success = ocd.save_ref_to_biblioxml_table(bib_entry=bib_entry, verbose=True)       
+          
+        """
+        ret_val = False
+        if bib_entry.ref_rx is None or bib_entry.ref_rxcf is None:
+            # Read from the current table
+            current_db_entry = self.get_ref_from_db(art_id=bib_entry.art_id,
+                                                    ref_local_id=bib_entry.ref_local_id)
+            if current_db_entry is not None:
+                if bib_entry.ref_rx is None:
+                    bib_entry.ref_rx = current_db_entry.ref_rx
+                    bib_entry.ref_rx_confidence = current_db_entry.ref_rx_confidence
+                elif current_db_entry.ref_rx_confidence > bib_entry.ref_rx_confidence:
+                    bib_entry.ref_rx = current_db_entry.ref_rx
+                    bib_entry.ref_rx_confidence = current_db_entry.ref_rx_confidence
+        
+                if bib_entry.ref_rxcf is None:
+                    bib_entry.ref_rxcf = current_db_entry.ref_rxcf
+                    bib_entry.ref_rxcf_confidence = current_db_entry.ref_rxcf_confidence 
+                elif current_db_entry.ref_rxcf_confidence > bib_entry.ref_rxcf_confidence:
+                    bib_entry.ref_rxcf = current_db_entry.ref_rxcf
+                    bib_entry.ref_rxcf_confidence = current_db_entry.ref_rxcf_confidence
+    
+        if bib_entry.ref_rx_confidence is None:
+            bib_entry.ref_rx_confidence = 0
+            
+        if bib_entry.ref_rxcf_confidence is None:
+            bib_entry.ref_rxcf_confidence = 0
+    
+        insert_if_not_exists = r"""REPLACE
+                                   INTO api_biblioxml2 (
+                                        art_id,
+                                        ref_local_id,
+                                        art_year,
+                                        ref_rx,
+                                        ref_rx_confidence,
+                                        ref_rxcf, 
+                                        ref_rxcf_confidence,
+                                        ref_link_source,
+                                        ref_authors, 
+                                        ref_authors_xml, 
+                                        ref_title, 
+                                        ref_sourcecode, 
+                                        ref_sourcetype, 
+                                        ref_sourcetitle,
+                                        ref_pgrg, 
+                                        ref_year, 
+                                        ref_year_int, 
+                                        ref_volume, 
+                                        ref_publisher,
+                                        ref_doi,
+                                        ref_xml,
+                                        ref_text
+                                        )
+                                    values (%(art_id)s,
+                                            %(ref_local_id)s,
+                                            %(art_year)s,
+                                            %(ref_rx)s,
+                                            %(ref_rx_confidence)s,
+                                            %(ref_rxcf)s,
+                                            %(ref_rxcf_confidence)s,
+                                            %(ref_link_source)s,
+                                            %(ref_authors)s,
+                                            %(ref_authors_xml)s,
+                                            %(ref_title)s,
+                                            %(ref_sourcecode)s,
+                                            %(ref_sourcetype)s,
+                                            %(ref_sourcetitle)s,
+                                            %(ref_pgrg)s,
+                                            %(ref_year)s,
+                                            %(ref_year_int)s,
+                                            %(ref_volume)s,
+                                            %(ref_publisher)s,
+                                            %(ref_doi)s,
+                                            %(ref_xml)s,
+                                            %(ref_text)s
+                                            );
+                                """
+        
+        # Note: all param dict items must be set (not defaulted)
+        query_param_dict = bib_entry.__dict__
+        # need to remove lists, even if they are not used.
+        #del query_param_dict["author_list"]
+        #del query_param_dict["author_name_list"]
+        #del query_param_dict["ref"]
+        del query_param_dict["parsed_ref"]
+    
+        res = ""
+        try:
+            # action query does it's own connect and commit
+            res = self.do_action_query(querytxt=insert_if_not_exists, queryparams=query_param_dict)
+        except Exception as e:
+            errStr = f"AddToBiblioDBError: insert (returned {res}) error {e}"
+            logger.error(errStr)
+            if opasConfig.LOCAL_TRACE: print (errStr)
+            
+        else:
+            ret_val = True
+            
+        return ret_val  # return True for success
 
 #================================================================================================================================
 

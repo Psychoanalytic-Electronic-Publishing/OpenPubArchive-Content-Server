@@ -39,6 +39,8 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_INPUT_BUILD = "(bKBD3)"
 DEFAULT_OUTPUT_BUILD = "(bEXP_ARCH1)"
+PEP_KBD_DTD = "https://pep-web-includes.s3.amazonaws.com/pepkbd3.dtd"
+PEP_KBD_DOCTYPE = f'<!DOCTYPE pepkbd3 SYSTEM "{PEP_KBD_DTD}">'
 
 # Various switches for information/debugging
 DEBUG_TRACE = False
@@ -54,7 +56,7 @@ MIN_TERM_LENGTH_MATCH = 4 # smallest length term to match from glossary (i.e., e
 WHATS_NEW_EXPIRES_DAYS = 0
 WHATS_NEW_EXPIRES_HOURS = 8
 WHATS_NEW_EXPIRES_MINUTES = 0
-CONTINUE_PROCESSING_DAYS = 2
+CONTINUE_PROCESSING_DAYS = 1
 
 JOURNALNEWFLAG = "*New* "
 NO_OFFSITE_DOCUMENT_ACCESS_CHECKS = True # set to false if the server should check with PaDS for offsite documents
@@ -75,7 +77,7 @@ MIN_WORD_LEN = 4 # minimum word length to be considered frmo titles
 MAX_WORDS = 5 # max words from title
 MIN_WORDS = 2 # min words to match in title
 MAX_DISPLAY_LEN_CF_ARTICLES = 90
-
+MAX_LOGMSG_LEN = 120
 
 # General books
 BOOKSOURCECODE = "ZBK" #  books are listed under this source code, e.g., to make for an id of ZBK.052.0001
@@ -290,6 +292,36 @@ def normalize_val(val, val_dict, default=None):
 
 # Special relatedrx field name from Solr schema
 RELATED_RX_FIELDNAME = "art_qual"
+# standard confidence values with implied meaning
+RX_CONFIDENCE_POSITIVE = 1                        # human verified, no need to update
+RX_CONFIDENCE_NEVERMORE = .01                     # use this value to manually flag a reference so 
+                                                  # it is not included in scans, it will NEVER be in PEP.
+                                                  # (if wrong, just delete the value and it will 
+                                                  # be included again!)
+RX_CONFIDENCE_AUTO_VERY_LIKELY = .99              # as sure as possible, automatically
+RX_CONFIDENCE_PROBABLE = .91                      # target exists and likely right
+RX_CONFIDENCE_PARSED_PROBABLE = .89               # string parsed (missing markup) target likely right
+RX_CONFIDENCE_PAGE_ADJUSTED = .88                 # matched by page adjusting
+RX_CONFIDENCE_EXISTS = .85                        # target exists
+RX_CONFIDENCE_SAME_AUT_TITLE_OTH_SRC = .81        # matched by page adjusting
+RX_CONFIDENCE_TITLE_MATCH_NOT_YEAR = .79
+RX_CONFIDENCE_THIS_IS_NOT_THE_REFERENCE = .01
+RX_CONFIDENCE_MINIMUM_NO_REPLACE = .77
+
+HEURISTIC_SEARCH_LIST_MAX_LEN = 5                # Max length of ref_rxcf list
+HEURISTIC_SEARCH_MAX_COUNT = 10                  # max matches to consider in heuristic search
+
+RX_LINK_SOURCE_DB = "database"
+RX_LINK_SOURCE_TITLE = "title"
+RX_LINK_SOURCE_TITLE_AND_YEAR = "title and year"
+RX_LINK_SOURCE_XML = "xml"
+RX_LINK_SOURCE_PATTERN = "pattern"
+RX_LINK_SOURCE_VARIATION = "variation"
+RX_LINK_SOURCE_HEURISTIC = "heuristic"
+RX_LINK_SOURCE_TITLE_HEURISTIC = "title heuristic"
+RX_LINK_SOURCE_TITLE_WEIGHTED = "title wtd heuristic"
+RX_LINK_SOURCE_RX = "in rx"
+
 # OR'd list RE of terms to not match in the documents for glossary items
 GLOSSARY_TERM_SKIP_REGEX = "(stage|feeling)"
 
@@ -665,12 +697,13 @@ DOCUMENT_ITEM_SUMMARY_FIELDS ="""
  art_subtitle_xml, 
  art_author_id, 
  art_authors, 
+ art_authors_citation,
  art_citeas_xml, 
  art_info_xml, 
  meta_xml, 
  art_sourcecode, 
  art_sourcetitleabbr, 
- art_sourcetitlefull, 
+ art_sourcetitlefull,
  art_sourcetype, 
  art_level,
  para_art_id,
@@ -725,6 +758,7 @@ DOCUMENT_ITEM_CONCORDANCE_FIELDS ="""
  art_subtitle_xml, 
  art_author_id, 
  art_authors, 
+ art_authors_citation,
  art_citeas_xml, 
  art_info_xml, 
  meta_xml, 
@@ -760,7 +794,8 @@ DOCUMENT_ITEM_CONCORDANCE_FIELDS ="""
 
 # try the more squashed approach to listing, see if that shows better in the solr call logs
 DOCUMENT_ITEM_VIDEO_FIELDS = """
-art_id,art_issn, art_sourcecode,art_authors, title, art_subtitle_xml, art_title_xml,
+art_id,art_issn, art_sourcecode,art_authors,art_authors_citation,
+title, art_subtitle_xml, art_title_xml,
 art_sourcetitlefull,art_sourcetitleabbr,art_info_xml, meta_xml, 
 art_vol,art_vol_title, art_year, art_iss, art_iss_title,
 art_year, art_citeas_xml, art_pgrg, art_pgcount, art_lang, art_origrx, art_qual, art_kwds, file_classification
@@ -773,6 +808,7 @@ DOCUMENT_ITEM_TOC_FIELDS = """
  art_title_xml, 
  art_subtitle_xml, 
  art_authors_xml, 
+ art_authors_citation,
  art_citeas_xml, 
  art_sourcecode, 
  art_sourcetitleabbr, 
@@ -826,6 +862,7 @@ DOCUMENT_ITEM_STAT_FIELDS = """
  art_citeas_xml, 
  art_title, 
  art_authors, 
+ art_authors_citation,
  art_sourcecode, 
  art_sourcetitleabbr, 
  art_sourcetitlefull, 
@@ -1085,7 +1122,7 @@ gSplitBooks = {
     "IPL118" : 0,
     "NLP001" : 0,
     "NLP003" : 0,
-    "NLP005" : 1,
+    "NLP005" : 0,
     "NLP011" : 0,
     "NLP014" : 0,
     "GW001"  : 0,

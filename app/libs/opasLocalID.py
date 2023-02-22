@@ -334,8 +334,7 @@ class LocalID:
                     self.localIDSuffix = "Z"
                     self.localIDVal = self.localIDVal[1:]
             elif self.localIDType == "B":
-                #idLen = len(self.localIDVal)
-                idLen = 4
+                idLen = 3                           # opas uses 3 digit biblio local ids
             elif self.localIDType in ["F", "FN"]:
                 idLen = 5                           # 3 doesn't work, because T&F had 4 digit (not 0) IDs.  So make it 5, then it won't clash with graphics.
             elif self.localIDType == "H":

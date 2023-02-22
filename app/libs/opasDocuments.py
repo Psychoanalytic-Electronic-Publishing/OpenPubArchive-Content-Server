@@ -36,7 +36,7 @@ import re
 import opasGenSupportLib as opasgenlib
 
 # import sciHLMath
-# import sciSupport
+# import opasgenlib
 
 LOCALID = "LocalID"			# need this here because it is the default for a argument
                             # and you can't use the local class definition,
@@ -183,7 +183,7 @@ class VolumeNumber:
                     logger.error(f"Can't remove vol suffix {volNum} {e}")
                 
             if volNum == None or volNum=="":
-                logging.warning("Bad volNum. Set to 0")
+                logging.debug("Bad volNum. Set to 0")
                 volNum = 0
 
             if isinstance(volNum, str):  # supports string and unicode Was if type(volNum) == type(""):

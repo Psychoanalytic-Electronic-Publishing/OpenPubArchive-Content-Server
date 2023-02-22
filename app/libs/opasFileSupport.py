@@ -633,7 +633,7 @@ class FlexFileSystem(object):
       
         return ret_val, fileinfoout
     
-    def get_matching_filelist(self, path=None, filespec_regex=None, revised_after_date=None, max_items=None):
+    def get_matching_filelist(self, path=None, filespec_regex=None, revised_after_date=None, subfolder=None, max_items=None):
         """
         Return a list of matching files, as FileInfo objects
 
@@ -648,17 +648,22 @@ class FlexFileSystem(object):
         ret_val = []
         count = 0
         rc_match = re.compile(filespec_regex, flags=re.IGNORECASE)
-        
+        if subfolder is not None:
+            if subfolder[0] not in ("/", r"\\"):
+                subfolder = "/" + subfolder
+        else:
+            subfolder = ""
+                
         if path is None:
-            data_folder = pathlib.Path(localsecrets.XML_ORIGINALS_PATH) # "pep-web-xml"
+            data_folder = pathlib.Path(localsecrets.XML_ORIGINALS_PATH + subfolder) # "pep-web-live-xml"
         else:
             if path == pathlib.Path(localsecrets.XML_ORIGINALS_PATH):
-                data_folder = pathlib.Path(localsecrets.XML_ORIGINALS_PATH)
+                data_folder = pathlib.Path(localsecrets.XML_ORIGINALS_PATH + subfolder)
             elif self.key is not None:
                 # s3 running from local
-                data_folder = pathlib.Path(path)
+                data_folder = pathlib.Path(path + subfolder)
             else:
-                data_folder = path
+                data_folder = pathlib.Path(str(path) + subfolder)
             
         if self.key is not None:
             data_folder = data_folder.as_posix()
@@ -744,7 +749,30 @@ def find_s3_file(bucket=r'pep-web-xml',
                     break
 
     return ret_val            
+
+def get_build_name(filename, with_markup=True):
+    """
+    Return the build name with the encapsulating markup (parens and b prefix) by default,
+    e.g.,
+      (bEXP_ARCH1)
+      
+    >>> get_build_name("GW.001.0000A(bEXP_ARCH1).xml")
+    '(bEXP_ARCH1)'
+    
+    >>> get_build_name("GW.001.0000A(bEXP_ARCH1).xml", with_markup=False)
+    'EXP_ARCH1'
+
+    """
+    m = re.search(r"\(b(?P<bldname>.*?)\)", filename)
+    if m:
+        if with_markup:
+            ret_val = f'(b{m.group("bldname")})'
+        else:
+            ret_val = m.group("bldname")
+    else:
+        ret_val = None
         
+    return ret_val
 
 def iterate_bucket_items(bucket):
     """

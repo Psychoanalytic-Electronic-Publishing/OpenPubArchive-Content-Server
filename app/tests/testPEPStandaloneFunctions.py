@@ -34,7 +34,7 @@ class TestStandaloneFunctions(unittest.TestCase):
         print (resp)
         resp = opasQueryHelper.cleanup_solr_query("(freud, sigmund OR grotstein, james s)")
         print (resp)
-        
+       
     def test_query_equivalence(self):
         r1, status = search_text(query="mother and milk or father and child")
         r1_count = r1.documentList.responseInfo.fullCount

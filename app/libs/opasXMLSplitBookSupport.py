@@ -155,6 +155,7 @@ class SplitBookData:
                         # delete this article record, the file was consolidated or removed
                         count = count + 1
                         delqry = f"delete from {SPLIT_BOOK_TABLE} where articleID = '{articleID}'"
+                        # commit automatically handled by do_action_query
                         self.ocd.do_action_query(delqry, queryparams=None, contextStr=f"({SPLIT_BOOK_TABLE} %s)" % articleID)
                         log_everywhere_if(DBGSTDOUT, level="debug", msg=f"Deleted from {SPLIT_BOOK_TABLE} ArticleID: {articleID}")
                         
@@ -201,6 +202,7 @@ class SplitBookData:
         prequery = f"delete from {SPLIT_BOOK_TABLE} where articleID = '{art_id}' {add_page_pattern} {add_filename_pattern}"
         log_everywhere_if(DBGSTDOUT, level="debug", msg=prequery)
         
+        # commit automatically handled by do_action_query
         ret_val = self.ocd.do_action_query(prequery, queryparams=None, contextStr=f"(SplitBookPages Removed for {art_id})")
         return ret_val
 
@@ -243,6 +245,7 @@ class SplitBookData:
                                            )
         
         # now add the row
+        # commit automatically handled by do_action_query
         ret_val = self.ocd.do_action_query(querytxt,
                                            queryparams=None,
                                            contextStr="(SPLITBOOKS %s/%s)" % (art_id_base, page_id))

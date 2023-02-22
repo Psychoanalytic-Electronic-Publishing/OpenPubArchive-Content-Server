@@ -1183,8 +1183,8 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
     except Exception as e:
         if req_url != opasConfig.CACHEURL: # no session supplied when loading caching, ok
             logger.warning("No Session info supplied to search_text_qs")
-        # mark as not logged in
-        #user_logged_in_bool = False
+            # mark as not logged in
+            #user_logged_in_bool = False
 
     if 1: # just to allow folding
         if solr_query_spec.solrQueryOpts is None: # initialize a new model
@@ -2006,6 +2006,7 @@ def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
             citeAs = opasgenlib.force_string_return_from_various_return_types(citeAs)
             vol = result.get("art_vol", None)
             issue = result.get("art_iss", None)
+            if issue == '0': issue = None
             issue_title = result.get("art_iss_title", None)
             issue_seqnbr = result.get("art_iss_seqnbr", None)
             listed_new_section_name = new_section_name = result.get("art_newsecnm", None)
@@ -2421,7 +2422,7 @@ def metadata_get_next_and_prev_articles(art_id=None,
     # works for journal, videostreams have more than one year per vol.
     # works for books, videostream vol numbers
     
-    article_id = ArticleID(articleID=art_id) # now from opasArticleIDSupport
+    article_id = ArticleID(art_id=art_id) # now from opasArticleIDSupport
     
     distinct_return = "art_sourcecode, art_year, art_vol, art_id, art_iss, art_iss_seqnbr"
     next_art = {}
@@ -2429,16 +2430,16 @@ def metadata_get_next_and_prev_articles(art_id=None,
     match_art = {}
     
     query = "art_level:1 "
-    if article_id.sourceCode is not None:
-        query += f" && art_sourcecode:{article_id.sourceCode}"
+    if article_id.src_code is not None:
+        query += f" && art_sourcecode:{article_id.src_code}"
 
-    if article_id.volumeInt is not None:
-        query += f" && art_vol:{article_id.volumeInt}"
+    if article_id.art_vol_int is not None:
+        query += f" && art_vol:{article_id.art_vol_int}"
         
-    if article_id.issueInt != 0:
-        query += f" && art_iss:{article_id.issueInt}"  # just the number representation, 1-n
-    elif article_id.issueCode != '':
-        query += f" && art_iss:{article_id.issueCode}*" # could be S, or A, B, C..., but issue_code could be spelled out supplement
+    if article_id.art_issue_int:
+        query += f" && art_iss:{article_id.art_issue_int}"  # just the number representation, 1-n
+    elif article_id.art_issue_alpha_code != '':
+        query += f" && art_iss:{article_id.art_issue_alpha_code}*" # could be S, or A, B, C..., but issue_code could be spelled out supplement
         # Need to deal with FA...has Pilot and then numbers    
         #if source_year is not None and source_year.isalnum():
             #query += f" && art_year:{source_year}"
@@ -2473,6 +2474,7 @@ def metadata_get_next_and_prev_articles(art_id=None,
                     next_art = results.docs[count+1]
                 except:
                     next_art = {}
+                break
             else:
                 count += 1
                 continue
@@ -2771,7 +2773,7 @@ def metadata_get_volumes(source_code=None,
                 "facet.mincount":1,
                 "facet.sort":"art_year asc",
                 "facet.limit": facet_limit,
-                "rows":row_limit, 
+                "rows":20 # row_limit, 
                 #"start":offset
               }
 
@@ -3318,7 +3320,7 @@ def quick_docmeta_docsearch(q_str,
         results = solr_docs2.search(q=q_str, **args)
     except Exception as e:
         err_info = pysolrerror_processing(e)
-        logger.error(f"DocMetaDocSearch: {err_info.httpcode}. Query: {query} Error: {err_info.error_description}")
+        logger.error(f"DocMetaDocSearch: {err_info.httpcode}. Query: {q_str} Error: {err_info.error_description}")
         
     document_item_list = []
     count = len(results)

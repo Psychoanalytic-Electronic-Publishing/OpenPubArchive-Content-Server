@@ -18,6 +18,7 @@ programNameShort = "opasLocator" # Library to build and decompile locators (arti
 import sys, os.path
 import logging
 logger = logging.getLogger(programNameShort)
+from loggingDebugStream import log_everywhere_if
 
 global gDbg1
 gDbg1 = False
@@ -41,6 +42,7 @@ import opasDocuments
 import opasLocalID
 import opasDocuments
 import opasCentralDBLib
+ocd = opasCentralDBLib.opasCentralDB()
 
 # set to 1 for doctests only
 
@@ -142,7 +144,7 @@ class Locator:
     # As of A1v6, suffix goes to T, because of FA!
     ptnLocatorVolSuffix = """(\.
                                      (
-                                         ((?P<vol>\d{1,4})(?P<volsuffix>[A-W])?)
+                                         ((?P<vol>\d{1,4})(?P<volsuffix>[A-Z])?)
                                        | (?P<year>\d{4,4})
                                      )
                                )"""
@@ -189,7 +191,7 @@ class Locator:
     #--------------------------------------------------------------------------------
     def __init__(self, strLocator=None, jrnlCode=None, jrnlVolSuffix="", jrnlVol=None, jrnlIss=None, pgVar="A",
                  pgStart=None, jrnlYear=None, localID=None, keepContext=1, forceRoman=False, notFatal=True,
-                 noStartingPageException=True, filename=None, art_info=None, ocd=None):
+                 noStartingPageException=True, filename=None, art_info=None):
         """
         Initialize the locator.  Make sure that other args, except keepcontext, are not specified if
             strLocator is.
@@ -198,10 +200,6 @@ class Locator:
 
         self.__reset()
         self.filename = filename
-        if ocd is None:
-            self.ocd = opasCentralDBLib.opasCentralDB()
-        else:
-            self.ocd = ocd
         # self_copy = copy.copy(self)
         
         self.art_info = art_info # provide full information about the xml of the article we're dealing with
@@ -266,19 +264,14 @@ class Locator:
             self.pgEnd = copy.copy(self.pgStart)
             #print "Locator Parameters: ", jrnlCode, jrnlVolSuffix, jrnlVol, jrnlIss, self.pgStart, pgVar, jrnlYear
             self.__standardize()
-            if None not in [self.jrnlCode, self.jrnlVol, self.pgStart]:
-                # make sure all the arguments are valid form
-                self.validate()
-            else:
-                #if gDbg1: print "Missing Value, no locator returned."
-                self.valid = 0
+            self.validate()
 
     #--------------------------------------------------------------------------------
     def __reset(self):
         """
         Clear all the object instance attributes
         """
-        self.valid = 0				# flag if locator is currently incomplete
+        self.valid = False				    # flag if locator is currently incomplete
         self.locatorType = 0				# 0 is a article ID, 1 is idx id
         self.validError = ""
         self.jrnlCode = None
@@ -450,7 +443,7 @@ class Locator:
     #--------------------------------------------------------------------------------
     def isValid(self):
         """
-        Return true if locator is valie
+        Return true if locator is well formed. It may not exist though.
         """
         return self.valid
 
@@ -547,21 +540,24 @@ class Locator:
         Mod Note: this used to standardize as well, but as of 9/2003, this was removed
         			for the new locator module design
         """
-        self.valid = 0
+        self.valid = False
         try:
-            if opasgenlib.is_empty(self.jrnlCode) or self.jrnlVol is None or self.jrnlVol == 0 or (opasgenlib.is_empty(self.pgStart) and opasgenlib.is_empty(self.idxNamePrefix)):
+            if opasgenlib.is_empty(self.jrnlCode) \
+              or self.jrnlVol is None or self.jrnlVol == 0 \
+              or (opasgenlib.is_empty(self.pgStart) \
+              and opasgenlib.is_empty(self.idxNamePrefix)):
                 if self.jrnlVol is not None:
                     errStr = "Incomplete/Invalid ID: %s/v%s/p%s" % (self.jrnlCode, self.jrnlVol.volID(), self.pgStart)
                 else:
                     errStr = "Incomplete/Invalid ID: %s/v%s/p%s" % (self.jrnlCode, self.jrnlVol, self.pgStart)
                 
                 self.validError = errStr
-                logger.warning(errStr)
-                self.valid = 0
+                logger.debug(errStr)
+                self.valid = False
             else:
                 
                 #if gDbg1: print "Locator is valid."
-                self.valid = 1
+                self.valid = True
         except Exception as e:
             logger.error(f"Error validating Locator. {e}")
 
@@ -700,8 +696,11 @@ class Locator:
             return None
 
         #print "Wrking jrnlVol = %s/%s/%s" % (jrnlVol, self.jrnlVol, int(self.jrnlVol))
-        if jrnlVol==None:
-            jrnlVol="%s" % self.jrnlVol.volID()
+        if jrnlVol is None:
+            if self.jrnlVol is not None:
+                jrnlVol="%s" % self.jrnlVol.volID()
+            else:
+                log_everywhere_if(True, "error", "No volume number")
         else:
             jrnlVol="%s" % opasDocuments.VolumeNumber(jrnlVol).volID()
 
@@ -866,6 +865,7 @@ class Locator:
 
         """
         self.__reset()		# Make sure to clear values!
+        retVal = 1
 
         if theStr == "":
             raise Exception("Locator string is Empty")
@@ -877,6 +877,17 @@ class Locator:
             errMsg = "Illformed Locator (decompile): '%s'" % theStr
             logger.error(f"Severe - Locator - {errMsg} ")
             self.validError = errMsg
+            # break it up mannually
+            jrnl, vol, pg = theStr.split(".")
+            self.jrnlCode = jrnl.upper()
+            if len(vol) > 3 and not vol[-1].isalpha():
+                self.jrnlYear = vol
+            else:
+                if vol[-1].isalpha():
+                    self.jrnlVol = opasDocuments.VolumeNumber(vol, volSuffix=opasgenlib.default(vol[-1], ""))
+                else:
+                    self.jrnlVol = opasDocuments.VolumeNumber(vol, volSuffix="")
+            
         else:
             jrnl = lm.group("jrnl")
             if jrnl is not None:
@@ -915,7 +926,8 @@ class Locator:
             self.jrnlVol, self.jrnlVolList = gJrnlData.getVol(self.jrnlCode, self.jrnlYear)
 
             if self.jrnlVol is None:
-                raise Exception("Locator (decompile): Journal Year/Volume Exception. ('%s')" %	theStr)
+                log_everywhere_if(True, "error", f"Locator (decompile): Journal Year/Volume Exception. ('{theStr}')")
+                retVal = 0
         else:
             if self.jrnlVol is not None:
                 self.jrnlYear = gJrnlData.getYear(self.jrnlCode, self.jrnlVol)
@@ -926,10 +938,10 @@ class Locator:
                         if jrnlIss > 0 and jrnlIss < 8: # only allow 8 issues, otherwise must be "special" like Supplement
                             self.jrnlIss = jrnlIss
                     except Exception as e:
-                        logger.error(f"Journal Issue error; {e}")
+                        log_everywhere_if(True, "error", f"Journal Issue error; {e}")
+                        retVal = 0
                         
 
-        retVal = 1
 
         self.__standardize()
         # validate if it's not a TOJ locator
@@ -982,7 +994,7 @@ class Locator:
             return None
 
     #--------------------------------------------------------------------------------
-    def localID(self, localIDRef=None, saveLocalID=1, noArticleID=False, ocd=None):
+    def localID(self, localIDRef=None, saveLocalID=1, noArticleID=False):
         """
         Return a string that is a standard locator and/or local id (current article ID + localID)
 
@@ -1008,9 +1020,6 @@ class Locator:
         """
         retVal = ""
         retValSuffix = ""
-        if ocd is None:
-            ocd = self.ocd
-
         split_book_data = opasXMLSplitBookSupport.SplitBookData(database_connection=ocd)
 
         if localIDRef is not None:
@@ -1118,9 +1127,12 @@ class Locator:
         (similar to the way "split" works.)
         """
         if includeLocalID==1:
-            return self.localID().split(".")
+            local_id_str = str(self.localID())
+            ret_val = local_id_str.split(".")
         else:
-            return self.articleID().split(".")
+            ret_val = str(self.articleID()).split(".")
+        
+        return ret_val
 
     #--------------------------------------------------------------------------------
     def splitLocator(self, includeLocalID=0):

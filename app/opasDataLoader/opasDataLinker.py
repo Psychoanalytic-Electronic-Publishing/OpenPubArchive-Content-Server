@@ -2,26 +2,93 @@
 # -*- coding: UTF-8 -*-
 #Copyright 2012-2018 Neil R. Shapiro
 
-"""
-"""
+__author__      = "Neil R. Shapiro"
+__copyright__   = "Copyright 2023"
+__license__     = "Apache 2.0"
+__version__     = "2023.0221/v1.0.011"   
+__status__      = "Development"
+
+programNameShort = "opasDataLinker"
+border = 80 * "*"
+print (f"""\n
+        {border}
+            {programNameShort} - Open Publications-Archive Server (OPAS) Reference Linker
+                            Version {__version__}
+        {border}
+        """)
+
+help_text = (
+    fr""" 
+        - Read the api_biblioxml2 table and link articles in PEP.
+        
+        Example Invocation:
+                $ python opasDataLinker.py
+                
+        Important option choices:
+         -h, --help        List all help options
+         -a                Process all records
+         --halfway         Process only half the records, so you can run two
+                              instances, one forward, one in reverse
+         
+         Filters
+         --key             Process biblio records with the key=article-id
+                              or regex (e.g., --key AIM.076.0309A, or AIM.*)
+         --nightly         Process biblio records added since the day before
+         --oldest          Process biblio records least recently updated last
+         --type            Process type 'books' or 'journals' only (abbr. b or j)
+         --unlinked        Process only unlinked (no rx and rxcf data) records
+         --where           Process by conditional against api_biblioxml2
+                              table, e.g., ref_year > 2010
+         
+         
+         Processing Order
+         --reverse         Process biblio records in reverse order by
+                              article id, local id
+         --oldest          Process oldest (in terms of last updated) biblio
+                              records first
+
+        After running opasDataLinker, run opasDataLoader with the
+        
+              --smartbuild
+        
+        option to reprocess any articles which have new links
+        from opasDataLinker. This will build new compiled (output) xml files for those
+        with the link data embedded.
+         
+""")
+    
+import sys
+sys.path.append('../libs')
+sys.path.append('../config')
+sys.path.append('../libs/configLib')
 
 # import string, sys, copy, re
 import logging
 logger = logging.getLogger(__name__)
-# from io import StringIO
+import re
+import time
+import datetime
+today = datetime.date.today()  # Get today's date
+yesterday = today - datetime.timedelta(days=1)  # Subtract one day from today's date
 
-import opasGenSupportLib as opasgenlib
+from optparse import OptionParser
 from loggingDebugStream import log_everywhere_if
 
-import opasSolrLoadSupport
-# import opasDocuments
-import opasPySolrLib
-from opasLocator import Locator
-import opasCentralDBLib
-import opasXMLHelper
-import opasXMLProcessor
 import opasConfig
-import models
+# import opasGenSupportLib as opasgenlib
+import opasBiblioSupport
+import opasCentralDBLib
+import PEPBookInfo
+known_books = PEPBookInfo.PEPBookInfo()
+
+# import opasPySolrLib
+# from opasLocator import Locator
+#import opasXMLHelper
+# import opasXMLProcessor
+#import opasArticleIDSupport
+# import models
+# import PEPJournalData
+# import PEPReferenceParserStr
 
 gDbg1 = 0	# details
 gDbg2 = 1	# High level
@@ -32,265 +99,126 @@ ocd = opasCentralDBLib.opasCentralDB()
 import lxml.etree as ET
 import lxml
 sqlSelect = ""
-parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True)
 
-#------------------------------------------------------------------------------------------------------
-def old_update_biblio(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
+def walk_through_reference_set(ocd=ocd,
+                               sql_set_select = "select * from api_biblioxml2 where art_id='CPS.031.0617A' and ref_local_id='B022'",
+                               set_description = "All",
+                               halfway=False, 
+                               verbose=True
+                               ):
     """
-    Walk through the biblio records and update rx and rxcf links in the XML, using heuristics if necessary. 
-    """
+    >> walk_set = "SingleTest1", "select * from api_biblioxml2 where art_id='CPS.031.0617A' and ref_local_id='B024'"
+    >> walk_through_reference_set(ocd, sql_set_select=walk_set[1], set_description=walk_set[0])
 
-    known_books = PEPBookInfo.PEPBookInfo()
-    
-    # add links to biblio entries, rx to be
-    if artInfo.ref_count > 0:
-        bibReferences = parsed_xml.xpath("/pepkbd3//be")  # this is the second time we do this (also in artinfo, but not sure or which is better per space vs time considerations)
-        if verbose: print("\t...Examining %s references for links (rx) and related titles (rxcf)." % (artInfo.ref_count))
-        #processedFilesCount += 1
-        bib_total_reference_count = 0
-        for ref in bibReferences:
-            # bib_entry_text = ''.join(ref.itertext())
-            bib_pgstart = None
-            bib_pgend = None
-            # compare_to = ""
-            ref_id = ref.attrib["id"]
-            # see if it's already in table
-            bib_saved_entry_tuple = ocd.get_references_from_biblioxml_table(article_id=artInfo.art_id, ref_local_id=ref_id)
-            if bib_saved_entry_tuple is not None and bib_saved_entry_tuple != []:
-                bib_saved_entry = bib_saved_entry_tuple[0]
-            else:
-                bib_saved_entry = models.Biblioxml()
-            
-            # merge record info
-            bib_total_reference_count += 1
-            bib_entry = opasSolrLoadSupport.BiblioEntry(artInfo, ref)
-            #if bib_entry.sourcecode is None:
-                #if isinstance(bib_entry.source_title, str) and not opasgenlib.is_empty(bib_entry.source_title):
-                    #bib_entry.sourcecode, dummy, dummy = gJrnlData.getPEPJournalCode(strText=bib_entry.source_title) 
+    >> walk_set = "SingleTest1", "select * from api_biblioxml2 where art_id='CPS.031.0617A' and ref_local_id='B022'"
+    >> walk_through_reference_set(ocd, sql_set_select=walk_set[1], set_description=walk_set[0])
 
-            try:
-                if not opasgenlib.is_empty(bib_entry.pgrg):
-                    bib_pgstart, bib_pgend = bib_entry.pgrg.split("-")
-            except ValueError as e:
-                if not opasgenlib.is_empty(bib_entry.pgrg):
-                    bib_pgstart = bib_entry.pgrg
-                    bib_pgend = bib_entry.pgrg
-                else:
-                    bib_pgstart = ""
-                    bib_pgend = ""
-                
-            if not bib_entry.ref_is_book: # journal or other
-                if opasgenlib.is_empty(bib_entry.sourcecode):
-                    # there's no source code
-                    if bib_entry.ref_title:
-                        # find and store rxcf for related articles (side effect of function)
-                        if gDbg2 and verbose: print (f"\t...Finding related articles for bibliography based on ref_title")
-                        # called routine updates ref if found
-                        rxcf = opasXMLProcessor.find_related_articles(ref,
-                                                     art_or_source_title=bib_entry.ref_title,
-                                                     query_target="art_title_xml",
-                                                     max_words=opasConfig.MAX_WORDS,
-                                                     min_words=opasConfig.MIN_WORDS,
-                                                     word_len=opasConfig.MIN_WORD_LEN,
-                                                     max_cf_list=opasConfig.MAX_CF_LIST)                        
-                    else:
-                        locator = None
-                        msg = f"\t\t\t...Skipped: {bib_saved_entry}"
-                        log_everywhere_if(gDbg2, level="debug", msg=msg)                            
-                    
-                else: # there's a source code
-                    locator = Locator(strLocator=None,
-                                       jrnlCode=bib_entry.sourcecode, 
-                                       jrnlVolSuffix="", 
-                                       jrnlVol=bib_entry.volume, 
-                                       jrnlIss=None, 
-                                       pgVar="A", 
-                                       pgStart=bib_pgstart, 
-                                       jrnlYear=bib_entry.year, 
-                                       localID=ref_id, 
-                                       keepContext=1, 
-                                       forceRoman=False, 
-                                       notFatal=True, 
-                                       noStartingPageException=True, 
-                                       filename=artInfo.filename)
-                    # need to check if it's whole, and if it works, but for now.
-                    if locator.valid == 0:
-                        msg = f"\t\t\t...Bib ID {ref_id} does not have enough info to link. {bib_entry.year}.{bib_entry.volume}.{bib_pgstart}"
-                        log_everywhere_if(gDbg2, level="info", msg=msg)
-                        continue
-                        
-                    ref.attrib["rx"] = locator.articleID()
-                    search_str = f"//be[@id='{ref_id}']"
-                    msg = f"\t\t\t...Matched Journal {opasxmllib.xml_xpath_return_xmlstringlist(parsed_xml, search_str)[0]}"
-                    log_everywhere_if(gDbg2, level="debug", msg=msg)
-
-                
-            else: # this is a book
-                bk_locator_str, match_val, whatever = known_books.getPEPBookCodeStr(bib_entry.ref_entry_text)
-                if bk_locator_str is not None:
-                    ref.attrib["rx"] = bk_locator_str 
-                    search_str = f"//be[@id='{ref_id}']"
-                    msg = f"\t\t\t...Matched Book {match_val}. {opasxmllib.xml_xpath_return_xmlstringlist(parsed_xml, search_str)[0]}"
-                    log_everywhere_if(gDbg2, level="info", msg=msg)
-                    
-                else:
-                    # see if we have info to link SE/GW etc., these are in a sense like journals
-                    pep_ref = False
-                    if PEPJournalData.PEPJournalData.rgxSEPat2.search(bib_entry.ref_entry_text):
-                        pep_ref = True
-                        bib_entry.sourcecode = "SE"
-                    elif PEPJournalData.PEPJournalData.rgxGWPat2.search(bib_entry.ref_entry_text):
-                        pep_ref = True
-                        bib_entry.sourcecode = "GW"
-                    
-                    #try checking this anyway!
-                    if bib_entry.source_title:
-                        # find_related_articles assigns to ref attrib rxcf (hence no need to use return val)
-                        if gDbg2 and verbose: print (f"\t...Finding related articles for bibliography rxcf based on source_title: {bib_entry.source_title}")
-                        # called routine updates ref if found
-                        rxcf = find_related_articles(ref,
-                                                     art_or_source_title=bib_entry.source_title,
-                                                     query_target="art_title_xml",
-                                                     max_words=opasConfig.MAX_WORDS,
-                                                     min_words=opasConfig.MIN_WORDS,
-                                                     word_len=opasConfig.MIN_WORD_LEN,
-                                                     max_cf_list=opasConfig.MAX_CF_LIST)
-
-                    if not rxcf and bib_entry.ref_title:
-                        if gDbg2 and verbose: print (f"\t...Finding related articles for bibliography rxcf based on ref_title: {bib_entry.ref_title}")
-                        rxcf = find_related_articles(ref,
-                                                     art_or_source_title=bib_entry.ref_title,
-                                                     query_target="art_title_xml",
-                                                     max_words=opasConfig.MAX_WORDS,
-                                                     min_words=opasConfig.MIN_WORDS,
-                                                     word_len=opasConfig.MIN_WORD_LEN,
-                                                     max_cf_list=opasConfig.MAX_CF_LIST)
-                            
-                            
-                    # elif bib_entry.ref
-    
-                    if pep_ref:
-                        locator = Locator(strLocator=None,
-                                           jrnlCode=bib_entry.sourcecode, 
-                                           jrnlVolSuffix="", 
-                                           jrnlVol=bib_entry.volume, 
-                                           jrnlIss=None, 
-                                           pgVar="A", 
-                                           pgStart=bib_pgstart, 
-                                           jrnlYear=bib_entry.year, 
-                                           localID=ref_id, 
-                                           keepContext=1, 
-                                           forceRoman=False, 
-                                           notFatal=True, 
-                                           noStartingPageException=True, 
-                                           filename=artInfo.filename)
-                        # check locator
-                        if locator is not None:
-                            base_info = opasPySolrLib.get_base_article_info_by_id(locator)
-                            if base_info is None:
-                                # try without page number
-                                locator = Locator(strLocator=None,
-                                                   jrnlCode=bib_entry.sourcecode, 
-                                                   jrnlVolSuffix="", 
-                                                   jrnlVol=bib_entry.volume, 
-                                                   jrnlIss=None, 
-                                                   jrnlYear=bib_entry.year, 
-                                                   localID=ref_id, 
-                                                   keepContext=1, 
-                                                   forceRoman=False, 
-                                                   notFatal=True, 
-                                                   noStartingPageException=True, 
-                                                   filename=artInfo.filename)
-                                # recheck locator
-                                base_info = opasPySolrLib.get_base_article_info_by_id(locator)
-                                
-                            if base_info is not None:
-                                ref.attrib["rx"] = locator.articleID()
-                                search_str = f"//be[@id='{ref_id}']"
-                                msg = f"\t\t\t...Matched Book {match_val}. {opasxmllib.xml_xpath_return_xmlstringlist(parsed_xml, search_str)[0]}"
-                                log_everywhere_if(gDbg2, level="debug", msg=msg)
-                            else:
-                                log_everywhere_if(gDbg2, level="debug", msg=f"didn't find this: {bib_entry.sourcecode}")
-                            
-                        
-                    else:     
-                        locator = None
-                        msg = f"\t\t\t...Skipped: {bib_entry.ref_entry_text}"
-                        log_everywhere_if(gDbg2, level="debug", msg=msg)
-
-
-#------------------------------------------------------------------------------------------------------
-def search_for_referenced_article(ref, art_or_source_title, query_target="art_title_xml", max_words=opasConfig.MAX_WORDS, min_words=opasConfig.MIN_WORDS, word_len=opasConfig.MIN_WORD_LEN, max_cf_list=opasConfig.MAX_CF_LIST):
-    """
-    Search for related articles and add to rxcf of reference
+    >> walk_set = "Freud", "select * from api_biblioxml2 where ref_rx is NULL and ref_authors like '%Freud%' and ref_rx_confidence=0"
+    >> walk_through_reference_set(ocd, sql_set_select=walk_set[1], set_description=walk_set[0])
     
     """
-    # title is either bib_entry.art_title_xml or bib_entry.source_title
-    rxcf = []
-    prev_rxcf = None
-    query = f"{query_target}:({art_or_source_title})"
-    authors = ref.xpath("//a")
-    if authors:
-        # list of last name of authors with AND, search field art_authors_xml
-        author1 = ET.tostring(authors[0]).decode("utf8")
-        query = query + f" AND authors:{author1}"
-        
-    years = ref.xpath("//y")
-    if years:
-        # list of last name of authors with AND, search field art_authors_xml
-        year = ET.tostring(years[0]).decode("utf8")
-        query = query + f" AND art_year:{year}"
-
-    vols = ref.xpath("//v")
-    if vols:
-        # list of last name of authors with AND, search field art_authors_xml
-        vol = ET.tostring(vols[0]).decode("utf8")
-        query = query + f" AND art_year:{vol}"
-
-    result = opasPySolrLib.search_text(query=query, limit=10, offset=0, full_text_requested=False)
-        
-    if result[1][0] == 200:
-        if gDbg2:
-            title_list = [item.title for item in result[0].documentList.responseSet[0:max_cf_list]]
-            if title_list != []:
-                print (f"\t\t\t...Article title first {len(title_words)} words of len {word_len} for search: {safe_title_words} from title:{art_or_source_title}")
-                for n in title_list:
-                    print (f"\t\t\t\t...cf Article Title: {n[:max_display_len_cf_articles]}")
-                        
-            rxcf = [item.documentID for item in result[0].documentList.responseSet[0:max_cf_list]]
-            try:
-                prev_rxcf = ref.attrib["rxcf"]
-            except Exception:
-                pass
-
-            if len(rxcf) > 0 and prev_rxcf is None:
-                ref.attrib["rxcf"] = ",".join(rxcf)
-                compare_to = f"\t\t\t...Journal title compare to: {ref.attrib['rxcf']}"
-                log_everywhere_if(gDbg2, level="debug", msg=compare_to)
-            elif prev_rxcf is not None:
-                ref.attrib["rxcf"] = prev_rxcf + "," + ",".join(rxcf)
-                compare_to = f"\t\t\t...Journal title compare to: {ref.attrib['rxcf']}"
-                log_everywhere_if(gDbg2, level="debug", msg=compare_to)
-                
-        else:
-            log_everywhere_if(gDbg1, level="debug", msg=result[1][1])
-    elif gDbg2:
-        print (f"\t\t\t...Skipped cf search (too few words): {title_words}")
-
-    return rxcf
-
-def walk_through_references(ocd=ocd):
-    """
-    >>> walk_through_references()
-    """
-    fname = "walk_through_references"
+    fname = "walk_through_reference_set"
     ocd.open_connection(caller_name=fname) # make sure connection is open
     ret_val = None
-    sqlSelect = "select * from api_biblioxml where bib_rx is NULL"
+    #artInfo = opasArticleIDSupport.ArticleInfo(art_id="IJP.100.0001A",
+                                               #art_year="2022")
+    
+    parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True)
+    if ocd.db is not None:
+        cumulative_time_start = time.time()
+        # rows = self.SQLSelectGenerator(sqlSelect)
+        print ("Finding candidate references...")
+        total_count = ocd.get_select_count(sql_set_select)
+        if halfway:
+            count = round(total_count / 2)
+            limit_clause = f" \nLIMIT {count}"
+            print (f"Limiting to halfway--{count} of {total_count} references.")
+        else:
+            limit_clause = ""
+            count = total_count
+            
+        biblio_entries = ocd.get_references_select_biblioxml(sql_set_select + limit_clause)
+        print (f"Scanning {len(biblio_entries)} references in api_biblioxml2 to find new links.")
+        counter = 0
+        updated_record_count = 0
+        for ref_model in biblio_entries:
+            reference_time_start = time.time()
+            counter += 1
+            print (80*"-")
+            one_line_text = ""
+            if ref_model.ref_text:
+                one_line_text = ref_model.ref_text.replace('\n', '')
+            last_updated = ref_model.last_update.strftime("%m/%d/%Y")
+            print (f"{counter}/{count}:Analyzing Record Last Updated:{last_updated} ID:{ref_model.art_id}/{ref_model.ref_local_id}\nRef:{one_line_text}")
+            # parsed_ref = ET.fromstring(ref_model.ref_xml, parser=parser)
+            bib_entry = opasBiblioSupport.BiblioEntry(ref_model.art_id, db_bib_entry=ref_model, verbose=verbose)
+            art_id = bib_entry.art_id
+            if not bib_entry.ref_title:
+                # ignore this one from now on
+                if verbose: print (f"\t...No title found, ignoring this one from now on.")
+                bib_entry.ref_rx_confidence = opasConfig.RX_CONFIDENCE_NEVERMORE
+                bib_entry.link_updated = True                        
+            else:
+                if bib_entry.ref_rx is None:
+                    if verbose and bib_entry.ref_text:
+                        one_line_text = bib_entry.ref_text.replace('\n','')
+                    bib_entry.lookup_title_in_db(ocd)
+                    bib_entry.identify_heuristic(verbose=verbose)
+                    if bib_entry.ref_rx is not None:
+                        if verbose: print (f"\t...Matched Reference ID: {bib_entry.ref_rx} Confidence {bib_entry.ref_rx_confidence} Link Updated: {bib_entry.link_updated}")
+                elif bib_entry.ref_rx == .01:
+                    if verbose: print (f"\t...Skipping Marked 'RX_CONFIDENCE_NEVERMORE (.01)' Reference ID: {bib_entry.ref_rx} Confidence {bib_entry.ref_rx_confidence}")
+                else:
+                    if verbose: print (f"\t...Checking ref_rx from xml for accuracy")
+                    bib_entry.compare_to_database(ocd)
+                    bib_entry.lookup_more_exact_artid_in_db(ocd)
+                    if verbose: print (f"\t...Reference ID: {bib_entry.ref_rx} Confidence {bib_entry.ref_rx_confidence} Link Updated: {bib_entry.link_updated} Record Updated: {bib_entry.record_updated}")
+
+                if bib_entry.ref_rx is None and bib_entry.ref_rx is not None:
+                    bib_entry.update_bib_entry(bib_entry)
+
+            if bib_entry.link_updated or bib_entry.record_updated:
+                updated_record_count += 1
+                if bib_entry.link_updated:
+                    print (f"\t...Links updated.  Updating DB: rx:{bib_entry.ref_rx} rxcf{bib_entry.ref_rxcf} source: ({bib_entry.ref_link_source})")
+                else:
+                    print (f"\t...Record updated. Updating DB.")
+                success = ocd.save_ref_to_biblioxml_table(bib_entry)                
+                if options.display_verbose: print(f"\t...Time: {time.time() - reference_time_start:.4f} seconds.")
+                
+    ocd.close_connection(caller_name=fname) # make sure connection is closed
+    timeEnd = time.time()
+    elapsed_seconds = timeEnd-cumulative_time_start # actual processing time going through files
+    elapsed_minutes = elapsed_seconds / 60
+    if counter > 0:
+        msg = f"Files per elapsed min: {counter/elapsed_minutes:.4f}"
+        logger.info(msg)
+        print (msg)
+    
+    print (80 * "-")
+    msg = f"Finished! {updated_record_count} records updated from {counter} references. Total scan/update time: {elapsed_seconds:.2f} secs ({elapsed_minutes:.2f} minutes.) "
+    logger.info(msg)
+    print (msg)
+    
+    # return session model object
+    return ret_val # None or Session Object
+
+def clean_reference_links(ocd=ocd,
+                          sql_set_select = "select * from api_biblioxml2 where bib_rx is not NULL",
+                          set_description = "All"
+                          ):
+    """
+    """
+    fname = "clean_reference_links"
+    ocd.open_connection(caller_name=fname) # make sure connection is open
+    ret_val = None
+    #artInfo = opasArticleIDSupport.ArticleInfo(art_id="IJP.100.0001A",
+                                               #art_year="2022")
+    
     if ocd.db is not None:
         # rows = self.SQLSelectGenerator(sqlSelect)
         curs = ocd.db.cursor(buffered=True, dictionary=True)
-        curs.execute(sqlSelect)
+        curs.execute(sql_set_select)
         warnings = curs.fetchwarnings()
         if warnings:
             for warning in warnings:
@@ -299,61 +227,231 @@ def walk_through_references(ocd=ocd):
         counter = 0
         for row in curs.fetchall():
             counter += 1
-            fullref = row['full_ref_xml']
-            # parsed_ref = ET.parse(StringIO(fullref), parser=parser)
-            parsed_ref = ET.fromstring(fullref, parser=parser)
-            authors = parsed_ref.xpath("//a")
-            author_list = ""
-            if authors:
-                for n in authors:
-                    author_list += ''.join(n.itertext())
-                    break
-            else:
-                continue
+            art_id = row["art_id"]
+            bib_local_id = row["bib_local_id"]
+            bib_rx = row["bib_rx"]
+            if bib_rx:
+                if not ocd.article_exists(bib_rx):
+                    print (f"\t...{art_id}/{bib_local_id} - {bib_rx} doesn't exist. Updating record.")
+                    success = ocd.update_biblioxml_links(art_id, bib_local_id,
+                                                          rx=None,
+                                                          rx_confidence=0,
+                                                          verbose=True)
 
-            vols = parsed_ref.xpath("//v")
-            pages = parsed_ref.xpath("//pp")
-            years = parsed_ref.xpath("//y")
-            book_title = parsed_ref.xpath("//bst")
-            titles = parsed_ref.xpath("//t")
-            if titles:
-                title = titles[0].text
-            else:
-                title = ""
-                
-            plain_text = opasXMLHelper.xml_elem_or_str_to_text(fullref)
-            # print (f"Looking for: {plain_text}")
-            # look in articles table
-            art_search = f"""
-            select art_id, art_citeas_text, art_citeas_xml, match(art_citeas_text) against ("{title}") AS Relevance
-            from api_articles 
-            where match(art_citeas_text) against  ("{title}");
-            """
-            article_matches = ocd.get_select_as_list_of_dicts(art_search)
-            article_matches = article_matches[:100]
-            if article_matches:
-                for n in article_matches:
-                    xml_citation = n["art_citeas_xml"]
-                    text_citation = n["art_citeas_text"]
-                    if n["Relevance"] >= LOWER_RELEVANCE_LIMIT:
-                        if author_list in xml_citation:
-                            print (f"Looking for: {plain_text}")
-                            print (f"\t...{n['art_id']}:%{n['Relevance']:.2f} - {text_citation}")
-                            break
-                    else:
-                        break
-                    
-        
     ocd.close_connection(caller_name=fname) # make sure connection is closed
     
     # return session model object
     return ret_val # None or Session Object
 
-if __name__ == "__main__":
+def test_runs():
+    do_walk_set = True
+    do_clean = False
+    do_doctest = False
+    walk_set = [
+                  ("Freud", "select * from api_biblioxml2 where ref_rx is NULL and ref_authors like '%Freud%' and ref_rx_confidence=0"),
+                  ("FreudTest", "select * from api_biblioxml2 where art_id LIKE 'APA.017.0421A'")
+               ]
+        
+    if do_walk_set:
+        walk_through_reference_set(ocd, set_description=walk_set[1][0], sql_set_select=walk_set[1][1])
 
-    if 1:
-        walk_through_references()
-    else:
+    if do_clean:
+        clean_set = "Freud", "select * from api_biblioxml2 where ref_rx is not NULL and ref_authors like '%Freud%'"
+        clean_reference_links(ocd, clean_set[1])
+    
+    if do_doctest:
         import doctest
         doctest.testmod(optionflags=doctest.ELLIPSIS|doctest.NORMALIZE_WHITESPACE)
-        print ("Fini. Tests complete.")
+    
+    print ("Fini. Tests or Processing complete.")
+    
+# -------------------------------------------------------------------------------------------------------
+# run it!
+if __name__ == "__main__":
+    global options  # so the information can be used in support functions
+    options = None
+    description = """Process the api_biblioxml2 table of SQL database opasCentral to find links (and potentially related links) to PEP articles.
+    After running opasDataLinker, run opasDataLoader with the --smartbuild option to reprocess any articles which updated links
+    from opasDataLinker. This will build new compiled (output) xml files for those with the link data embedded.
+    """
+    parser = OptionParser(usage="%prog [options]", version=f"%prog ver. {__version__}",
+                          description=description)
+
+    parser.add_option("-a", "--all", action="store_true", dest="process_all", default=False,
+                      help="Option to force all records to be checked.")
+
+    parser.add_option("--after", dest="added_after", default=None,
+                      help="Check biblio records last modified AFTER after this datetime (use YYYY-MM-DD format).")
+
+    parser.add_option("--before", dest="scanned_before", default=None,
+                      help="Check biblio records last modified BEFORE this datetime (use YYYY-MM-DD format).")
+
+    parser.add_option("--key", dest="file_key", default=None,
+                      help="Key for a single file to load, e.g., AIM.076.0269A.  Use in conjunction with --sub for faster processing of single files on AWS")
+
+    parser.add_option("--type, -t", dest="source_type", default=None,
+                      help="Source Type to analyze, i.e., book or journal")
+
+    parser.add_option("-u", "--unlinked", action="store_true", dest="unlinked_refs", default=False,
+                      help="Check only unlinked (no rx or rxcf) references")
+
+    parser.add_option("-l", "--loglevel", dest="logLevel", default=logging.ERROR,
+                      help="Level at which events should be logged (DEBUG, INFO, WARNING, ERROR")
+
+    parser.add_option("--where", dest="where_condition", default=None,
+                      help="Add your own SQL clause to the search of api_biblioxml2")
+    
+    parser.add_option("-n", "--nightly", dest="nightly_includes", action="store_true", default=False,
+                      help="Check references in only the new articles added since yesterday")
+    
+    parser.add_option("-o", "--oldest", dest="run_oldest_first", action="store_true", default=False,
+                      help="Whether to run the selected files in reverse order of last update (otherwise by art_id/local_id)")
+
+    parser.add_option("--halfway", action="store_true", dest="halfway", default=False,
+                      help="Only process half of the references (e.g., to run two instances, one forward and one reverse.)")
+
+    parser.add_option("-r", "--reverse", dest="run_in_reverse", action="store_true", default=False,
+                      help="Whether to run the selected files in reverse order")
+
+    # --load option still the default.  Need to keep for backwards compatibility, at least for now (7/2022)
+
+    parser.add_option("--test", dest="testmode", action="store_true", default=False,
+                      help="Run Doctests")
+
+    parser.add_option("--verbose", action="store_true", dest="display_verbose", default=True,
+                      help="Display status and operational timing info as load progresses.")
+
+    import optparse
+    parser.formatter = optparse.IndentedHelpFormatter()
+    # Set the width of the help output
+    parser.formatter.width = 100
+    # Set the width of the option column
+    parser.formatter.help_position = 40
+    parser.formatter.max_help_position = 40
+    (options, args) = parser.parse_args()
+    # set toplevel logger to specified loglevel
+    logger = logging.getLogger()
+    logger.setLevel(options.logLevel)
+    # get local logger
+    logger = logging.getLogger(programNameShort)
+    
+    if options.display_verbose: print (help_text)
+    if options.unlinked_refs:
+        print ("Checking only unlinked--rx and rxcf--records.")
+        unlinked_ref_clause = 'and ref_rx is Null and ref_rxcf is Null'
+    else:
+        unlinked_ref_clause = ''
+
+    #suggested by chatdpt as legal in mysql but doesn't work in mysql
+    #limit_clause = ""
+    #if options.halfway:
+        ## need to see how many references there are and divide by 2
+        #limit_clause = "LIMIT (SELECT COUNT(*) * 0.5 FROM api_biblioxml2)"
+
+    type_clause = ""
+    if options.source_type:
+        if options.source_type[0].upper() == "B":
+            type_clause = "and ref_sourcetype = 'book'"
+            print ("Checking reference type = books")
+        elif options.source_type[0].upper() == "J":
+            type_clause = "and ref_sourcetype = 'journal'"
+            print ("Checking reference type = journals")
+
+    skip_for_incremental_scans = "and skip_incremental_scans is NULL"
+
+    # scan articles matching art_id (single) or with regex wildcard (multiple)
+    biblio_refs_matching_artid = f"""select *
+                                     from api_biblioxml2
+                                     where art_id RLIKE '%s'
+                                     and ref_rx_confidence != {opasConfig.RX_CONFIDENCE_NEVERMORE}
+                                     {skip_for_incremental_scans}
+                                     {unlinked_ref_clause}
+                                     {type_clause}
+                                     %s
+                                  """
+
+    # scan articles added after date
+    biblios_for_articles_after = f"""select *
+                                     from api_biblioxml2 as bib, api_articles as art
+                                     where bib.art_id=art.art_id
+                                     {skip_for_incremental_scans}
+                                     and art.last_update >= '%s'
+                                     and ref_rx_confidence != {opasConfig.RX_CONFIDENCE_NEVERMORE}
+                                     {unlinked_ref_clause}
+                                     {type_clause}
+                                     %s
+                                  """
+    # scan articles with bib entries updated before date
+    biblio_refs_updated_before = f"""select *
+                                     from api_biblioxml2 as bib
+                                     where bib.last_update < '%s'
+                                     {skip_for_incremental_scans}
+                                     and ref_rx_confidence != {opasConfig.RX_CONFIDENCE_NEVERMORE}
+                                     {unlinked_ref_clause}
+                                     {type_clause}
+                                     %s
+                                  """
+
+    # user supplied conditional clause
+    biblio_refs_advanced_query = f"""select *
+                                     from api_biblioxml2 as bib
+                                     where ref_rx_confidence != {opasConfig.RX_CONFIDENCE_NEVERMORE}
+                                     {skip_for_incremental_scans}
+                                     {unlinked_ref_clause}
+                                     {type_clause}
+                                     %s
+                                  """
+
+    biblio_refs_nightly = f"""SELECT api_biblioxml2.*
+                             FROM
+                             api_biblioxml2, article_tracker
+                             WHERE
+                             article_tracker.art_id = api_biblioxml2.art_id
+                             and article_tracker.date_inserted >= '{yesterday}'
+                             {type_clause}
+                             {unlinked_ref_clause}
+                           """
+
+    if options.run_in_reverse:
+        print ("Reverse order option selected.")
+        direction = "DESC"
+    else:
+        direction = "ASC"
+
+    # run in order of article bib entry updates least recently updated first
+    if options.run_oldest_first:
+        print ("Scanning biblio table records by last update--oldest first.")
+        addon_to_query = f"order by last_update ASC" # oldest first
+    else:
+        print (f"Scanning biblio table records in {direction} order.")
+        addon_to_query = f"order by art_id {direction}, ref_local_id {direction}"
+        
+    if options.testmode:
+        import doctest
+        doctest.testmod()
+        print ("Fini. opasDataLoader Tests complete.")
+        sys.exit()
+
+    if options.nightly_includes:
+        query = biblio_refs_nightly
+        print (f"Nightly build option selected. Processing article references added since {yesterday}")
+    elif options.file_key:
+        query = biblio_refs_matching_artid % (options.file_key, addon_to_query)
+        print (f"Article ID specified. Processing articles matching {options.file_key} ")
+    elif options.added_after:
+        query = biblios_for_articles_after % (options.added_after, addon_to_query)
+        print (f"Nightly build option selected. Processing articles added after {options.added_after}")
+    elif options.scanned_before:
+        query = biblio_refs_updated_before % (options.scanned_before, addon_to_query)
+    elif options.unlinked_refs:
+        query = biblio_refs_updated_before % (options.scanned_before, addon_to_query)
+    elif options.where_condition:
+        query = biblio_refs_advanced_query % (f" AND {options.where_condition}")
+        print (f"Processed records limited by --where condition: ' AND {options.where_condition}'")
+    else: # options.process_all:
+        query = biblio_refs_matching_artid % ('.*', addon_to_query)
+        print (f"Processing ALL article references")
+    
+    walk_through_reference_set(ocd, set_description=f"Key: {options.file_key}", sql_set_select=query, halfway=options.halfway)
+    print ("Finished!")
+    

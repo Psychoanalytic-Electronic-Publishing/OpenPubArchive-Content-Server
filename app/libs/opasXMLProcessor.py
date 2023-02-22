@@ -14,13 +14,14 @@ Can optionally
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2023.0105/v.1.0.105"  # recorded in xml processed pepkbd3 procby, keep up to date!
+__version__     = "2023.0131/v.1.0.109"  # recorded in xml processed pepkbd3 procby, keep up to date!
 __status__      = "Development"
 
 programNameShort = "opasXMLProcessor"
 
 gDbg1 = False # display errors on stdout
 gDbg2 = False # processing details
+gDbg3 = False # debugging details
 
 import logging
 logger = logging.getLogger(programNameShort)
@@ -44,7 +45,7 @@ import opasLocator
 from opasLocator import Locator
 import opasGenSupportLib as opasgenlib
 import loaderConfig
-import opasSolrLoadSupport
+# import opasSolrLoadSupport
 import PEPBookInfo
 import opasXMLPEPAuthorID 
 import PEPGlossaryRecognitionEngine
@@ -58,6 +59,7 @@ import PEPJournalData
 import opasXMLParaLanguageConcordance
 import opasXMLPageConcordance
 import opasEmbargoContent
+import opasBiblioSupport
 
 global gJrnlData
 try:  # see if it's been defined.
@@ -306,7 +308,7 @@ def pgx_add_rx_split_book_links(parsed_xml, ocd, artInfo, split_book_data=None, 
             
         if inst is not None and pgx.attrib.get("rx", None) is None:
             if gDbg2: print (f"Setting TOC page link: {pgx.text}, {pgx.attrib}, {inst}")
-            loc = Locator(inst, ocd=ocd)
+            loc = Locator(inst)
             pgx.attrib["rx"] = str(loc) + ".P" + opasDocuments.PageNumber(pgx.text).pageID()
             ret_val += 1
 
@@ -359,21 +361,21 @@ def pgx_add_rx_book_links(parsed_xml, ocd, artInfo, split_book_data=None, verbos
                 fulltext_cleaned = fulltext_cleaned.format(keyword=fulltext_cleaned.LOCALID)
                 split_inst_from_fulltext = split_book_data.get_splitbook_page_instance(book_code=jrnlCode, vol=vol, vol_suffix=artInfo.art_vol_suffix, page_id=fulltext_cleaned)
                 if split_inst_from_fulltext is None:
-                    splitLoc = opasLocator.Locator(jrnlCode=jrnlCode, jrnlVol=vol, jrnlVolSuffix=artInfo.art_vol_suffix, pgStart="1", art_info=artInfo, ocd=ocd)
-                    local = splitLoc.localID(fulltext_cleaned, ocd=ocd).upper()
+                    splitLoc = opasLocator.Locator(jrnlCode=jrnlCode, jrnlVol=vol, jrnlVolSuffix=artInfo.art_vol_suffix, pgStart="1", art_info=artInfo)
+                    local = splitLoc.localID(fulltext_cleaned).upper()
                     # if 1: print (f"\t\t\tLocalID: {local}")
                     pgx.attrib["rx"] = local
                     pgx.attrib["type"] = pgxlink_type
-                    log_everywhere_if(gDbg2, level="info", msg=f"\t\t\t...Reference to non-Split Book. Set link (type={pgxlink_type}) including local to: {local}")
+                    log_everywhere_if(gDbg2, level="info", msg=f"\t\t...Reference to non-Split Book. Set link (type={pgxlink_type}) including local to: {local}")
                 else:
-                    splitLoc = opasLocator.Locator(split_inst_from_fulltext, ocd=ocd)
+                    splitLoc = opasLocator.Locator(split_inst_from_fulltext)
                     #print (splitLoc, SEPage)
                     local = splitLoc.localID(fulltext_cleaned).upper()
                     pgx.attrib["rx"] = local
                     pgx.attrib["type"] = pgxlink_type
-                    log_everywhere_if(gDbg2, level="info", msg=f"\t\t\t...Reference to Split Book. Set link (type={pgxlink_type}) including local to: {local}")
+                    log_everywhere_if(gDbg2, level="info", msg=f"\t\t...Reference to Split Book. Set link (type={pgxlink_type}) including local to: {local}")
             else:
-                log_everywhere_if(gDbg2, level="info", msg=f"\t\t\t...Rx link for pgx already set: {current_rx_link}")
+                log_everywhere_if(gDbg2, level="info", msg=f"\t\t...Rx link for pgx already set: {current_rx_link}")
 
     return ret_val
 #------------------------------------------------------------------------------------------------------
@@ -400,125 +402,92 @@ def remove_author_pretitles(parsed_xml, verbose=False):
     
 
 #------------------------------------------------------------------------------------------------------
-def update_biblio_nonheuristic(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
+def update_biblio_links(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
     """
     Walk through the biblio records and update rx and rxcf links in the XML,
       using the markup in the ref and the stored biblioxml links.
-      (Heuristic Search is now a separate process to optimize speed.)
+      (Heuristic Search is now a separate process to optimize speed,
+      done only via opasDataLinker in the reference table)
+      
+      Good test examples:
+         AIM.015.0003A
+      
     """
-
-    known_books = PEPBookInfo.PEPBookInfo()
-    pep_ref = False
-    
+    ret_val = 0 # change count
+    log_level_for_trace = "info"
     if artInfo.ref_count > 0:
-        # load biblio records
-        list_of_models = ocd.get_references_from_biblioxml_table(article_id=artInfo.art_id)
-        if list_of_models:
-            api_biblioxml_dict_of_models = {x.bib_local_id: x for x in list_of_models}
-        else:
-            api_biblioxml_dict_of_models = {}
-
-        #sel_bib_records = f'SELECT * from api_biblioxml WHERE "art_id = {artInfo.art_id}'
-        #bib_records = ocd.get_select_as_list_of_dicts(sel_bib_records)
-        #bib_dict = {x['bib_local_id']: x for x in bib_records}
         bibReferences = parsed_xml.xpath("/pepkbd3//be")  # this is the second time we do this (also in artinfo, but not sure or which is better per space vs time considerations)
-        if verbose: print("\t...Examining %s references for links (rx) and related titles (rxcf)." % (artInfo.ref_count))
-        #processedFilesCount += 1
-        # bib_total_reference_count = 0
+        if verbose:
+            msg = "\t...opasXMLProcessor checking %s references for links (rx) and related titles (rxcf)." % (artInfo.ref_count)
+            log_everywhere_if(verbose, level=log_level_for_trace, msg=msg)
         for ref in bibReferences:
-            bib_entry = opasSolrLoadSupport.BiblioEntry(artInfo, ref)
-            ref_id = bib_entry.ref_local_id
-            bib_refdb_model = api_biblioxml_dict_of_models.get(ref_id)
+            try:
+                bib_entry = opasBiblioSupport.BiblioEntry(art_id=artInfo.art_id,
+                                                          art_year=artInfo.art_year_int,
+                                                          ref_or_parsed_ref=ref,
+                                                          verbose=verbose)
+            except Exception as e:
+                log_everywhere_if(True, "warning", f"\t..Cannot load/or parse bib_entry {artInfo.art_id} {artInfo.art_year_int} due to bad data {ref} Error: {e}")
+                continue
 
-            ref_rx = ref.attrib.get("rx")
-            if bib_refdb_model:
-                if bib_refdb_model.bib_rx:
-                    bib_refdb_model.bib_rx = Locator(bib_refdb_model.bib_rx).articleID()
-                    bib_refdb_model.bib_rx_confidence = bib_refdb_model.bib_rx_confidence
+            if bib_entry.record_updated:
+                # replaced the actual biblio text, e.g., to add markup
+                parent = ref.getparent()
+                parent.replace(ref, bib_entry.parsed_ref)
+                bib_entry.link_updated = True
+                ref = bib_entry.parsed_ref
                 
-                if ref_rx:
-                    ref_rx = Locator(ref_rx).articleID()
-                    if bib_refdb_model.bib_rx:
-                        if bib_refdb_model.bib_rx != ref_rx and bib_refdb_model.bib_rx_confidence == 1:
-                            # change ref, confidence is certain in db
-                            ref.attrib["rx"] = bib_refdb_model.bib_rx
-                            if verbose: print (f"\t\t...Bib Dict ({bib_refdb_model.bib_rx}) overriding rx: {ref_rx}")
-                        else:
-                            if verbose: print (f"\t\t...Bib ID {ref_id} ref has rx: {ref_rx} Bib_dict: {bib_refdb_model.bib_rx}. {bib_entry.ref_entry_xml}")
-                            # no change to ref but make sure it's a valid locator
-                            ref.attrib["rx"] = ref_rx
-                elif bib_refdb_model.bib_rx:
-                    if verbose: print (f"\t\t...Bib ID {ref_id} No rx Bib_dict used: {bib_refdb_model.bib_rx} {bib_refdb_model.full_ref_text}")
-                    ref.attrib["rx"] = bib_refdb_model.bib_rx
-            
-            if not ref.attrib.get("rx"):
-                # still no rx
-                if bib_entry.ref_is_book:
-                    bk_locator_str, match_val, whatever = known_books.getPEPBookCodeStr(bib_entry.ref_entry_text)
-                    if bk_locator_str is not None:
-                        ref.attrib["rx"] = bk_locator_str 
-                        search_str = f"//be[@id='{ref_id}']"
-                        msg = f"\t\t\t...Matched Book {match_val}. {opasxmllib.xml_xpath_return_xmlstringlist(parsed_xml, search_str)[0]}"
-                        log_everywhere_if(gDbg2, level="info", msg=msg)
-                        
-                    else:
-                        # see if we have info to link SE/GW etc., these are in a sense like journals
-                        pep_ref = False
-                        if PEPJournalData.PEPJournalData.rgxSEPat2.search(bib_entry.ref_entry_text):
-                            pep_ref = True
-                            bib_entry.sourcecode = "SE"
-                        elif PEPJournalData.PEPJournalData.rgxGWPat2.search(bib_entry.ref_entry_text):
-                            pep_ref = True
-                            bib_entry.sourcecode = "GW"
-                
-                if not ref.attrib.get("rx") and bib_entry.sourcecode:
-                    if not opasgenlib.is_empty(bib_entry.pgrg):
+            bib_updated_from_db = bib_entry.compare_to_database(ocd)
+            if bib_entry.link_updated:
+                ret_val += 1
+                if bib_entry.link_updated: # update xml (not db, info was from db))
+                    if bib_entry.ref_rx is None or not bib_entry.ref_exists:
                         try:
-                            bib_pgstart, bib_pgend = bib_entry.pgrg.split("-")
-                        except Exception as e:
-                            bib_pgstart = bib_entry.pgrg
-                    else:
-                        if bib_entry.ref_is_book:
-                            bib_pgstart = 0
+                            del ref.attrib["rx"]
+                        except:
+                            pass
                         else:
-                            bib_pgstart = bib_pgend = None
-                    
-                    if bib_pgstart or bib_entry.ref_is_book:
-                        locator = Locator(strLocator=None,
-                                          jrnlCode=bib_entry.sourcecode, 
-                                          jrnlVolSuffix="", 
-                                          jrnlVol=bib_entry.volume, 
-                                          jrnlIss=None, 
-                                          pgVar="A", 
-                                          pgStart=bib_pgstart, 
-                                          jrnlYear=bib_entry.year, 
-                                          localID=ref_id, 
-                                          keepContext=1, 
-                                          forceRoman=False, 
-                                          notFatal=True, 
-                                          noStartingPageException=True, 
-                                          filename=artInfo.filename)
-                        if locator.valid != 0:
-                            pep_ref = True
+                            msg = f"\t\tRemoved rx link {bib_entry.ref_rx} Exists: {bib_entry.ref_exists}"
+                            log_everywhere_if(verbose, level=log_level_for_trace, msg=msg)
+                            
                     else:
-                        locator = None
-
-                    if locator is None or locator.valid == 0:
-                        msg = f"\t\t...Bib ID {ref_id} not enough info {bib_entry.sourcecode}.{bib_entry.volume}.{bib_pgstart} {bib_entry.ref_entry_text}"
-                        log_everywhere_if(verbose, level="info", msg=msg)
-                    elif not pep_ref:
-                        pass
+                        ref_rx = ref.attrib.get('rx', '')
+                        if ref_rx != bib_entry.ref_rx:
+                            # only display if it's not empty/None or the same
+                            msg = f"\t\tDB updates {bib_entry.art_id}.{bib_entry.ref_local_id} RX from '{ref_rx}' to {bib_entry.ref_rx} confidence: {bib_entry.ref_rx_confidence})"
+                            log_everywhere_if(verbose, level=log_level_for_trace, msg=msg)
+                        ref.attrib["rx"] = bib_entry.ref_rx
+                        ref.attrib["rxconf"] = str(bib_entry.ref_rx_confidence)
+                        
+                    if bib_entry.ref_rxcf is None:
+                        try:
+                            del ref.attrib["rxcf"]
+                        except:
+                            pass
+                        else:
+                            msg = f"\t\tRemoved rxcf link based on DB"
+                            log_everywhere_if(verbose, level=log_level_for_trace, msg=msg)
                     else:
-                        ref.attrib["rx"] = locator.articleID()
-                        search_str = f"//be[@id='{ref_id}']"
-                        msg = f"\t\t...Matched Journal {opasxmllib.xml_xpath_return_xmlstringlist(parsed_xml, search_str)[0]}"
-                        log_everywhere_if(verbose, level="debug", msg=msg)
-                
-   
+                        ref_rxcf = ref.attrib.get('rxcf', '')
+                        if ref_rxcf != bib_entry.ref_rxcf:
+                            # only display if it's updated with value
+                            msg = f"\t\tDB updates {bib_entry.art_id}.{bib_entry.ref_local_id} RXCF from '{ref_rxcf}' to {bib_entry.ref_rxcf} confidence: {bib_entry.ref_rxcf_confidence})"
+                            log_everywhere_if(verbose, level=log_level_for_trace, msg=msg)
+                            
+                        ref.attrib["rxcf"] = bib_entry.ref_rxcf
+                        ref.attrib["rxcfconf"] = str(bib_entry.ref_rxcf_confidence)
+        
+        return ret_val                
 #------------------------------------------------------------------------------------------------------
 def update_bincs(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
     """
-    Walk through the content looking for binc update rx and rxcf links in the XML, using heuristics if necessary. 
+    Walk through the content looking for binc update rx and rxcf links in the XML, using heuristics if necessary.
+    
+    TBD: Seems to work well but needs to be reviewed and integrated into the new biblio checking flow.
+    
+    Good test examples:
+        AIM.030.0157A - all bincs!
+
     """
     known_books = PEPBookInfo.PEPBookInfo()
     
@@ -526,18 +495,18 @@ def update_bincs(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
     bibReferences = parsed_xml.xpath("/pepkbd3//binc")
     count = len(bibReferences)
     if count > 0:
-        if verbose: print(f"\t...Examining {count} inclusion refs (binc) for links (rx) and related titles (rxcf).")
+        if verbose: print(f"\t...opasXMLProcessor checking {count} inclusion refs (binc) for links (rx) and related titles (rxcf).")
         #processedFilesCount += 1
         bib_total_reference_count = 0
-        for ref in bibReferences:
+        for parsed_ref in bibReferences:
             # bib_entry_text = ''.join(ref.itertext())
             bib_pgstart = None
             bib_pgend = None
             # compare_to = ""
-            ref_id = ref.attrib.get("id", None)
+            ref_id = parsed_ref.attrib.get("id", None)
             if ref_id is None:
                 if gDbg1:
-                    print (f"\t\t...Skipping attempted link of {ET.tostring(ref)}")
+                    print (f"\t\tSkipping attempted link of {ET.tostring(parsed_ref)}")
                 continue # no id, minor instance, skip
             # see if it's already in table
             bib_saved_entry_tuple = ocd.get_references_from_biblioxml_table(article_id=artInfo.art_id, ref_local_id=ref_id)
@@ -548,49 +517,47 @@ def update_bincs(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
             
             # merge record info
             bib_total_reference_count += 1
-            bib_entry = opasSolrLoadSupport.BiblioEntry(artInfo, ref)
-            #if bib_entry.sourcecode is None:
-                #if isinstance(bib_entry.source_title, str) and not opasgenlib.is_empty(bib_entry.source_title):
-                    #bib_entry.sourcecode, dummy, dummy = gJrnlData.getPEPJournalCode(strText=bib_entry.source_title) 
+            bib_entry = opasBiblioSupport.BiblioEntry(art_id=artInfo.art_id, art_year=artInfo.art_year_int, ref_or_parsed_ref=parsed_ref)
 
             try:
-                if not opasgenlib.is_empty(bib_entry.pgrg):
-                    bib_pgstart, bib_pgend = bib_entry.pgrg.split("-")
+                if not opasgenlib.is_empty(bib_entry.ref_pgrg):
+                    bib_pgstart, bib_pgend = bib_entry.ref_pgrg.split("-")
             except ValueError as e:
-                if not opasgenlib.is_empty(bib_entry.pgrg):
-                    bib_pgstart = bib_entry.pgrg
-                    bib_pgend = bib_entry.pgrg
+                if not opasgenlib.is_empty(bib_entry.ref_pgrg):
+                    bib_pgstart = bib_entry.ref_pgrg
+                    bib_pgend = bib_entry.ref_pgrg
                 else:
                     bib_pgstart = ""
                     bib_pgend = ""
                 
             if not bib_entry.ref_is_book: # journal or other
-                if opasgenlib.is_empty(bib_entry.sourcecode):
-                    if bib_entry.ref_title:
-                        # find and store rxcf for related articles (side effect of function)
-                        if gDbg2 and verbose: print (f"\t...Finding related articles for bibliography based on ref_title")
-                        # called routine updates ref if found
-                        rxcf = find_related_articles(ref,
-                                                     art_or_source_title=bib_entry.ref_title,
-                                                     query_target="art_title_xml",
-                                                     max_words=opasConfig.MAX_WORDS,
-                                                     min_words=opasConfig.MIN_WORDS,
-                                                     word_len=opasConfig.MIN_WORD_LEN,
-                                                     max_cf_list=opasConfig.MAX_CF_LIST)                        
-                    else:
-                        locator = None
-                        msg = f"\t\t\t...Skipped: {bib_saved_entry}"
-                        log_everywhere_if(gDbg2, level="debug", msg=msg)                            
+                if opasgenlib.is_empty(bib_entry.ref_sourcecode):
+                    pass # not during build. From DB only
+                    #if bib_entry.ref_title:
+                        ## find and store rxcf for related articles (side effect of function)
+                        #if gDbg2 and verbose: print (f"\t...Finding related articles for bibliography based on ref_title")
+                        ## called routine updates ref if found
+                        #rxcf = find_related_articles(parsed_ref,
+                                                     #art_or_source_title=bib_entry.ref_title,
+                                                     #query_target="art_title_xml",
+                                                     #max_words=opasConfig.MAX_WORDS,
+                                                     #min_words=opasConfig.MIN_WORDS,
+                                                     #word_len=opasConfig.MIN_WORD_LEN,
+                                                     #max_cf_list=opasConfig.MAX_CF_LIST)                        
+                    #else:
+                        #locator = None
+                        #msg = f"\t\tSkipped: {bib_saved_entry}"
+                        #log_everywhere_if(gDbg2, level="debug", msg=msg)                            
                     
                 else: # if not opasgenlib.is_empty(bib_entry.sourcecode):
                     locator = Locator(strLocator=None,
-                                       jrnlCode=bib_entry.sourcecode, 
+                                       jrnlCode=bib_entry.ref_sourcecode, 
                                        jrnlVolSuffix="", 
-                                       jrnlVol=bib_entry.volume, 
+                                       jrnlVol=bib_entry.ref_volume, 
                                        jrnlIss=None, 
                                        pgVar="A", 
                                        pgStart=bib_pgstart, 
-                                       jrnlYear=bib_entry.year, 
+                                       jrnlYear=bib_entry.ref_year, 
                                        localID=ref_id, 
                                        keepContext=1, 
                                        forceRoman=False, 
@@ -598,69 +565,44 @@ def update_bincs(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
                                        noStartingPageException=True, 
                                        filename=artInfo.filename)
                     # need to check if it's whole, and if it works, but for now.
-                    if locator.valid == 0:
-                        msg = f"\t\t\t...Bib ID {ref_id} does not have enough info to link. {bib_entry.year}.{bib_entry.volume}.{bib_pgstart}"
+                    if not locator.valid:
+                        msg = f"\t\tBinc Bib ID {ref_id} not enough link. {bib_entry.ref_year}.{bib_entry.ref_volume}.{bib_pgstart}"
                         log_everywhere_if(gDbg2, level="info", msg=msg)
                         continue
                         
-                    ref.attrib["rx"] = locator.articleID()
+                    parsed_ref.attrib["rx"] = locator.articleID()
                     search_str = f"//binc[@id='{ref_id}']"
-                    msg = f"\t\t\t...Matched Journal {opasxmllib.xml_xpath_return_xmlstringlist(parsed_xml, search_str)[0]}"
+                    msg = f"\t\tBinc Matched Journal {opasxmllib.xml_xpath_return_xmlstringlist(parsed_xml, search_str)[0]}"
                     log_everywhere_if(gDbg2, level="debug", msg=msg)
 
                 
             else:
-                bk_locator_str, match_val, whatever = known_books.getPEPBookCodeStr(bib_entry.ref_entry_text)
+                bk_locator_str, match_val, whatever = known_books.getPEPBookCodeStr(bib_entry.ref_text)
                 if bk_locator_str is not None:
-                    ref.attrib["rx"] = bk_locator_str 
+                    parsed_ref.attrib["rx"] = bk_locator_str 
                     search_str = f"//binc[@id='{ref_id}']"
-                    msg = f"\t\t\t...Matched Book {match_val}. {opasxmllib.xml_xpath_return_xmlstringlist(parsed_xml, search_str)[0]}"
+                    msg = f"\t\tBinc Matched Book {match_val}. {opasxmllib.xml_xpath_return_xmlstringlist(parsed_xml, search_str)[0]}"
                     log_everywhere_if(gDbg2, level="info", msg=msg)
                     
                 else:
                     # see if we have info to link SE/GW etc., these are in a sense like journals
                     pep_ref = False
-                    if PEPJournalData.PEPJournalData.rgxSEPat2.match(bib_entry.source_title) or PEPJournalData.PEPJournalData.rgxSEPat.match(bib_entry.source_title):
+                    if PEPJournalData.PEPJournalData.rgxSEPat2.match(bib_entry.ref_sourcetitle) or PEPJournalData.PEPJournalData.rgxSEPat.match(bib_entry.ref_sourcetitle):
                         pep_ref = True
-                        bib_entry.sourcecode = "SE"
-                    elif PEPJournalData.PEPJournalData.rgxGWPat2.match(bib_entry.source_title):
+                        bib_entry.ref_sourcecode = "SE"
+                    elif PEPJournalData.PEPJournalData.rgxGWPat2.match(bib_entry.ref_sourcetitle):
                         pep_ref = True
-                        bib_entry.sourcecode = "GW"
-                    
-                    #try checking this anyway!
-                    if bib_entry.source_title:
-                        # find_related_articles assigns to ref attrib rxcf (hence no need to use return val)
-                        if gDbg2 and verbose: print (f"\t...Finding related articles for bibliography based on source_title")
-                        # called routine updates ref if found
-                        rxcf = find_related_articles(ref,
-                                                     art_or_source_title=bib_entry.source_title,
-                                                     query_target="art_title_xml",
-                                                     max_words=opasConfig.MAX_WORDS,
-                                                     min_words=opasConfig.MIN_WORDS,
-                                                     word_len=opasConfig.MIN_WORD_LEN,
-                                                     max_cf_list=opasConfig.MAX_CF_LIST)
-
-                        if rxcf == [] and bib_entry.ref_title:
-                            rxcf = find_related_articles(ref,
-                                                         art_or_source_title=bib_entry.ref_title,
-                                                         query_target="art_title_xml",
-                                                         max_words=opasConfig.MAX_WORDS,
-                                                         min_words=opasConfig.MIN_WORDS,
-                                                         word_len=opasConfig.MIN_WORD_LEN,
-                                                         max_cf_list=opasConfig.MAX_CF_LIST)
-                            
-                            
-                    # elif bib_entry.ref
-    
+                        bib_entry.ref_sourcecode = "GW"
+                       
                     if pep_ref:
                         locator = Locator(strLocator=None,
-                                           jrnlCode=bib_entry.sourcecode, 
+                                           jrnlCode=bib_entry.ref_sourcecode, 
                                            jrnlVolSuffix="", 
-                                           jrnlVol=bib_entry.volume, 
+                                           jrnlVol=bib_entry.ref_volume, 
                                            jrnlIss=None, 
                                            pgVar="A", 
                                            pgStart=bib_pgstart, 
-                                           jrnlYear=bib_entry.year, 
+                                           jrnlYear=bib_entry.ref_year, 
                                            localID=ref_id, 
                                            keepContext=1, 
                                            forceRoman=False, 
@@ -673,11 +615,11 @@ def update_bincs(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
                             if base_info is None:
                                 # try without page number
                                 locator = Locator(strLocator=None,
-                                                   jrnlCode=bib_entry.sourcecode, 
+                                                   jrnlCode=bib_entry.ref_sourcecode, 
                                                    jrnlVolSuffix="", 
-                                                   jrnlVol=bib_entry.volume, 
+                                                   jrnlVol=bib_entry.ref_volume, 
                                                    jrnlIss=None, 
-                                                   jrnlYear=bib_entry.year, 
+                                                   jrnlYear=bib_entry.ref_year, 
                                                    localID=ref_id, 
                                                    keepContext=1, 
                                                    forceRoman=False, 
@@ -688,17 +630,17 @@ def update_bincs(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
                                 base_info = opasPySolrLib.get_base_article_info_by_id(locator)
                                 
                             if base_info is not None:
-                                ref.attrib["rx"] = locator.articleID()
+                                parsed_ref.attrib["rx"] = locator.articleID()
                                 search_str = f"//binc[@id='{ref_id}']"
-                                msg = f"\t\t\t...Matched Book {match_val}. {opasxmllib.xml_xpath_return_xmlstringlist(parsed_xml, search_str)[0]}"
+                                msg = f"\t\tMatched Book {match_val}. {opasxmllib.xml_xpath_return_xmlstringlist(parsed_xml, search_str)[0]}"
                                 log_everywhere_if(gDbg2, level="debug", msg=msg)
                             else:
-                                log_everywhere_if(gDbg2, level="debug", msg=f"didn't find this: {bib_entry.sourcecode}")
+                                log_everywhere_if(gDbg2, level="debug", msg=f"didn't find this: {bib_entry.ref_sourcecode}")
                             
                         
                     else:     
                         locator = None
-                        msg = f"\t\t\t...Skipped: {bib_entry.ref_entry_text}"
+                        msg = f"\t\tSkipped: {bib_entry.ref_text}"
                         log_everywhere_if(gDbg2, level="debug", msg=msg)
 
 #------------------------------------------------------------------------------------------------------
@@ -714,7 +656,7 @@ def add_pagenbrs_to_splitbook_table(parsed_xml, artInfo, ocd, split_book_data, p
         else:
             has_biblio = 0
 
-        if artInfo.is_maintoc:
+        if artInfo.art_is_maintoc:
             has_toc = 1
         else:
             has_toc = len(parsed_xml.xpath('//grp[@name="TOC"]'))
@@ -892,7 +834,7 @@ def xml_update(parsed_xml,
 
     # Walk through biblio, add links unless option is turned off
     if not no_database_update:
-        update_biblio_nonheuristic(parsed_xml, artInfo, ocd, verbose=verbose) # in reference section(s)
+        update_biblio_links(parsed_xml, artInfo, ocd, verbose=verbose) # in reference section(s)
         update_bincs(parsed_xml, artInfo, ocd, verbose=verbose)  # throught, embedded refs
     
     # Add page number markup (next and prev page info on page breaks)
@@ -924,25 +866,27 @@ def xml_update(parsed_xml,
         parser = ET.XMLParser(encoding='utf-8', recover=True, resolve_entities=False, load_dtd=False)
         # see if it's already been computed to save time
         art_stat = ocd.get_artstat(document_id=artInfo.art_id)
-        glossary_terms_dict_str = art_stat.get("glossaryDict")
-        if not glossary_terms_dict_str:
-            artInfo.glossary_terms_count, artInfo.glossary_terms_dict = glossEngine.doGlossaryMarkup(parsed_xml,
+        artInfo.glossary_terms_dict_str = art_stat.get("glossaryDict") # Get glossary list from database
+        if not artInfo.glossary_terms_dict_str:
+            glossary_terms_total_found, artInfo.glossary_terms_dict = glossEngine.doGlossaryMarkup(parsed_xml,
                                                                                                      pretty_print=pretty_print,
                                                                                                      markup_terms=markup_terms,
                                                                                                      verbose=verbose)
             # need to compute it
             term_json = json.dumps(artInfo.glossary_terms_dict)
             pep_addon = f'<unit type="glossary_term_dict"><!-- {term_json} --></unit>'
+            artInfo.glossary_terms_dict_str = pep_addon
+            if verbose:
+                print (f"\t...{glossary_terms_total_found} glossary terms ({len(artInfo.glossary_terms_dict)} unique) in document")
         else:
-            print ("\t...Glossary terms list loaded from database")
-            pep_addon = glossary_terms_dict_str
-
-        m = re.search("<!--.*?(?P<dict_str>\{.*\}).*?-->", pep_addon)
-        dict_str = m.group("dict_str")
-        artInfo.glossary_terms_dict = json.loads(dict_str)
-        artInfo.glossary_terms_count = len(artInfo.glossary_terms_dict)
-        artInfo.glossary_terms_dict_str = pep_addon
-
+            pep_addon = artInfo.glossary_terms_dict_str
+            m = re.search("<!--.*?(?P<dict_str>\{.*\}).*?-->", pep_addon)
+            dict_str = m.group("dict_str")
+            artInfo.glossary_terms_dict = json.loads(dict_str)
+            glossary_terms_total_found = sum(artInfo.glossary_terms_dict.values())
+            if verbose:
+                print (f"\t...Glossary terms list loaded from database. {glossary_terms_total_found} glossary terms ({len(artInfo.glossary_terms_dict)} unique) in document")
+        
         new_unit = ET.fromstring(pep_addon, parser)
         parsed_xml.append(new_unit)
     

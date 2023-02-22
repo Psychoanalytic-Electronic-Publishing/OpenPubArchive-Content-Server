@@ -65,7 +65,8 @@ global gJrnlData
 
 gDbg1 = 0  # details
 gDbg2 = 1  # High level
-
+import opasCentralDBLib
+ocd = opasCentralDBLib.opasCentralDB()
 
 #============================================================================================
 class PEPJournalData:
@@ -1939,12 +1940,12 @@ class PEPJournalData:
         value
         """
         ret_val = None
-        ret_valList = []
-        baseYear = 0
+        ret_val_list = []
+        #baseYear = 0
 
         if jrnlCode == None:
             logger.warn("getVol: No journal name for %s/%s" % (jrnlCode, jrnlYear))
-            return ret_val, ret_valList
+            return ret_val, ret_val_list
 
         #if gDbg1: print "Args: ", jrnlCode, jrnlYear
         if jrnlYear != None:
@@ -1956,15 +1957,10 @@ class PEPJournalData:
                 jrnlYear = opasgenlib.atoiNotEmpty(repr(jrnlYear))
 
             # handle SE separately NOTE: This is not a good way to find the SE Year/Vol!
-            if jrnlCode in ["SE"]:
-                pass
-                #if 0: # NEED TO FIX
-                    #from .libPEPBiblioDB import BiblioDB
-                    #biblioDB = BiblioDB()
-                    #ret_valList = biblioDB.getPEPVols("SE", jrnlYear)
-                    #if gDbg1: print("SE Volumes Retrieved for Year: ", ret_valList)
-                    #if not opasgenlib.is_empty(ret_valList):
-                        #ret_val = ret_valList[0]
+            if jrnlCode in ["SE", "GW"]:
+                ret_val_list = ocd.get_vols_for_source_and_year(jrnlCode, jrnlYear)
+                if ret_val:
+                    ret_val = ret_val_list[0]
             else:
                 currDict = self.all.get(jrnlCode.upper(), None)
 
@@ -1976,19 +1972,19 @@ class PEPJournalData:
                         if type(currVol) == type([]):
                             logger.info("getVol: this year has multiple volume numbers: %s." % currVol)
                             ret_val = opasDocuments.VolumeNumber(currVol[0])  # first element returned in ret_val, converted to volume number
-                            ret_valList = currVol
+                            ret_val_list = currVol
                         else:
                             #print "getVol Else: ", currVol
                             ret_val = opasDocuments.VolumeNumber(currVol)
-                            ret_valList = [ret_val]
+                            ret_val_list = [ret_val]
 
         if opasgenlib.is_empty(ret_val):
             # don't bother reporting if jrnlYear is 0; just not interesting!
             if jrnlYear!=0 and jrnlYear!="0":
-                logger.warn("getVol: Cannot find vol for %s/%s" % (jrnlCode, jrnlYear))
+                logger.debug("getVol: Cannot find vol for %s/%s" % (jrnlCode, jrnlYear))
 
         #print "CurrVol, type: ", ret_val, type(ret_val)
-        return ret_val, ret_valList
+        return ret_val, ret_val_list
 
      #--------------------------------------------------------------------------------
     def getPEPJournalCode(self, strText, exactText = False):
@@ -2009,6 +2005,8 @@ class PEPJournalData:
 
         Test Cases:
             >>> jrnlData = PEPJournalData()
+            >>> jrnlData.getPEPJournalCode(u'Standard Edition')
+            'SE'
             >>> jrnlData.getPEPJournalCode(u'Psychoanalytic Books')[0]
             'PB'
             >>> jrnlData.getPEPJournalCode(u'Psa. Books')[0]
@@ -2333,8 +2331,8 @@ class PEPJournalData:
                     m = rgxJournalPtrn.search(strText)
 
                 if m != None:
-                    jrnlName = m.group()
                     found = True
+                    jrnlName = self.jrnlAbbr.get(code)
                     ret_val = (code, self.jrnlAbbr.get(code, None), jrnlName)
                     if gDbg1:
                         if exactText:
@@ -2347,6 +2345,15 @@ class PEPJournalData:
             if not found:
                 print("PEP Journal Not found for: ", strText)
         return ret_val
+
+    #--------------------------------------------------------------------------------
+    def getJournalFull(self, sourceCode):
+        """
+        Return the official PEP source title for this code.
+        """
+        retVal = self.jrnlFull.get(sourceCode)
+        return retVal
+
 
     #--------------------------------------------------------------------------------
     #def matchSEtoReference(self, strRef, refPYX=None):
@@ -2429,19 +2436,28 @@ class PEPJournalData:
 
         #return ret_val
 
-    ##--------------------------------------------------------------------------------
-    #def journalCodes(self):
-        #"""
-        #Returns a list of all journalcodes
-        #Note: Test results need updating whenever new journal codes are included.
+    #--------------------------------------------------------------------------------
+    def is_pep_journal(self, jrnl_code):
+        if jrnl_code in self.journalCodes():
+            ret_val = True
+        else:
+            ret_val = False
+           
+        return ret_val
+    
+    #--------------------------------------------------------------------------------
+    def journalCodes(self):
+        """
+        Returns a list of all journalcodes
+        Note: Test results need updating whenever new journal codes are included.
 
-            #>>> jrnlData = PEPJournalData()
-            #>>> jrnlData.journalCodes()
-            #['PAQ', 'ANIJP-IT', 'FA', 'FD', 'PAH', 'PPSY', 'CPS', 'MPSA', 'SPR', 'RIP', 'ANIJP-DE', 'AOP', 'NP', 'BAFC', 'GW', 'JEP', 'ANRP', 'JCPTX', 'JAA', 'RPSA', 'IJPSP', 'SE', 'PPTX', 'IFP', 'BAP', 'PCS', 'PCAS', JOAP', 'PCT', 'AIM', 'JCP', 'ANIJP-FR', 'SGS', 'JICAP', 'GAP', 'IRP', 'PD', 'PDPSY', 'PI', 'BIP', 'IJAPS', 'AJP', 'RBP', 'CJP', 'PPERSP', 'IJP', 'APA', 'PSC', 'PSAR', 'PSP', 'PSW']
-        #"""
-        #ret_val = list(self.all.keys())
-        #ret_val.sort()
-        #return ret_val
+            >>> jrnlData = PEPJournalData()
+            >>> jrnlData.journalCodes()
+            ['PAQ', 'ANIJP-IT', 'FA', 'FD', 'PAH', 'PPSY', 'CPS', 'MPSA', 'SPR', 'RIP', 'ANIJP-DE', 'AOP', 'NP', 'BAFC', 'GW', 'JEP', 'ANRP', 'JCPTX', 'JAA', 'RPSA', 'IJPSP', 'SE', 'PPTX', 'IFP', 'BAP', 'PCS', 'PCAS', JOAP', 'PCT', 'AIM', 'JCP', 'ANIJP-FR', 'SGS', 'JICAP', 'GAP', 'IRP', 'PD', 'PDPSY', 'PI', 'BIP', 'IJAPS', 'AJP', 'RBP', 'CJP', 'PPERSP', 'IJP', 'APA', 'PSC', 'PSAR', 'PSP', 'PSW']
+        """
+        ret_val = list(self.all.keys())
+        ret_val.sort()
+        return ret_val
 
     #--------------------------------------------------------------------------------
     def vols(self, jrnlCode):

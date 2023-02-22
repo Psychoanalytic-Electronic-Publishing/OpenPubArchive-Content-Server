@@ -256,7 +256,6 @@ def add_removed_article_xml(ocd, artInfo, verbose=False):
     if verbose:
         print (msg)
     
-    ocd.open_connection(caller_name=caller_name)
     insert_if_not_exists = r"""REPLACE
                                INTO api_articles (
                                     art_id,
@@ -289,6 +288,7 @@ def add_removed_article_xml(ocd, artInfo, verbose=False):
     #query_param_dict["author_xml_list"] = None
         
     try:
+        # commit automatically handled by do_action_query
         res = ocd.do_action_query(querytxt=insert_if_not_exists, queryparams=query_params)
     except Exception as e:
         errStr = f"AddToArticlesDBError: insert error {e}"
@@ -297,15 +297,6 @@ def add_removed_article_xml(ocd, artInfo, verbose=False):
     else:
         ret_val = True
         
-    try:
-        ocd.db.commit()
-        ocd.close_connection(caller_name="processArticles")
-    except mysql.connector.Error as e:
-        errStr = f"SQLDatabaseError: Commit failed! {e}"
-        logger.error(errStr)
-        if opasConfig.LOCAL_TRACE: print (errStr)
-        ret_val = False
-    
     return ret_val  # return True for success
 
 def add_to_articles_removed_table_fullinfo(ocd, artInfo, verbose=None):
@@ -324,8 +315,6 @@ def add_to_articles_removed_table_fullinfo(ocd, artInfo, verbose=None):
     logger.info(msg)
     if verbose:
         print (msg)
-    
-    ocd.open_connection(caller_name="add_to_articles_removed_table")
     
     # reduce object
   
@@ -436,6 +425,7 @@ def add_to_articles_removed_table_fullinfo(ocd, artInfo, verbose=None):
     #query_param_dict["author_xml_list"] = None
         
     try:
+        # commit automatically handled by do_action_query
         res = ocd.do_action_query(querytxt=insert_if_not_exists, queryparams=query_params)
     except Exception as e:
         errStr = f"AddToArticlesDBError: insert error {e}"
@@ -443,16 +433,7 @@ def add_to_articles_removed_table_fullinfo(ocd, artInfo, verbose=None):
         if opasConfig.LOCAL_TRACE: print (errStr)
     else:
         ret_val = True
-        
-    try:
-        ocd.db.commit()
-        ocd.close_connection(caller_name="processArticles")
-    except mysql.connector.Error as e:
-        errStr = f"SQLDatabaseError: Commit failed! {e}"
-        logger.error(errStr)
-        if opasConfig.LOCAL_TRACE: print (errStr)
-        ret_val = False
-    
+
     return ret_val  # return True for success
 
 def add_removed_article_filename_with_path(ocd, art_id, filename_with_path, verbose=False):
@@ -470,7 +451,6 @@ def add_removed_article_filename_with_path(ocd, art_id, filename_with_path, verb
     if verbose:
         print (msg)
     
-    ocd.open_connection(caller_name=caller_name)
     sqlcpy = f"""
                 UPDATE api_articles_removed
                     SET filename = %s
@@ -480,6 +460,7 @@ def add_removed_article_filename_with_path(ocd, art_id, filename_with_path, verb
     query_params = (filename_with_path, art_id )
 
     try:
+        # commit automatically handled by do_action_query
         res = ocd.do_action_query(querytxt=sqlcpy, queryparams=query_params)
     except Exception as e:
         errStr = f"{caller_name}: update error {e}"
@@ -487,7 +468,6 @@ def add_removed_article_filename_with_path(ocd, art_id, filename_with_path, verb
         if opasConfig.LOCAL_TRACE: print (errStr)
     else:
         ret_val = True
-
     
     return ret_val  # return True for success
 
@@ -621,13 +601,13 @@ def copy_to_articles_removed(ocd, art_id, verbose=None):
     if verbose:
         print (msg)
     
-    # ocd.open_connection(caller_name=caller_name)
     sqlcpy = f"""
                 insert into api_articles_removed
                     select * from api_articles where art_id='{art_id}'
               """
     
     try:
+        # commit automatically handled by do_action_query
         res = ocd.do_action_query(querytxt=sqlcpy, log_integrity_errors=False)
     except Exception as e:
         errStr = f"{caller_name}: insert error {e}"
@@ -651,12 +631,12 @@ def remove_from_articles(ocd, art_id, verbose=None):
     if verbose:
         print (msg)
     
-    ocd.open_connection(caller_name=caller_name)
     sqldel = f"""
                 DELETE from api_articles
                     WHERE art_id='{art_id}'
               """
     try:
+        # commit automatically handled by do_action_query
         res = ocd.do_action_query(querytxt=sqldel)
     except Exception as e:
         errStr = f"{caller_name}: delete error {e}"
@@ -666,15 +646,6 @@ def remove_from_articles(ocd, art_id, verbose=None):
         if verbose:
             print ("\t...Old Version deleted from articles")
 
-    try:
-        ocd.db.commit()
-        ocd.close_connection(caller_name=caller_name)
-    except mysql.connector.Error as e:
-        errStr = f"{caller_name}: Commit failed! {e}"
-        logger.error(errStr)
-        if opasConfig.LOCAL_TRACE: print (errStr)
-        ret_val = False
-    
     return ret_val  # return True for success
 
 def replace_build(filename, new_build=opasConfig.DEFAULT_OUTPUT_BUILD):

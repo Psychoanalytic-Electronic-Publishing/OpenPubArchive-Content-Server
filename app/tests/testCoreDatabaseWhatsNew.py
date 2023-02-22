@@ -25,7 +25,7 @@ class TestDatabaseWhatsNew(unittest.TestCase):
         (Moved from TestMosts.py)
         """
         # request login to the API server
-        full_URL = base_plus_endpoint_encoded('/v2/Database/WhatsNew/?days_back=30')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/WhatsNew/?days_back=130')
         response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
