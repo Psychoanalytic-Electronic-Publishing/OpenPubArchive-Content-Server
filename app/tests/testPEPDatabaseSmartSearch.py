@@ -20,6 +20,17 @@ class TestDatabaseSmartSearch(unittest.TestCase):
         #response_set = r["documentList"]["responseSet"]
         assert(response_info["count"] == 1)
 
+    def test_0_smartsearch_endpoint_rxcf(self):
+        full_URL = base_plus_endpoint_encoded('/v2/Database/SmartSearch/?smarttext=cf::JAA.028.0740A:0.66, PSAR.086.0967A:0.66, IJP.080.0189A:0.65, PAQ.068.0313A:0.65, PPSY.016.0481A:0.61//label//')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        r = response.json()
+        response_info = r["documentList"]["responseInfo"]
+        print (f'Smarttext: {response_info["description"]}')
+        #response_set = r["documentList"]["responseSet"]
+        assert(response_info["count"] == 5)
+
+
     def test_0_name_year_smartsearch_endpoint(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/SmartSearch/?smarttext=Tuckett 1982&sort=rank&limit=15&offset=0')
         response = requests.get(full_URL, headers=headers)

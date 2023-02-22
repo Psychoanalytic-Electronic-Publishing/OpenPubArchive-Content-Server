@@ -145,8 +145,6 @@ def smart_search(smart_search_text):
             ret_val = {opasConfig.SEARCH_FIELD_LOCATOR: smart_article_id.standardized}
         elif smartsearchLib.is_value_in_field(smart_article_id.alt_standard, opasConfig.SEARCH_FIELD_LOCATOR):
             ret_val = {opasConfig.SEARCH_FIELD_LOCATOR: smart_article_id.alt_standard}           
-
-
         
     if ret_val == {}: # (opasConfig.SEARCH_TYPE_ADVANCED, "ADVANCED")
         # this is not much different than search_type_fielded, except the Solr query will be cleaner and perhaps more flexible.
@@ -158,6 +156,26 @@ def smart_search(smart_search_text):
             ret_val[opasConfig.KEY_SEARCH_FIELD] = "solr"
             ret_val[opasConfig.KEY_SEARCH_VALUE] = f"{ret_val[opasConfig.KEY_SEARCH_SMARTSEARCH]}"
             ret_val[opasConfig.KEY_SEARCH_SMARTSEARCH] = f"Matched articles for advanced search: {ret_val[opasConfig.KEY_SEARCH_SMARTSEARCH]} "
+
+    if ret_val == {}: # (opasConfig.list_of_rxs, "CF List")    #e.g., JAA.028.0740A:0.66, PSAR.086.0967A:0.66, IJP.080.0189A:0.65, PAQ.068.0313A:0.65, PPSY.016.0481A:0.61
+        m = re.match(smartsearchLib.list_of_rxs, smart_search_text)
+        if m is not None:
+            list_of_rxs = m.group("schema_value")
+            label = m.group("custom_label")
+            if list_of_rxs:
+                # get rid of confidences
+                list_of_rxs = re.sub("\:0\.[0-9]{2,2}", "", list_of_rxs)
+                or_bar_rxs = re.sub("\, ", " || ", list_of_rxs)
+                ret_val[opasConfig.KEY_SEARCH_SMARTSEARCH] = f"art_id:({or_bar_rxs})"
+                ret_val[opasConfig.KEY_SEARCH_TYPE] = opasConfig.ADVANCED
+                ret_val[opasConfig.KEY_SEARCH_FIELD] = "solr"
+                ret_val[opasConfig.KEY_SEARCH_VALUE] = f"art_id:({or_bar_rxs})"
+                if label is not None:
+                    label = label.replace("//", "")
+                else:
+                    label = "Matching Articles"
+
+                ret_val[opasConfig.KEY_SEARCH_SMARTSEARCH] = f"{label}"
     
     if ret_val == {}:
         # Smartpatterns:   pattern: descriptive pattern label     

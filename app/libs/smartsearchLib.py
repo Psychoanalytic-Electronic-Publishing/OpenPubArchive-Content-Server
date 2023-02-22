@@ -46,6 +46,7 @@ rx_author_list_year_vol_pgrg = rx_author_list_and_year + ".*?" + rx_vol_pgrg
 # rx_has_wildcards = "[*?]"
 rx_series_of_author_last_names = "(?P<author_list>([A-Z][a-z]+((\,\s+)|(\s*and\s+))?)+)"
 rx_doi = "((h.*?://)?(.*?/))?(?P<doi>(10\.[0-9]{4,4}/[A-z0-9\.\-/]+)|(doi.org/[A-z0-9\-\./]+))"
+
 # rx_pepdoi = "(?P<prefix>PEP\/\.)(?P<locator>[A-Z\-]{2,10}\.[0-9]{3,3}\.[0-9]{4,4}([PN]{1,2}[0-9]{4,4})?"
 
 # schema fields must have a _ in them to use.  A - at the beginning is allowed, for negation
@@ -56,6 +57,7 @@ rx_solr_field = f"(?P<schema_field>^{SS_SEARCH_FIELDS})\:(?P<schema_value>([^:]*
 rx_solr_field2 = f"(?P<schema_field>^{SS_SEARCH_FIELDS})\:(?P<schema_value>(.*$))"
 # rx_syntax = "(?P<schema_field>^[a-z]{3,9})\:\:(?P<schema_value>.+$)"
 advanced_syntax = f"(?P<schema_field>^(adv|solr))\:\:(?P<schema_value>.+$)"
+list_of_rxs = f"(?P<schema_field>^(cf|rxcf))\:\:(?P<schema_value>[^/]+?)(?P<custom_label>//.+//)?$" # to allow a list of rx values
 
 pat_prefix_amps = re.compile("^\s*&& ")
 
