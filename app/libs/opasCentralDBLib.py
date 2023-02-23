@@ -2595,7 +2595,7 @@ class opasCentralDB(object):
         return 
 
     #------------------------------------------------------------------------------------------------------
-    def save_ref_to_biblioxml_table(self, bib_entry, bib_entry_is_from_db=False, verbose=None):
+    def save_ref_to_biblioxml_table(self, bib_entry, bib_entry_was_from_db=False, verbose=None):
         """
         Adds the bibliography data from a single document to the biblioxml table in mysql database opascentral.
         
@@ -2621,11 +2621,11 @@ class opasCentralDB(object):
           
         """
         ret_val = False
-        if bib_entry.ref_rx is None or bib_entry.ref_rxcf is None:
-            # Read from the current table
+        if not bib_entry_was_from_db:
+            # Read from the current table to see if it's better, if bib_entry not already from the DB
             current_db_entry = self.get_ref_from_db(art_id=bib_entry.art_id,
                                                     ref_local_id=bib_entry.ref_local_id)
-            if current_db_entry is not None and not bib_entry_is_from_db:
+            if current_db_entry is not None:
                 if bib_entry.ref_rx is None:
                     bib_entry.ref_rx = current_db_entry.ref_rx
                     bib_entry.ref_rx_confidence = current_db_entry.ref_rx_confidence

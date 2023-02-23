@@ -185,7 +185,7 @@ def walk_through_reference_set(ocd=ocd,
 
             if bib_entry.link_updated or bib_entry.record_updated:
                 updated_record_count += 1
-                success = ocd.save_ref_to_biblioxml_table(bib_entry, bib_entry_is_from_db=True)
+                success = ocd.save_ref_to_biblioxml_table(bib_entry, bib_entry_was_from_db=True)
                 if success:
                     if bib_entry.link_updated:
                         print (f"\t...Links updated.  Updating DB: rx:{bib_entry.ref_rx} rxcf:{bib_entry.ref_rxcf} source: ({bib_entry.ref_link_source})")

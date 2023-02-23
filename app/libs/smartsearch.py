@@ -165,7 +165,7 @@ def smart_search(smart_search_text):
             if list_of_rxs:
                 # get rid of confidences
                 list_of_rxs = re.sub("\:0\.[0-9]{2,2}", "", list_of_rxs)
-                or_bar_rxs = re.sub("\, ", " || ", list_of_rxs)
+                or_bar_rxs = re.sub("\,\s*", " || ", list_of_rxs)
                 ret_val[opasConfig.KEY_SEARCH_SMARTSEARCH] = f"art_id:({or_bar_rxs})"
                 ret_val[opasConfig.KEY_SEARCH_TYPE] = opasConfig.ADVANCED
                 ret_val[opasConfig.KEY_SEARCH_FIELD] = "solr"
