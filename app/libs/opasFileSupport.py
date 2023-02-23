@@ -661,7 +661,7 @@ class FlexFileSystem(object):
                 data_folder = pathlib.Path(localsecrets.XML_ORIGINALS_PATH + subfolder)
             elif self.key is not None:
                 # s3 running from local
-                data_folder = pathlib.Path(path + subfolder)
+                data_folder = pathlib.Path(str(path) + subfolder)
             else:
                 data_folder = pathlib.Path(str(path) + subfolder)
             

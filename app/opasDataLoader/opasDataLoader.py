@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2023, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2023.0221/v2.1.012"   # Requires update to api_biblioxml2 and views based on it.
+__version__     = "2023.0222/v2.1.013"   # Requires update to api_biblioxml2 and views based on it.
 __status__      = "Development"
 
 # !!! IMPORTANT: Increment opasXMLProcessor version (if version chgd). It's written to the XML !!!
@@ -320,6 +320,10 @@ def output_file_needs_rebuilding(outputfilename, inputfilename=None, inputfilesp
                             # nrs - my local db is recording in my time zone ET
                             localized = east_tz.localize(last_update)
                             last_update = localized.astimezone(utc_tz)
+                        else: # rds configured for utc time
+                            localized = utc_tz.localize(last_update)
+                            last_update = localized.astimezone(utc_tz)
+
                         if last_update >= file_updated_time:
                             ret_val = True
                 
