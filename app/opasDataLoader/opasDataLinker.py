@@ -5,7 +5,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2023"
 __license__     = "Apache 2.0"
-__version__     = "2023.0221/v1.0.011"   
+__version__     = "2023.0223/v1.0.012"   
 __status__      = "Development"
 
 programNameShort = "opasDataLinker"
@@ -170,21 +170,31 @@ def walk_through_reference_set(ocd=ocd,
                     if verbose: print (f"\t...Skipping Marked 'RX_CONFIDENCE_NEVERMORE (.01)' Reference ID: {bib_entry.ref_rx} Confidence {bib_entry.ref_rx_confidence}")
                 else:
                     if verbose: print (f"\t...Checking ref_rx from xml for accuracy")
-                    bib_entry.compare_to_database(ocd)
-                    bib_entry.lookup_more_exact_artid_in_db(ocd)
-                    if verbose: print (f"\t...Reference ID: {bib_entry.ref_rx} Confidence {bib_entry.ref_rx_confidence} Link Updated: {bib_entry.link_updated} Record Updated: {bib_entry.record_updated}")
+                    if bib_entry.ref_is_book and not bib_entry.ref_in_pep and bib_entry.ref_rxcf is not None:
+                        print (f"\t...Types don't match and book not in PEP. Removing RX link {bib_entry.ref_rx}. Preserving rxcf: {bib_entry.ref_rx}")
+                        bib_entry.ref_rx = None
+                        bib_entry.ref_rx_confidence = 0
+                        bib_entry.link_updated = True
+                    else:
+                        bib_entry.compare_to_database(ocd)
+                        bib_entry.lookup_more_exact_artid_in_db(ocd)
+                        if verbose: print (f"\t...Reference ID: {bib_entry.ref_rx} Confidence {bib_entry.ref_rx_confidence} Link Updated: {bib_entry.link_updated} Record Updated: {bib_entry.record_updated}")
 
-                if bib_entry.ref_rx is None and bib_entry.ref_rx is not None:
-                    bib_entry.update_bib_entry(bib_entry)
+                #if bib_entry.ref_rx is None and bib_entry.ref_rx is not None:
+                    #bib_entry.update_bib_entry(bib_entry)
 
             if bib_entry.link_updated or bib_entry.record_updated:
                 updated_record_count += 1
-                if bib_entry.link_updated:
-                    print (f"\t...Links updated.  Updating DB: rx:{bib_entry.ref_rx} rxcf{bib_entry.ref_rxcf} source: ({bib_entry.ref_link_source})")
+                success = ocd.save_ref_to_biblioxml_table(bib_entry, bib_entry_is_from_db=True)
+                if success:
+                    if bib_entry.link_updated:
+                        print (f"\t...Links updated.  Updating DB: rx:{bib_entry.ref_rx} rxcf:{bib_entry.ref_rxcf} source: ({bib_entry.ref_link_source})")
+                    else:
+                        print (f"\t...Record updated. Updating DB.")
+                    # save, and don't reread database bib_entry values first!
+                    if options.display_verbose: print(f"\t...Time: {time.time() - reference_time_start:.4f} seconds.")
                 else:
-                    print (f"\t...Record updated. Updating DB.")
-                success = ocd.save_ref_to_biblioxml_table(bib_entry)                
-                if options.display_verbose: print(f"\t...Time: {time.time() - reference_time_start:.4f} seconds.")
+                    print (f"\t...Error saving record.")
                 
     ocd.close_connection(caller_name=fname) # make sure connection is closed
     timeEnd = time.time()

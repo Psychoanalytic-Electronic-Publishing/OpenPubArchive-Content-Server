@@ -1361,8 +1361,8 @@ class BiblioEntry(models.Biblioxml):
         weight_score = 5
         weight_sourcetitle = 3
         weight_text = 3
-        weight_author = 3
-        weight_typematch = 3
+        weight_author = 4
+        weight_typematch = 7
         similarity_score_ref_title_wt = 0
         similarity_score_ref_sourcetitle_wt = 0
         similarity_score_ref_text_wt = 0
