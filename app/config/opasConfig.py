@@ -30,7 +30,7 @@ TIME_FORMAT_STR = '%Y-%m-%dT%H:%M:%SZ'  # solr wants the Z; mysql connector does
 # TEMPORARY COMPATIBILITY SWITCHES
 TEMP_IJPOPEN_VER_COMPAT_FIX = True   # Production server can't be updated yet (June 1) and doesn't understand IJPOPEN_FULLY_REMOVED
 
-DATA_SOURCE = "v2022r1a/"
+DATA_SOURCE = "v2023r1a/"
 # BASELOGFILENAME = "opasAPI"
 # logFilename = BASELOGFILENAME + "_" + datetime.date.today().strftime('%Y-%m-%d') + ".log"
 FORMAT = '%(asctime)s %(name)s/%(funcName)s(%(lineno)d): %(levelname)s %(message)s'
