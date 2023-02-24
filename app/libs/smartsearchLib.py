@@ -57,7 +57,7 @@ rx_solr_field = f"(?P<schema_field>^{SS_SEARCH_FIELDS})\:(?P<schema_value>([^:]*
 rx_solr_field2 = f"(?P<schema_field>^{SS_SEARCH_FIELDS})\:(?P<schema_value>(.*$))"
 # rx_syntax = "(?P<schema_field>^[a-z]{3,9})\:\:(?P<schema_value>.+$)"
 advanced_syntax = f"(?P<schema_field>^(adv|solr))\:\:(?P<schema_value>.+$)"
-list_of_rxs = f"(?P<schema_field>^(cf|rxcf))\:\:(?P<schema_value>[^/]+?)(?P<custom_label>//.+//)?$" # to allow a list of rx values
+list_of_rxs = f"(?P<schema_field>^(cf|rxcf))\:\:(?P<schema_value>[^/]+?)(?P<custom_label>//.*//)?$" # to allow a list of rx values
 
 pat_prefix_amps = re.compile("^\s*&& ")
 
