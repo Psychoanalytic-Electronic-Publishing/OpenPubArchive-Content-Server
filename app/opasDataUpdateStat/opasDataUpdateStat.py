@@ -5,7 +5,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2023, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2023.0212/v1.1.10" # watch/avoid empty ids
+__version__     = "2023.0224/v1.1.11" # watch/avoid empty ids
 __status__      = "Beta"
 
 programNameShort = "opasDataUpdateStat"
@@ -22,6 +22,9 @@ print(
         
          - The first update after a load should be with option --all
          - Then, omit --all to update views daily
+            - only records with views will update Solr
+            - views data needs to be updated again when moved to Production, since those are the REAL views for the DB.
+              The citation data does not need to be reupdated, so you don't need all
          - Citations (include --all) only need be updated after data updates
          
          For complete details, see:
@@ -336,7 +339,15 @@ def update_solr_stat_data(solrcon, all_records:bool=False):
             
         if all_records==False:
             if not art_stat.art_views_update:
+                #print (f"Skipping {key} (No update)")
                 continue
+            elif art_stat.art_views_lastcalyear == \
+                 art_stat.art_views_last12mos == \
+                 art_stat.art_views_last6mos == \
+                 art_stat.art_views_last1mos == \
+                 art_stat.art_views_lastweek == 0:
+                    #print (f"Skipping {key} (all 0 views)")
+                    continue
 
         if remaining_count % 1000 == 0:
             print (f"...{remaining_count} records to go")
@@ -393,7 +404,11 @@ def update_solr_stat_data(solrcon, all_records:bool=False):
                     continue
                         
                 if doc_id is not None and update_rec:
-                    logger.info(f"...Updating stat for {doc_id} in Solr...{remaining_count} more to check.")
+                    if all_records == False:
+                        logger.info(f"...Updating stat for {doc_id} in Solr...{remaining_count} more to check. Views 12m:{art_stat.art_views_last12mos} 6m:{art_stat.art_views_last6mos} 1m:{art_stat.art_views_last1mos} 1w:{art_stat.art_views_lastweek}")
+                    elif args.display_verbose:
+                        logger.info(f"...Updating all stat for {doc_id} in Solr...{remaining_count} more to check. Views Yr:{art_stat.art_views_lastcalyear}")
+
                     upd_rec = {
                                 "id":doc_id,
                                 "art_id": doc_id,
@@ -421,6 +436,10 @@ def update_solr_stat_data(solrcon, all_records:bool=False):
                                                              "art_views_lastweek": 'set'
                                                              })
         
+                        #if all_records == False:
+                            #if args.display_verbose:
+                                #print (f"{doc_id} - Views Yr:{art_stat.art_views_lastcalyear} 12mos:{art_stat.art_views_last12mos} 6mos:{art_stat.art_views_last6mos} 1mo:{art_stat.art_views_last1mos} 1wk:{art_stat.art_views_lastweek}")
+                            
                         if update_count > 0 and update_count % UPDATE_AFTER == 0:
                             solr_docs2.commit()
                             errStr = f"Updated {update_count} records with citation data"
@@ -455,6 +474,7 @@ def update_solr_stat_data(solrcon, all_records:bool=False):
 if __name__ == "__main__":
     import argparse
     import pymysql
+    global args
     
     parser = argparse.ArgumentParser() 
     parser.add_argument('--version', action='version',
@@ -463,6 +483,8 @@ if __name__ == "__main__":
                         help="Level at which events should be logged (DEBUG, INFO, WARNING, ERROR")
     parser.add_argument("-a", "--all", dest="all_records", default=False, action="store_true",
                         help="Update records with views and any citation data (takes significantly longer)")
+    parser.add_argument("--verbose", action="store_true", dest="display_verbose", default=True,
+                        help="Display status and operational timing info as load progresses.")
     
     args = parser.parse_args()
     logger.setLevel(args.logLevel)
