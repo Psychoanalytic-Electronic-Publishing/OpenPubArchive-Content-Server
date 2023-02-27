@@ -961,7 +961,7 @@ class opasCentralDB(object):
                 logger.error("Connection not available to database.")
 
         except Exception as e:
-            logger.error("Can't retrieve count.")
+            logger.error(f"Can't retrieve count. {e}")
             ret_val = 0
             
         self.close_connection(caller_name="get_select_count") # make sure connection is closed

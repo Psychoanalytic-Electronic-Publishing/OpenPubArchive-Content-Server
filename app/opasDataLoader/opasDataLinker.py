@@ -5,7 +5,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2023"
 __license__     = "Apache 2.0"
-__version__     = "2023.0223/v1.0.012"   
+__version__     = "2023.0227/v1.0.013"   
 __status__      = "Development"
 
 programNameShort = "opasDataLinker"
@@ -446,6 +446,7 @@ if __name__ == "__main__":
         query = biblio_refs_nightly
         print (f"Nightly build option selected. Processing article references added since {yesterday}")
     elif options.file_key:
+        options.file_key = options.file_key.replace("!", "^")  # on my local machine, can't use ^ on command line arg
         query = biblio_refs_matching_artid % (options.file_key, addon_to_query)
         print (f"Article ID specified. Processing articles matching {options.file_key} ")
     elif options.added_after:
