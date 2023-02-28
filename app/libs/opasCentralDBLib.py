@@ -950,18 +950,19 @@ class opasCentralDB(object):
         self.open_connection(caller_name="get_select_count") # make sure connection is open
         ret_val = None
 
-        sqlSelect = re.sub("SELECT[ \n\*]*?FROM", "SELECT COUNT(*) AS FULLCOUNT FROM", sqlSelect, count=1, flags=re.IGNORECASE)
+        sqlSelect = re.sub("SELECT[ \n\*]*? FROM", "SELECT COUNT(*) AS FULLCOUNT FROM", sqlSelect, count=1, flags=re.IGNORECASE)
         try:
             if self.db is not None:
                 with closing(self.db.cursor(buffered=True, dictionary=True)) as cursor:
                     cursor.execute(sqlSelect)
                     row = cursor.fetchall()
-                    ret_val = row[0]["FULLCOUNT"]
+                    if row: # if there's any data
+                        ret_val = row[0]["FULLCOUNT"]
             else:
                 logger.error("Connection not available to database.")
 
         except Exception as e:
-            logger.error(f"Can't retrieve count. {e}")
+            logger.error(f"Can't retrieve count. {e} ({sqlselect})")
             ret_val = 0
             
         self.close_connection(caller_name="get_select_count") # make sure connection is closed
@@ -985,7 +986,8 @@ class opasCentralDB(object):
         # newer_than = datetime.utcfromtimestamp(newer_than_date).strftime(opasConfig.TIME_FORMAT_STR)
         def_date = datetime.now() - dtime.timedelta(days=days_back)
         newer_than_date = def_date.strftime('%Y-%m-%d %H:%M:%S')
-        self.db.ping()
+        # Add 3 reconnect tries to ping, which does fail sometimes!
+        self.db.ping(reconnect=True, attempts=3, delay=2)
         sqlSelect = """
                         SELECT art_id FROM article_tracker
                         WHERE date_inserted > date(%s)
