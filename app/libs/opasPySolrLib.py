@@ -2852,7 +2852,9 @@ def prep_document_download(document_id,
                            session_info=None, 
                            ret_format="HTML",
                            base_filename="opasDoc",
-                           flex_fs=None):
+                           flex_fs=None,
+                           page: int=None, # first page requested
+                           page_limit: int=None):
     """
     Preps a file in the right format for download.  Returns the filename of the prepared file and the status.
     Note:
@@ -2900,9 +2902,21 @@ def prep_document_download(document_id,
         try:
             documentListItem = models.DocumentListItem()
             art_info = results.docs[0]
-            docs = art_info.get("text_xml", art_info.get("art_excerpt", None))
+            documentListItem = get_fulltext_from_search_results(result=results.docs[0],
+                                                                text_xml=None,
+                                                                format_requested="XML",
+                                                                page=page,
+                                                                page_offset=0,
+                                                                page_limit=page_limit,
+                                                                documentListItem=documentListItem)
+            if art_info.get("art_excerpt", None):
+                docs = art_info.get("art_excerpt", None)
+            else:
+                docs = documentListItem.document
+
             # set up documentListItem in case the article is embargoed. 
             documentListItem = opasQueryHelper.get_base_article_info_from_search_result(results.docs[0], documentListItem)
+            
         except IndexError as e:
             err_msg = msgdb.get_user_message(opasConfig.ERROR_404_DOCUMENT_NOT_FOUND) + request_qualifier_text
             logger.error(err_msg)
@@ -2979,9 +2993,12 @@ def prep_document_download(document_id,
 
                         elif ret_format.upper() == "PDF":
                             """
-                            Generated PDF, no page breaks, but page numbering, for reading and printing without wasting pages.
+                            Generated PDF, no page breaks, but page numbering, for reading and
+                                    printing without wasting pages.
                             """
-                            html_string = opasxmllib.xml_str_to_html(doc, transformer_name=opasConfig.TRANSFORMER_XMLTOHTML, document_id=document_id) # transformer_name default used explicitly for code readability
+                            html_string = opasxmllib.xml_str_to_html(doc,
+                                                                     transformer_name=opasConfig.TRANSFORMER_XMLTOHTML,
+                                                                     document_id=document_id) # transformer_name default used explicitly for code readability
                             html_string = re.sub("\[\[RunningHead\]\]", f"{heading}", html_string, count=1)
                             html_string = re.sub("\(\)", f"", html_string, count=1) # in running head, missing issue
                             copyright_page = COPYRIGHT_PAGE_HTML.replace("[[username]]", session_info.username)
@@ -3179,7 +3196,7 @@ def get_fulltext_from_search_results(result,
     if text_xml is not None:
         reduce = False
         # see if an excerpt was requested.
-        if page is not None and page <= int(documentListItem.pgEnd) and page > int(documentListItem.pgStart):
+        if page is not None and page <= int(documentListItem.pgEnd) and page >= int(documentListItem.pgStart):
             # use page to grab the starting page
             # we've already done the search, so set page offset and limit these so they are returned as offset and limit per V1 API
             offset = page - int(documentListItem.pgStart)

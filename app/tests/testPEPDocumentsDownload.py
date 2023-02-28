@@ -67,13 +67,25 @@ class TestdocumentsDownload(unittest.TestCase):
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
 
-    def test_2B_PDF_Download(self):
+    def test_2C_PDF_Download(self):
         # has grraphics
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/PDF/APA.007.0035A/')
         response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
        
+    def test_2B_PDF_Download(self):
+        import opasPySolrLib
+        doc = opasPySolrLib.prep_document_download(document_id = "IFP.017.0240A",
+                                                   session_info=session_info, 
+                                                   ret_format="PDF",
+                                                   base_filename="test",
+                                                   flex_fs=None,
+                                                   page=240, 
+                                                   page_limit=2)        
+        # Confirm that the request-response cycle completed successfully.
+        assert(doc is not None)
+
     def test_2B_PDF_Download2(self):
         # has grraphics
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/PDF/BAP.013.0720A/')
