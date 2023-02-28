@@ -67,14 +67,21 @@ class TestdocumentsDownload(unittest.TestCase):
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
 
-    def test_2C_PDF_Download(self):
+    def test_2B_PDF_Download(self):
         # has grraphics
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/PDF/APA.007.0035A/')
         response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
        
-    def test_2B_PDF_Download(self):
+    def test_2B_PDF_Download2(self):
+        # has grraphics
+        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/PDF/BAP.013.0720A/')
+        response = requests.get(full_URL, headers=headers)
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+       
+    def test_2C_PDF_Download(self):
         import opasPySolrLib
         doc = opasPySolrLib.prep_document_download(document_id = "IFP.017.0240A",
                                                    session_info=session_info, 
@@ -86,13 +93,16 @@ class TestdocumentsDownload(unittest.TestCase):
         # Confirm that the request-response cycle completed successfully.
         assert(doc is not None)
 
-    def test_2B_PDF_Download2(self):
-        # has grraphics
-        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/PDF/BAP.013.0720A/')
+    def test_2D_PDF_Download(self):
+        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/PDF/IFP.017.0240A/?pageoffset=3&pagelimit=3')
         response = requests.get(full_URL, headers=headers)
-        # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
-       
+
+    def test_2D2_PDF_Download(self):
+        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/PDF/IFP.017.0240A/?page=240&pagelimit=3')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+
     def test_3_EPUB_Download(self):
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/EPUB/BAP.013.0720A/')
         response = requests.get(full_URL, headers=headers)

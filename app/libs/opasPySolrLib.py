@@ -2853,7 +2853,8 @@ def prep_document_download(document_id,
                            ret_format="HTML",
                            base_filename="opasDoc",
                            flex_fs=None,
-                           page: int=None, # first page requested
+                           page: int=None, # first page requested,
+                           page_offset: int=0, 
                            page_limit: int=None):
     """
     Preps a file in the right format for download.  Returns the filename of the prepared file and the status.
@@ -2906,13 +2907,11 @@ def prep_document_download(document_id,
                                                                 text_xml=None,
                                                                 format_requested="XML",
                                                                 page=page,
-                                                                page_offset=0,
+                                                                page_offset=page_offset,
                                                                 page_limit=page_limit,
                                                                 documentListItem=documentListItem)
-            if art_info.get("art_excerpt", None):
-                docs = art_info.get("art_excerpt", None)
-            else:
-                docs = documentListItem.document
+            # set up documentListItem in case the article is embargoed. 
+            docs = art_info["text_xml"] = documentListItem.document
 
             # set up documentListItem in case the article is embargoed. 
             documentListItem = opasQueryHelper.get_base_article_info_from_search_result(results.docs[0], documentListItem)
@@ -3196,15 +3195,19 @@ def get_fulltext_from_search_results(result,
     if text_xml is not None:
         reduce = False
         # see if an excerpt was requested.
-        if page is not None and page <= int(documentListItem.pgEnd) and page >= int(documentListItem.pgStart):
+        if page is not None and page >= int(documentListItem.pgStart) and page < int(documentListItem.pgEnd):
             # use page to grab the starting page
             # we've already done the search, so set page offset and limit these so they are returned as offset and limit per V1 API
             offset = page - int(documentListItem.pgStart)
             reduce = True
+
         # Only use supplied offset if page parameter is out of range, or not supplied
-        if reduce == False and page_offset is not None and page_offset != 0: 
-            offset = page_offset
-            reduce = True
+        if reduce == False and page_offset is not None and page_offset > 0:
+            if page_offset + int(documentListItem.pgStart) < int(documentListItem.pgEnd):
+                offset = page_offset
+                reduce = True
+            else: # only the last page
+                offset = int(documentListItem.pgEnd) - 1
 
         if reduce == True or page_limit is not None:
             # extract the requested pages
