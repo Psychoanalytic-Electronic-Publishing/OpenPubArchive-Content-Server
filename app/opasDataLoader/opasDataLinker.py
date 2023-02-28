@@ -5,7 +5,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2023"
 __license__     = "Apache 2.0"
-__version__     = "2023.0227/v1.0.013"   
+__version__     = "2023.0227/v1.0.014"   
 __status__      = "Development"
 
 programNameShort = "opasDataLinker"

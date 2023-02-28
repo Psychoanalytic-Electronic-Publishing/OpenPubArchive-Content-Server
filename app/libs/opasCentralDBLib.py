@@ -1061,6 +1061,7 @@ class opasCentralDB(object):
         self.open_connection(caller_name=fname) # make sure connection is open
         ret_val = None
         if self.db is not None:
+            errmsg = f"getting max bibrecord update - {art_id}"
             try:
                 with closing(self.db.cursor(buffered=True, dictionary=True)) as cursor:
                     try:
@@ -1100,6 +1101,7 @@ class opasCentralDB(object):
         self.open_connection(caller_name=fname) # make sure connection is open
         ret_val = None
         if self.db is not None:
+            errmsg = f"getting articles newer than {days_back} days back, date {newer_than_date}"
             try:
                 with closing(self.db.cursor(buffered=True, dictionary=True)) as cursor:
                     try:
