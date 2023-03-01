@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2023.0228/v2.2.016"   # Requires rename biblioxml table and views to (name)2
+__version__     = "2023.0301/v2.2.017"   # Requires rename biblioxml table and views to (name)2
 __status__      = "Development/Libs/Loader"  
 
 """

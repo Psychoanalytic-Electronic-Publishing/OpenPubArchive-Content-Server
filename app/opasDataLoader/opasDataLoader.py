@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2023, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2023.0222/v2.1.013"   # Requires update to api_biblioxml2 and views based on it.
+__version__     = "2023.0301/v2.1.014"   # Requires update to api_biblioxml2 and views based on it.
 __status__      = "Development"
 
 # !!! IMPORTANT: Increment opasXMLProcessor version (if version chgd). It's written to the XML !!!
@@ -150,6 +150,7 @@ ocd = opasCentralDBLib.opasCentralDB()
 import opasFileSupport
 import opasAPISupportLib
 import opasDataLoaderIJPOpenSupport
+import opasPySolrLib
 
 if sys.version_info[0] < 3:
     raise Exception("Must be using Python 3")
@@ -993,17 +994,15 @@ def main():
                 artInfo.file_size = final_fileinfo.filesize
                 artInfo.file_updated = input_file_was_updated
                 artInfo.file_create_time = final_fileinfo.create_time
-                # This isn't needed.
-                #if artInfo.art_orig_rx is None:
-                    ## check the database to see if there's a translation / relation
-                    ## this returns the original
-                    #artInfo.art_orig_rx = ocd.get_art_relations(artID)
-                    #if options.display_verbose and artInfo.art_orig_rx is not None:
-                        #msg = f"\t...Translations available. Marking original {artInfo.art_orig_rx}."
-                        #log_everywhere_if(options.display_verbose, level="info", msg=msg)
-                #else:
-                    #msg = f"\t...Translations available. Origrx {artInfo.art_orig_rx}."
-                    #log_everywhere_if(options.display_verbose, level="info", msg=msg)
+                
+                if artInfo.art_orig_rx is None: # fix for the original article 2023-03-01
+                    # see if any known article has this article (artID) listed as a translation
+                    translationSet, count = opasPySolrLib.quick_docmeta_docsearch(q_str=f"art_origrx:{artID}")
+                    if translationSet is not None:
+                        # add the article's ID to it's original RX so it can use its IDs to see its translations
+                        msg = "\t...This article has translations"
+                        log_everywhere_if(options.display_verbose , level="info", msg=msg)
+                        artInfo.art_orig_rx = artID
                     
                 try:
                     artInfo.file_classification = re.search("(?P<class>current|archive|future|free|special|offsite)", str(n.filespec), re.IGNORECASE).group("class")
