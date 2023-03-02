@@ -152,7 +152,7 @@ class TestDatabaseSearchLoggedIn(unittest.TestCase):
         #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
-        assert(response_info["count"] == 2)
+        assert response_info["count"] == 2, response_info["count"] 
         print (response_set[0])
 
     def test_search_startyear(self):

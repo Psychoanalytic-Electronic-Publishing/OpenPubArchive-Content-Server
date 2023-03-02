@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2023.0302/v2.2.015"   # Requires rename biblioxml table and views to (name)2
+__version__     = "2023.0302/v2.2.018"   # Requires rename biblioxml table and views to (name)2
 __status__      = "Development/Libs/Loader"  
 
 """
@@ -5444,6 +5444,9 @@ def documents_downloads(response: Response,
                         request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
                         documentID: str=Path(..., title=opasConfig.TITLE_DOCUMENT_ID, description=opasConfig.DESCRIPTION_DOCIDORPARTIAL), 
                         retFormat=Path(..., title=opasConfig.TITLE_RETURNFORMATS, description=opasConfig.DESCRIPTION_DOCDOWNLOADFORMAT),
+                        page:int=Query(None, title=opasConfig.TITLE_PAGEREQUEST, description=opasConfig.DESCRIPTION_PAGEREQUEST),
+                        pagelimit: int=Query(None,title=opasConfig.TITLE_PAGELIMIT, description=opasConfig.DESCRIPTION_PAGELIMIT),
+                        pageoffset: int=Query(None, title=opasConfig.TITLE_PAGEOFFSET,description=opasConfig.DESCRIPTION_PAGEOFFSET),
                         client_id:int=Depends(get_client_id), 
                         client_session:str= Depends(get_client_session)
                         ):
@@ -5521,6 +5524,9 @@ def documents_downloads(response: Response,
                                                              base_filename="opasDoc",
                                                              session_info=session_info, 
                                                              flex_fs=flex_fs,
+                                                             page=page, 
+                                                             page_limit=pagelimit, 
+                                                             page_offset=pageoffset, 
                                                             )    
 
     request_qualifier_text = f" Request: {documentID}. Session {session_info.session_id}."

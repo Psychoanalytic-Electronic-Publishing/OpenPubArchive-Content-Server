@@ -36,13 +36,13 @@ class TestGetDocumentTranslations(unittest.TestCase):
         data = opasAPISupportLib.documents_get_document(self.doc_with_translations, session_info=session_info,
                                                         option_flags=opasConfig.OPTION_2_RETURN_TRANSLATION_SET)
         # Confirm that the request-response cycle completed successfully.
-        print (f"Document: {self.doc_with_translations}, Fullcount: {data.documents.responseInfo.fullCount}, Translationset Size: {len(data.documents.responseSet[0].translationSet)}")
+        # print (f"Document: {self.doc_with_translations}, Fullcount: {data.documents.responseInfo.fullCount}, Translationset Size: {len(data.documents.responseSet[0].translationSet)}")
         assert data.documents.responseInfo.fullCount == 1, f"Document {self.doc_with_translations} not found"
         assert len(data.documents.responseSet[0].translationSet) >= 3, f"Document {self.doc_with_translations} has too few translations returned"
 
-    def test_0_fetch_article_thats_translated(self):
+    def test_1_fetch_article_that_is_a_translation(self):
         """
-        Retrieve a known article with translations; make sure it returns the right number or more.
+        Retrieve a known article that is a translation; make sure it returns the right number or more.
         """
         # this newer function includes the search parameters if there were some
         print (f"Current Session: ")
