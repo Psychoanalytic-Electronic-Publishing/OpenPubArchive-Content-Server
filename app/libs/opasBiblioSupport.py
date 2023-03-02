@@ -96,7 +96,6 @@ SAME_TITLE_VERY_LIKELY = 0.80    # used to ensure right match for rx, otherwise 
 SAME_YEAR_VERY_LIKELY = 0.75
 SAME_FULLCITE_VERY_LIKELY = 0.50  # Reference text vs citeastext from RDS database
 
-
 #------------------------------------------------------------------------------------------------------------
 #  Support functions
 #------------------------------------------------------------------------------------------------------------
@@ -330,7 +329,7 @@ class BiblioEntry(models.Biblioxml):
     """
     An entry from a documents bibliography.
     
-    Used to populate the MySQL table api_biblioxml2 for statistical gathering
+    Used to populate the MySQL table BIBLIO_TABLE (e.g., api_biblioxml) for statistical gathering
        and the Solr core pepwebrefs for searching in special cases.
        
     >>> import opasCentralDBLib
@@ -397,6 +396,7 @@ class BiblioEntry(models.Biblioxml):
             #self = copy_model(db_bib_entry)
             copy_model_fields(db_bib_entry, self)
             ref_or_parsed_ref = self.ref_xml
+            self.record_exists = True
 
         if isinstance(ref_or_parsed_ref, str):
             parsed_ref = etree.fromstring(ref_or_parsed_ref, parser=parser)
@@ -419,7 +419,6 @@ class BiblioEntry(models.Biblioxml):
             #print (f"\t...Ref correction loaded to replace {self.ref_text}.")
             #self.record_updated = True
             #self.ref_text = ref_corrected_entry.ref_text
-            ## save the corrected xml so we don't overwrite it with some older PEPA1 , non-marked xml 
             #self.ref_xml = ref_corrected_entry.ref_xml
             #self.ref_xml_corrected = True
             #parsed_ref = etree.fromstring(ref_corrected_entry.ref_xml, parser=parser)
@@ -650,32 +649,6 @@ class BiblioEntry(models.Biblioxml):
         self.ref_authors = self.ref_authors[:2040]
         self.ref_doi = self.parsed_ref.findtext("webx[@type='doi']")
 
-        # self.ref = models.Biblioxml(art_id = art_id,
-                                    #ref_local_id = self.ref_local_id, 
-                                    #art_year = self.ref_year_int, 
-                                    #ref_rx = self.ref_rx, 
-                                    #ref_rx_confidence = self.ref_rx_confidence, 
-                                    #ref_rxcf = self.ref_rxcf, 
-                                    #ref_rxcf_confidence = self.ref_rxcf_confidence, 
-                                    #ref_sourcecode = self.ref_sourcecode, 
-                                    #ref_authors = self.ref_authors, 
-                                    #ref_articletitle = self.ref_title, 
-                                    #title = self.ref_title, 
-                                    #ref_text = self.ref_text, 
-                                    #ref_sourcetype = self.ref_sourcetype, 
-                                    #ref_sourcetitle = self.ref_sourcetitle, 
-                                    #ref_authors_xml = self.ref_authors_xml, 
-                                    #ref_xml = self.ref_xml, 
-                                    #ref_pgrg = self.ref_pgrg, 
-                                    #doi = self.ref_doi, 
-                                    #ref_year = self.ref_year, 
-                                    #ref_year_int = self.ref_year_int, 
-                                    #ref_volume = self.ref_volume,
-                                    #ref_volume_int = self.ref_volume_int,
-                                    #ref_volume_isroman=self.ref_volume_isroman, 
-                                    #ref_publisher = self.ref_publisher, 
-                                    #last_update = self.last_update                               
-                                    #)
         try:
             if self.ref_rx is None:
                 self.identify_nonheuristic(verbose=verbose)
@@ -691,106 +664,6 @@ class BiblioEntry(models.Biblioxml):
             #self.__dict__ = bib_match.__dict__.copy()    # just a shallow copy
             #self = copy_model(bib_match)
             copy_model_fields(bib_match, self)            
-
-    #------------------------------------------------------------------------------------------------------------
-    def update_db_links(self, art_id, local_id, verbose=False):
-        """
-        Not used
-        """
-        ret_val = False
-        caller_name = "update_biblioxml_record"
-        msg = f"\t...Updating biblio record to add rx and rx_confidence."
-        log_everywhere_if(verbose, "info", msg)
-        
-        if self.link_updated or self.record_updated:
-            if self.record_updated:
-                sqlcpy = f"""
-                            UPDATE api_biblioxml2
-                                SET ref_xml = %s,
-                                    ref_rx = %s,
-                                    ref_rx_confidence = %s,
-                                    ref_rxcf = %s,
-                                    ref_rxcf_confidence = %s
-                                    ref_link_source = %s
-                                WHERE art_id = %s
-                                AND ref_local_id = %s
-                          """
-                
-                query_params = (self.ref_xml, 
-                                self.ref_rx,
-                                self.ref_rx_confidence,
-                                self.ref_rxcf,
-                                self.ref_rxcf_confidence,
-                                self.ref_link_source, 
-                                art_id,
-                                local_id)
-            elif self.ref_rx is not None and self.ref_rxcf is not None:
-                sqlcpy = f"""
-                            UPDATE api_biblioxml2
-                                SET ref_rx = %s,
-                                    ref_rx_confidence = %s,
-                                    ref_rxcf = %s,
-                                    ref_rxcf_confidence = %s
-                                    ref_link_source = %s
-                                WHERE art_id = %s
-                                AND ref_local_id = %s
-                          """
-                
-                query_params = (self.ref_rx,
-                                self.ref_rx_confidence,
-                                self.ref_rxcf,
-                                self.ref_rxcf_confidence,
-                                self.ref_link_source, 
-                                art_id,
-                                local_id)
-            elif self.ref_rx is not None:
-                sqlcpy = f"""
-                            UPDATE api_biblioxml2
-                                SET ref_rx = %s,
-                                    ref_rx_confidence = %s,
-                                    ref_link_source = %s
-                                WHERE art_id = %s
-                                AND ref_local_id = %s
-                          """
-                
-                query_params = (self.ref_rx,
-                                self.ref_rx_confidence,
-                                self.ref_link_source, 
-                                art_id,
-                                local_id)
-                
-            elif self.ref_rxcf is not None:
-                sqlcpy = f"""
-                            UPDATE api_biblioxml2
-                                SET ref_rxcf = %s,
-                                    ref_rxcf_confidence = %s,
-                                    ref_link_source = %s
-                                WHERE art_id = %s
-                                AND ref_local_id = %s
-                          """
-                query_params = (self.ref_rxcf,
-                                self.ref_rxcf_confidence,
-                                self.ref_link_source, 
-                                art_id,
-                                local_id)
-            else:
-                sqlcpy = None
-                
-            if sqlcpy is not None:
-                try:
-                    # commit automatically handled by do_action_query
-                    res = ocd.do_action_query(querytxt=sqlcpy, queryparams=query_params)
-                except Exception as e:
-                    errStr = f"{caller_name}: update error {e}"
-                    logger.error(errStr)
-                    if opasConfig.LOCAL_TRACE: print (errStr)
-                else:
-                    if verbose: print (f"\t...Links in record updated successfully")
-                    ret_val = True
-            else:
-                ret_val = False
-        
-        return ret_val
 
     #------------------------------------------------------------------------------------------------------------
     def identify_nonheuristic(self, pretty_print=False, verbose=False):
@@ -1285,7 +1158,8 @@ class BiblioEntry(models.Biblioxml):
     #------------------------------------------------------------------------------------------------------------
     def compare_to_database(self, ocd, verbose=False):
         """
-        Compare the rx for this with the Database table api_biblioxml2 stored ref_rx and ref_rx_confidence
+        Compare the rx for this with the Database table opasConfig.BIBLIO_TABLE (e.g., api_biblioxml2)
+          stored ref_rx and ref_rx_confidence
         
         => Update the object links if database is a higher confidence level
         => Return False if it's not updated in either place
@@ -1319,6 +1193,7 @@ class BiblioEntry(models.Biblioxml):
         
         if db_bibref:
             bib_refdb_model = db_bibref[0]   
+            self.record_exists = True
             if bib_refdb_model.ref_rx:
                 if bib_refdb_model.ref_rx_confidence > self.ref_rx_confidence:
                     # make sure it's clean
@@ -1342,7 +1217,9 @@ class BiblioEntry(models.Biblioxml):
                     self.ref_link_source = opasConfig.RX_LINK_SOURCE_DB
                     ret_val = True
                     #ret_val = self.ref_rx, self.ref_rx_confidence, self.link_updated
-   
+        else:
+            self.record_exists = False
+
 
         return ret_val
 

@@ -437,8 +437,11 @@ def update_biblio_links(parsed_xml, artInfo, ocd, pretty_print=False, verbose=Fa
                 bib_entry.link_updated = True
                 ref = bib_entry.parsed_ref
                 
-            bib_updated_from_db = bib_entry.compare_to_database(ocd)
-            if bib_entry.link_updated:
+            bib_entry.compare_to_database(ocd)
+            if not bib_entry.record_exists:
+                ocd.save_ref_to_biblioxml_table(bib_entry)
+                bib_entry.record_exists = True
+            elif bib_entry.link_updated:
                 ret_val += 1
                 if bib_entry.link_updated: # update xml (not db, info was from db))
                     if bib_entry.ref_rx is None or not bib_entry.ref_exists:

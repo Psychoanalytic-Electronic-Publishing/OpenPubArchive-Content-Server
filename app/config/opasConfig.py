@@ -290,6 +290,7 @@ def normalize_val(val, val_dict, default=None):
     
     return ret_val
 
+BIBLIO_TABLE = "api_biblioxml2"
 # Special relatedrx field name from Solr schema
 RELATED_RX_FIELDNAME = "art_qual"
 # standard confidence values with implied meaning
