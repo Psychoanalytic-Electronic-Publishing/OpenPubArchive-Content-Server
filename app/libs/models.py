@@ -157,9 +157,9 @@ class Biblioxml(BaseModel):
     ref_publisher: str = Field(None)
     ref_in_pep: bool = Field(False, title="Indicates this is a PEP reference")
     ref_exists: bool = Field(False, title="Indicates this ref link has been verified")
-    link_updated: bool = Field(False, title="Indicates whether the data was corrected during load. If so, may need to update DB.")
-    record_updated: bool = Field(False)
     link_updated: bool = Field(False, title="Indicates whether the data was corrected during load. If so, may need to update DB.  See link_source for method")
+    record_exists: bool = Field(False, title="This entry is in the biblioDB")
+    record_updated: bool = Field(False)
     skip_incremental_scans: Optional[bool] # Field(False, title="Use to skip for speed during normal scans. Can reset it (in bulk) for a full rescan--in that way it's different than NEVERMORE")
     skip_reason: str = Field(None)
     parsed_ref: Optional[object]

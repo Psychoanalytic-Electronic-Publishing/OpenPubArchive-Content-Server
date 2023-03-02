@@ -7,7 +7,11 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2023, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
+<<<<<<< Updated upstream
 __version__     = "2023.0222/v2.1.013"   # Requires update to api_biblioxml2 and views based on it.
+=======
+__version__     = "2023.0302/v2.1.015"   # Requires update to api_biblioxml2 and views based on it.
+>>>>>>> Stashed changes
 __status__      = "Development"
 
 # !!! IMPORTANT: Increment opasXMLProcessor version (if version chgd). It's written to the XML !!!
@@ -1091,7 +1095,8 @@ def main():
     
                         for ref in bibReferences:
                             bib_entry = opasBiblioSupport.BiblioEntry(art_id=artInfo.art_id, art_year=artInfo.art_year_int, ref_or_parsed_ref=ref)
-                            if bib_entry.link_updated or bib_entry.record_updated:
+                            # perhaps only check if it exists when compiling xml. That would be faster. For now, to update, let it check
+                            if bib_entry.link_updated or bib_entry.record_updated or not ocd.exists(table_name=opasConfig.BIBLIO_TABLE, where_conditional=f"art_id='{bib_entry.art_id}' AND ref_local_id='{bib_entry.ref_local_id}'"):
                                 ocd.save_ref_to_biblioxml_table(bib_entry)
     
                 # close the file, and do the next

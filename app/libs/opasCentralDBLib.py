@@ -937,6 +937,43 @@ class opasCentralDB(object):
         row_count = len(ret_val)
         return row_count, ret_val
 
+    def exists(self, table_name, where_conditional: str):
+        """
+        Try to get a quick count, faster than selecting records
+        
+        >>> ocd = opasCentralDB()
+        >>> ocd.exists(table_name="api_biblioxml2", where_conditional="art_id='AIM.079.0335A' AND ref_local_id='B003'")
+        1
+        >>> ocd.exists(table_name="api_biblioxml2", where_conditional="art_id='AIM.079.0335A' AND ref_local_id='B0003'")
+        0
+        """
+        fname = "exists"
+        ret_val = 0
+        self.open_connection(caller_name=fname) # make sure connection is open
+
+        if self.db is not None:
+            try:
+                cursor = self.db.cursor()
+                sql = f"""SELECT EXISTS(
+                            SELECT 1 
+                            FROM {table_name}
+                            WHERE {where_conditional}
+                            )
+                       """
+                cursor.execute(sql)
+                result = cursor.fetchone()
+                ret_val = result[0]
+                cursor.close()
+                    
+            except mysql.connector.InternalError as error:
+                code, message = error.args
+                logger.error(code, message)
+            
+
+        self.close_connection(caller_name=fname) # make sure connection is closed
+        return ret_val
+        
+
     def get_select_count(self, sqlSelect: str):
         """
         Generic retrieval from database, just the count
