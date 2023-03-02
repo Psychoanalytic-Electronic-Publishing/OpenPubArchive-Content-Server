@@ -70,6 +70,7 @@ class TestArticleID(unittest.TestCase):
         # Version 2 style, better, including sourcetype support
         # ---------------------------------------------------------------------------------------
         testIDs = [
+            ("FA.001S.R0001", 19),
             ("GW.018S.0000A", None), # (ArticleID, Expected issue number)
             ("IJP.034S.0005A", None),
             ("FA.002S.R0001", None),
@@ -77,7 +78,6 @@ class TestArticleID(unittest.TestCase):
             ("FA.001C.0074", 3), 
             ("FA.001F.R0001", 6),
             ("FA.001W.0062A", 23), 
-            ("FA.001S.R0001", 19),
             ("ajp.034.0155A", None), 
             ("PEPGRANTVS.001.0003A", None),
             ("PEPGRANTVS.001A.0015A", 1), 
@@ -91,7 +91,7 @@ class TestArticleID(unittest.TestCase):
             # test return
             r = response.json()
             a = ArticleID(**r)
-            if a.is_supplement:
+            if a.is_supplement and a.src_code != "FA":
                 assert(a.art_issue_int is None)
             else:
                 assert(a.art_issue_int == n[1]),  print (n, " = ", r)

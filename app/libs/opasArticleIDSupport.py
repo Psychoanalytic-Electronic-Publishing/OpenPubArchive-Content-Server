@@ -262,7 +262,7 @@ class ArticleID(BaseModel):
             if volumeWildcardOverride != '':
                 self.art_vol_str = volumeWildcardOverride
                 
-            self.is_supplement = self.art_issue_alpha_code == "S"
+            self.is_supplement = self.art_issue_alpha_code == "S" and self.src_code != "FA"
                     
             # page info
             # page = self.articleInfo.get("page")

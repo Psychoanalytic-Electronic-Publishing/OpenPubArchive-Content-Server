@@ -11,7 +11,6 @@ This library is meant to support query to Solr
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.1118.1"
 __status__      = "Development"
 
 import sys
@@ -1866,6 +1865,14 @@ def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
     """
     Return a source's contents
 
+    >>> results = metadata_get_contents("FA", "2001")
+    >>> results.documentList.responseInfo.count == 5
+    True
+
+    >>> results = metadata_get_contents("PSP", "2001")
+    >>> results.documentList.responseInfo.count == 5
+    True
+
     >>> results = metadata_get_contents("IJP", "1993", limit=5, offset=0)
     >>> results.documentList.responseInfo.count == 5
     True
@@ -1873,6 +1880,102 @@ def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
     >>> results.documentList.responseInfo.count == 5
     True
     """
+    document_item_list = []
+    prev_section_name = None
+    prev_issue = None
+    
+    def process_toc_list_item(result):
+        nonlocal prev_section_name
+        nonlocal prev_issue
+        nonlocal document_item_list
+        
+        try:     # for debugging type error
+            document_id = result.get("art_id", None) # everything should have an ID
+            
+            # transform authorID list to authorMast
+            author_ids = result.get("art_authors", None)
+            if author_ids is None:
+                # try this, instead of abberrant behavior in alpha of display None!
+                authorMast = result.get("art_authors_mast", "")
+            else:
+                authorMast = opasgenlib.derive_author_mast(author_ids)
+                
+            pgRg = result.get("art_pgrg", None)
+            pgCount = result.get("art_pgcount", None)
+            source_title = result.get("art_sourcetitlefull")
+            source_title_abbr = result.get("art_sourcetitleabbr")
+            
+            if pgRg is not None:
+                pgStart, pgEnd = opasgenlib.pgrg_splitter(pgRg)
+            else:
+                pgStart, pgEnd = (0, 0)
+            citeAs = result.get("art_citeas_xml", None)  
+            citeAs = opasgenlib.force_string_return_from_various_return_types(citeAs)
+            vol = result.get("art_vol", None)
+            issue = result.get("art_iss", None)
+            if issue == '0': issue = None
+            issue_title = result.get("art_iss_title", None)
+            issue_seqnbr = result.get("art_iss_seqnbr", None)
+            listed_new_section_name = new_section_name = result.get("art_newsecnm", None)
+            if prev_section_name is not None and new_section_name is None and issue == prev_issue:
+                title_sample = opasgenlib.trimPunctAndSpaces(result["title"]).lower()
+                prev_section_sample = opasgenlib.trimPunctAndSpaces(prev_section_name).lower()
+                if title_sample not in ("correction", "editorial") and prev_section_sample != title_sample:
+                    current_section_name = new_section_name = opasgenlib.trimPunctAndSpaces(prev_section_name)
+            
+            if new_section_name is None:
+                current_section_name = new_section_name = "TopLevel"
+            else:
+                current_section_name = new_section_name = opasgenlib.trimPunctAndSpaces(new_section_name)
+                           
+            embargotype = result.get("art_embargotype", None)
+            embargo_toc_addon = opasConfig.EMBARGO_TOC_TEXT.get(embargotype, "")
+            
+            # handle ijopen differently, always a number.
+            if pep_code == "IJPOPEN":
+                toc_pg_start = f"{opasgenlib.DocumentID(document_id).get_page_number(default=pgStart)}"
+                if embargo_toc_addon != "":
+                    # in case the config didn't include a space
+                    toc_pg_start = embargo_toc_addon
+                    embargo_toc_addon = ""
+            else:
+                toc_pg_start = pgStart
+                
+            # record prior info
+            prev_section_name = new_section_name
+            prev_issue = issue
+            
+        except Exception as e:
+            logger.error(f"metadata_get_contents: Value prep error: {e} (query: {query}) (log params: {log_params})")
+           
+        try:
+            item = models.DocumentListItem(PEPCode = pep_code, 
+                                           year = result.get("art_year", None),
+                                           sourceTitle = source_title, 
+                                           sourceTitleAbbr = source_title_abbr, 
+                                           vol = vol,
+                                           issue = issue,
+                                           issueTitle = issue_title,
+                                           issueSeqNbr = issue_seqnbr, 
+                                           newSectionName = new_section_name,
+                                           currSectionName = new_section_name,
+                                           pgRg = result.get("art_pgrg", None),
+                                           pgCount=pgCount, 
+                                           pgStart = toc_pg_start,
+                                           pgEnd = pgEnd,
+                                           title = result.get("title", None) + embargo_toc_addon, 
+                                           authorMast = authorMast,
+                                           documentID = document_id,
+                                           documentRef = opasxmllib.xml_elem_or_str_to_text(citeAs, default_return=""),
+                                           documentRefHTML = citeAs,
+                                           documentInfoXML=result.get("art_info_xml", None), 
+                                           score = result.get("score", None)
+                                           )
+            #logger.debug(item)
+            document_item_list.append(item)
+        except Exception as e:
+            logger.error(f"metadata_get_contents: model assign error: {e} (query: {query}) (log params: {log_params})")
+
     ret_val = []
 
     # for debugging type error
@@ -1978,108 +2081,27 @@ def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
         # return_status = (err_info.httpcode, e) 
         logger.error(f"metadata_get_contents: {err_info.httpcode}. Query: {query} Error: {err_info.error_description}")
         
-    document_item_list = []
-    prev_section_name = None
-    prev_issue = None
-    for result in results.docs:
-        try:     # for debugging type error
-            document_id = result.get("art_id", None) # everything should have an ID
-            
-            # transform authorID list to authorMast
-            author_ids = result.get("art_authors", None)
-            if author_ids is None:
-                # try this, instead of abberrant behavior in alpha of display None!
-                authorMast = result.get("art_authors_mast", "")
-            else:
-                authorMast = opasgenlib.derive_author_mast(author_ids)
-                
-            pgRg = result.get("art_pgrg", None)
-            pgCount = result.get("art_pgcount", None)
-            source_title = result.get("art_sourcetitlefull")
-            source_title_abbr = result.get("art_sourcetitleabbr")
-            
-            if pgRg is not None:
-                pgStart, pgEnd = opasgenlib.pgrg_splitter(pgRg)
-            else:
-                pgStart, pgEnd = (0, 0)
-            citeAs = result.get("art_citeas_xml", None)  
-            citeAs = opasgenlib.force_string_return_from_various_return_types(citeAs)
-            vol = result.get("art_vol", None)
-            issue = result.get("art_iss", None)
-            if issue == '0': issue = None
-            issue_title = result.get("art_iss_title", None)
-            issue_seqnbr = result.get("art_iss_seqnbr", None)
-            listed_new_section_name = new_section_name = result.get("art_newsecnm", None)
-            if prev_section_name is not None and new_section_name is None and issue == prev_issue:
-                title_sample = opasgenlib.trimPunctAndSpaces(result["title"]).lower()
-                prev_section_sample = opasgenlib.trimPunctAndSpaces(prev_section_name).lower()
-                if title_sample not in ("correction", "editorial") and prev_section_sample != title_sample:
-                    current_section_name = new_section_name = opasgenlib.trimPunctAndSpaces(prev_section_name)
-            
-            if new_section_name is None:
-                current_section_name = new_section_name = "TopLevel"
-            else:
-                current_section_name = new_section_name = opasgenlib.trimPunctAndSpaces(new_section_name)
-                
-            #if listed_new_section_name == prev_section_name:
-                #new_section_name = None
-            
-            # turned this off 2022-05-25, the PEP Client generates issue numbers/sequence numbers so don't put it in the title
-            #if issue is not None:
-                #if issue_title is None:
-                    #if issue_seqnbr is None:
-                        #issue_title = f"Issue {issue}"
-                    #else:
-                        #issue_title = f"No. {issue_seqnbr}"
-            
-            embargotype = result.get("art_embargotype", None)
-            embargo_toc_addon = opasConfig.EMBARGO_TOC_TEXT.get(embargotype, "")
-            
-            # handle ijopen differently, always a number.
-            if pep_code == "IJPOPEN":
-                toc_pg_start = f"{opasgenlib.DocumentID(document_id).get_page_number(default=pgStart)}"
-                if embargo_toc_addon != "":
-                    # in case the config didn't include a space
-                    toc_pg_start = embargo_toc_addon
-                    embargo_toc_addon = ""
-            else:
-                toc_pg_start = pgStart
-                
-            # record prior info
-            prev_section_name = new_section_name
-            prev_issue = issue
-            
-        except Exception as e:
-            logger.error(f"metadata_get_contents: Value prep error: {e} (query: {query}) (log params: {log_params})")
-           
-        try:
-            item = models.DocumentListItem(PEPCode = pep_code, 
-                                           year = result.get("art_year", None),
-                                           sourceTitle = source_title, 
-                                           sourceTitleAbbr = source_title_abbr, 
-                                           vol = vol,
-                                           issue = issue,
-                                           issueTitle = issue_title,
-                                           issueSeqNbr = issue_seqnbr, 
-                                           newSectionName = new_section_name,
-                                           currSectionName = new_section_name,
-                                           pgRg = result.get("art_pgrg", None),
-                                           pgCount=pgCount, 
-                                           pgStart = toc_pg_start,
-                                           pgEnd = pgEnd,
-                                           title = result.get("title", None) + embargo_toc_addon, 
-                                           authorMast = authorMast,
-                                           documentID = document_id,
-                                           documentRef = opasxmllib.xml_elem_or_str_to_text(citeAs, default_return=""),
-                                           documentRefHTML = citeAs,
-                                           documentInfoXML=result.get("art_info_xml", None), 
-                                           score = result.get("score", None)
-                                           )
-            #logger.debug(item)
-            document_item_list.append(item)
-        except Exception as e:
-            logger.error(f"metadata_get_contents: model assign error: {e} (query: {query}) (log params: {log_params})")
+    # need to resort results.docs minus roman letter
+    # this doesn't provide the list in order if there are multiple issues requested, but the client
+    #   appears to sort them correctly, e.g., FA.2022
+    roman_section = []
+    for result in results.docs[::-1]:
+        document_id = result.get("art_id", None) # everything should have an ID
+        issue = result.get("art_issue_int", 0)
+        year = result.get("art_year_int", 0)
+        art_id = ArticleID(art_id=document_id)
+        if art_id.is_roman:
+            roman_section.append(result)
+            results.docs.remove(result)
 
+    roman_section.sort(key=lambda artid: artid["art_id"])
+    
+    for result in roman_section:
+        process_toc_list_item(result)
+    
+    for result in results.docs:
+        process_toc_list_item(result)
+        
     # two options 2020-11-17 for extra info (lets see timing for each...)
     try:
         suppinfo = None
