@@ -976,7 +976,7 @@ class opasCentralDB(object):
 
     def get_select_count(self, sqlSelect: str):
         """
-        Generic retrieval from database, just the count
+        Generic retrieval from database, return the count
         
         >>> ocd = opasCentralDB()
         >>> count = ocd.get_select_count(sqlSelect="SELECT * from vw_article_sectnames limit 102;")
@@ -985,7 +985,7 @@ class opasCentralDB(object):
         
         """
         self.open_connection(caller_name="get_select_count") # make sure connection is open
-        ret_val = None
+        ret_val = 0
 
         sqlSelect = re.sub("SELECT[ \n\*]*? FROM", "SELECT COUNT(*) AS FULLCOUNT FROM", sqlSelect, count=1, flags=re.IGNORECASE)
         try:
@@ -994,18 +994,18 @@ class opasCentralDB(object):
                     cursor.execute(sqlSelect)
                     row = cursor.fetchall()
                     if row: # if there's any data
-                        ret_val = row[0]["FULLCOUNT"]
+                        ret_val = row[0].get("FULLCOUNT", 0)
             else:
                 logger.error("Connection not available to database.")
 
         except Exception as e:
-            logger.error(f"Can't retrieve count. {e} ({sqlselect})")
+            logger.error(f"Can't retrieve count. {e} ({sqlSelect})")
             ret_val = 0
             
         self.close_connection(caller_name="get_select_count") # make sure connection is closed
 
-        # return session model object
-        return ret_val # None or Session Object
+        # return count 
+        return ret_val # 0 or count
                
     def get_articles_newer_than(self, days_back=7):
         """

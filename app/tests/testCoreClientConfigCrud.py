@@ -6,6 +6,7 @@ Tests of the new 2020-08-23 CRUD endpoints for storage of global admin configura
 """
 import unittest
 import requests
+import time
 
 from unitTestConfig import base_plus_endpoint_encoded, session_id, headers, session_id, UNIT_TEST_CLIENT_ID
 from localsecrets import API_KEY, API_KEY_NAME
@@ -56,7 +57,7 @@ class TestClientConfig(unittest.TestCase):
     Some calls require a parameter with the config name.
     
     """   
-    def test_0_get(self):
+    def test_10_get(self):
         # save the settings
         full_URL = base_plus_endpoint_encoded('/v2/Client/Configuration/')
         response = requests.put(full_URL,
@@ -65,8 +66,9 @@ class TestClientConfig(unittest.TestCase):
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()
-        assert (r == testlist_double)
+        assert r == testlist_double, r
         print ("Put OK: ", r)
+        time.sleep(2)
 
         # fetch one of the settings
         full_URL = base_plus_endpoint_encoded('/v2/Client/Configuration/')
@@ -76,10 +78,10 @@ class TestClientConfig(unittest.TestCase):
         assert(response.ok == True)
         #print(headers["client-session"])
         r = response.json()
-        assert (r["configList"][0]["configSettings"] == {'a': 1, 'b': 2, 'c': 8})
+        assert r["configList"][0]["configSettings"] == {'a': 1, 'b': 2, 'c': 8}, r["configList"][0]["configSettings"]
         #assert (r == {'configList': [{'api_client_id': 4, 'session_id': 'bf1181e6-cf7a-4a6d-8df1-c8c213d2555a', 'configName': 'test_client_test_1', 'configSettings': {'a': 1, 'b': 2, 'c': 8}}]})
-
         print ("Get OK: ", r)
+        time.sleep(2)
 
         # fetch both of the settings
         full_URL = base_plus_endpoint_encoded('/v2/Client/Configuration/')
@@ -91,11 +93,12 @@ class TestClientConfig(unittest.TestCase):
         r = response.json()
         #assert (r == {'configList': [{'configName': 'test_client_test_1', 'configSettings': {'a': 1, 'b': 2, 'c': 8}}, {'configName': 'test_client_test_2', 'configSettings': {'a': 2, 'b': 4, 'c': 8}}]})
         #assert (r == {'configList': [{'configName': test_config_name_1, 'configSettings': config_settings_1}, {'configName': test_config_name_2, 'configSettings': config_settings_2}]})
-        assert (r["configList"][0]["configSettings"] == config_settings_1)
-        assert (r["configList"][1]["configSettings"] == config_settings_2)
+        assert r["configList"][0]["configSettings"] == config_settings_1, r["configList"][0]["configSettings"]
+        assert r["configList"][1]["configSettings"] == config_settings_2, r["configList"][1]["configSettings"]
         print ("Get OK: ", r)
+        time.sleep(2)
 
-    def test_0_post(self):
+    def test_15_post(self):
         """
         """
         # make sure both are not there:
@@ -105,6 +108,7 @@ class TestClientConfig(unittest.TestCase):
                                    params={'configname': f"{test_config_name_1}, {test_config_name_2}"}
                                    )
 
+        time.sleep(2)
         # now post the list 
         response = requests.post(full_URL, 
                                  headers=headers,
@@ -116,8 +120,9 @@ class TestClientConfig(unittest.TestCase):
         r = response.json()
         assert (r == testlist_double)
         print ("Post OK: ", r)
+        time.sleep(2)
 
-    def test_0B_post_double(self):
+    def test_20_post_double(self):
         """
         """
         # make sure both are not there:
@@ -127,6 +132,7 @@ class TestClientConfig(unittest.TestCase):
                                    params={'configname': f"{test_config_name_1}, {test_config_name_2}"}
                                    )
 
+        time.sleep(2)
         # now post the list 
         response = requests.post(full_URL, 
                                  headers=headers,
@@ -144,6 +150,7 @@ class TestClientConfig(unittest.TestCase):
                                  json=testlist_double)
         # item already exists, so return a conflict.
         assert(response.status_code == 409)
+        time.sleep(2)
 
     #def test_0D_put_double(self):
         #"""
@@ -173,7 +180,7 @@ class TestClientConfig(unittest.TestCase):
         ## item already exists, so return a conflict.
         #assert(response.status_code == 200)
 
-    def test_2_put_and_get(self):
+    def test_40_put_and_get(self):
         # save the settings (whole list)
         full_URL = base_plus_endpoint_encoded('/v2/Client/Configuration/')
         response = requests.put(full_URL,
@@ -184,6 +191,7 @@ class TestClientConfig(unittest.TestCase):
         r = response.json()
         assert (r == testlist_double)
         print ("Put list OK: ", r)
+        time.sleep(5)
 
         # Update the settings - Succeed
         full_URL = base_plus_endpoint_encoded('/v2/Client/Configuration/')
@@ -193,6 +201,7 @@ class TestClientConfig(unittest.TestCase):
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         print ("Update list Put OK: ", r)
+        time.sleep(5)
 
         # get one of the settings
         full_URL = base_plus_endpoint_encoded('/v2/Client/Configuration/')
@@ -204,6 +213,7 @@ class TestClientConfig(unittest.TestCase):
         #assert (r == {'configList': [{'configName': test_config_name_1, 'configSettings': config_settings_1}]})
         assert (r["configList"][0]["configSettings"] == config_settings_1)
         print ("Get updated config1 from list OK: ", r)
+        time.sleep(5)
 
         # get the other settings
         full_URL = base_plus_endpoint_encoded('/v2/Client/Configuration/')
@@ -216,6 +226,7 @@ class TestClientConfig(unittest.TestCase):
         #assert (r == {'configList': [{'configName': test_config_name_2, 'configSettings': config_settings_2}]})
         assert (r["configList"][0]["configSettings"] == config_settings_2)
         print ("Get updated config2 from list OK: ", r)
+        time.sleep(5)
 
         # get both of the settings
         full_URL = base_plus_endpoint_encoded('/v2/Client/Configuration/')
@@ -239,7 +250,7 @@ class TestClientConfig(unittest.TestCase):
         assert(response.ok == False)
         assert(response.status_code == 409)
 
-    def test_4_del_and_cleanup(self):
+    def test_100_del_and_cleanup(self):
         full_URL = base_plus_endpoint_encoded('/v2/Client/Configuration/')
         # create test records, if not there
         response = requests.put(full_URL,
@@ -260,6 +271,7 @@ class TestClientConfig(unittest.TestCase):
         r = response.json()
         assert (r["configList"][0]["configSettings"] == config_settings_2)
         #assert (r == {'configList': [{'configName': test_config_name_2, 'configSettings': config_settings_2}]})
+        time.sleep(2)
 
         # First create, then delete both at once
         response = requests.put(full_URL,
@@ -268,6 +280,7 @@ class TestClientConfig(unittest.TestCase):
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         print ("Update list in order to test delete, Put OK: ", r)
+        time.sleep(2)
         
         response = requests.delete(full_URL,
                                    headers=headers,
