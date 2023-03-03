@@ -1883,6 +1883,7 @@ def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
     document_item_list = []
     prev_section_name = None
     prev_issue = None
+    document_list = []
     
     def process_toc_list_item(result):
         nonlocal prev_section_name
@@ -2545,71 +2546,77 @@ def metadata_get_next_and_prev_vols(source_code=None,
         if source_vol is None:
             logger.error("No source vol number provided;")
         else:
-            source_vol_int = int(source_vol)
-            next_source_vol_int = source_vol_int + 1
-            prev_source_vol_int = source_vol_int - 1
             try:
-                logger.info(f"Solr Query: q={query}")
-                facet_fields = ["art_vol", "art_sourcecode"]
-                facet_pivot_fields = "art_sourcecode,art_vol" # important ...no spaces! Take out year
-                query += f" && art_vol:({source_vol} || {next_source_vol_int} || {prev_source_vol_int})"
-        
-                args = {
-                    "fl": distinct_return,
-                    "fq": "*:*",
-                    "sort": "art_sourcecode asc, art_year asc",
-                    "facet": "on", 
-                    "facet.fields" : facet_fields, 
-                    "facet.pivot" : facet_pivot_fields,
-                    "facet.mincount" : 1,
-                    "facet.sort" : "art_year asc", 
-                    #"rows": limit,
-                    #"start": offset
-                }
-        
-                results = solr_docs2.search(query, **args)
-                logger.info(f"Solr Query: q={query}")
-                facet_pivot = results.facets["facet_pivot"][facet_pivot_fields]
-
+                source_vol_int = opasgenlib.str_to_int(source_vol)
+                # replace original with int version
+                source_vol = str(source_vol_int)
             except Exception as e:
-                err_info = pysolrerror_processing(e)
-                logger.error(f"MetadataGetNextPrevError: {err_info.httpcode}. Query: {query} Error: {err_info.error_description}")
+                logger.warning(f"Bad volume number: {source_vol} / {e}")
             else:
-                prev_vol = None
-                match_vol = None
-                next_vol = None
-                if facet_pivot != []:
-                    match_vol_idx = None
-                    #pivot_len = len(facet_pivot[0]['pivot'])
-                    counter = 0
-                    for n in facet_pivot[0]['pivot']:
-                        if n['value'] == str(source_vol):
-                            match_vol_idx = counter
-                            match_vol = n
-                        elif n['value'] == str(int(source_vol) - 1):
-                            prev_vol = n
-                        elif n['value'] == str(int(source_vol) + 1):
-                            next_vol = n
-
-                        counter += 1
-        
-                    if match_vol_idx is None:
-                        logger.warning(f"No match for source {source_code} volume: {source_vol} ")
+                next_source_vol_int = source_vol_int + 1
+                prev_source_vol_int = source_vol_int - 1
+                try:
+                    logger.info(f"Solr Query: q={query}")
+                    facet_fields = ["art_vol", "art_sourcecode"]
+                    facet_pivot_fields = "art_sourcecode,art_vol" # important ...no spaces! Take out year
+                    query += f" && art_vol:({source_vol} || {next_source_vol_int} || {prev_source_vol_int})"
+            
+                    args = {
+                        "fl": distinct_return,
+                        "fq": "*:*",
+                        "sort": "art_sourcecode asc, art_year asc",
+                        "facet": "on", 
+                        "facet.fields" : facet_fields, 
+                        "facet.pivot" : facet_pivot_fields,
+                        "facet.mincount" : 1,
+                        "facet.sort" : "art_year asc", 
+                        #"rows": limit,
+                        #"start": offset
+                    }
+            
+                    results = solr_docs2.search(query, **args)
+                    logger.info(f"Solr Query: q={query}")
+                    facet_pivot = results.facets["facet_pivot"][facet_pivot_fields]
+    
+                except Exception as e:
+                    err_info = pysolrerror_processing(e)
+                    logger.error(f"MetadataGetNextPrevError: {err_info.httpcode}. Query: {query} Error: {err_info.error_description}")
+                else:
+                    prev_vol = None
+                    match_vol = None
+                    next_vol = None
+                    if facet_pivot != []:
+                        match_vol_idx = None
+                        #pivot_len = len(facet_pivot[0]['pivot'])
+                        counter = 0
+                        for n in facet_pivot[0]['pivot']:
+                            if n['value'] == str(source_vol):
+                                match_vol_idx = counter
+                                match_vol = n
+                            elif n['value'] == str(int(source_vol) - 1):
+                                prev_vol = n
+                            elif n['value'] == str(int(source_vol) + 1):
+                                next_vol = n
+    
+                            counter += 1
+            
+                        if match_vol_idx is None:
+                            logger.warning(f"No match for source {source_code} volume: {source_vol} ")
+                            
+                    try:
+                        del(match_vol['field'])
+                    except:
+                        pass
                         
-                try:
-                    del(match_vol['field'])
-                except:
-                    pass
-                    
-                try:
-                    del(prev_vol['field'])
-                except:
-                    pass
-                    
-                try:
-                    del(next_vol['field'])
-                except:
-                    pass
+                    try:
+                        del(prev_vol['field'])
+                    except:
+                        pass
+                        
+                    try:
+                        del(next_vol['field'])
+                    except:
+                        pass
 
     if opasConfig.LOCAL_TRACE:
         print(f"Match Prev {prev_vol}, Curr: {match_vol}, Next: {next_vol}")
