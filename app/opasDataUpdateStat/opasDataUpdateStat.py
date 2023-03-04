@@ -5,7 +5,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2023, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2023.0224/v1.1.11" # watch/avoid empty ids
+__version__     = "2023.0304/v1.1.12"
 __status__      = "Beta"
 
 programNameShort = "opasDataUpdateStat"
@@ -353,14 +353,14 @@ def update_solr_stat_data(solrcon, all_records:bool=False):
             print (f"...{remaining_count} records to go")
             
         # set only includes those with the desired update value > 0 
-        doc_id = key
+        parsed_id = ArticleID(art_id=key)
+        doc_id = parsed_id.art_id
         found = False
         try:
             results = solrcon.search(q = f"art_id:{doc_id}")
             if results.raw_response["response"]["numFound"] > 0:
                 found = True
             else: # TryAlternateID:
-                parsed_id = ArticleID(art_id=doc_id)
                 results = solrcon.search(q = f"art_id:{parsed_id.alt_standard}")
                 if results.raw_response["response"]["numFound"] == 1:  # only accept alternative if there's only one match (otherwise, not known which)
                     # odds are good this is what was cited.

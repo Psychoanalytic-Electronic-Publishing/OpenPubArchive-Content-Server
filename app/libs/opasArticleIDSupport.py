@@ -125,56 +125,70 @@ class ArticleID(BaseModel):
     But when designed as such, the structure of the article IDs may be different in different systems, so it needs to be configurable as possible.
     This routine is a start of allowing that to be defined as part of the customization. 
 
-    >>> a = ArticleID(art_id="FA.001A.0005A")
-    >>> print (a.art_issue_alpha_code)
-    A
-    >>> print (a.art_issue_int)
-    1
+    >>> art_id="AJRPP.004(1).R0007A"
+    >>> a = ArticleID(art_id=art_id)
+    >>> print (f"Input: {art_id} Result: {a.art_issue_int}")
+    Input: AJRPP.004(1).R0007A Result: 1
+    >>> print (a.art_id)
+    AJRPP.004.R0007A   
+    >>> a.standardized
+    'AJRPP.004.R0007A'
 
-    >>> a = ArticleID(art_id="AJRPP.004.0007A")
-    >>> print (a.articleidinfo)
-    {'source_code': 'AJRPP', 'vol_str': '004', 'vol_numeric': '004', 'vol_suffix': '', 'vol_wildcard': '', 'issue_nbr': '', 'page': '0007A', 'roman': '', 'page_numeric': '0007', 'page_suffix': 'A', 'page_wildcard': ''}
-
-    >>> a = ArticleID(art_id="MPSA.043.0117A")
-    >>> print (a.alt_standard)
-    MPSA.043?.0117A
-
-    
-    >>> a = ArticleID(art_id="AJRPP.004A.0007A")
-    >>> print (a.art_vol_str)
-    004A
     >>> a = ArticleID(art_id="AJRPP.004S.R0007A")
     >>> print (a.art_issue_alpha_code)
     S
-    >>> a = ArticleID(art_id="AJRPP.004S(1).R0007A")
-    >>> print (a.art_issue_int)
-    1
     >>> a.art_vol_int
     4
     >>> a.is_roman
     True
     >>> print (a.art_id)
     AJRPP.004S.R0007A
-    >>> a.is_roman
-    True
     >>> a.art_pgstart_int
     7
     >>> a.standardized
     'AJRPP.004S.R0007A'
+
+    >>> a = ArticleID(art_id="FA.001A.0005A")
+    >>> print (a.art_issue_alpha_code)
+    A
+    >>> print (a.art_issue_int)
+    1
+
+    >>> a = ArticleID(art_id="AJRPP.004.0007A:0.99")
+    >>> print (a.articleidinfo)
+    {'source_code': 'AJRPP', 'vol_str': '004', 'vol_numeric': '004', 'vol_suffix': '', 'vol_wildcard': '', 'issue_nbr': '', 'page': '0007A', 'special_section': '', 'roman': '', 'page_numeric': '0007', 'page_suffix': 'A', 'page_wildcard': '', 'match_probability': '0.99'}
+    >>> print (a.standardized)
+    AJRPP.004.0007A
+
+    >>> a = ArticleID(art_id="AJRPP.004.0007A")
+    >>> print (a.articleidinfo)
+    {'source_code': 'AJRPP', 'vol_str': '004', 'vol_numeric': '004', 'vol_suffix': '', 'vol_wildcard': '', 'issue_nbr': '', 'page': '0007A', 'special_section': '', 'roman': '', 'page_numeric': '0007', 'page_suffix': 'A', 'page_wildcard': '', 'match_probability': ''}
+
+    >>> a = ArticleID(art_id="MPSA.043.0117A")
+    >>> print (a.alt_standard) # NOTE: not inserting wildcard ? for vol suffix any more as of 2023 (was MPSA.043?.0117A)
+    MPSA.043.0117A
+    
+    >>> a = ArticleID(art_id="AJRPP.004A.0007A")
+    >>> print (a.art_vol_str)
+    004A
+
     >>> a = ArticleID(art_id="AJRPP.*.*")
     >>> a.standardized
     'AJRPP.*.*'
+
     >>> a = ArticleID(art_id="IJP.034.*")
     >>> a.standardized
     'IJP.034.*'
+
     >>> a = ArticleID(art_id="IJP.*.0001A")
     >>> a.standardized
     'IJP.*.*'
+
     >>> a = ArticleID(art_id="BADSTUFF")
     >>> a.is_ArticleID
     False
     >>> print (a)
-    art_id='BADSTUFF' articleidinfo=None standardized=None alt_standard=None is_ArticleID=False src_code=None art_vol_suffix=None art_vol_int=0 art_vol_str=None art_issue_alpha_code=None is_supplement=False art_issue_int=0 art_pgstart=None art_pgstart_int=0 roman_prefix='' is_roman=False page_suffix=None
+    art_id='BADSTUFF' articleidinfo=None standardized=None alt_standard=None is_ArticleID=False src_code=None art_vol_suffix=None art_vol_int=0 art_vol_str=None art_issue_alpha_code=None is_supplement=False art_issue=None art_issue_int=None art_pgstart=None art_pgstart_int=0 match_probability=None roman_prefix='' is_roman=False page_suffix=None special_section_prefix='' is_special_section=False
 
     Handle Special Naming
     >>> a = ArticleID(art_id="APA.062.NP0016A(bKBD3).xml")
@@ -208,6 +222,7 @@ class ArticleID(BaseModel):
     art_pgstart: str = Field(None, title="")
     art_pgstart_int: int = Field(default=0, title="")
     # pageWildcard: str = Field(None, title="")
+    match_probability: float = Field(None, title="For rx link article ids, there may be a probability associated with it, this is it, from 0-1")
     roman_prefix: str = Field("", title="R if start page number in ID is roman")
     is_roman: bool = Field(False, title="")
     page_suffix: str = Field(None, title="")
@@ -217,11 +232,12 @@ class ArticleID(BaseModel):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        regex_article_id = "(?P<source_code>[A-Z\-]{2,13})\.(?P<vol_str>(((?P<vol_numeric>[0-9]{3,4})(?P<vol_suffix>[A-Z]?))|(?P<vol_wildcard>\*)))(\((?P<issue_nbr>[0-9]{1,3})\))?\.(?P<page>((?P<special_section>(NP|E|C|I)?)(?P<roman>R?)(((?P<page_numeric>([0-9]{4,4}))(?P<page_suffix>[A-Z]?))|(?P<page_wildcard>\*))))"
+        regex_article_id = "(?P<source_code>[A-Z\-]{2,13})\.(?P<vol_str>(((?P<vol_numeric>[0-9]{3,4})(?P<vol_suffix>[A-Z]?))|(?P<vol_wildcard>\*)))(\((?P<issue_nbr>[0-9]{1,3})\))?\.(?P<page>((?P<special_section>(NP|E|C|I)?)(?P<roman>R?)(((?P<page_numeric>([0-9]{4,4}))(?P<page_suffix>[A-Z]?))|(?P<page_wildcard>\*))))(:(?P<match_probability>[01]\.[0-9]{0,9}))?"
         volumeWildcardOverride = ''
         m = re.match(regex_article_id, self.art_id, flags=re.IGNORECASE)
         if m is not None:
             self.articleidinfo = m.groupdict("")
+            self.match_probability = self.articleidinfo.get("match_probability")
             self.src_code = self.articleidinfo.get("source_code")
             # See if it has issue number numerically in ()
             self.art_issue = self.articleidinfo.get("issue_nbr") # default for groupdict is ''
@@ -264,6 +280,7 @@ class ArticleID(BaseModel):
                 
             self.is_supplement = self.art_issue_alpha_code == "S" and self.src_code != "FA"
             if self.is_supplement:
+                # supplements do not have an issue int!
                 self.art_issue_int = None
                     
             # page info
@@ -316,7 +333,7 @@ class ArticleID(BaseModel):
                 self.standardized += f".*"
                 self.alt_standard += f".*"
                 #self.standardizedPlusIssueCode += f".*"
-
+            
             # always should be uppercase
             self.standardized = self.standardized.upper()
             self.is_ArticleID = True
