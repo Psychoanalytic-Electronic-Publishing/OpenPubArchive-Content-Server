@@ -799,6 +799,19 @@ def update_artinfo_in_instance(parsed_xml,
             # set default attributes if not seet
             aut.set("listed", aut.get("listed", "true"))
             aut.set("role", aut.get("role", "author"))
+    
+    if artInfo.art_qual is None:
+        # if there's no artqual value, check solr to see if any articles reference this one.
+        # if they do, then add this article's ID to an artqual element to show this article
+        # is part of that set, so it can show the "later" articles that are related to it
+        # in the related articles list.
+        related = opasPySolrLib.get_articles_related_to_current_via_artqual(artInfo.art_id)
+        if related is not None:
+            artInfo.art_qual = artInfo.art_id
+            art_title_elem = xml_artinfo.find("arttitle")
+            new_artqual = ET.Element("artqual")
+            new_artqual.attrib["rx"] = artInfo.art_qual
+            xml_artinfo.insert(xml_artinfo.index(art_title_elem) + 1, new_artqual)
             
     remove_author_pretitles(parsed_xml, verbose=verbose)
         

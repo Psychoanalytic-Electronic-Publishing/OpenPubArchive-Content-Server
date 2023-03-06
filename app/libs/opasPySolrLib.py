@@ -250,6 +250,29 @@ def get_translated_article_info_by_origrx_id(art_id):
     return ret_val
 
 #-----------------------------------------------------------------------------
+def get_articles_related_to_current_via_artqual(art_id):
+    """
+    Return any articles in Solr which reference this one via artqual.
+
+    >>> get_articles_related_to_current_via_artqual(art_id="PAQ.062.0588A")
+    """
+    ret_val = None
+    documentList, ret_status = search_text(query=f"art_qual:{art_id}", 
+                                           limit=10,
+                                           abstract_requested=False,
+                                           full_text_requested=False
+                                           )
+
+    try:
+        if documentList.documentList.responseInfo.count > 0:
+            ret_val = documentListItem = documentList.documentList.responseSet[0]
+    except Exception as e:
+        logger.error(f"Error getting article {art_id} by id: {e}")
+        ret_val = None
+        
+    return ret_val
+
+#-----------------------------------------------------------------------------
 def authors_get_author_info(author_partial,
                             req_url:str=None, 
                             limit=opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, offset=0, author_order="index"):

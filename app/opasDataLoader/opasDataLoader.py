@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2023, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2023.0302/v2.1.015"   # Requires update to api_biblioxml2 and views based on it.
+__version__     = "2023.0306/v2.1.016"   # Requires update to api_biblioxml2 and views based on it.
 __status__      = "Development"
 
 # !!! IMPORTANT: Increment opasXMLProcessor version (if version chgd). It's written to the XML !!!
@@ -1003,7 +1003,14 @@ def main():
                         msg = "\t...This article has translations"
                         log_everywhere_if(options.display_verbose , level="info", msg=msg)
                         artInfo.art_orig_rx = artID
-                    
+
+                if artInfo.art_qual is None:
+                    # check if there's any new articles related to this one
+                    related = opasPySolrLib.get_articles_related_to_current_via_artqual(artInfo.art_id)
+                    if related:
+                        msg = f"\t...Article has {len(related)} later related articles. Setting artqual"
+                        log_everywhere_if(options.display_verbose, level="info", msg=msg)
+                        artInfo.art_qual = artInfo.art_id
                 try:
                     artInfo.file_classification = re.search("(?P<class>current|archive|future|free|special|offsite)", str(n.filespec), re.IGNORECASE).group("class")
                     # set it to lowercase for ease of matching later

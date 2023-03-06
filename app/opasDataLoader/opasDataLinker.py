@@ -34,7 +34,6 @@ help_text = (
          --key             Process biblio records with the key=article-id
                               or regex (e.g., --key AIM.076.0309A, or AIM.*)
          --nightly         Process biblio records added since the day before
-         --oldest          Process biblio records least recently updated last
          --type            Process type 'books' or 'journals' only (abbr. b or j)
          --unlinked        Process only unlinked (no rx and rxcf data) records
          --where           Process by conditional against api_biblioxml2
