@@ -83,7 +83,7 @@ SPECIAL_BOOK_NAME_PATTERN = "((Ges|Gs)\.?\s+Schr\.?)|(Collected Papers)"
 book_titles_mismarked = re.compile(SPECIAL_BOOK_NAME_PATTERN, flags=re.I)
 SPECIAL_BOOK_RECOGNITION_PATTERN = "Wien" # Wien=Vienna
 BOOK_PUBLISHERS = "hogarth|basic books|harper|other press|analytic press|dover publications|france\:|london\:|norton|press|random house|new york\:|UK\:|routledge|paris|munich|university press|karnac|henry holt"
-SOLR_RESTRICTED_PUNCT = '\:\"\'\,/\[\]\(\)'
+SOLR_RESTRICTED_PUNCT = '\-\:\"\'\,/\[\]\(\)'
 
 # Heuristic Settings for Biblio matching
 SAME_REF_WTD_LIKELY = 0.45
@@ -378,7 +378,7 @@ class BiblioEntry(models.Biblioxml):
         self.ref_link_source = None
         self.link_updated = False
         self.record_updated = False
-        self.ref_in_pep = False
+        self.ref_in_pep = None
         self.ref_pgstart = ""
         self.ref_pgrg = ""
         self.ref_exists = False
@@ -387,6 +387,7 @@ class BiblioEntry(models.Biblioxml):
         self.ref_sourcetype = ""
         self.ref_is_book = False
         self.art_id = art_id
+        self.record_from_db = False
 
         # allow either string xml ref or parsed ref
         if ref_or_parsed_ref is None and not db_bib_entry:
@@ -396,7 +397,7 @@ class BiblioEntry(models.Biblioxml):
             #self = copy_model(db_bib_entry)
             copy_model_fields(db_bib_entry, self)
             ref_or_parsed_ref = self.ref_xml
-            self.record_exists = True
+            self.record_from_db = True
 
         if isinstance(ref_or_parsed_ref, str):
             parsed_ref = etree.fromstring(ref_or_parsed_ref, parser=parser)
@@ -444,6 +445,7 @@ class BiblioEntry(models.Biblioxml):
             self.ref_rx_confidence = 0
             self.ref_rxcf = opasxmllib.xml_get_element_attr(self.parsed_ref, "rxcf", default_return=None) # related rx
             self.ref_rxcf_confidence = 0
+            self.record_from_db = False
         else:
             self.last_update = db_bib_entry.last_update 
             self.ref_rxp = None
@@ -855,14 +857,17 @@ class BiblioEntry(models.Biblioxml):
 
         ref_sourcetitle = ""
         ref_title = ""
+        title_distance = "~1"
+        min_words = 3
         query = "art_id:*"
+        time1 = time.time()
         #if self.ref_sourcetitle:
             #source_title = self.ref_sourcetitle
             #query += f" AND art_sourcetitlefull:({self.ref_sourcetitle})"
             
         if self.ref_title:
             ref_title = opasgenlib.remove_these_chars(self.ref_title, SOLR_RESTRICTED_PUNCT)
-            query = f"art_title:({ref_title}) OR art_sourcetitlefull:({ref_title})"
+            query = f"art_title:{ref_title}{title_distance} OR art_sourcetitlefull:{ref_title}{title_distance}"
             art_or_source_title = ref_title
             words = len(ref_title.split(" "))
             skip = False
@@ -870,7 +875,7 @@ class BiblioEntry(models.Biblioxml):
             ref_sourcetitle = opasgenlib.remove_these_chars(self.ref_sourcetitle, SOLR_RESTRICTED_PUNCT)
             if self.ref_is_book:
                 ref_title = ref_sourcetitle
-            query = f"art_title:({ref_sourcetitle}) OR art_sourcetitlefull:({ref_sourcetitle})"
+            query = f"art_title:{ref_sourcetitle}{title_distance} OR art_sourcetitlefull:{ref_sourcetitle}{title_distance}"
             art_or_source_title = ref_sourcetitle
             words = len(ref_sourcetitle.split(" "))
             skip = False
@@ -878,7 +883,9 @@ class BiblioEntry(models.Biblioxml):
             words = ""
             if verbose: print (f"\tNo title or source title ({self.ref_xml}")
             skip = True
-            
+        
+        if words <= min_words:
+            skip = True
             
         if not skip:
             title_list = []
@@ -889,7 +896,7 @@ class BiblioEntry(models.Biblioxml):
                                                               full_text_requested=False,
                                                               req_url=opasConfig.CACHEURL)
             if return_status[0] == 200:
-                if result.documentList.responseInfo.fullCount > 100 and words <= 3:
+                if result.documentList.responseInfo.fullCount > 100 and words <= min_words:
                     if verbose: print (f"\tToo many hits ({result.documentList.responseInfo.fullCount} and too few words in title {words}")
                 else:
                     result_count = result.documentList.responseInfo.count
@@ -954,6 +961,10 @@ class BiblioEntry(models.Biblioxml):
         ret_val.ref_link_source = self.ref_link_source
         ret_val.ref_rxcf = self.ref_rxcf
         ret_val.ref_rxcf_confidence = self.ref_rxcf_confidence
+        if verbose:
+            time2 = time.time()
+            heuristic_time = time2 - time1
+            print (f"\t...Heuristics time: {heuristic_time}")
         
         return ret_val
 
@@ -1193,7 +1204,7 @@ class BiblioEntry(models.Biblioxml):
         
         if db_bibref:
             bib_refdb_model = db_bibref[0]   
-            self.record_exists = True
+            self.record_from_db = True
             if bib_refdb_model.ref_rx:
                 if bib_refdb_model.ref_rx_confidence > self.ref_rx_confidence:
                     # make sure it's clean
@@ -1209,16 +1220,23 @@ class BiblioEntry(models.Biblioxml):
                         #ret_val = self.ref_rx, self.ref_rx_confidence, self.link_updated
 
             if bib_refdb_model.ref_rxcf:
-                if bib_refdb_model.ref_rxcf_confidence > self.ref_rxcf_confidence:
-                    # make sure it's clean
+                if self.ref_rxcf:
+                    if bib_refdb_model.ref_rxcf_confidence > self.ref_rxcf_confidence:
+                        # make sure it's clean
+                        self.ref_rxcf = bib_refdb_model.ref_rxcf
+                        self.ref_rxcf_confidence = bib_refdb_model.ref_rxcf_confidence
+                        self.link_updated = True
+                        self.ref_link_source = opasConfig.RX_LINK_SOURCE_DB
+                        ret_val = True
+                        #ret_val = self.ref_rx, self.ref_rx_confidence, self.link_updated
+                else:
                     self.ref_rxcf = bib_refdb_model.ref_rxcf
                     self.ref_rxcf_confidence = bib_refdb_model.ref_rxcf_confidence
                     self.link_updated = True
                     self.ref_link_source = opasConfig.RX_LINK_SOURCE_DB
                     ret_val = True
-                    #ret_val = self.ref_rx, self.ref_rx_confidence, self.link_updated
         else:
-            self.record_exists = False
+            self.record_from_db = False
 
 
         return ret_val

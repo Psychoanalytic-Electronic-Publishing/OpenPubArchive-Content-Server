@@ -5,7 +5,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2023"
 __license__     = "Apache 2.0"
-__version__     = "2023.0227/v1.0.014"   
+__version__     = "2023.0307/v1.0.015"   
 __status__      = "Development"
 
 programNameShort = "opasDataLinker"
@@ -158,29 +158,41 @@ def walk_through_reference_set(ocd=ocd,
                 bib_entry.ref_rx_confidence = opasConfig.RX_CONFIDENCE_NEVERMORE
                 bib_entry.link_updated = True                        
             else:
+                if bib_entry.ref_rx_confidence == .01 or bib_entry.ref_rx_confidence == opasConfig.RX_CONFIDENCE_POSITIVE:
+                    if verbose: print (f"\t...Skipping Marked 'RX_CONFIDENCE_NEVERMORE (.01)' or RX_CONFIDENCE_POSITIVE (1) Reference ID: {bib_entry.ref_rx} Confidence {bib_entry.ref_rx_confidence}")
+                    continue
+                
+                if bib_entry.ref_rx and not ocd.article_exists(bib_entry.ref_rx):
+                    print (f"\t...Not in PEP. Removing RX link {bib_entry.ref_rx}. Preserving rxcf: {bib_entry.ref_rx}  Will try to match")
+                    bib_entry.ref_in_pep = False
+                    bib_entry.ref_rx = None
+                    bib_entry.ref_rx_confidence = 0
+                    bib_entry.link_updated = True
+
                 if bib_entry.ref_rx is None:
                     if verbose and bib_entry.ref_text:
                         one_line_text = bib_entry.ref_text.replace('\n','')
-                    bib_entry.lookup_title_in_db(ocd)
+                    # bib_entry.lookup_title_in_db(ocd)
                     bib_entry.identify_heuristic(verbose=verbose)
                     if bib_entry.ref_rx is not None:
                         if verbose: print (f"\t...Matched Reference ID: {bib_entry.ref_rx} Confidence {bib_entry.ref_rx_confidence} Link Updated: {bib_entry.link_updated}")
-                elif bib_entry.ref_rx == .01:
+                        
+                elif bib_entry.ref_rx_confidence == .01: # check again
                     if verbose: print (f"\t...Skipping Marked 'RX_CONFIDENCE_NEVERMORE (.01)' Reference ID: {bib_entry.ref_rx} Confidence {bib_entry.ref_rx_confidence}")
-                else:
+                    continue
+
+                if bib_entry.ref_rx is not None:
                     if verbose: print (f"\t...Checking ref_rx from xml for accuracy")
+                    bib_entry.lookup_more_exact_artid_in_db(ocd)
+                        
                     if bib_entry.ref_is_book and not bib_entry.ref_in_pep and bib_entry.ref_rxcf is not None:
-                        print (f"\t...Types don't match and book not in PEP. Removing RX link {bib_entry.ref_rx}. Preserving rxcf: {bib_entry.ref_rx}")
+                        print (f"\t...Types don't match or not in PEP. Removing RX link {bib_entry.ref_rx}. Preserving rxcf: {bib_entry.ref_rx}")
                         bib_entry.ref_rx = None
                         bib_entry.ref_rx_confidence = 0
                         bib_entry.link_updated = True
-                    else:
-                        bib_entry.compare_to_database(ocd)
-                        bib_entry.lookup_more_exact_artid_in_db(ocd)
-                        if verbose: print (f"\t...Reference ID: {bib_entry.ref_rx} Confidence {bib_entry.ref_rx_confidence} Link Updated: {bib_entry.link_updated} Record Updated: {bib_entry.record_updated}")
-
-                #if bib_entry.ref_rx is None and bib_entry.ref_rx is not None:
-                    #bib_entry.update_bib_entry(bib_entry)
+                    #elif not bib_entry.record_from_db:
+                        #bib_entry.compare_to_database(ocd)
+                        #bib_entry.lookup_more_exact_artid_in_db(ocd)
 
             if bib_entry.link_updated or bib_entry.record_updated:
                 updated_record_count += 1
@@ -194,6 +206,9 @@ def walk_through_reference_set(ocd=ocd,
                     if options.display_verbose: print(f"\t...Time: {time.time() - reference_time_start:.4f} seconds.")
                 else:
                     print (f"\t...Error saving record.")
+            else:
+                if verbose: print (f"\t...No change.  Reference ID: {bib_entry.ref_rx} Confidence {bib_entry.ref_rx_confidence} Link Updated: {bib_entry.link_updated} Record Updated: {bib_entry.record_updated}")
+                
                 
     ocd.close_connection(caller_name=fname) # make sure connection is closed
     timeEnd = time.time()
