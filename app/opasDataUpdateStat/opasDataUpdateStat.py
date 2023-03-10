@@ -5,7 +5,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2023, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2023.0304/v1.1.12"
+__version__     = "2023.0310/v1.1.13"
 __status__      = "Beta"
 
 programNameShort = "opasDataUpdateStat"
@@ -400,14 +400,15 @@ def update_solr_stat_data(solrcon, all_records:bool=False):
                     else:
                         update_rec = False
                 except Exception as e:
-                    logger.error(f"...Updating stat for {doc_id} in Solr...Error: {e}.")
+                    logger.error(f"Update stat for {doc_id} in Solr...Error: {e}.")
                     continue
                         
                 if doc_id is not None and update_rec:
-                    if all_records == False:
-                        logger.info(f"...Updating stat for {doc_id} in Solr...{remaining_count} more to check. Views 12m:{art_stat.art_views_last12mos} 6m:{art_stat.art_views_last6mos} 1m:{art_stat.art_views_last1mos} 1w:{art_stat.art_views_lastweek}")
-                    elif args.display_verbose:
-                        logger.info(f"...Updating all stat for {doc_id} in Solr...{remaining_count} more to check. Views Yr:{art_stat.art_views_lastcalyear}")
+                    if args.display_verbose:
+                        if all_records == False:
+                            print(f"Upd. solr stat {doc_id} {remaining_count} more to go. Vws 12m:{art_stat.art_views_last12mos} 6m:{art_stat.art_views_last6mos} 1m:{art_stat.art_views_last1mos} 1w:{art_stat.art_views_lastweek}")
+                        else:
+                            print(f"Upd. all solr stat {doc_id} {remaining_count} more to go. Vws Yr:{art_stat.art_views_lastcalyear}")
 
                     upd_rec = {
                                 "id":doc_id,
@@ -442,21 +443,18 @@ def update_solr_stat_data(solrcon, all_records:bool=False):
                             
                         if update_count > 0 and update_count % UPDATE_AFTER == 0:
                             solr_docs2.commit()
-                            errStr = f"Updated {update_count} records with citation data"
-                            print (errStr)
-                            logger.info(errStr)
+                            infoStr = f"...Updated {update_count} records with citation data"
+                            print (infoStr)
                         
                     except Exception as err:
-                        errStr = f"opasDataUpdateStatUpdateError: Solr call exception for update on {doc_id}: {err}"
-                        print (errStr)
+                        errStr = f"Solr call exception for update on {doc_id}: {err}"
                         skipped_as_update_error += 1
                         logger.error(errStr)
                     else:
                         update_count += 1
             else:
                 errStr = (f"Document {doc_id} not in Solr...skipping")
-                #print (errStr)
-                logger.debug(errStr)
+                logger.warning(errStr)
                 if ".jpg" in errStr:
                     print (f"Todo: eliminate these jpgs from the table driving the stat {doc_id}")
 
@@ -464,11 +462,11 @@ def update_solr_stat_data(solrcon, all_records:bool=False):
     try:
         solr_docs2.commit()
     except Exception as e:
-        msg = f"opasDataUpdateStatUpdateError: Final commit error {e}"
+        msg = f"Exception in final commit {e}"
         print(msg)
         logger.error(msg)
 
-    print (f"Finished updating Solr stat with {update_count} article records updated; records skipped: {skipped_as_update_error }.")
+    print (f"Finished updating Solr stat with {update_count} art records updated; skipped: {skipped_as_update_error }.")
     return update_count
 
 if __name__ == "__main__":
@@ -483,7 +481,7 @@ if __name__ == "__main__":
                         help="Level at which events should be logged (DEBUG, INFO, WARNING, ERROR")
     parser.add_argument("-a", "--all", dest="all_records", default=False, action="store_true",
                         help="Update records with views and any citation data (takes significantly longer)")
-    parser.add_argument("--verbose", action="store_true", dest="display_verbose", default=True,
+    parser.add_argument("--verbose", action="store_true", dest="display_verbose", default=False,
                         help="Display status and operational timing info as load progresses.")
     
     args = parser.parse_args()

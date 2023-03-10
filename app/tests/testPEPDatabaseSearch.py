@@ -115,7 +115,7 @@ class TestDatabaseSearch(unittest.TestCase):
     def test_search_author_and_journalcode_and_text(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?author=Blum&sourcecode=AOP&fulltext1=transference')
         response = requests.get(full_URL, headers=headers)
-        assert(response.ok == True)
+        assert(response.ok == True) 
         r = response.json()
         # print (r)
         response_info = r["documentList"]["responseInfo"]

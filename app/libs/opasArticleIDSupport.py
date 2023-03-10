@@ -237,7 +237,11 @@ class ArticleID(BaseModel):
         m = re.match(regex_article_id, self.art_id, flags=re.IGNORECASE)
         if m is not None:
             self.articleidinfo = m.groupdict("")
-            self.match_probability = self.articleidinfo.get("match_probability")
+            match_probability =self.articleidinfo.get("match_probability")
+            if match_probability:
+                self.match_probability = match_probability
+            else:
+                self.match_probability = None
             self.src_code = self.articleidinfo.get("source_code")
             # See if it has issue number numerically in ()
             self.art_issue = self.articleidinfo.get("issue_nbr") # default for groupdict is ''

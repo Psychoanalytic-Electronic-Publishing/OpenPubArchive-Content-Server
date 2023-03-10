@@ -5,7 +5,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2023"
 __license__     = "Apache 2.0"
-__version__     = "2023.0307/v1.0.015"   
+__version__     = "2023.0310/v1.0.016"   
 __status__      = "Development"
 
 programNameShort = "opasDataLinker"
@@ -194,11 +194,11 @@ def walk_through_reference_set(ocd=ocd,
                         #bib_entry.compare_to_database(ocd)
                         #bib_entry.lookup_more_exact_artid_in_db(ocd)
 
-            if bib_entry.link_updated or bib_entry.record_updated:
+            if bib_entry.link_updated or bib_entry.record_updated or options.forceupdate:
                 updated_record_count += 1
                 success = ocd.save_ref_to_biblioxml_table(bib_entry, bib_entry_was_from_db=True)
                 if success:
-                    if bib_entry.link_updated:
+                    if bib_entry.link_updated or options.forceupdate:
                         print (f"\t...Links updated.  Updating DB: rx:{bib_entry.ref_rx} rxcf:{bib_entry.ref_rxcf} source: ({bib_entry.ref_link_source})")
                     else:
                         print (f"\t...Record updated. Updating DB.")
@@ -214,13 +214,13 @@ def walk_through_reference_set(ocd=ocd,
     timeEnd = time.time()
     elapsed_seconds = timeEnd-cumulative_time_start # actual processing time going through files
     elapsed_minutes = elapsed_seconds / 60
+    print (80 * "-")
+    msg = f"Finished! {updated_record_count} records updated from {counter} references. Total scan/update time: {elapsed_seconds:.2f} secs ({elapsed_minutes:.2f} minutes.) "
     if counter > 0:
-        msg = f"Files per elapsed min: {counter/elapsed_minutes:.4f}"
+        msg = f"References per elapsed min: {counter/elapsed_minutes:.2f}"
         logger.info(msg)
         print (msg)
     
-    print (80 * "-")
-    msg = f"Finished! {updated_record_count} records updated from {counter} references. Total scan/update time: {elapsed_seconds:.2f} secs ({elapsed_minutes:.2f} minutes.) "
     logger.info(msg)
     print (msg)
     
@@ -309,6 +309,9 @@ if __name__ == "__main__":
 
     parser.add_option("--before", dest="scanned_before", default=None,
                       help="Check biblio records last modified BEFORE this datetime (use YYYY-MM-DD format).")
+
+    parser.add_option("-f", "--forcedupdate", action="store_true", dest="forceupdate", default=False,
+                      help="Force update to biblio database")
 
     parser.add_option("--key", dest="file_key", default=None,
                       help="Key for a single file to load, e.g., AIM.076.0269A.  Use in conjunction with --sub for faster processing of single files on AWS")

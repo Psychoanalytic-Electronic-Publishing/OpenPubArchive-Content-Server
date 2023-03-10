@@ -683,8 +683,13 @@ def authserver_logout(session_id, request: Request=None, response: Response=None
         ocd.log_pads_calls(caller=caller_name, reason=caller_name, session_id=session_id, pads_call=full_URL, return_status_code=response.status_code) # Log Call PaDS
         if response.ok:
             ret_val = True
+        elif response.status_code == 500 or response.status_code == 404:
+            logger.error(f"{caller_name}: Error Logging out for sessionId: {session_id} PaDS returned code: {response.status_code}")
         else:
-            logger.error(f"{caller_name}: Error Logging out for sessionId: {session_id} from PaDS: {response.json()}")
+            try:
+                logger.error(f"{caller_name}: Error Logging out for sessionId: {session_id} from PaDS: {response.json()}")
+            except Exception as e:
+                logger.error(f"{caller_name}: Error Logging out for sessionId: {session_id} {e}")
     else:
         logger.error(f"{caller_name}: No SessionId supplied.")
 

@@ -922,7 +922,7 @@ class BiblioEntry(models.Biblioxml):
                             rx_confidence = title_list[0]["score"]
                             if rx_confidence >= minrx_similarity_title and considered["sim_auth"] >= minrx_similarity_author and words > 1:
                                 self.ref_rx = title_list[0]["rx"]
-                                self.ref_rx_confidence = rx_confidence # opasConfig.RX_CONFIDENCE_PROBABLE
+                                self.ref_rx_confidence = round(rx_confidence,2) # opasConfig.RX_CONFIDENCE_PROBABLE
                                 self.link_updated = True
                                 self.ref_link_source = opasConfig.RX_LINK_SOURCE_TITLE_HEURISTIC
                                 
@@ -940,10 +940,10 @@ class BiblioEntry(models.Biblioxml):
                                     #if gDbg2: time.sleep(2) # Pause
                                 
                             if title_list: # take the rest as rxcf
-                                self.ref_rxcf = [f'{item["rx"]}:{item["score"]}' for item in title_list]
+                                self.ref_rxcf = [f'{item["rx"]}:{item["score"]:.2f}' for item in title_list]
                                 self.ref_rxcf = self.ref_rxcf[:opasConfig.HEURISTIC_SEARCH_LIST_MAX_LEN]
                                 self.ref_rxcf = ", ".join(self.ref_rxcf)
-                                self.ref_rxcf_confidence = max([item["score"] for item in title_list])
+                                self.ref_rxcf_confidence = round(max([item["score"] for item in title_list]), 2)
                                 self.link_updated = True
                                 self.ref_link_source = opasConfig.RX_LINK_SOURCE_HEURISTIC
                                 if verbose:
@@ -964,7 +964,7 @@ class BiblioEntry(models.Biblioxml):
         if verbose:
             time2 = time.time()
             heuristic_time = time2 - time1
-            print (f"\t...Heuristics time: {heuristic_time}")
+            print (f"\t...Heuristics time: {heuristic_time:.4f}")
         
         return ret_val
 
@@ -1224,14 +1224,14 @@ class BiblioEntry(models.Biblioxml):
                     if bib_refdb_model.ref_rxcf_confidence > self.ref_rxcf_confidence:
                         # make sure it's clean
                         self.ref_rxcf = bib_refdb_model.ref_rxcf
-                        self.ref_rxcf_confidence = bib_refdb_model.ref_rxcf_confidence
+                        self.ref_rxcf_confidence = round(bib_refdb_model.ref_rxcf_confidence, 2)
                         self.link_updated = True
                         self.ref_link_source = opasConfig.RX_LINK_SOURCE_DB
                         ret_val = True
                         #ret_val = self.ref_rx, self.ref_rx_confidence, self.link_updated
                 else:
                     self.ref_rxcf = bib_refdb_model.ref_rxcf
-                    self.ref_rxcf_confidence = bib_refdb_model.ref_rxcf_confidence
+                    self.ref_rxcf_confidence = round(bib_refdb_model.ref_rxcf_confidence, 2)
                     self.link_updated = True
                     self.ref_link_source = opasConfig.RX_LINK_SOURCE_DB
                     ret_val = True
