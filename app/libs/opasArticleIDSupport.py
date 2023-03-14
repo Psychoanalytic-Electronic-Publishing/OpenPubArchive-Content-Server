@@ -208,6 +208,7 @@ class ArticleID(BaseModel):
     articleidinfo: dict = Field(None, title="Regex result scanning input articleID")
     standardized: str = Field(None, title="Standard form of article (document) ID, volume suffix included if volume includes repeat page #s or for supplements")
     alt_standard: str = Field(None, title="Alternate form of article (document) ID from 2020 (most without volume suffix)")
+    alt_wild_standard: str = Field(None, title="Alternate form of article (document) ID from 2020 (fix for missing volume suffix)")
     is_ArticleID: bool = Field(False, title="True if initialized value is an article (document) ID")
     src_code: str = Field(None, title="Source material assigned code (e.g., journal, book, or video source code)")
     # volumeStr: str = Field(None, title="")
@@ -321,13 +322,15 @@ class ArticleID(BaseModel):
                 # there's no alpha issue code in the standard one. Try adding one:
                 if altVolSuffix != "" and altVolSuffix != "?" and not self.art_vol_str[-1].isalpha():
                     self.alt_standard = f"{self.src_code}.{self.art_vol_str}{altVolSuffix}"
-                #else: # use 1 character wildcard
-                    #self.alt_standard = f"{self.src_code}.{self.art_vol_str}?"
+                else: # use 1 character wildcard
+                    altVolWildSuffix = "?"
+                    self.alt_wild_standard = f"{self.src_code}.{self.art_vol_str}{altVolSuffix}"
             
             if volumeWildcardOverride == '':
                 if pageWildcard == '':
                     self.standardized += f".{self.special_section_prefix}{self.roman_prefix}{self.art_pgstart}{self.page_suffix}"
                     self.alt_standard += f".{self.special_section_prefix}{self.roman_prefix}{self.art_pgstart}{self.page_suffix}"
+                    self.alt_wild_standard += f".{self.special_section_prefix}{self.roman_prefix}{self.art_pgstart}{self.page_suffix}"
                     #self.standardizedPlusIssueCode += f".{self.roman_prefix}{self.pageNbrStr}{self.pageSuffix}"
                 else:
                     self.standardized += f".*"
@@ -345,7 +348,11 @@ class ArticleID(BaseModel):
         else:
             self.is_ArticleID = False   
     
+    def __str__(self):
+        return str(self.art_id)
+    
 #------------------------------------------------------------------------------------------------------
+    
 class ArticleInfo(BaseModel):
     """
     An entry from a documents metadata.

@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2023.0310/v2.2.021"   # Requires rename biblioxml table and views to (name)2
+__version__     = "2023.0314/v2.2.022"   # Requires rename biblioxml table and views to (name)2
 __status__      = "Development/Libs/Loader"  
 
 """
@@ -4146,7 +4146,7 @@ def database_word_wheel(response: Response,
 
        Examples of applicable fields from solr core docs for PEP:
              text - full-text document search
-             para or art_para - full-text, all paragraphs (para is level 2, art_para is level 1)
+             para or art_para (deprecated) - full-text, all paragraphs (para is level 2, art_para is level 1 (deprecated))
              art_authors - string_ci, returns matching full names (authors is string, so it cannot be used)
              art_authors_xml - text, returns matching components of names
              quotes_spkr

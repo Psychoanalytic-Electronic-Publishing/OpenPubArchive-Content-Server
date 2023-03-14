@@ -55,9 +55,14 @@ VOL_COUNT_VIDEOS = VIDEOSOURCECOUNT # no actual volumes for videos, just the sou
 VOL_COUNT_VIDEOS_PEPVS = 4
 VOL_COUNT_IJPSP = 11 #  source code ended, 11 should always be correct
 
-ip = requests.get('https://api.ipify.org').content.decode('utf8')
-myTestSystemIP = ip
-myTestSystemIP = re.sub("\n\r", "", myTestSystemIP)
+try:
+    ip = requests.get('https://api.ipify.org').content.decode('utf8')
+    myTestSystemIP = ip
+except Exception as e:
+    # for times when testing and no Internet available
+    myTestSystemIP = "192.168.0.0" # ip
+else:
+    myTestSystemIP = re.sub("\n\r", "", myTestSystemIP)
 
 def get_session_info_for_test():
     session_info = opasDocPermissions.get_authserver_session_info(session_id=None, client_id=UNIT_TEST_CLIENT_ID)
@@ -70,14 +75,23 @@ def base_plus_endpoint_encoded(endpoint, base=base_api):
 UNIT_TEST_CLIENT_ID = "4"
 
 # Get session, but not logged in.
-def get_headers_not_logged_in(): 
-    session_info = opasDocPermissions.get_authserver_session_info(session_id=None,
-                                                                  client_id=UNIT_TEST_CLIENT_ID)
-    session_id = session_info.session_id
-    headers = {f"client-session":f"{session_id}",
-               "client-id": UNIT_TEST_CLIENT_ID, 
-               "Content-Type":"application/json" 
-               }
+def get_headers_not_logged_in():
+    try:
+        session_info = opasDocPermissions.get_authserver_session_info(session_id=None,
+                                                                      client_id=UNIT_TEST_CLIENT_ID)
+        session_id = session_info.session_id
+        headers = {f"client-session":f"{session_id}",
+                   "client-id": UNIT_TEST_CLIENT_ID, 
+                   "Content-Type":"application/json" 
+                   }
+    except Exception as e:
+        print ("Can't get session info from authserver.  Test parameters returned instead.")
+        session_id = "0005b972-c24b-4c7c-a881-7b5d21cb1afd"
+        headers = {f"client-session":f"{session_id}",
+                   "client-id": UNIT_TEST_CLIENT_ID, 
+                   "Content-Type":"application/json" 
+                   }
+
     return headers
 
 def test_login(username=localsecrets.PADS_TEST_ID, password=localsecrets.PADS_TEST_PW, client_id=UNIT_TEST_CLIENT_ID):

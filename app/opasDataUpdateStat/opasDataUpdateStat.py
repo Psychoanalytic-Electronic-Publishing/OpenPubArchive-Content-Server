@@ -172,6 +172,7 @@ class opasCentralDBMini(object):
         row_count = 0
         # always make sure we have the right input value
         self.open_connection(caller_name="get_most_viewed_crosstab") # make sure connection is open
+        print ("Getting most viewed data...this will take a few minutes...")
         
         if self.db is not None:
             cursor = self.db.cursor(pymysql.cursors.DictCursor)
@@ -241,7 +242,7 @@ class opasCentralDBMini(object):
            
         """
         citation_table = []
-        print ("Collecting citation counts from cross-tab in biblio database...this will take a minute or two...")
+        print ("Collecting citation counts from cross-tab in biblio database...this will take a few minutes...")
         try:
             self.open_connection("get_citation_counts")
             # Get citation lookup table
@@ -361,11 +362,12 @@ def update_solr_stat_data(solrcon, all_records:bool=False):
             if results.raw_response["response"]["numFound"] > 0:
                 found = True
             else: # TryAlternateID:
-                results = solrcon.search(q = f"art_id:{parsed_id.alt_standard}")
+                alt_id = parsed_id.art_id
+                results = solrcon.search(q = f"art_id:{parsed_id.alt_wild_standard}")
                 if results.raw_response["response"]["numFound"] == 1:  # only accept alternative if there's only one match (otherwise, not known which)
                     # odds are good this is what was cited.
                     found = True
-                    logger.debug(f"Document ID {doc_id} not in Solr.  The correct ID seems to be {parsed_id.alt_standard}. Using that instead!")
+                    logger.debug(f"Document ID {doc_id} not in Solr.  The correct ID seems to be {parsed_id.alt_wild_standard}. Using that instead!")
                     doc_id = parsed_id.alt_standard
                 else:
                     logger.debug(f"Document ID {doc_id} not in Solr.  No alternative ID found.")

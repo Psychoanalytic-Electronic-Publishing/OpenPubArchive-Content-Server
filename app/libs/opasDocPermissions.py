@@ -427,10 +427,16 @@ def get_session_info(request: Request,
                         update_db = True
                 elif not user_logged_in_bool and session_info_from_db.is_valid_login == True: # if login status has changed
                     # Not logged in but database says they are, so logout
-                    result = authserver_logout(session_id)
-                    session_info = session_info_from_db
-                    session_info.is_valid_login = False
-                    update_db = True
+                    try:
+                        result = authserver_logout(session_id)
+                        session_info = session_info_from_db
+                        session_info.is_valid_login = False
+                        update_db = True
+                    except Exception as e:
+                        logger.warning(f"PaDS logout call failed {e}.")
+                        session_info = session_info_from_db
+                        session_info.is_valid_login = False
+                        
                 else: # logged in, no changes
                     # important state is the same. So use db record (should we
                     # compare here?)

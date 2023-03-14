@@ -229,7 +229,7 @@ def smart_search(smart_search_text):
 
             pattern_boolean_test = "&&|\|\||\s(AND|OR|NOT)\s"
             has_bool = re.search(pattern_boolean_test, words) # case sensitive
-            has_bool_insensitive = re.search(pattern_boolean_test, words, flags=re.I) # case sensitive
+            # has_bool_insensitive = re.search(pattern_boolean_test, words, flags=re.I) # case sensitive
             
             if smartsearchLib.is_value_in_field(words, core="docs", field=opasConfig.SEARCH_FIELD_AUTHOR_CITATION, match_type="proximate") and words[0].isupper():
                 # see if it's a list of names

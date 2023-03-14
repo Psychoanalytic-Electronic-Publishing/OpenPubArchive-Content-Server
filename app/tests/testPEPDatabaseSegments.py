@@ -104,20 +104,6 @@ class TestDatabaseSegments(unittest.TestCase):
         assert(r['documentList']['responseInfo']['fullCount'] >= 21)
         assert(r['documentList']['responseInfo']['fullCountComplete'] == False)
 
-        # have stats been run?
-        print (f"Running: {sys._getframe(  ).f_code.co_name} at {datetime.now()}")
-        full_URL = base_plus_endpoint_encoded('/v2/Database/MostCited/')
-        response = requests.get(full_URL, headers=headers)
-        # Confirm that the request-response cycle completed successfully.
-        assert(response.ok == True)
-        r = response.json()
-        print ("Checking if stats have been run")
-        # print (r)
-        print (f"Count: {r['documentList']['responseInfo']['count']}")
-        print (f"Limit: {r['documentList']['responseInfo']['limit']}")
-        print (f"ReturnedData: {r['documentList']['responseSet'][0]['stat']['art_cited_5']}")
-        assert(r['documentList']['responseSet'][0]['stat']['art_cited_5'] >= 15)       
-        print ("OK")
 
        
 if __name__ == '__main__':

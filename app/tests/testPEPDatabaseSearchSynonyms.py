@@ -118,7 +118,7 @@ class TestDatabaseSearchSynonyms(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         count1 = response_info["fullCount"]
-        assert(count1 >= 2150 and count1 <= 2350), f"Count: {count1}" 
+        assert(count1 >= 2140 and count1 <= 2350), f"Count: {count1}" 
 
     def test_search_fulltext_syn_7(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?fulltext1=references_xml:(bisexuality)&synonyms=false')

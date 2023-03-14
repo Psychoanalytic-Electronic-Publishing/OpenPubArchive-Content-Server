@@ -2667,6 +2667,12 @@ class opasCentralDB(object):
             current_db_entry = self.get_ref_from_db(art_id=bib_entry.art_id,
                                                     ref_local_id=bib_entry.ref_local_id)
             if current_db_entry is not None:
+                if bib_entry.ref_rxcf_confidence is None:
+                    bib_entry.ref_rxcf_confidence = 0
+                
+                if bib_entry.ref_rx_confidence is None:
+                    bib_entry.ref_rx_confidence = 0
+                    
                 if bib_entry.ref_rx is None:
                     bib_entry.ref_rx = current_db_entry.ref_rx
                     bib_entry.ref_rx_confidence = current_db_entry.ref_rx_confidence

@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2023, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2023.0307/v2.1.017"   # Requires update to api_biblioxml2 and views based on it.
+__version__     = "2023.0312/v2.1.018"   # Requires update to api_biblioxml2 and views based on it.
 __status__      = "Development"
 
 # !!! IMPORTANT: Increment opasXMLProcessor version (if version chgd). It's written to the XML !!!
@@ -570,7 +570,7 @@ def main():
                 input_build_pattern, selected_input_build = get_defaults(options,
                                                                          default_build_pattern=loaderConfig.DEFAULT_PRECOMPILED_INPUT_BUILD_PATTERN,
                                                                          default_build=opasConfig.DEFAULT_OUTPUT_BUILD)
-                print(f"Precompiled XML of build {selected_input_build} will be loaded to the databases if newer tan Solr, without examining source and compiling.")
+                print(f"Precompiled XML of build {selected_input_build} will be loaded to the databases if newer than Solr, without examining source and compiling.")
                 pre_action_verb = "Load"
                 post_action_verb = "Loaded"
                 
@@ -661,7 +661,7 @@ def main():
                     print ("User requested exit.  No data changed.")
                     sys.exit(0)
             else:
-                print ("Options --nocheck and --resetcore both specified.  Warning: The solr cores and the database article and artstat tables will be cleared.  Pausing 60 seconds to allow you to cancel (ctrl-c) the run.")
+                print ("Options --nocheck and --resetcore both specified.  Warning: The solr cores and the database artstat table will be cleared.  Pausing 60 seconds to allow you to cancel (ctrl-c) the run.")
                 time.sleep(60)
                 print ("Second Warning: Continuing the run (and core and database reset) in 20 seconds...")
                 time.sleep(20)               

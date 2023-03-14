@@ -442,9 +442,18 @@ class BiblioEntry(models.Biblioxml):
         if not db_bib_entry:
             self.last_update = datetime.today()
             self.ref_rx = opasxmllib.xml_get_element_attr(self.parsed_ref, "rx", default_return=None)
-            self.ref_rx_confidence = 0
+            if self.ref_rx:
+                default_rx_confidence = str(opasConfig.RX_CONFIDENCE_KEYED_VERY_LIKELY)
+                self.ref_link_source = opasConfig.RX_LINK_SOURCE_DOCUMENT
+            else:
+                default_rx_confidence = "0"
+            self.ref_rx_confidence = opasxmllib.xml_get_element_attr(self.parsed_ref, "rxconf", default_return=default_rx_confidence)
+            self.ref_rx_confidence = opasgenlib.str_to_float(self.ref_rx_confidence, default=0)
+            
             self.ref_rxcf = opasxmllib.xml_get_element_attr(self.parsed_ref, "rxcf", default_return=None) # related rx
-            self.ref_rxcf_confidence = 0
+            self.ref_rxcf_confidence = opasxmllib.xml_get_element_attr(self.parsed_ref, "rxcfconf", default_return="0") # related rx
+            self.ref_rxcf_confidence = opasgenlib.str_to_float(self.ref_rxcf_confidence, default=0)
+
             self.record_from_db = False
         else:
             self.last_update = db_bib_entry.last_update 
@@ -459,7 +468,11 @@ class BiblioEntry(models.Biblioxml):
         self.ref_rxp_confidence = opasxmllib.xml_get_element_attr(self.parsed_ref, "rxps", default_return=None)
         if self.ref_rxp and not self.ref_rx:
             self.ref_rx = self.ref_rxp
-            self.ref_rxcf_confidence = self.ref_rxp_confidence
+            if not self.ref_rxp_confidence:
+                self.ref_rx_confidence = opasConfig.RX_CONFIDENCE_PROBABLE
+            else:
+                self.ref_rx_confidence = round(opasgenlib.str_to_float(self.ref_rxp_confidence, default=opasConfig.RX_CONFIDENCE_PROBABLE) / 100, 2)
+            self.ref_link_source = opasConfig.RX_LINK_SOURCE_DOCUMENT_RXP
             self.ref_rxp = None
             self.ref_rxp_confidence = None
             self.link_updated = True
@@ -539,7 +552,7 @@ class BiblioEntry(models.Biblioxml):
                 self.ref_sourcecode = "SE"
                 self.ref_is_book = True
                 self.record_updated = True
-                print (f"\t...Recognized SE. Record will be updated.")
+                if verbose: print (f"\t...Recognized SE. Record will be updated.")
                 
             elif PEPJournalData.PEPJournalData.rgxGWPat2.search(self.ref_text):
                 if not re.search("G\.\s?W\.\s?</a>", self.ref_text):
@@ -547,7 +560,7 @@ class BiblioEntry(models.Biblioxml):
                     self.ref_sourcecode = "GW"
                     self.ref_is_book = True
                     self.record_updated = True
-                    print (f"\t...Recognized GW. Record will be updated.")
+                    if verbose: print (f"\t...Recognized GW. Record will be updated.")
         elif self.ref_sourcecode in ("GW", "SE", "IPL", "NLP", "ZBK"):
                 self.ref_in_pep = True
                 self.ref_is_book = True
@@ -561,7 +574,7 @@ class BiblioEntry(models.Biblioxml):
             if not self.ref_sourcetitle and book_title:
                 ## sometimes has markup
                 self.ref_sourcetitle = book_title  # book title (bst)
-                print (f"\t...Found book title '{book_title}'. Record will be updated.")
+                if verbose: print (f"\t...Found book title '{book_title}'. Record will be updated.")
                 self.record_updated = True
                 
         else:
@@ -570,7 +583,7 @@ class BiblioEntry(models.Biblioxml):
                 sourcecode, dummy, dummy = jrnlData.getPEPJournalCode(self.ref_sourcetitle)
                 if sourcecode and not self.ref_sourcecode:
                     self.ref_sourcecode = sourcecode
-                    print (f"\t...Found sourcecode '{sourcecode}'. Record {self.ref_local_id} will be updated.")
+                    if verbose: print (f"\t...Found sourcecode '{sourcecode}'. Record {self.ref_local_id} will be updated.")
                     self.record_updated = True
                 
         if year_of_publication != "":
@@ -638,7 +651,7 @@ class BiblioEntry(models.Biblioxml):
 
                 if ref_title:
                     self.ref_title = ref_title
-                    print (f"\t...Found ref title via string parse '{ref_title}'. Record will be updated.")
+                    if verbose: print (f"\t...Found ref title via string parse '{ref_title}'. Record will be updated.")
                     self.record_updated = True
                 else:
                     self.ref_title = ""
@@ -789,7 +802,7 @@ class BiblioEntry(models.Biblioxml):
                             # see if there's a vol variant
                             self.ref_exists = False
                             loc_str = locator.articleID()
-                            newloc = check_for_page_start(ocd, loc_str, verbose=False) # log it here, not there
+                            newloc = locator.check_for_offset_page_start(verbose=False) # log it here, not there
                             if newloc is not None:
                                 msg = f"\t\t...Page start fix: chgd {loc_str} to {newloc} in ref"
                                 log_everywhere_if(verbose, level="debug", msg=msg)
@@ -798,7 +811,7 @@ class BiblioEntry(models.Biblioxml):
                                 link_updated = True
                                 self.ref_link_source = opasConfig.RX_LINK_SOURCE_VARIATION
                             else:
-                                newloc = check_for_vol_suffix(ocd, loc_str, verbose=False) # log it here, not there
+                                newloc = locator.check_for_missing_vol_suffix(verbose=False) # log it here, not there
                                 if newloc is not None:
                                     msg = f"\t\t...VolSuffix missing: chgd {loc_str} to {newloc} in ref"
                                     log_everywhere_if(verbose, level="debug", msg=msg)

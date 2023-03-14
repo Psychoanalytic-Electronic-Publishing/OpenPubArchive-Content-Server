@@ -221,7 +221,7 @@ class TestDatabaseSmartSearch(unittest.TestCase):
         response_set = r["documentList"]["responseSet"]
         print (f'Smarttext: {response_info["description"]}')
         print (response_info["count"])
-        assert(response_info["count"] == 7)  # verified 7 matches 2020-07-26
+        assert response_info["count"] == 7, response_info["count"]  # verified 7 matches 2020-07-26
         # print (response_set[0])
 
     def test_10_vol_and_page(self):

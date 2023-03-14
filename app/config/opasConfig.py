@@ -299,7 +299,8 @@ RX_CONFIDENCE_NEVERMORE = .01                     # use this value to manually f
                                                   # it is not included in scans, it will NEVER be in PEP.
                                                   # (if wrong, just delete the value and it will 
                                                   # be included again!)
-RX_CONFIDENCE_AUTO_VERY_LIKELY = .99              # as sure as possible, automatically
+RX_CONFIDENCE_KEYED_VERY_LIKELY = .98             # as sure as possible, keyed
+RX_CONFIDENCE_AUTO_VERY_LIKELY = .97              # as sure as possible, automatically
 RX_CONFIDENCE_PROBABLE = .91                      # target exists and likely right
 RX_CONFIDENCE_PARSED_PROBABLE = .89               # string parsed (missing markup) target likely right
 RX_CONFIDENCE_PAGE_ADJUSTED = .88                 # matched by page adjusting
@@ -313,6 +314,8 @@ HEURISTIC_SEARCH_LIST_MAX_LEN = 5                # Max length of ref_rxcf list
 HEURISTIC_SEARCH_MAX_COUNT = 10                  # max matches to consider in heuristic search
 
 RX_LINK_SOURCE_DB = "database"
+RX_LINK_SOURCE_DOCUMENT = "instance_rx"
+RX_LINK_SOURCE_DOCUMENT_RXP = "instance_rxp"
 RX_LINK_SOURCE_TITLE = "title"
 RX_LINK_SOURCE_TITLE_AND_YEAR = "title and year"
 RX_LINK_SOURCE_XML = "xml"

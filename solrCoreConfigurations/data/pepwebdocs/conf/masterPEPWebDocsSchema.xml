@@ -2,6 +2,16 @@
 <!--
     PEP Web Database Schema for core PEPWebDocs
     
+    2023-03-14 Change some of the non-stored text_general fields to stored due to a bug? in Solr that now causes at least
+               some of these fields to be emptied when you do partial update of the record, e.g., body_xml was tested
+               and was a proving case.
+               
+               Marked art_para as deprecated and remove definition.
+               
+               Add publisher id (e.g., can be now saved as an individual file, otherwise in metadata field of XML,
+                  was added in metadata for IJPOpen but may be generally useful)
+               
+    
     2022-01-20 Added art_sourcecode_active to allow marking in Solr Future documents as 2, and Active docs as 1, to allow 
                the sourceDB to include Future documents, and the server to easily exclude them, for example in counting 
                articles in the database in the status command.
@@ -221,6 +231,9 @@
   <!--Added 2021-11-20 for IJPOpen, but can be used generally to embargo a specific article-->
   <field name="art_embargo" type="boolean" indexed="false" stored="true" docValues="true" default="false" multiValued="false"/>
   <field name="art_embargotype" type="string_ci" indexed="true" stored="true" multiValued="false" docValues="false"/>
+
+  <!-- Added 2023-03-14 - Publisher ID for keeping publisher specific manuscript ID searchable-->
+  <field name="publisher_id" type="string_ci" indexed="true" stored="true" multiValued="false"/>
   
   <!--......................................................................................................-->
   <!--TITLE-->
@@ -483,8 +496,8 @@
   <field name="quotes_spkr"  type="string_ci" indexed="true" stored="true" multiValued="true"/> 
 
   <!-- use this to search body without reference section (reference section above separately for search)-->
-  <field name="body_xml" type="text_general" indexed="true" stored="false" multiValued="false"/> 
-  <field name="body_xml_syn" type="text_general_syn" indexed="true" stored="false" multiValued="false"/> 
+  <field name="body_xml" type="text_general" indexed="true" stored="true" multiValued="false"/> 
+  <field name="body_xml_syn" type="text_general_syn" indexed="true" stored="true" multiValued="false"/> 
   <copyField source="body_xml" dest="body_xml_syn"/>
   <!--added in 2021-06-09 since lost appendixes when we removed most subpara searches.-->
   <field name="appxs_xml" type="text_general" indexed="true" stored="false" multiValued="true"/> 
@@ -550,7 +563,9 @@
   <!--top level para, for nesting tests and comparisons.  
                       TODO: Might want to later include attribs like lang!
                       This is a single field with multiple paragraphs in a list structure -->
-  <field name="art_para" type="text_general" indexed="true" stored="false" multiValued="true"/>
+  <!-- Not used
+     <field name="art_para" type="text_general" indexed="true" stored="false" multiValued="true"/>
+                                                                                                    -->
   <field name="art_level" type="pint" indexed="true" stored="false" docValues="true"/>
   <!-- include all languages in any element attribute (moved here because it also applies to paras) -->
   <field name="lang" type="string" indexed="true" stored="true" multiValued="true" docValues="true"/>

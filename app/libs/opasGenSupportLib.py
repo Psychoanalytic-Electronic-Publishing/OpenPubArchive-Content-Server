@@ -981,6 +981,39 @@ def str_to_int(str_to_convert:str, default=None, zero_allowed=False):
            
     return ret_val
 
+def str_to_float(str_to_convert:str, default=None, zero_allowed=False):
+    """
+    Convert string to float with error trapping, and default optional
+    where zero can be allowed or not allowed.
+    
+    >>> str_to_float("21")
+    21
+
+    >>> a = str_to_float("a", default="")
+    >>> a
+    ''
+    >>> a = str_to_float("a")
+    >>> a
+    """
+    ret_val = default
+    if str_to_convert:
+        if isinstance(str_to_convert, str):
+            # Remove whitespace and non-numeric characters from the input string
+            str_to_convert = str_to_convert.strip()
+            str_to_convert = ''.join(c for c in str_to_convert if c.isdigit() or c == '.')
+        
+            # Try to convert the cleaned-up string to a float
+            try:
+                ret_val = float(str_to_convert)
+                return ret_val
+            except ValueError:
+                # If the conversion fails, return None
+                ret_val = default
+        else:
+            ret_val = str_to_convert
+
+    return ret_val
+
 # ----------------------------------------------------------------------------------------
 # the following routines from older codebase
 # ----------------------------------------------------------------------------------------

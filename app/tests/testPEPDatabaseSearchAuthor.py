@@ -207,7 +207,7 @@ class TestDatabaseSearchAuthor(unittest.TestCase):
         # print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
-        assert(response_info["fullCount"] >= 7)
+        assert response_info["fullCount"] >= 7, response_info["fullCount"]
         # print (response_set)
         # Confirm that the request-response cycle completed successfully.
 
