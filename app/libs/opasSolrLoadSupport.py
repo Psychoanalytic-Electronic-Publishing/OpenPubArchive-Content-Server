@@ -19,7 +19,7 @@ sys.path.append('../config')
 sys.path.append('../libs/configLib')
 
 import os
-from datetime import datetime
+# from datetime import datetime
 # import time
 import string
 import re
@@ -42,6 +42,7 @@ import opasCentralDBLib
 
 import opasGenSupportLib as opasgenlib
 import opasXMLHelper as opasxmllib
+import opasArticleIDSupport
 import loaderConfig
 # import opasLocator
 # import opasArticleIDSupport
@@ -74,6 +75,64 @@ rc_stopword_match = read_stopwords() # returns compile re for matching stopwords
 #------------------------------------------------------------------------------------------------------------
 #  Support functions
 #------------------------------------------------------------------------------------------------------------
+def find_article_id(solrcon, parsed_id:opasArticleIDSupport.ArticleID, verbose=False) -> str:
+    """
+    Search Solr for the article ID, if not found, try some common variations:
+      - the ArticleID alt_standard
+      or
+      - the simple missing page suffix 'A'
+      or
+      - one of the volume variant letters (issue)
+      or
+    """
+    ret_val = None
+    doc_id = parsed_id.art_id
+    try:
+        results = solrcon.search(q = f"art_id:{doc_id}")
+        if results.raw_response["response"]["numFound"] > 0:
+            ret_val = doc_id
+        else: # try variations
+            # TryAlternateID:
+            alt_id = parsed_id.alt_standard
+            results = solrcon.search(q = f"art_id:{alt_id}")
+            if results.raw_response["response"]["numFound"] > 0:
+                logger.debug(f"Document ID {doc_id} not in Solr.  The correct ID seems to be {alt_id}. Using that instead!")
+                ret_val = alt_id
+            elif doc_id[-1].isnumeric():
+                # missing page variant?
+                alt_id = doc_id + "A"
+                results = solrcon.search(q = f"art_id:{alt_id}")
+                if results.raw_response["response"]["numFound"] == 1:  # only accept alternative if there's only one match (otherwise, not known which)
+                    # odds are good this is what was cited.
+                    logger.debug(f"Document ID {doc_id} not in Solr.  The correct ID seems to be {alt_id}. Using that instead!")
+                    ret_val = alt_id
+            elif doc_id[-1].isalpha():
+                # try without page variant?
+                alt_id = doc_id[:-1]
+                results = solrcon.search(q = f"art_id:{alt_id}")
+                if results.raw_response["response"]["numFound"] == 1:  # only accept alternative if there's only one match (otherwise, not known which)
+                    # odds are good this is what was cited.
+                    logger.debug(f"Document ID {doc_id} not in Solr.  The correct ID seems to be {alt_id}. Using that instead!")
+                    ret_val = alt_id
+            else:
+                # match volume variant?
+                alt_id = parsed_id.alt_wild_standard
+                results = solrcon.search(q = f"art_id:{alt_id}")
+                count = results.raw_response["response"]["numFound"]
+                if count == 1:  # only accept alternative if there's only one match (otherwise, not known which)
+                    # odds are good this is what was cited.
+                    log_everywhere_if(verbose, "info", f"Document ID {doc_id} not in Solr.  The correct ID seems to be {results.docs[0]['art_id']}. Using that instead!")
+                    ret_val = results.docs[0]["art_id"]
+                elif count > 1:
+                    log_everywhere_if(verbose, "warning", f"Found {count} matches for volume variant (issue). Using the first.")
+                    ret_val = results.docs[0]["art_id"]
+                else:
+                    log_everywhere_if(verbose, "warning", f"Document ID {doc_id} not in Solr.  No alternative ID found.")
+    except Exception as e:
+        logger.warning(e)
+
+    return results, ret_val
+    
 def non_empty_string(strval): 
     try:
         return strval if strval != "" else None
@@ -434,7 +493,7 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents, in
     new_rec = {
                 "id": artInfo.art_id,                                         # important =  note this is unique id for every reference
                 "art_id" : artInfo.art_id,                                    # important
-                "art_embargo" : artInfo.embargoed,                              # limit display if true (e.g., IJPOpen removed articles)
+                "art_embargo" : artInfo.embargoed,                            # limit display if true (e.g., IJPOpen removed articles)
                 "art_embargotype" : artInfo.embargotype,
                 "title" : artInfo.art_title,                                  # important
                 "title_str" : title_str, # remove all punct, this is only used for sorting
@@ -562,7 +621,7 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents, in
                 "bib_authors" : artInfo.bib_authors,
                 "bib_title" : artInfo.bib_title,
                 "bib_journaltitle" : artInfo.bib_journaltitle,
-                "bib_rx" : artInfo.bib_rx,
+                "bib_rx" : artInfo.art_bib_rxlink_list,
                 "art_level" : 1,
                 "meta_marked_corrections" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//cgrp[contains(@type,'era')]", default_return=None), # multi,
                 #"art_para" : parasxml, 
@@ -664,7 +723,7 @@ def process_info_for_author_core(pepxml, artInfo, solrAuthor, verbose=None):
             authorRole = author.attrib.get('role', None)
             authorRoleOther = author.attrib.get('other', None)
             authorXML = opasxmllib.xml_elem_or_str_to_xmlstring(author)
-            authorDocid = artInfo.art_id + "." + ''.join(e for e in authorID if e.isalnum())
+            authorDocid = artInfo.art_id + "." + ''.join(autid for autid in authorID if autid.isalnum())
             authorBio = opasxmllib.xml_xpath_return_textsingleton(author, "nbio")
             try:
                 authorAffID = author.attrib['affid']
@@ -977,7 +1036,7 @@ def add_to_tracker_table(ocd, art_id, verbose=None):
     False
     """
     ret_val = False
-    caller_name = "add_to_tracker_table"
+    # caller_name = "add_to_tracker_table"
     insert_if_not_exists = r"""INSERT
                                INTO article_tracker (art_id)
                                values (
@@ -1048,7 +1107,7 @@ def garbage_collect_stat(ocd):
     Clean out any records that aren't in articles.
     """
     ret_val = None
-    procname = "garbage_collect_stat"
+    # procname = "garbage_collect_stat"
     sqlActionQry = "delete from artstat where artstat.articleID not in (select art_id from api_articles)"
     try:
         # commit automatically handled by do_action_query
@@ -1126,9 +1185,9 @@ def add_to_artstat_table(ocd, artInfo, verbose=None):
     query_params = {
                        "art_id":artInfo.art_id,
                        "art_citations_count":artInfo.art_citations_count, 
-                       "ref_count":artInfo.ref_count, 
-                       "bib_rx": len(artInfo.bib_rx),                     # reflinks
-                       "art_pgrx_count":artInfo.art_pgrx_count,     # pgxjumps
+                       "ref_count":artInfo.ref_count,                   # number of references
+                       "bib_rx": len(artInfo.art_bib_rxlink_list),      # number of linked references
+                       "art_pgrx_count":artInfo.art_pgrx_count,         # pgxjumps
                        "figcount":artInfo.art_figcount,
                        "art_poems_count":artInfo.art_poems_count,
                        "art_tblcount":artInfo.art_tblcount,

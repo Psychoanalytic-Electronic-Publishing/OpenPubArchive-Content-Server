@@ -21,15 +21,14 @@ class TestDatabaseWhoCitedThis(unittest.TestCase):
     """   
 
     def test_search_who_cited_this_1a(self):
-        full_URL = base_plus_endpoint_encoded('/v2/Database/WhoCitedThis/?citedid=AOP.016.0171A')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/WhoCitedThis/?citedid=AOP.016.0171A') # IJP.085.0897A
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
         # print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
-        print (f"Count: {response_info['count']}")
-        assert(response_info["count"] == 2)
+        assert response_info["count"] == 2, response_info["count"] 
 
     def test_search_who_cited_this_1b(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/WhoCitedThis/?citedid=IJP.078.1071A')

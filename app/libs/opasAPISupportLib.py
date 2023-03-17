@@ -55,16 +55,12 @@ import time
 # used this name because later we needed to refer to the module, and datetime is also the name
 #  of the import from datetime.
 import datetime as dtime 
-# import datetime
 from datetime import datetime
 from datetime import datetime as dt # to avoid python's confusion with datetime.timedelta
-# from typing import Union, Optional, Tuple, List
-# from enum import Enum
-# import pymysql
-# import s3fs # read s3 files just like local files (with keys)
 
 import opasConfig
 import localsecrets
+import opasXMLHelper as opasxmllib
 
 import opasFileSupport
 from lxml import etree
@@ -72,9 +68,6 @@ parser = etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, 
 
 import PEPGlossaryRecognitionEngine
 glossEngine = PEPGlossaryRecognitionEngine.GlossaryRecognitionEngine(gather=False)
-
-# from configLib.opasCoreConfig import solr_docs2, solr_authors2, solr_gloss2
-# from configLib.opasCoreConfig import EXTENDED_CORES
 
 # Removed support for Py2, only Py3 supported now
 pyVer = 3
@@ -794,8 +787,6 @@ def documents_get_document_from_file(document_id,
     caller_name = "documents_get_document_from_file"
     ret_val = None
     # document_list = None
-    import opasXMLHelper as opasxmllib
-    # from opasSolrLoadSupport import ArticleInfo
     
     # new document ID object provides precision and case normalization
     document_id_obj = opasgenlib.DocumentID(document_id)

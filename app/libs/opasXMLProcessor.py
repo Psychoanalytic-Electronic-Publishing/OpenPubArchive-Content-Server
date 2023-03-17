@@ -750,7 +750,21 @@ def update_artinfo_in_instance(parsed_xml,
     except Exception as e:
         print (e)
     
-    if artInfo.art_id is not None: xml_artinfo.set("id", artInfo.art_id)
+    art_id_from_instance = xml_artinfo.get("id")
+    if art_id_from_instance is not None:
+        # check if it agrees
+        if art_id_from_instance != artInfo.art_id_from_filename:
+            log_everywhere_if(1, "error", f"filename {artInfo.art_id_from_filename} and instance {art_id_from_instance} art_id disagree")
+            # copy filename art_id to instance
+            xml_artinfo.set("id", artInfo.art_id)
+    else:
+        if artInfo.art_id is not None:
+            xml_artinfo.set("id", artInfo.art_id)
+        elif artInfo.art_id_from_filename is not None:
+            xml_artinfo.set("id", artInfo.art_id_from_filename)
+        else:
+            log_everywhere_if(1, "severe", f"No art_id to write!")    
+    
     if artInfo.art_type is not None: xml_artinfo.set("arttype", artInfo.art_type)
     if artInfo.start_sectname is not None: xml_artinfo.set("newsecnm", artInfo.start_sectname)
     if artInfo.start_sectlevel is not None: xml_artinfo.set("newseclevel", artInfo.start_sectlevel)

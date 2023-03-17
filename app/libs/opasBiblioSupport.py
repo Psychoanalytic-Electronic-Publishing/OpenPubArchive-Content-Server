@@ -467,16 +467,17 @@ class BiblioEntry(models.Biblioxml):
         self.ref_rxp = opasxmllib.xml_get_element_attr(self.parsed_ref, "rxp", default_return=None)
         self.ref_rxp_confidence = opasxmllib.xml_get_element_attr(self.parsed_ref, "rxps", default_return=None)
         if self.ref_rxp and not self.ref_rx:
-            self.ref_rx = self.ref_rxp
-            if not self.ref_rxp_confidence:
-                self.ref_rx_confidence = opasConfig.RX_CONFIDENCE_PROBABLE
-            else:
-                self.ref_rx_confidence = round(opasgenlib.str_to_float(self.ref_rxp_confidence, default=opasConfig.RX_CONFIDENCE_PROBABLE) / 100, 2)
-            self.ref_link_source = opasConfig.RX_LINK_SOURCE_DOCUMENT_RXP
-            self.ref_rxp = None
-            self.ref_rxp_confidence = None
-            self.link_updated = True
-            self.ref_in_pep = True
+            if ocd.article_exists(self.ref_rxp):
+                self.ref_rx = self.ref_rxp
+                if not self.ref_rxp_confidence:
+                    self.ref_rx_confidence = opasConfig.RX_CONFIDENCE_PROBABLE
+                else:
+                    self.ref_rx_confidence = round(opasgenlib.str_to_float(self.ref_rxp_confidence, default=opasConfig.RX_CONFIDENCE_PROBABLE) / 100, 2)
+                self.ref_link_source = opasConfig.RX_LINK_SOURCE_DOCUMENT_RXP
+                self.ref_rxp = None
+                self.ref_rxp_confidence = None
+                self.link_updated = True
+                self.ref_in_pep = True
 
         if not self.ref_pgrg:
             self.ref_pgrg = opasxmllib.xml_get_subelement_textsingleton(self.parsed_ref, "pp")

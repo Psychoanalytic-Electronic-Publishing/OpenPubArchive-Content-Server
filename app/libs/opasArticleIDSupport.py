@@ -5,6 +5,7 @@ __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 
 import re
+import os
 import logging
 logger = logging.getLogger(__name__)
 from loggingDebugStream import log_everywhere_if
@@ -113,6 +114,34 @@ def parse_issue_code(issue_code: str, source_code=None, vol=None):
             ret_val = str(issue_code)
         else:
             ret_val = issue_code
+    return ret_val    
+
+def parse_artid_from_filename(filename):
+    """    
+        >>> nm = "RPP-CS.019A.0072A(bKBD3).xml"
+        >>> parse_artid_from_filename(nm)
+        'RPP-CS.019A.0072A'
+        >>> nm = r"X:\AWS_S3\AWS PEP-Web-Live-Data\_PEPArchive\RPP-CS\019.2017\RPP-CS.019A.0027A(bEXP_ARCH1).xml"
+        >>> parse_artid_from_filename(nm)
+        'RPP-CS.019A.0027A'
+        
+        >>> nm = r"X:/AWS_S3/AWS PEP-Web-Live-Data/_PEPArchive/RPP-CS/019.2017/RPP-CS.019A.9027A(bKBD3).xml"
+        >>> parse_artid_from_filename(nm)
+        'RPP-CS.019A.9027A'
+    """
+    ret_val = None
+    try:
+        if filename is not None:
+            base = os.path.basename(filename)
+            artID = os.path.splitext(base)[0]
+            m = re.match(r"([^ ]*).*\(.*\)", artID)
+            artID = m.group(1)
+            artID = artID.upper()
+            artID = artID.replace(".EMBARGOED", "")
+            ret_val = artID
+    except Exception as e:
+        log_everywhere_if(1, "warning", f"Error parsing artid from filename {filename} - {e}")
+
     return ret_val    
 
 class ArticleID(BaseModel):
@@ -322,15 +351,17 @@ class ArticleID(BaseModel):
                 # there's no alpha issue code in the standard one. Try adding one:
                 if altVolSuffix != "" and altVolSuffix != "?" and not self.art_vol_str[-1].isalpha():
                     self.alt_standard = f"{self.src_code}.{self.art_vol_str}{altVolSuffix}"
-                else: # use 1 character wildcard
-                    altVolWildSuffix = "?"
-                    self.alt_wild_standard = f"{self.src_code}.{self.art_vol_str}{altVolSuffix}"
             
+            if self.alt_wild_standard is None and not self.art_vol_str[-1].isalpha():
+                altVolWildSuffix = "?"
+                self.alt_wild_standard = f"{self.src_code}.{self.art_vol_str}{altVolWildSuffix}"
+                
             if volumeWildcardOverride == '':
                 if pageWildcard == '':
                     self.standardized += f".{self.special_section_prefix}{self.roman_prefix}{self.art_pgstart}{self.page_suffix}"
                     self.alt_standard += f".{self.special_section_prefix}{self.roman_prefix}{self.art_pgstart}{self.page_suffix}"
-                    self.alt_wild_standard += f".{self.special_section_prefix}{self.roman_prefix}{self.art_pgstart}{self.page_suffix}"
+                    if self.alt_wild_standard is not None:
+                        self.alt_wild_standard += f".{self.special_section_prefix}{self.roman_prefix}{self.art_pgstart}{self.page_suffix}"
                     #self.standardizedPlusIssueCode += f".{self.roman_prefix}{self.pageNbrStr}{self.pageSuffix}"
                 else:
                     self.standardized += f".*"
@@ -360,7 +391,12 @@ class ArticleInfo(BaseModel):
     Used to populate the MySQL table api_articles for relational type querying
        and the Solr core pepwebdocs for full-text searching (and the majority of
        client searches.
+
+    >>> file = r"X:\AWS_S3\AWS PEP-Web-Live-Data\_PEPArchive\Psyche\066.2012\PSYCHE.066.0268A(bKBD3).xml"
+    >>> a = ArticleInfo(art_id="PSYCHE.066.0268A", fullfilename=file)
        
+
+
     >>> a = ArticleInfo(art_id="MPSA.043.0117A")
     >>> print (a.article_id_dict["art_id"])
     MPSA.043.0117A
@@ -377,6 +413,7 @@ class ArticleInfo(BaseModel):
 
     # other info, mostly optional
     art_id_from_filename: Optional[str]   # Should match key!!
+    art_id_with_volume_letter: Optional[str]
     art_auth_citation: Optional[str]
     art_auth_mast: Optional[str] = Field(None, title="Author mast, for Solr")
     art_auth_mast_list: list = Field([], title="List of author names format for masts, for Solr")
@@ -434,7 +471,7 @@ class ArticleInfo(BaseModel):
     art_auth_citation_list: list = Field([], title="List of authors cited")
     bib_authors: Optional[str]
     bib_title: Optional[str]
-    bib_rx: Optional[str]
+    art_bib_rxlink_list: list = Field([], title="")
     bk_info_xml: Optional[str]
     bk_next_id: Optional[str]
     bk_publisher: Optional[str]
@@ -472,7 +509,6 @@ class ArticleInfo(BaseModel):
     start_sectlevel: Optional[str]
     verbose: Optional[bool]
     is_splitbook: Optional[bool]
-    bib_rx: list = Field([], title="")
     bib_journaltitle: Optional[str]
     issue_id_str: Optional[str]
     # stat fields for artstat
@@ -530,6 +566,7 @@ class ArticleInfo(BaseModel):
         if not basic_art_info.is_ArticleID:
             if filename_base is not None:
                 basic_art_info = ArticleID(art_id=filename_base) # use base filename for implied artinfo
+                self.art_id_from_filename = basic_art_info.art_id
         
         if not basic_art_info.is_ArticleID: # separate from above since status can change
             file_contents_art_id = opasxmllib.xml_xpath_return_textsingleton(parsed_xml, "//artinfo/@id", None)
@@ -582,6 +619,10 @@ class ArticleInfo(BaseModel):
             self.art_vol_int = basic_art_info.art_vol_int
             self.art_vol_str = basic_art_info.art_vol_str 
             self.art_vol_suffix = basic_art_info.art_vol_suffix
+            if self.art_vol_suffix:
+                self.art_id_with_volume_letter = f"{basic_art_info.src_code}.{basic_art_info.art_vol_str}"
+                self.art_id_with_volume_letter += f".{basic_art_info.special_section_prefix}{basic_art_info.roman_prefix}{basic_art_info.art_pgstart}{basic_art_info.page_suffix}"
+                
             # m = re.match("(?P<volint>[0-9]+)(?P<volsuffix>[a-zA-Z])", self.art_vol)
             #m = re.match("(?P<volint>[0-9]+)(?P<volsuffix>[a-zA-Z])?(\s*\-\s*)?((?P<vol2int>[0-9]+)(?P<vol2suffix>[a-zA-Z])?)?", str(self.art_vol_str))
             #if m is not None:
@@ -602,7 +643,6 @@ class ArticleInfo(BaseModel):
             raise ValueError(f"Fatal Error: {filename_base} is improperly named and does not have a valid article ID: {basic_art_info.dict()}")
         
         self.article_id_dict = basic_art_info.dict()
-        #self.art_id_from_filename = art_id # file name will always already be uppercase (from caller)
         self.bk_subdoc = None
         self.bk_seriestoc = None
         self.verbose = verbose
@@ -615,6 +655,7 @@ class ArticleInfo(BaseModel):
         self.filedatetime = ""
         self.filename = filename_base # filename without path
         self.fullfilename = fullfilename
+        self.art_id_from_filename = parse_artid_from_filename(self.filename)
 
         try: #  lookup source in db
             if self.src_code in ["ZBK", "IPL", "NLP"]:
@@ -1042,14 +1083,14 @@ class ArticleInfo(BaseModel):
     
             refs = parsed_xml.xpath("/pepkbd3//be")
             self.bib_authors = []
-            self.bib_rx = []
+            self.art_bib_rxlink_list = []
             self.bib_title = []
             self.bib_journaltitle = []
             
             for x in refs:
                 try:
                     if x.attrib["rx"] is not None:
-                        self.bib_rx.append(x.attrib["rx"])
+                        self.art_bib_rxlink_list.append(x.attrib["rx"])
                 except:
                     pass
                 journal = x.find("j")
@@ -1171,7 +1212,7 @@ class JournalVolIssue(BaseModel):
   
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        JOURNAL_VOL_RX = "(?P<source_code>%s)(\s+|\.)?(?P<vol_numeric>[0-9]{1,4})?(?P<issue_letter>[A-z]?)(\s+|\.)?(?P<issue_nbr>[0-9]{1-2})?" % JOURNAL_CODES
+        JOURNAL_VOL_RX = "(?P<source_code>%s)(\s+|\.)?(?P<vol_numeric>[0-9]{1,4})?(?P<issue_letter>[A-z]?)(\s+|\.)?(?P<issue_nbr>[0-9]{1-2})?" % opasConfig.JOURNAL_CODES
         loose_journal_rxc = re.compile(JOURNAL_VOL_RX)        
         m = loose_journal_rxc.match(self.journalSpec)
         if m is not None:

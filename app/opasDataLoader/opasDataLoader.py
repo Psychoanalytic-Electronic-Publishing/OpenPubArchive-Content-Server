@@ -131,7 +131,7 @@ from optparse import OptionParser
 
 import lxml
 from lxml import etree
-import mysql.connector
+# import mysql.connector
 
 import configLib.opasCoreConfig
 from configLib.opasCoreConfig import solr_authors2, solr_gloss2
@@ -784,12 +784,13 @@ def main():
                 output_file_newer_than_solr = False
                 smart_file_rebuild = False
                 base = n.basename
-                artID = os.path.splitext(base)[0]
-                m = re.match(r"([^ ]*).*\(.*\)", artID)
-                artID = m.group(1)
-                artID = artID.upper()
-                artID = artID.replace(".EMBARGOED", "")
-                m = re.match(r"(.*?)\.", artID)
+                art_id_from_filename = opasArticleIDSupport.parse_artid_from_filename(fullfilename)
+                #artID = os.path.splitext(base)[0]
+                #m = re.match(r"([^ ]*).*\(.*\)", artID)
+                #artID = m.group(1)
+                #artID = artID.upper()
+                #artID = artID.replace(".EMBARGOED", "")
+                #m = re.match(r"(.*?)\.", artID)
                 
                 try:
                     inputfilename = n.fileinfo["name"]
@@ -807,14 +808,14 @@ def main():
                 file_status_tuple = output_file_needs_rebuilding(inputfilespec=n,
                                                                  inputfilename=inputfilename,
                                                                  outputfilename=outputfilename,
-                                                                 art_id=artID)
+                                                                 art_id=art_id_from_filename)
 
                 input_file_was_updated, infile_exists, outfile_exists, both_same = file_status_tuple
                 
                 if outfile_exists and not input_file_was_updated and not options.forceRebuildAllFiles and not options.forceReloadAllFiles:
                     timestamp = n.timestamp_str
                     output_file_newer_than_solr = file_needs_reloading_to_solr(solrcore=solr_docs2,
-                                                                               art_id=artID,
+                                                                               art_id=art_id_from_filename,
                                                                                timestamp_str=timestamp,
                                                                                filename=outputfilename,
                                                                                output_build=selected_output_build)
@@ -841,7 +842,7 @@ def main():
                     #  continuation time period
 
                     insert_date = datetime.today() - dtime.timedelta(days = opasConfig.CONTINUE_PROCESSING_DAYS)
-                    if file_was_loaded_to_solr_after(solr_docs2, insert_date, art_id=artID):
+                    if file_was_loaded_to_solr_after(solr_docs2, insert_date, art_id=art_id_from_filename):
                         msg = f"Examining file #%s of %s: %s (%s bytes). **Already processed.**" % (processed_files_count + skipped_files, files_found, n.basename, n.filesize)
                         log_everywhere_if(options.display_verbose, level="info", msg=msg)
                         skipped_files += 1
@@ -877,7 +878,8 @@ def main():
                     parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True)
                     parsed_xml = etree.fromstring(opasxmllib.remove_encoding_string(fileXMLContents), parser)
                     # save common document (article) field values into artInfo instance for both databases
-                    artInfo = opasArticleIDSupport.ArticleInfo(parsed_xml=parsed_xml, art_id=artID, filename_base=base, fullfilename=input_filespec, logger=logger)
+                    artInfo = opasArticleIDSupport.ArticleInfo(parsed_xml=parsed_xml, art_id=art_id_from_filename, filename_base=base, fullfilename=input_filespec, logger=logger)
+                    # check if artInfo artID matches the one from the filename
                     artInfo.filedatetime = input_fileinfo.timestamp_str
                     # artInfo.filename = base # now done in articleInfo
                     # get artinfo per filename, to see if this is an issue coded with volume suffix
@@ -939,7 +941,7 @@ def main():
                 # ##########################################################################################################
                 # Special IJPOpen Version Processing Part 3 (Post conversion)
                 # Check if it's removed (need to check database, not variable because it may be a load, not a build)
-                if opasDataLoaderIJPOpenSupport.is_removed_version(ocd, art_id=artID):
+                if opasDataLoaderIJPOpenSupport.is_removed_version(ocd, art_id=art_id_from_filename):
                     print ("\t...This version has been archived/removed.  No need to load to Solr.")
                     skipped_files += 1
                     archived_files_not_loaded += 1
@@ -981,7 +983,7 @@ def main():
                 # save common document (article) field values into artInfo instance for both databases
                 try:
                     artInfo = opasArticleIDSupport.ArticleInfo(parsed_xml=parsed_xml,
-                                                               art_id=artID,
+                                                               art_id=art_id_from_filename,
                                                                filename_base=base,
                                                                fullfilename=final_xml_filename,
                                                                logger=logger)
@@ -997,12 +999,12 @@ def main():
                 
                 if artInfo.art_orig_rx is None: # fix for the original article 2023-03-01
                     # see if any known article has this article (artID) listed as a translation
-                    translationSet, count = opasPySolrLib.quick_docmeta_docsearch(q_str=f"art_origrx:{artID}")
+                    translationSet, count = opasPySolrLib.quick_docmeta_docsearch(q_str=f"art_origrx:{art_id_from_filename}")
                     if translationSet is not None:
                         # add the article's ID to it's original RX so it can use its IDs to see its translations
                         msg = "\t...This article has translations"
                         log_everywhere_if(options.display_verbose , level="info", msg=msg)
-                        artInfo.art_orig_rx = artID
+                        artInfo.art_orig_rx = art_id_from_filename
 
                 if artInfo.art_qual is None:
                     # check if there's any new articles related to this one

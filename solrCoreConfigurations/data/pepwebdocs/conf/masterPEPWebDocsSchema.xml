@@ -286,9 +286,9 @@
   <field name="art_sourcecode_active" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>  #2022-01-20
   <field name="art_sourcetitleabbr" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
   <field name="art_sourcetitlefull" type="text_simple" indexed="true" stored="true" multiValued="false"/>
-  <field name="art_sourcetitlefull_str" type="string_lc" indexed="true" uninvertible="true" stored="false" multiValued="false"/>  # for sorting
+  <field name="art_sourcetitlefull_str" type="string_lc" indexed="true" uninvertible="true" stored="true" multiValued="false"/>  # for sorting
   <!--<copyField source="art_sourcetitlefull" dest="art_sourcetitlefull_str"/> -->
-  
+
   <!--<field name="art_sourcetitle_fulltext" type="text_simple" indexed="true" stored="true" multiValued="false"/>-->
   <!--<copyField source="art_sourcetitlefull" dest="art_sourcetitle_fulltext"/>-->
   <field name="art_doi" type="string_ci" indexed="true" stored="true" multiValued="false"/>
@@ -346,7 +346,7 @@
   <field name="art_authors_mast_list" type="string_ci" indexed="true" stored="true" multiValued="true"/>
   <!-- 2021-05-19 string string search exact to verify/search by firstname lastname individually, docvalues can be returned -->
   <field name="art_authors_mast_list_strings" type="strings" indexed="false" stored="false" docValues="true" multiValued="true" sortMissingLast="true"/>
-  <field name="art_authors_mast_list_strings_sql" type="string_sql" indexed="true" stored="true" multiValued="true"/>
+  <field name="art_authors_mast_list_strings_sql" type="string_sql" indexed="true" stored="false" multiValued="true"/>
   <copyField source="art_authors_mast_list" dest="art_authors_mast_list_strings_sql"/>
   <copyField source="art_authors_mast" dest="art_authors_mast_text"/>
 
@@ -355,11 +355,11 @@
       art_authors_ids_str compare to art_authors_mast, though the former is from the attribute author_id
       -->
   <field name="art_authors_ids" type="string_ci" indexed="true" stored="true" multiValued="true"/>
-  <field name="art_authors_ids_lc" type="string_lc" indexed="true" stored="true" multiValued="true"/>
+  <field name="art_authors_ids_lc" type="string_lc" indexed="true" stored="false" multiValued="true"/> <!--I don't think this is used, early development trials-->
   <field name="art_authors_ids_str"  type="string_ci" indexed="true" stored="true" multiValued="false"/>
-  <field name="art_authors_ids_strings_sql" type="string_sql" indexed="true" stored="true" multiValued="true"/>
-  <copyField source="art_authors_ids" dest="art_authors_ids_lc"/>
+  <field name="art_authors_ids_strings_sql" type="string_sql" indexed="true" stored="true" multiValued="true"/> <!--I don't think its needed, just use the ids ver -->
   <copyField source="art_authors_ids" dest="art_authors_ids_strings_sql"/>
+  <copyField source="art_authors_ids" dest="art_authors_ids_lc"/> <!--I don't think this is used-->
   
   <!--Added 20200410 to allow sort by authors-->
   <field name="art_authors_citation" type="text_simple" indexed="true" stored="true" multiValued="false"/>
@@ -367,11 +367,9 @@
   <field name="art_authors_citation_list" type="string_ci" indexed="true" stored="true" multiValued="true"/>
   <field name="art_authors_citation_list_strings" type="strings" indexed="true" stored="true" multiValued="true"/>
   <field name="art_authors_citation_list_strings_sql" type="string_sql" indexed="true" stored="true" multiValued="true"/>
-  <!--<field name="art_authors_citation_list_ngrm" type="text_ngrm" indexed="true" stored="false" multiValued="true"/>-->
   <copyField source="art_authors_citation" dest="art_authors_citation_str"/> # for sorting
   <copyField source="art_authors_citation_list" dest="art_authors_citation_list_strings"/> # for sorting
   <copyField source="art_authors_citation_list" dest="art_authors_citation_list_strings_sql"/>
-  <!--<copyField source="art_authors_citation_list" dest="art_authors_citation_list_ngrm"/> -->
 
   <!-- Good for searching, separated author names, but full text like art_authors_citation (where they are not separated)-->
   <field name="art_authors_text" type="text_simple" indexed="true" stored="True" multiValued="true"/> <!-- doesn't need to be stored, but useful to see -->
@@ -380,17 +378,14 @@
   <!--try to improve author search for single names and full names-->
   <!--Many of these are Temporary. fpr trying different search results.  #TODO-->
   <field name="art_authors_unlisted" type="string_ci" indexed="true" stored="true" multiValued="true"/>
-  <field name="art_authors_unlisted_list_strings_sql" type="string_sql" indexed="true" stored="true" multiValued="true"/>
+  <field name="art_authors_unlisted_list_strings_sql" type="string_sql" indexed="true" stored="false" multiValued="true"/>
   <copyField source="art_authors_unlisted" dest="art_authors_unlisted_list_strings_sql"/>
   
   <field name="art_authors_xml" type="text_simple" indexed="true" stored="true" multiValued="true"/>
   <!--Added 7/21 to facilitate smartsearch-->
-  <field name="art_authors_lastnames" type="string_ci" indexed="true" stored="false" multiValued="true"/>
+  <field name="art_authors_lastnames" type="string_ci" indexed="true" stored="true" multiValued="true"/>
   <!--<field name="art_authors_ngrm" type="text_ngrm" indexed="true" stored="false" multiValued="true"/>-->
   <!--<field name="art_authors_mast_ngrm" type="text_ngrm" indexed="true" stored="false" multiValued="true"/>-->
-
-  <!--<copyField source="art_authors" dest="art_authors_ngrm"/>-->
-  <!--<copyField source="art_authors_mast" dest="art_authors_mast_ngrm"/>-->
 
   <!-- by paras-->
   <!--<field name="art_body_xml" type="text_simple" indexed="true" stored="false" multiValued="false"/>-->
@@ -426,16 +421,16 @@
   <!-- author data -->
   <field name="author_aff_xml" type="text_general" indexed="true" stored="true" multiValued="true"/>
   <field name="author_bio_xml" type="text_general" indexed="true" stored="true" multiValued="true"/>
-  <!-- This next line doesn't work! Load via python -->
-  <!-- <copyfield source="author_name_str" dest="authors"/> -->
 
   <!-- Biblio fields -->
   <!-- added docValues for faceting (also need to load in document database)-->
-  <field name="bib_authors" type="string" indexed="true" uninvertible="true" stored="false" multiValued="true" docValues="false"/> 
-  <field name="bib_rx" type="string" indexed="true" uninvertible="true" stored="false" multiValued="true" docValues="false"/> 
-  <field name="bib_title" type="string" indexed="true" uninvertible="true" stored="false" multiValued="true" docValues="false"/> 
-  <field name="bib_journaltitle" type="string" indexed="true" uninvertible="true" stored="false" multiValued="true" docValues="false"/> 
-  <field name="references_xml" type="text_general" indexed="true" stored="false" multiValued="true"/>
+  <field name="bib_authors" type="string" indexed="true" uninvertible="true" stored="true" multiValued="true" docValues="false"/> 
+  
+  <!--List of reference links (rx IDs in the instance)-->
+  <field name="bib_rx" type="string" indexed="true" uninvertible="true" stored="true" multiValued="true" docValues="false"/> 
+  <field name="bib_title" type="string" indexed="true" uninvertible="true" stored="true" multiValued="true" docValues="false"/> 
+  <field name="bib_journaltitle" type="string" indexed="true" uninvertible="true" stored="true" multiValued="true" docValues="false"/> 
+  <field name="references_xml" type="text_general" indexed="true" stored="true" multiValued="true"/>
   <field name="references_xml_syn" type="text_general_syn" indexed="true" stored="false" multiValued="true"/>
   <copyField source="references_xml" dest="references_xml_syn"/>
 
@@ -484,7 +479,7 @@
        Alternatively, this could be done by the AuthServer if the rules, now in the loader, were put there.
        Not sure whether we'll use this but for now, it's in the Schema for testing.
   -->
-  <field name="art_product_key" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
+  <field name="art_product_key" type="string" indexed="false" stored="true" multiValued="false" docValues="true"/>
   
   <field name="headings_xml" type="text_simple" indexed="true" stored="true" multiValued="true"/>
   <!-- Revision info for document; #TODO change to string perhaps and remove indexing -->
@@ -533,18 +528,17 @@
   <!--Store for debug only-->
   <field name="freuds_italics" type="string_ci" indexed="true" stored="false" multiValued="true"/>
 
-  
+ 
   <!--These are not displayed directly.  Search only. -->
   <!-- Special term fields -->
   
   <!-- terms_xml may not be needed in the long-term, only good for search -->
-  <field name="terms_xml" type="text_simple" indexed="true" stored="false" multiValued="true"/>
+  <field name="terms_xml" type="text_simple" indexed="true" stored="true" multiValued="true"/> <!--Not currently used for anything-->
   <!-- Highlighted, e.g., italicized and otherwise called out terms -->
-  <field name="terms_highlighted" type="string" indexed="true" uninvertible="true" stored="false" multiValued="true" docValues="false"/> 
-  <field name="dialogs_spkr"  type="string" indexed="true" stored="false" multiValued="true"/>
-  <field name="panels_spkr"  type="string" indexed="true" stored="false" multiValued="true"/>
-  <field name="poems_src"  type="string" indexed="true" stored="false" multiValued="true"/>
-
+  <field name="terms_highlighted" type="string" indexed="true" uninvertible="true" stored="true" multiValued="true" docValues="false"/> 
+  <field name="dialogs_spkr"  type="string" indexed="true" stored="true" multiValued="true"/>
+  <field name="panels_spkr"  type="string" indexed="true" stored="true" multiValued="true"/>
+  <field name="poems_src"  type="string" indexed="true" stored="true" multiValued="true"/>
 
   <!-- set default op to AND NO LONGER SUPPORTED.  Do this with parameter q.op -->
   <!--<solrQueryParser defaultOperator="AND"/>-->
@@ -573,6 +567,8 @@
   <!--subdocument fields -->
   <field name="para" type="text_general" indexed="true" stored="true" multiValued="false"/>
   <field name="para_syn" type="text_general_syn" indexed="true" stored="false" multiValued="false"/>
+  <copyField source="para" dest="para_syn"/>
+
   <!--Store document id for possible non-Solr syntax back references to document-->
   <field name="para_art_id" type="string" indexed="true" stored="true" multiValued="false"/>
 
@@ -581,7 +577,6 @@
   <!--<field name="para_lgrx" type="string" indexed="false" stored="true" multiValued="true"/>-->
   <field name="para_lgrx" type="string" indexed="true" stored="true" multiValued="true" docValues="true"/>
   <field name="parent_tag" type="string" indexed="true" stored="true"/>
-  <copyField source="para" dest="para_syn"/>
   
   <!--<field name="level" type="pint" indexed="true" stored="false" docValues="true"/>-->
 

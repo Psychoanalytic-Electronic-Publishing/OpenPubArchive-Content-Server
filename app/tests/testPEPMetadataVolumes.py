@@ -52,7 +52,9 @@ class TestMetadataVolumes(unittest.TestCase):
         print (f"Video Source Count: {r['volumeList']['responseInfo']['fullCount']}")
         assert(r['volumeList']['responseInfo']['fullCount'] == unitTestConfig.VOL_COUNT_VIDEOS)
 
-    def test_0_meta_volumes_api_ZBK(self): 
+    def test_0_meta_volumes_api_ZBK(self):
+        # ---------------------------------------------------------------------------------------
+        # Reminder: Requires load of offsite ZBKs to pass
         # ---------------------------------------------------------------------------------------
         full_URL = base_plus_endpoint_encoded('/v2/Metadata/Volumes/?sourcecode=ZBK')
         response = requests.get(full_URL, headers=headers)

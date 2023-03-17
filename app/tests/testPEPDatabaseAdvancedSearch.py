@@ -14,6 +14,18 @@ headers = get_headers_not_logged_in()
 
 class TestDatabaseAdvancedSearch(unittest.TestCase):
     
+    def test_search_author_journalcode_and_citecount_with_stat_precheck(self):
+        # Test moved here for early check to see if stat has been run
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?author=Bollas&sourcecode=AOP&citecount=1 IN 10')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        r = response.json()
+        #print (r)
+        response_info = r["documentList"]["responseInfo"]
+        response_set = r["documentList"]["responseSet"] 
+        assert response_info["count"] == 2, response_info["count"] 
+        print (response_set[0])
+
     def test_search_advanced1(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/AdvancedSearch/?advanced_query=art_type:(SUP OR TOC)')
         response = requests.post(full_URL, headers=headers)

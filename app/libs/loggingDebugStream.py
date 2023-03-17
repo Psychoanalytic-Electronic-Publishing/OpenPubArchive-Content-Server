@@ -16,7 +16,7 @@ def log_everywhere_if(condition, level, msg):
     elif level == "warning":
         logger.warning(msg)
         level_int = 30
-    elif level == "error":
+    elif level == "error" or level == "severe":
         logger.error(msg)
         level_int = 40
     elif level == "fatal":

@@ -5,7 +5,9 @@
 # yes, in my Solr code I'm caught between two worlds of snake_case and camelCase.
 
 """ 
-OPAS - opasSolrLoadSupport  
+OPAS - opasDataLoaderIJPOpenSupport
+
+Library support for specific IJPOpen import processing
 
 """
 import sys
