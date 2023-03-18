@@ -332,7 +332,7 @@ g_transformer.set_transformer(opasConfig.TRANSFORMER_XMLTOHTML_EXCERPT, opasConf
 g_transformer.set_transformer(opasConfig.XSLT_XMLTOHTML_GLOSSARY_EXCERPT, opasConfig.XSLT_XMLTOHTML_GLOSSARY_EXCERPT)
 #g_transformer.set_transformer("testtransform", "testtransform.xslt")
 
-ENCODER_MATCHER = re.compile("\<\?xml\s+version=[\'\"]1.0[\'\"]\s+encoding=[\'\"](UTF-?8|ISO-?8859-?1?)[\'\"]\s*\?\>\n", flags=re.IGNORECASE)  # TODO - Move to module globals to optimize
+ENCODER_MATCHER = re.compile("\<\?xml\s+version=[\'\"]1.0[\'\"]\s+encoding=[\'\"](UTF-?8|ISO-?8859-?1?)[\'\"].*?(\?\>)\n", flags=re.IGNORECASE)  # TODO - Move to module globals to optimize
 
 # -------------------------------------------------------------------------------------------------------
 
