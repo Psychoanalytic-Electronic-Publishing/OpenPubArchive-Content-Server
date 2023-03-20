@@ -281,8 +281,11 @@ def pgx_add_rx_jump_via_biblio_entry(parsed_xml, ocd, artInfo, split_book_data=N
                                 pgx.attrib["type"] = pgxlink_type
                                 ret_val += 1
                             else:
-                                # strip the tag (from the compiled pgx)?
-                                pgx.getparent().remove(pgx)
+                                # neutralize the pgx tag but keep the info
+                                pgx.tag = "cgrp"
+                                pgx.attrib["name"] = "pgx"
+                                pgx.attrib["type"] = "placeholder"
+                                # retain r attribute if there is one (now allowed in cgrp, but optional)
             else:
                 logger.warning("pgx does not have a page number reference.")
         else:
