@@ -108,7 +108,7 @@ def smart_search(smart_search_text):
     ret_val = {}
 
     for_words_only_remove_punct = '!"#$%&()+,-./;:<=>@[\\]^_`{|}~' # punctuation to be removed from words only searches - wild cards accepted
-    
+
     # get rid of leading spaces and zeros
     smart_search_text = smart_search_text.lstrip(" 0")
     # get rid of trailing spaces and zeros

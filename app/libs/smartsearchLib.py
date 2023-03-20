@@ -301,39 +301,41 @@ def is_value_in_field(value,
         
     """
     ret_val = 0
-    
-    try:
-        solr_core = cores[core]
-    except Exception as e:
-        logger.debug(f"Core selection: {core}. 'docs' is default {e}")
-        solr_core  = solr_docs2    
-
-    if match_type == "exact":
-        q = f'{field}:"{value}"'
-    elif match_type == "ordered":
-        q = f'{field}:"{value}"~10'
-    elif match_type == "proximate":
-        q = f'{field}:"{value}"~25'
-    elif match_type == "adjacent":
-        q = f'{field}:"{value}"~2'
+    if value:
+        try:
+            solr_core = cores[core]
+        except Exception as e:
+            logger.debug(f"Core selection: {core}. 'docs' is default {e}")
+            solr_core  = solr_docs2    
+        
+        if match_type == "exact":
+            q = f'{field}:"{value}"'
+        elif match_type == "ordered":
+            q = f'{field}:"{value}"~10'
+        elif match_type == "proximate":
+            q = f'{field}:"{value}"~25'
+        elif match_type == "adjacent":
+            q = f'{field}:"{value}"~2'
+        else:
+            q = f'{field}:({value})'
+        
+        if str_has_wildcards(q): # quoted_str_has_wildcards(q):
+            complex_phrase = "{!complexphrase}"
+            q = f"{complex_phrase}{q}"
+        
+        try:
+            results = solr_core.search(q=q,  
+                                       fields = f"{field}", 
+                                       rows = limit,
+                                       )
+        except Exception as e:
+            logger.warning(f"Solr query: {q} fields {field} {e}")
+            results = []
+           
+        if len(results) > 0: 
+            ret_val = len(results) # results.numFound # it looks like the solr response object to this query always has a len == numFound
     else:
-        q = f'{field}:({value})'
-
-    if str_has_wildcards(q): # quoted_str_has_wildcards(q):
-        complex_phrase = "{!complexphrase}"
-        q = f"{complex_phrase}{q}"
-
-    try:
-        results = solr_core.search(q=q,  
-                                   fields = f"{field}", 
-                                   rows = limit,
-                                   )
-    except Exception as e:
-        logger.warning(f"Solr query: {q} fields {field} {e}")
-        results = []
-       
-    if len(results) > 0: 
-        ret_val = len(results) # results.numFound # it looks like the solr response object to this query always has a len == numFound
+        logger.warning(f"Empty value parameter for field {field}")
 
     return ret_val
 
