@@ -280,6 +280,9 @@ def pgx_add_rx_jump_via_biblio_entry(parsed_xml, ocd, artInfo, split_book_data=N
                                 pgx.attrib["rx"] = rx + f".P{pg_num}"
                                 pgx.attrib["type"] = pgxlink_type
                                 ret_val += 1
+                            else:
+                                # strip the tag (from the compiled pgx)?
+                                pgx.getparent().remove(pgx)
             else:
                 logger.warning("pgx does not have a page number reference.")
         else:
