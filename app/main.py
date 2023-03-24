@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2023.0320/v2.3.002"   # removed v3 ExtendedSearch endpoint so new 2.3 compatibility bump
+__version__     = "2023.0322/v2.3.003"   # removed v3 ExtendedSearch endpoint so new 2.3 compatibility bump
 __status__      = "Development/Libs/Loader"  
 
 """
@@ -147,7 +147,6 @@ from opasPySolrLib import search_text_qs # , search_text
 import opasPDFStampCpyrght
 import opasCacheSupport
 from opasArticleIDSupport import ArticleID
-
 expert_pick_image = ["", ""]
 
 # Check text server version
@@ -156,6 +155,8 @@ text_server_url = localsecrets.SOLRURL
 ocd = opasCentralDBLib.opasCentralDB()
 database_update_date = ocd.get_update_date_database()
 ocd = None
+all_source_codes = opasPySolrLib.metadata_get_sourcecodes()
+all_source_codes.append("OAJPSI")
 
 PARAMS = {'wt':'json'}
 url = f"{localsecrets.SOLRURL}admin/info/system"
@@ -369,7 +370,14 @@ def get_client_session(response: Response,
         if client_id == opasConfig.NO_CLIENT_ID:
             # No client id, not allowed to get session.
             msg = ERR_MSG_CALLER_IDENTIFICATION_ERROR + f" URL: {request.url._url} Headers:{request.headers} "
-            logger.error(msg)
+            #
+            # 20230322 New switch to demote these froms errors to info for now...they dominate the logs.
+            #  (and decided to change them to warning when not demoted.)
+            if opasConfig.DEMOTE_PREVALENT_LOG_ENTRIES:
+                logger.info(msg)
+            else:
+                logger.warning(msg)
+                
             raise HTTPException(
                 status_code=httpCodes.HTTP_428_PRECONDITION_REQUIRED,
                 detail=ERR_MSG_CALLER_IDENTIFICATION_ERROR
@@ -4321,6 +4329,7 @@ def metadata_volumes(response: Response,
         source_code = None
 
     src_exists = ocd.get_sources(src_code=source_code)
+    
     if not src_exists[0] and source_code != "*" and source_code not in ["ZBK", "NLP", "IPL"] and source_code is not None: # ZBK not in productbase table without booknum
         response.status_code = httpCodes.HTTP_400_BAD_REQUEST
         status_message = f"Failure: Bad SourceCode {source_code}"
@@ -4854,26 +4863,25 @@ def documents_document_fetch(response: Response,
         term_id = m.group("termid")
         #ret_val = view_a_glossary_entry(response, request, term_id=term_id, search=search, return_format=return_format)
         ret_val = documents_glossary_term(response, request, termIdentifier=term_id, return_format=return_format)
-    else:
-        # notes:
-        #  if a page extension to the docid is supplied, it is ignored. The client should use that instead to jump to that page.
-        # m = re.match("(?P<docid>[A-Z]{2,12}\.[0-9]{3,3}[A-F]?\.(?P<pagestart>[0-9]{4,4})[A-Z]?)(\.P(?P<pagenbr>[0-9]{4,4}))?", documentID)
-        #if m is not None:
-            #documentID = m.group("docid")
-            #page_number = m.group("pagenbr")
-            #if page_number is not None:
-                #try:
-                    #page_start_int = int(m.group("pagestart"))
-                    #page_number_int = int(page_number)
-                    #pageoffset = page_number_int - page_start_int
-                #except Exception as e:
-                    #logger.error(f"Page offset calc issue.  {e}")
-                    #pageoffset = 0
+    else:       
+        # Check to see if this is a valid source code, and if it is, that the document exists (or fix it)
+        # new feature 2023-06-22
+        doc_id = ArticleID(art_id=documentID)
+        if doc_id.src_code in all_source_codes:
+            documentID = doc_id.exists(verbose=True, resilient=True)
+        else:
+            documentID = None
 
-        # TODO: do we really need to do this extra query?  Why not just let get_document do the work?
-        # doc_info = opasAPISupportLib.document_get_info(documentID,
-                                                        #fields="art_id, art_sourcetype, art_year, file_classification, art_sourcecode")
-        # file_classification = doc_info.get("file_classification", opasConfig.DOCUMENT_ACCESS_UNDEFINED)
+        if not documentID:
+            response.status_code=httpCodes.HTTP_404_NOT_FOUND
+            status_message = f"Nonexistant document: {doc_id} Requestor: Client:{client_id}/Sess:{session_id} "
+            logger.warning(status_message)
+            ret_val = None
+            raise HTTPException(
+                status_code=response.status_code,
+                detail=status_message
+            )
+            
         try:
             # documents_get_document handles the view authorization and returns abstract if not authenticated.
             req_url=urllib.parse.unquote(request.url._url)
@@ -4888,6 +4896,7 @@ def documents_document_fetch(response: Response,
                 search = f"&smarttext={ft2}"
             if ft1 is not None:
                 search += f"&fulltext1={ft1}"
+                
             solr_query_params = opasQueryHelper.parse_search_query_parameters(fulltext1=ft1, smarttext=ft2)
             
             # solr_query_params = opasQueryHelper.parse_search_query_parameters(**argdict)
@@ -5557,9 +5566,15 @@ async def documents_image_fetch(response: Response,
     if client_id is not None:
         try:
             a = int(client_id)
-        except:
-            msg = ERR_MSG_CALLER_IDENTIFICATION_ERROR + f" Client/Session {client_id}/{client_session}. URL: {request.url._url} Headers:{request.headers} "
-            logger.error(msg)
+        except Exception as e:
+            # 20230322 New switch to demote these froms errors to info for now...they dominate the logs.
+            #  (and decided to change them to warning when not demoted.)
+            msg = ERR_MSG_CALLER_IDENTIFICATION_ERROR + f" Client/Session {client_id}/{client_session}. URL: {request.url._url} Headers:{request.headers} {e}"
+            if opasConfig.DEMOTE_PREVALENT_LOG_ENTRIES:
+                logger.info(msg)
+            else:
+                logger.warning(msg)
+
             response.status_code = httpCodes.HTTP_400_BAD_REQUEST 
             status_message = ERR_MSG_CALLER_IDENTIFICATION_ERROR
             raise HTTPException(

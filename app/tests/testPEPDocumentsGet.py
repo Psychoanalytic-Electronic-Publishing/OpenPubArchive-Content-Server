@@ -221,8 +221,8 @@ class TestDocumentsDocumentGet(unittest.TestCase):
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Document/APA.064E.6666A/')
         response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
-        assert(response.status_code == 404)
-        assert(response.reason == "Not Found")
+        assert response.status_code == 404, response.status_code
+        assert response.reason == "Not Found", response.reason
 
 
 if __name__ == '__main__':

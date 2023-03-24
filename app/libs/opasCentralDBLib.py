@@ -233,7 +233,7 @@ class opasCentralDB(object):
         >>> ocd.close_connection("my name")
         True
         """
-        pause_len = 30
+        pause_len = 5
         if not self.connected:
             try:
                 self.db = mysql.connector.connect(user=self.user, password=self.password, database=self.database, host=self.host)
@@ -2135,6 +2135,21 @@ class opasCentralDB(object):
         # return session model object
         return total_count, ret_val # None or Session Object
 
+    def product_sourcecode_exists(self, src_code):
+        """
+        Simple check of product table
+        >>> ocd = opasCentralDB()
+        >>> ocd.product_sourcecode_exists(src_code='IJP')
+        True
+        """
+        ret_val = False
+        sqlq = "select count(*) as count from api_productbase where basecode=%(src_code)s;"
+        query_param_dict = {"src_code": src_code}
+        response = self.do_fetch_records(querytxt=sqlq, queryparams=query_param_dict)
+        if response[0]["count"]:
+            ret_val = True
+        return ret_val
+
     def save_client_config(self, client_id:str, client_configuration: models.ClientConfigList, session_id, replace=False):
         """
         Save a client configuration.  Data format is up to the client.
@@ -2591,6 +2606,116 @@ class opasCentralDB(object):
         self.close_connection(caller_name=fname) # make sure connection is open
         
         return ret_val
+    
+    #----------------------------------------------------------------------------------------
+    def do_fetch_records(self, querytxt, queryparams: dict, orderby=None, limit=None, offset=0, ):
+        """
+        Return matching records based on querytxt and params
+       
+        >>> ocd = opasCentralDB()
+        >>> params = {"param1": "APA"}
+        >>> articles = ocd.do_fetch_records("select * from api_productbase where basecode = %(param1)s;", params) 
+        >>> print (articles[0]["basecode"])
+        APA
+
+        """
+        fname = "do_fetch_records"
+        self.open_connection(caller_name=fname) # make sure connection is open
+        ret_val = []
+
+        if limit:
+            querytxt += f" {limit}, {offset}"
+
+        if orderby:
+            querytxt += f" ORDER BY {orderby}"
+        
+        with closing(self.db.cursor(buffered=True, dictionary=True)) as dbc:
+            try:
+                if queryparams is not None:
+                    dbc.execute(querytxt, queryparams)
+                else:
+                    dbc.execute(querytxt)
+
+            except mysql.connector.DatabaseError as e:
+                logger.error(f"Database Error {e}")
+            except ValueError as e:
+                logger.error(f"DB Value Error {e}")
+            except mysql.connector.IntegrityError as e:
+                logger.error(f"Integrity Error {e}")
+            except mysql.connector.InternalError as e:
+                logger.error(f"Internal Error {e}")
+            except Exception as e:
+                logger.error(f"DB Error  {e}")
+            else:
+                ret_val = dbc.fetchall()
+
+        self.close_connection(caller_name=fname) # make sure connection is closed
+        # return session model object
+        return ret_val # List of records or empty list
+
+    #----------------------------------------------------------------------------------------
+    def do_fetch_records_lists(self,
+                               querytxt,
+                               queryparams: dict,
+                               columns: list,    # list of columns to return
+                               orderby=None,
+                               limit=None,
+                               offset=0):
+        """
+        Return matching records based on querytxt and params
+       
+        >>> ocd = opasCentralDB()
+        >>> params = {"param1": "APA"}
+        >>> columns = ("basecode",)
+        >>> articles = ocd.do_fetch_records_lists("select * from api_productbase where basecode = %(param1)s;", queryparams=params, columns=columns) 
+        >>> print (articles)
+        [('APA',)]
+        >>> params = {"param1": "A*"}
+        >>> columns = ("basecode",)
+        >>> articles = ocd.do_fetch_records_lists("select * from api_productbase where basecode RLIKE %(param1)s;", queryparams=params, columns=columns, limit=2) 
+        >>> print (len(articles))
+        322
+        """
+        fname = "do_fetch_records"
+        self.open_connection(caller_name=fname) # make sure connection is open
+        ret_val = []
+        if limit is not None:
+            querytxt += f" LIMIT {limit}, {offset}"
+
+        if orderby is not None:
+            querytxt += f" ORDER BY {orderby}"
+            
+        # Add 3 reconnect tries to ping, which does fail sometimes!
+        #self.db.ping(reconnect=True, attempts=3, delay=2)
+        with closing(self.db.cursor(buffered=True, dictionary=True)) as dbc:
+            try:
+                if queryparams is not None:
+                    dbc.execute(querytxt, queryparams)
+                else:
+                    dbc.execute(querytxt)
+
+            except mysql.connector.DatabaseError as e:
+                logger.error(f"Database Error {e}")
+            except ValueError as e:
+                logger.error(f"DB Value Error {e}")
+            except mysql.connector.IntegrityError as e:
+                logger.error(f"Integrity Error {e}")
+            except mysql.connector.InternalError as e:
+                logger.error(f"Internal Error {e}")
+            except Exception as e:
+                logger.error(f"DB Error  {e}")
+            else:
+                records = dbc.fetchall()
+
+        # Extract only the specified columns from the fetched records
+        if columns:
+            ret_val = [tuple(record[column] for column in columns) for record in records]
+        else:
+            ret_val = records
+
+        self.close_connection(caller_name=fname) # make sure connection is closed
+        # return session model object
+        return ret_val # List of records or empty list
 
     #----------------------------------------------------------------------------------------
     def do_action_query_silent(self, querytxt, queryparams, contextStr=None):

@@ -60,12 +60,11 @@ class TestDocumentsDocumentErrors(unittest.TestCase):
         assert(response_set[0]["accessLimited"] == True)
         # see "why" -- it's current content
     
-
     def test_001C_nonexistent_document(self):
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Document/APA.064E.6666A/')
         response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
-        assert(response.status_code == 404)
+        assert response.status_code == 404, response.status_code 
         assert(response.reason == "Not Found")
 
     def test_001D_nonexistent_session(self):
@@ -82,6 +81,38 @@ class TestDocumentsDocumentErrors(unittest.TestCase):
         assert(response.status_code == 424)
         print (response.reason)
         assert(response.reason == "Failed Dependency")
+
+    # now let's test doc_id corrections for fetches!
+    def test_002a_doc_id_forgiveness(self):
+        # Try to return with a bad ID, see if it's corrected
+        full_URL = base_plus_endpoint_encoded(f"/v2/Documents/Document/APA.065E.0819A/?return_format=XML")
+        response = requests.get(full_URL, headers=headers)
+        # Confirm that the request-response cycle completed successfully.
+        assert response.ok == True,  response.ok
+        r = response.json()
+        response_info = r["documents"]["responseInfo"]
+        response_set = r["documents"]["responseSet"]
+        assert response_info["count"] == 1, response_info["count"]
         
+    def test_002b_doc_id_forgiveness(self):
+        # Try to return with a bad ID, see if it's corrected
+        full_URL = base_plus_endpoint_encoded(f"/v2/Documents/Document/APA.065.0819/?return_format=XML")
+        response = requests.get(full_URL, headers=headers)
+        # Confirm that the request-response cycle completed successfully.
+        assert response.ok == True, response.ok
+        r = response.json()
+        response_info = r["documents"]["responseInfo"]
+        response_set = r["documents"]["responseSet"]
+        assert response_info["count"] == 1, response_info["count"]
+
+    def test_002c_doc_id_forgiveness(self):
+        # Two errors won't be corrected (here there's an extra Journal Variant E and a missing page variant A)
+        full_URL = base_plus_endpoint_encoded(f"/v2/Documents/Document/APA.065E.0819/?return_format=XML")
+        response = requests.get(full_URL, headers=headers)
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == False)
+        assert response.status_code == 404, response.status_code 
+        assert(response.reason == "Not Found")
+
 if __name__ == '__main__':
     unittest.main()    

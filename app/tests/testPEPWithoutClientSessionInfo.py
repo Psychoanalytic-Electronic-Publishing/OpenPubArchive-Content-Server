@@ -4,6 +4,8 @@
 import unittest
 import requests
 import logging
+import errorMessages
+
 logger = logging.getLogger(__name__)
 
 import unitTestConfig
@@ -53,7 +55,7 @@ class TestsWithoutClientSession(unittest.TestCase):
         # test return
         r = response.json()
         print (f"Book Count: {r['sourceInfo']['responseInfo']['fullCount']}")
-        assert(r['sourceInfo']['responseInfo']['fullCount'] >= unitTestConfig.BOOKCOUNT)
+        assert r['sourceInfo']['responseInfo']['fullCount'] >= unitTestConfig.BOOKCOUNT
 
     def test_9_pubs_authornames(self):
         """
@@ -66,7 +68,7 @@ class TestsWithoutClientSession(unittest.TestCase):
         assert(response.ok == True)
         r = response.json()
         print (f"Count: {r['authorPubList']['responseInfo']['fullCount']} Count complete: {r['authorPubList']['responseInfo']['fullCountComplete']}")
-        assert(r['authorPubList']['responseInfo']['fullCount'] == 3)
+        assert r['authorPubList']['responseInfo']['fullCount'] == 3, r['authorPubList']['responseInfo']['fullCount'] == 3
 
     def test_9b_pubs_authornames(self):
         """
@@ -79,7 +81,7 @@ class TestsWithoutClientSession(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        assert(r['authorPubList']['responseInfo']['fullCount'] >= 2)
+        assert r['authorPubList']['responseInfo']['fullCount'] >= 2, r['authorPubList']['responseInfo']['fullCount']
 
     def test_10_get_term_counts(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/TermCounts/?termlist=fear,loathing,elections')
@@ -121,7 +123,7 @@ class TestsWithoutClientSession(unittest.TestCase):
         print (f"Count: {r['documentList']['responseInfo']['count']}")
         print (f"Limit: {r['documentList']['responseInfo']['limit']}")
         print (f"ReturnedData (art_cited_5): {r['documentList']['responseSet'][0]['stat']['art_cited_5']}")
-        assert(r['documentList']['responseSet'][0]['stat']['art_cited_5'] >= 15)
+        assert r['documentList']['responseSet'][0]['stat']['art_cited_5'] >= 15
 
     def test_13_search_wildcard(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?author=gre?nfield')
@@ -131,7 +133,7 @@ class TestsWithoutClientSession(unittest.TestCase):
         # print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
-        assert(response_info["fullCount"] >= 7)
+        assert response_info["fullCount"] >= 7, response_info["fullCount"]
         print (f"Fullcount: {response_info['fullCount']}")
         # print (response_set)
         # Confirm that the request-response cycle completed successfully.
@@ -142,7 +144,7 @@ class TestsWithoutClientSession(unittest.TestCase):
         r = response.json()
         response_info = r["documents"]["responseInfo"]
         response_set = r["documents"]["responseSet"] 
-        assert(response_info["count"] == 1)
+        assert response_info["count"] == 1, response_info["count"]
         print (response_set[0]['abstract'])
 
     def test_15_get_document_with_similarcount(self):
@@ -155,10 +157,9 @@ class TestsWithoutClientSession(unittest.TestCase):
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()
-        #print (r)
         response_info = r["documents"]["responseInfo"]
         response_set = r["documents"]["responseSet"] 
-        assert(response_info["count"] == 1)
+        assert response_info["count"] == 1, response_info["count"]
         print (response_info)
 
     def test_16B_get_abstract_client_id_param(self):
@@ -169,7 +170,6 @@ class TestsWithoutClientSession(unittest.TestCase):
         response_info = r["documents"]["responseInfo"]
         response_set = r["documents"]["responseSet"] 
         assert(response_info["count"] == 1)
-        # print (r)
 
     def test_16C_get_abstract_bad_client_id(self):
         # client-id must be numeric
@@ -177,9 +177,8 @@ class TestsWithoutClientSession(unittest.TestCase):
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Abstracts/IFP.017.0240A?similarcount=4&client-id=BAD_CLIENT_ID_TEST')
         response = requests.get(full_URL)
         r = response.json()
-        # print (r)
-        assert(r["detail"] == 'The caller has not provided sufficient identification.')
-        assert(response.status_code == 428)
+        assert r["detail"] == errorMessages.ERR_MSG_CALLER_IDENTIFICATION_ERROR, r["detail"] 
+        assert response.status_code == 428, response.status_code
 
     def test_17_get_abstract_bad_client_id_func(self):
         logger.error("Note: Error expected below: The caller has not provided sufficient identification. Sending WITHOUT ANY client ID.")
@@ -187,11 +186,8 @@ class TestsWithoutClientSession(unittest.TestCase):
         print (f"Headers: {no_client_headers}")
         response = requests.get(full_URL, headers=no_client_headers)
         r = response.json()
-        # print (r)
-        #response_info = r["documents"]["responseInfo"]
-        #response_set = r["documents"]["responseSet"] 
-        assert(r["detail"] == 'The caller has not provided sufficient identification.')
-        assert(response.status_code == 428)
+        assert r["detail"] == errorMessages.ERR_MSG_CALLER_IDENTIFICATION_ERROR, r["detail"] 
+        assert response.status_code == 428, response.status_code
        
 if __name__ == '__main__':
     unittest.main()    

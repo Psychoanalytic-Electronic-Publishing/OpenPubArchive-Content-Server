@@ -55,7 +55,7 @@ def pageStartException(jrnlCode, fullFilename, noExceptionPageStart=None):
         patMatch = re.match(".*(IJPOPEN)\..*\.(?P<pgStart>.*)A", fullFilename, re.IGNORECASE)
         if patMatch is not None:
             retVal = patMatch.group("pgStart")
-            # print ("Special Rule: pgStart derived from filename")
+            # Special Rule: pgStart derived from filename
             retVal = opasDocuments.PageNumber(retVal, forceRoman=False)
     return retVal
 
@@ -143,6 +143,7 @@ class Locator:
     """
 
     # for later conversion to pydantic
+    
     #pgVar:  str = Field(None, title="")
     #valid: bool = Field(False, title="")
     #locatorType: int = Field(0, title="")				# 0 is a article ID, 1 is idx id
@@ -237,7 +238,6 @@ class Locator:
         
         self.__reset()
         self.filename = filename
-        # self_copy = copy.copy(self)
         
         self.art_info = art_info # provide full information about the xml of the article we're dealing with
 
@@ -251,7 +251,6 @@ class Locator:
         else:
             self.noStartingPageException = noStartingPageException
 
-        #print ("StartingPageException: ", self.noStartingPageException)
         self.thisIsSplitBook = None
         self.isMainTOC = False				# set to true if this is a mainTOC for a split book
                                             # This info is kept in the locator, since it's needed to handle locator
@@ -267,8 +266,6 @@ class Locator:
                 self.decompile(strLocator)
             elif isinstance(strLocator, Locator):
                 self.decompile(str(strLocator))
-                # try just returning the locator, save time!
-                #self = strLocator
             else:
                 try:
                     self.decompile(strLocator)
@@ -298,7 +295,7 @@ class Locator:
                     self.pgStart = opasDocuments.PageNumber(pgStart, forceRoman=forceRoman)
 
             self.pgEnd = copy.copy(self.pgStart)
-            #print ("Locator Parameters: ", jrnlCode, jrnlVolSuffix, jrnlVol, jrnlIss, self.pgStart, pgVar, jrnlYear)
+            logger.debug("Locator Parameters: ", jrnlCode, jrnlVolSuffix, jrnlVol, jrnlIss, self.pgStart, pgVar, jrnlYear)
             self.__standardize()
             self.validate()
 
@@ -664,7 +661,7 @@ class Locator:
 
             logger.debug(f"TEMP LOC: {retLoc}, {forceJrnlVolSuffix}")
             retVal=retLoc.articleID()
-            #print ("TEMP ARTICLEID:", retVal)
+            logger.debug("TEMP ARTICLEID:", retVal)
         else:
             errMsg = "Could not force locator; original locator %s is not valid" % self
             logger.error(f"Severe - Locator - {errMsg} ")
@@ -728,7 +725,6 @@ class Locator:
         	for other split books, it returns 1.
         	For nonsplit books, it returns None.
         """
-        #print ("In checkSplitBook")
         if jrnlCode==None:
             if self.jrnlCode is not None:
                 jrnlCode=self.jrnlCode.upper()
@@ -739,7 +735,6 @@ class Locator:
             print("No journal code!")
             return None
 
-        #print ("Wrking jrnlVol = %s/%s/%s" % (jrnlVol, self.jrnlVol, int(self.jrnlVol)))
         if jrnlVol is None:
             if self.jrnlVol is not None:
                 jrnlVol="%s" % self.jrnlVol.volID()
@@ -748,16 +743,13 @@ class Locator:
         else:
             jrnlVol="%s" % opasDocuments.VolumeNumber(jrnlVol).volID()
 
-        #print ("Wrking jrnlVol = '%s'/'%s'/'%s'/'%s'" % (jrnlVol, self.jrnlVol, int(self.jrnlVol),type(jrnlVol)))
-
         if opasgenlib.is_empty(jrnlCode):
             errMsg =  "Bad JrnlCode '%s'" % (jrnlCode)
             logger.error(f"Severe - Locator - {errMsg} ")
 
 
         retVal = gSplitBooks.get("%s%s" % (jrnlCode, jrnlVol), None)
-        #	print ("Current Locator: ", self)
-        # print ("Check Split Book: %s%s (retval: %s)" % (jrnlCode, jrnlVol, retVal))
+        logger.debug("Check Split Book: %s%s (retval: %s)" % (jrnlCode, jrnlVol, retVal))
 
         return retVal
 
@@ -778,15 +770,15 @@ class Locator:
         #print ("EXCEPTION CHECK: ", self.jrnlCode, self.pgStart)
         if self.jrnlCode == "SE":
             #import PEPJournalData
-            #print "Check Exception: SE data Vol %s, Pg: %s" % (self.jrnlVol, self.pgStart)
+            logger.debug("Check Exception: SE data Vol %s, Pg: %s" % (self.jrnlVol, self.pgStart))
             pg, vol = PEPJournalData.processPage(self.pgStart, self.jrnlVol)
             if vol != self.jrnlVol:
-                print("Exception: SE Vol/PgStartdata adjusted. Vol %s/%s, Pg: %s/%s" % (self.jrnlVol, vol, self.pgStart, pg))
+                logger.info("Exception: SE Vol/PgStartdata adjusted. Vol %s/%s, Pg: %s/%s" % (self.jrnlVol, vol, self.pgStart, pg))
                 self.pgStart = opasDocuments.PageNumber(pg)
                 self.jrnlVol = opasDocuments.VolumeNumber(vol)
                 retVal = True
 
-        #print ("Locator Page number Adjusted to 0 for special case!", self.noStartingPageException)
+        logger.debug("Locator Page number Adjusted to 0 for special case!", self.noStartingPageException)
 
         return retVal
 
@@ -807,7 +799,6 @@ class Locator:
 
         if self.validate():
             retVal = ""
-            #print "XX1", self.jrnlVol, self.pgStart
             theArticleIDTuple = (	self.jrnlCode,
                                          self.jrnlVol.volID(), # formats volume and suffix
                                          self.prePrefix,
@@ -815,7 +806,6 @@ class Locator:
                                          int(self.pgStart),
                                          self.pgVar)
 
-            #print "PageStart: ", self.pgStart
             if self.locatorType==0:
                 # now format standard article ID dynamically each time
                 try:
@@ -842,8 +832,6 @@ class Locator:
                 else:
                     retVal = errReturn
         else: # Cannot make locator
-            #if errReturn is None:
-            #else:
             if errReturn is not None:
                 retVal = errReturn
             else:
@@ -929,8 +917,6 @@ class Locator:
                 self.prePrefix = opasgenlib.default(lm.group("preprefix"), "")
                 self.prefix = opasgenlib.default(lm.group("pre"), "")
                 self.suffix = opasgenlib.default(lm.group("post"), "")
-                #if self.prefix != "" or self.suffix != "":
-                    #print "KEEP PRE/POST Locator CONTEXT", self.prefix, self.suffix
 
         if self.jrnlYear is not None:
             self.jrnlVol, self.jrnlVolList = gJrnlData.getVol(self.jrnlCode, self.jrnlYear)
@@ -1020,7 +1006,6 @@ class Locator:
 
         else: # get any stored localIDRef
             if self.__localIDRef is not None:
-                #print "Using Stored LocalID: ", self.__localIDRef
                 localIDRef = retValSuffix = str(self.__localIDRef)
 
         if opasgenlib.is_empty(retValSuffix):
@@ -1046,7 +1031,6 @@ class Locator:
                         splitArticleID = split_book_data.get_splitbook_page_instance(book_code=newLoc.jrnlCode,
                                                                                      vol=str(newLoc.jrnlVol),
                                                                                      page_id=retValSuffix[1:])
-                        #splitArticleID = checkSplitInThisBiblioDB.splitPageData.getSplitBookInstance(newLoc.jrnlCode, newLoc.jrnlVol, retValSuffix[1:])
                         if splitArticleID is not None:
                             retVal = Locator(splitArticleID).articleID() + retValSep + str(retValSuffix)
                         else:
@@ -1061,7 +1045,6 @@ class Locator:
                 if opasgenlib.is_empty(retVal):
                     raise Exception("LocalID Only option requested, but no LocalID Available")
 
-        #print "LocalID returns: ", retVal
         return retVal
 
     #--------------------------------------------------------------------------------
@@ -1087,7 +1070,6 @@ class Locator:
 
         """
         retVal = None
-        #print "isBook?: ", self.isBook()
         if self.isBook():
             if not self.isSplitBook() or self.isMainTOC:
                 if self.jrnlCode in ['IPL', 'NLP', 'SE']:
@@ -1102,9 +1084,6 @@ class Locator:
         else:
             retVal = REFJOURNALARTICLE
 
-        #print 80*"#"
-        #print "sourceType: ", retVal, self.isSplitBook(), self.isMainTOC
-        #print 80*"#"
         return retVal
 
     #--------------------------------------------------------------------------------
@@ -1182,11 +1161,9 @@ def isLocator(idString):
     retVal = False
     if isinstance(idString, Locator): # is it a locator?
         retVal = True
-        #print "isLocator saw Locator"
     else:	# see if it's a string version of locator!
         if idString is not None:
             if not isinstance(idString, str):  # supports string and unicode Was if type(idString) != type(""):
-                #print "isLocator sent type: ", type(idString)
                 tStr = str(idString)
             else:
                 tStr = idString

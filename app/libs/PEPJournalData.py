@@ -1154,6 +1154,7 @@ class PEPJournalData:
         "NLPX"      : "New Lib. of Psycho-Anal.",
         "NLP"       : "New Library of Psychoanalysis",
         "NYPSIVS"   : "N.Y. Psychoanal. Soc. Inst.",
+        "OAJPSI"    : "Offsite Amer. J. Psi",
         "OFFSITE"   : "Offsite Articles",
         "OPUS"      : "Organ. Soc. Dyn.",
         "PAQ"       : "Psychoanal. Q.",
@@ -1267,6 +1268,7 @@ class PEPJournalData:
         "NLPX"      : "New Library of Psycho-Analysis",
         "NLP"       : "New Library of Psychoanalysis",
         "NYPSIVS"   : "New York Psychoanalytic Society & Institute",
+        "OAJPSI"    : "Offsite American Journal of Psychiatry",
         "OFFSITE"   : "Offsite Articles",
         "OPUS"      : "Organizational and Social Dynamics",                                 # new
         "PAH"       : "Psychoanalysis and History",
@@ -1498,6 +1500,7 @@ class PEPJournalData:
         "PCAS"         :       "\&PCAS\;|" + patJournalForThe + patOptSpace + patPsychoanalysis + patOptSpace + patOptOf + patOptSpace + patCulture + patOptSpace + patOptAnd + patReqdSpace + patSociety,
         "IJFP"         :       "\&IJFP\;|" + patInternational + patReqdSpace + patJournalOf + patReqdSpace + patForensic + patReqdSpace + patPsychotherapy,
         "JPT"          :       "\&JPT\;|" + patJournalOf + patReqdSpace + patPsychological + patReqdSpace + patTherapies,
+        "OAJPSI"       :       "\&OAJPSI;|" + patAmerican + patJournalOf + patPsychiatry,
         "OEDA"         :       "\&OEDA\;|" + patOedipus + patReqdSpace + patAnnual,
         "PPC"          :       "\&PPC\;|" + patPsychoanalysis + patReqdSpace + patOptAnd + patReqdSpace + patPsychotherapy + patReqdSpace + patIn + patReqdSpace + patChina,
 
@@ -1631,6 +1634,7 @@ class PEPJournalData:
     rgxJrnlPEPPatterns.append((re.compile(jrnlPEPPatterns.get("JOAP"), re.VERBOSE | re.IGNORECASE), "JOAP"  ))
     rgxJrnlPEPPatterns.append((re.compile(jrnlPEPPatterns.get("MPSA"    ), re.VERBOSE | re.IGNORECASE), "MPSA"  ))
     rgxJrnlPEPPatterns.append((re.compile(jrnlPEPPatterns.get("NP"  ), re.VERBOSE | re.IGNORECASE), "NP"    ))
+    rgxJrnlPEPPatterns.append((re.compile(jrnlPEPPatterns.get("OAJPSI"), re.VERBOSE | re.IGNORECASE), "OAJPSI"))
     rgxJrnlPEPPatterns.append((re.compile(jrnlPEPPatterns.get("OPUS"), re.VERBOSE | re.IGNORECASE), "OPUS"))
     rgxJrnlPEPPatterns.append((re.compile(jrnlPEPPatterns.get("PAH" ), re.VERBOSE | re.IGNORECASE), "PAH"   ))
     rgxJrnlPEPPatterns.append((re.compile(jrnlPEPPatterns.get("PAQ" ), re.VERBOSE | re.IGNORECASE), "PAQ"   ))

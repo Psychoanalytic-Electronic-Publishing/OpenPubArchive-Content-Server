@@ -28,6 +28,7 @@ parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=T
 
 import opasConfig
 from configLib.opasIJPConfig import IJPOPENISSUES
+from configLib.opasCoreConfig import EXTENDED_CORES
 import opasFileSupport
 import localsecrets
 
@@ -41,33 +42,19 @@ sourceDB = opasProductLib.SourceInfoDB()
 gDbg2 = True
 
 def parse_glossary_terms_dict(glossary_terms_dict_str, verbose=False):
-    #if not glossary_terms_dict_str:
-        #glossary_terms_count, glossary_terms_dict = glossEngine.getGlossaryLists(parsed_xml, 
-                                                                                 #verbose=verbose)
-        ## need to compute it
-        #term_json = json.dumps(glossary_terms_dict)
-        #pep_addon = f'<unit type="glossary_term_dict"><!-- {term_json} --></unit>'
-    #else:
-        #print ("\t...Glossary terms list loaded from database")
-        #pep_addon = glossary_terms_dict_str
-    
-    #glossary_terms_dict_str = pep_addon
     
     m = re.search("<!--.*?(?P<dict_str>\{.*\}).*?-->", glossary_terms_dict_str)
     dict_str = m.group("dict_str")
     glossary_terms_dict = json.loads(dict_str)
     
     ret_val = glossary_terms_dict
-    
-    #new_unit = ET.fromstring(pep_addon, parser)
-    #parsed_xml.append(new_unit)
-    
+       
     return ret_val
 
 def parse_volume_code(vol_code: str, source_code: str=None): 
     """
-    PEP Volume numbers in IDS can be numbers or suffixed by an issue code--we use them after a volume number when a journal repeats pagination
-    from issue to issue or starts the pagination over in a Supplement.
+    PEP Volume numbers in IDS can be numbers or suffixed by an issue code--we use them after a volume number
+    when a journal repeats pagination from issue to issue or starts the pagination over in a Supplement.
     
     >>> parse_volume_code("34S")
     ('34', 'S')
@@ -75,8 +62,7 @@ def parse_volume_code(vol_code: str, source_code: str=None):
     ('101', 'C')
     >>> parse_volume_code("130")
     ('130', None)
-    
-    
+       
     """
     ret_val = ("*", None)
     if vol_code is not None:
@@ -118,16 +104,16 @@ def parse_issue_code(issue_code: str, source_code=None, vol=None):
 
 def parse_artid_from_filename(filename):
     """    
-        >>> nm = "RPP-CS.019A.0072A(bKBD3).xml"
-        >>> parse_artid_from_filename(nm)
-        'RPP-CS.019A.0072A'
-        >>> nm = r"X:\AWS_S3\AWS PEP-Web-Live-Data\_PEPArchive\RPP-CS\019.2017\RPP-CS.019A.0027A(bEXP_ARCH1).xml"
-        >>> parse_artid_from_filename(nm)
-        'RPP-CS.019A.0027A'
-        
-        >>> nm = r"X:/AWS_S3/AWS PEP-Web-Live-Data/_PEPArchive/RPP-CS/019.2017/RPP-CS.019A.9027A(bKBD3).xml"
-        >>> parse_artid_from_filename(nm)
-        'RPP-CS.019A.9027A'
+    >>> nm = "RPP-CS.019A.0072A(bKBD3).xml"
+    >>> parse_artid_from_filename(nm)
+    'RPP-CS.019A.0072A'
+    >>> nm = r"X:\AWS_S3\AWS PEP-Web-Live-Data\_PEPArchive\RPP-CS\019.2017\RPP-CS.019A.0027A(bEXP_ARCH1).xml"
+    >>> parse_artid_from_filename(nm)
+    'RPP-CS.019A.0027A'
+    
+    >>> nm = r"X:/AWS_S3/AWS PEP-Web-Live-Data/_PEPArchive/RPP-CS/019.2017/RPP-CS.019A.9027A(bKBD3).xml"
+    >>> parse_artid_from_filename(nm)
+    'RPP-CS.019A.9027A'
     """
     ret_val = None
     try:
@@ -153,6 +139,28 @@ class ArticleID(BaseModel):
     
     But when designed as such, the structure of the article IDs may be different in different systems, so it needs to be configurable as possible.
     This routine is a start of allowing that to be defined as part of the customization. 
+
+    >>> a = ArticleID(art_id="PSYCHE.025L.R0007A", checks="R", verbose=False)
+    >>> print (a.art_id)
+    PSYCHE.025L.R0007
+    
+    >>> a = ArticleID(art_id="ipl.055.0001a", checks="R", verbose=False)
+    >>> print (a.art_id)
+    IPL.055.0000A
+    
+    >>> a = ArticleID(art_id="FA.004.0455A", checks="R", verbose=False)
+    >>> print (a.art_id)
+    FA.004C.0455A
+    
+    >>> a = ArticleID(art_id="FA.004C.0455", checks="R", verbose=False)
+    >>> print (a.art_id)
+    FA.004C.0455A
+    
+    >>> a = ArticleID(art_id="APA.065E.0819A")
+    >>> print (a.art_issue_alpha_code)
+    E
+    >>> print (a.alt_no_vol_suffix)
+    APA.065.0819A
 
     >>> art_id="AJRPP.004(1).R0007A"
     >>> a = ArticleID(art_id=art_id)
@@ -217,7 +225,7 @@ class ArticleID(BaseModel):
     >>> a.is_ArticleID
     False
     >>> print (a)
-    art_id='BADSTUFF' articleidinfo=None standardized=None alt_standard=None is_ArticleID=False src_code=None art_vol_suffix=None art_vol_int=0 art_vol_str=None art_issue_alpha_code=None is_supplement=False art_issue=None art_issue_int=None art_pgstart=None art_pgstart_int=0 match_probability=None roman_prefix='' is_roman=False page_suffix=None special_section_prefix='' is_special_section=False
+    BADSTUFF
 
     Handle Special Naming
     >>> a = ArticleID(art_id="APA.062.NP0016A(bKBD3).xml")
@@ -234,10 +242,13 @@ class ArticleID(BaseModel):
     # pydantic model - object definitions for ArticleID       
     #************************************************************************************
     art_id: str = Field(None, title="As submitted ID, if it's a valid ID")
+    art_id_exists: bool = Field(False, title="True if article id exists in Solr")
+    art_id_replaced: str = Field(None, title="Validated version of submitted ID was this before")
     articleidinfo: dict = Field(None, title="Regex result scanning input articleID")
     standardized: str = Field(None, title="Standard form of article (document) ID, volume suffix included if volume includes repeat page #s or for supplements")
     alt_standard: str = Field(None, title="Alternate form of article (document) ID from 2020 (most without volume suffix)")
     alt_wild_standard: str = Field(None, title="Alternate form of article (document) ID from 2020 (fix for missing volume suffix)")
+    alt_no_vol_suffix: str = Field(None, title="Alternate form of article (document) ID without volume suffix (issue letter code)")
     is_ArticleID: bool = Field(False, title="True if initialized value is an article (document) ID")
     src_code: str = Field(None, title="Source material assigned code (e.g., journal, book, or video source code)")
     # volumeStr: str = Field(None, title="")
@@ -258,6 +269,7 @@ class ArticleID(BaseModel):
     page_suffix: str = Field(None, title="")
     special_section_prefix: str = Field("", title="")
     is_special_section: bool = Field(False, title="")
+    checks: str = Field(None, title="None for no checks, E for simple exists check, R for repair/resilience")
     # allInfo: bool = Field(False, title="Show all captured information, e.g. for diagnostics")
 
     def __init__(self, **kwargs):
@@ -318,7 +330,6 @@ class ArticleID(BaseModel):
                 self.art_issue_int = None
                     
             # page info
-            # page = self.articleInfo.get("page")
             self.art_pgstart = self.articleidinfo.get("page_numeric")
             self.art_pgstart_int = self.art_pgstart 
             if self.art_pgstart_int != '':
@@ -336,9 +347,6 @@ class ArticleID(BaseModel):
             
             self.roman_prefix = self.articleidinfo.get("roman", "")  
             self.is_roman = self.roman_prefix.upper() == "R"
-            #if self.isRoman:
-                #self.roman_prefix = roman_prefix 
-               
             self.page_suffix = self.articleidinfo.get("page_suffix", "")
             
             if not self.art_vol_str[-1].isalpha() and self.art_issue_alpha_code != "":
@@ -347,10 +355,13 @@ class ArticleID(BaseModel):
                 self.standardized = f"{self.src_code}.{self.art_vol_str}"
                 
             self.alt_standard = f"{self.src_code}.{self.art_vol_str}"
-            if self.standardized == self.alt_standard:
+            if not self.art_issue_alpha_code:
                 # there's no alpha issue code in the standard one. Try adding one:
                 if altVolSuffix != "" and altVolSuffix != "?" and not self.art_vol_str[-1].isalpha():
                     self.alt_standard = f"{self.src_code}.{self.art_vol_str}{altVolSuffix}"
+            else:
+                self.alt_no_vol_suffix = f"{self.src_code}.{self.art_vol_str[:-1]}"
+            
             
             if self.alt_wild_standard is None and not self.art_vol_str[-1].isalpha():
                 altVolWildSuffix = "?"
@@ -358,10 +369,13 @@ class ArticleID(BaseModel):
                 
             if volumeWildcardOverride == '':
                 if pageWildcard == '':
-                    self.standardized += f".{self.special_section_prefix}{self.roman_prefix}{self.art_pgstart}{self.page_suffix}"
-                    self.alt_standard += f".{self.special_section_prefix}{self.roman_prefix}{self.art_pgstart}{self.page_suffix}"
+                    page_addon = f".{self.special_section_prefix}{self.roman_prefix}{self.art_pgstart}{self.page_suffix}"
+                    self.standardized += page_addon
+                    self.alt_standard += page_addon
+                    if self.alt_no_vol_suffix is not None:
+                        self.alt_no_vol_suffix += page_addon
                     if self.alt_wild_standard is not None:
-                        self.alt_wild_standard += f".{self.special_section_prefix}{self.roman_prefix}{self.art_pgstart}{self.page_suffix}"
+                        self.alt_wild_standard += page_addon
                     #self.standardizedPlusIssueCode += f".{self.roman_prefix}{self.pageNbrStr}{self.pageSuffix}"
                 else:
                     self.standardized += f".*"
@@ -376,11 +390,160 @@ class ArticleID(BaseModel):
             self.standardized = self.standardized.upper()
             self.is_ArticleID = True
             self.art_id = self.standardized
+            if self.checks:
+                if self.checks[0].upper() == "R":
+                    self.exists(resilient=True)
+                else:
+                    self.exists(resilient=False)
+            pass
         else:
             self.is_ArticleID = False   
     
     def __str__(self):
         return str(self.art_id)
+
+
+    def exists(self, solrcon=None, resilient=False, verbose=False):
+        """
+        Search Solr for the article ID, if not found, try some common variations:
+          - the ArticleID alt_standard
+          or
+          - the simple missing page suffix 'A'
+          or
+          - one of the volume variant letters (issue)
+          or
+          - Page 0 vs 1 to handle split book variation
+        
+        Returns:
+            - the current art_id exists
+            - None if it doesn't
+            - OR a heuristically modified existant art_id if resilient=True and
+              a close match could be resolved
+              
+        Side Effects:
+            - art_id changed if resilient id found
+            - art_id_replaced stores the replaced id
+            
+        """
+        ret_val = None
+        if self.art_id_exists:
+            ret_val = self.art_id
+        elif resilient:
+            doc_id = self.art_id
+            if solrcon is None:
+                solrcon = EXTENDED_CORES.get("pepwebdocs")
+            
+            try:
+                results = solrcon.search(q = f"art_id:{doc_id}")
+                if results.raw_response["response"]["numFound"] > 0:
+                    self.art_id_exists = True
+                    ret_val = doc_id
+                else: # try variations
+                    # TryAlternateID:
+                    alt_id = self.alt_standard
+                    results = solrcon.search(q = f"art_id:{alt_id}")
+                    if results.raw_response["response"]["numFound"] > 0:
+                        log_everywhere_if(verbose, "debug", f"Document ID {doc_id} not in Solr.  The correct ID seems to be {alt_id}. Using that instead!")
+                        self.art_id_replaced = doc_id
+                        self.art_id_exists = True
+                        self.art_id = alt_id
+                        ret_val = alt_id
+                        
+                    if not ret_val and doc_id[-1].isnumeric():
+                        # missing page variant?
+                        alt_id = doc_id + "A"
+                        results = solrcon.search(q = f"art_id:{alt_id}")
+                        if results.raw_response["response"]["numFound"] == 1:  # only accept alternative if there's only one match (otherwise, not known which)
+                            # odds are good this is what was cited.
+                            log_everywhere_if(verbose, "debug", f"Document ID {doc_id} not in Solr.  The correct ID seems to be {alt_id}. Using that instead!")
+                            self.art_id_replaced = doc_id
+                            self.art_id_exists = True
+                            self.art_id = alt_id
+                            ret_val = alt_id
+                    
+                    if not ret_val and doc_id[-1].isalpha():
+                        # try without page variant?
+                        alt_id = doc_id[:-1]
+                        results = solrcon.search(q = f"art_id:{alt_id}")
+                        if results.raw_response["response"]["numFound"] == 1:  # only accept alternative if there's only one match (otherwise, not known which)
+                            # odds are good this is what was cited.
+                            log_everywhere_if(verbose, "debug", f"Document ID {doc_id} not in Solr.  The correct ID seems to be {alt_id}. Using that instead!")
+                            self.art_id_replaced = doc_id
+                            self.art_id_exists = True
+                            self.art_id = alt_id
+                            ret_val = alt_id
+                    
+                    if not ret_val:
+                        # match volume variant?
+                        alt_id = self.alt_wild_standard
+                        if alt_id is not None:
+                            results = solrcon.search(q = f"art_id:{alt_id}")
+                            count = results.raw_response["response"]["numFound"]
+                            if count == 1:  # only accept alternative if there's only one match (otherwise, not known which)
+                                # odds are good this is what was cited.
+                                alt_id = results.docs[0]['art_id']
+                                log_everywhere_if(verbose, "debug", f"Document ID {doc_id} not in Solr.  The correct ID seems to be {alt_id}. Using that instead!")
+                                self.art_id_replaced = doc_id
+                                self.art_id_exists = True
+                                ret_val = self.art_id = alt_id
+                            elif count > 1:
+                                alt_id = results.docs[0]['art_id']
+                                log_everywhere_if(verbose, "debug", f"Found {count} matches for volume variant (issue). Using the first.")
+                                self.art_id_replaced = doc_id
+                                self.art_id_exists = True
+                                self.art_id = alt_id
+                                ret_val = self.art_id = alt_id
+
+                    if not ret_val:
+                        # match without volume variant?
+                        alt_id = self.alt_no_vol_suffix
+                        if self.alt_no_vol_suffix is not None:
+                            results = solrcon.search(q = f"art_id:{alt_id}")
+                            count = results.raw_response["response"]["numFound"]
+                            if count == 1:  # only accept alternative if there's only one match (otherwise, not known which)
+                                # odds are good this is what was cited.
+                                alt_id = results.docs[0]['art_id']
+                                log_everywhere_if(verbose, "debug", f"Document ID {doc_id} not in Solr.  The correct ID seems to be {alt_id}. Using that instead!")
+                                self.art_id_replaced = doc_id
+                                self.art_id_exists = True
+                                ret_val = self.art_id = alt_id
+
+                    if not ret_val:
+                        # page before or after?
+                        for n in (-1, 1):
+                            newloc = opasLocator.Locator(doc_id)
+                            if newloc.validate():
+                                try:
+                                    newloc.pgStart += n
+                                except Exception as e:
+                                    log_everywhere_if(verbose, "warning", f"Bad locator {loc_str}. Except: {e}")
+                                else:
+                                    revised_doc_id = newloc.articleID()
+                            
+                            results = solrcon.search(q = f"art_id:{revised_doc_id}")
+                            count = results.raw_response["response"]["numFound"]
+                            if count == 1:  # only accept alternative if there's only one match (otherwise, not known which)
+                                # odds are good this is what was cited.
+                                alt_id = results.docs[0]['art_id']
+                                log_everywhere_if(verbose, "info", f"Document ID {doc_id} not in Solr.  The correct ID seems to be {alt_id}. Using that instead!")
+                                self.art_id_replaced = doc_id
+                                self.art_id_exists = True
+                                ret_val = self.art_id = alt_id
+                                break # got it!
+
+            except Exception as e:
+                logger.warning(e)
+        else:
+            self.art_id_exists = False
+            
+        if ret_val is None:
+            msg = f"Document ID {self.art_id} not in Solr."
+            if not resilient:
+                log_everywhere_if(verbose, "warning", f"{msg}")
+            else:
+                log_everywhere_if(verbose, "warning", f"{msg} No alternative ID found.")
+            
+        return ret_val
     
 #------------------------------------------------------------------------------------------------------
     
@@ -392,7 +555,7 @@ class ArticleInfo(BaseModel):
        and the Solr core pepwebdocs for full-text searching (and the majority of
        client searches.
 
-    >>> file = r"X:\AWS_S3\AWS PEP-Web-Live-Data\_PEPArchive\Psyche\066.2012\PSYCHE.066.0268A(bKBD3).xml"
+    >>> file = r"X:\\AWS_S3\\AWS PEP-Web-Live-Data\\_PEPArchive\Psyche\\066.2012\\PSYCHE.066.0268A(bKBD3).xml"
     >>> a = ArticleInfo(art_id="PSYCHE.066.0268A", fullfilename=file)
        
 
@@ -400,7 +563,7 @@ class ArticleInfo(BaseModel):
     >>> a = ArticleInfo(art_id="MPSA.043.0117A")
     >>> print (a.article_id_dict["art_id"])
     MPSA.043.0117A
-    >>> file = r"X:\\AWS_S3\\AWS PEP-Web-Live-Data\\_PEPArchive\\PI\\003\PI.003.0003A(bEXP_ARCH1).xml"
+    >>> file = r"X:\\AWS_S3\\AWS PEP-Web-Live-Data\\_PEPArchive\\PI\\003\\PI.003.0003A(bEXP_ARCH1).xml"
     >>> a = ArticleInfo(art_id="PI.003.0003A", fullfilename=file)
 
     """
@@ -623,13 +786,6 @@ class ArticleInfo(BaseModel):
                 self.art_id_with_volume_letter = f"{basic_art_info.src_code}.{basic_art_info.art_vol_str}"
                 self.art_id_with_volume_letter += f".{basic_art_info.special_section_prefix}{basic_art_info.roman_prefix}{basic_art_info.art_pgstart}{basic_art_info.page_suffix}"
                 
-            # m = re.match("(?P<volint>[0-9]+)(?P<volsuffix>[a-zA-Z])", self.art_vol)
-            #m = re.match("(?P<volint>[0-9]+)(?P<volsuffix>[a-zA-Z])?(\s*\-\s*)?((?P<vol2int>[0-9]+)(?P<vol2suffix>[a-zA-Z])?)?", str(self.art_vol_str))
-            #if m is not None:
-                #self.art_vol_suffix = m.group("volsuffix")
-                ## self.art_vol = m.group("volint")
-            #else:
-                #self.art_vol_suffix = None
             self.src_code = basic_art_info.src_code
             if basic_art_info.art_issue_int is not None and basic_art_info.art_issue_int != 0:
                 self.art_issue = str(basic_art_info.art_issue_int)
@@ -655,7 +811,7 @@ class ArticleInfo(BaseModel):
         self.filedatetime = ""
         self.filename = filename_base # filename without path
         self.fullfilename = fullfilename
-        self.art_id_from_filename = parse_artid_from_filename(self.filename)
+        self.art_id_from_filename = parse_artid_from_filename(fullfilename)
 
         try: #  lookup source in db
             if self.src_code in ["ZBK", "IPL", "NLP"]:
@@ -936,8 +1092,6 @@ class ArticleInfo(BaseModel):
                 # ************* end of counts! 20210413 *******************************************
     
             self.art_graphic_list = parsed_xml.xpath('//graphic//@source')
-            #if self.art_graphic_list != []:
-                #print (f"Graphics found: {self.art_graphic_list}")
             
             if self.art_pgstart is not None:
                 self.art_pgstart_prefix, self.art_pgstart, self.pgstart_suffix = opasgenlib.pgnum_splitter(self.art_pgstart)
@@ -989,7 +1143,7 @@ class ArticleInfo(BaseModel):
             self.art_author_id_list = opasxmllib.xml_xpath_return_textlist(parsed_xml, '//artinfo/artauth/aut[@listed="true"]/@authindexid')
             self.art_authors_count = len(self.author_list)
             if self.art_author_id_list == []: # no authindexid
-                logger.warning("This document %s does not have an author list; may be missing authindexids" % art_id)
+                logger.info("This document %s may be missing authindexids" % art_id)
                 self.art_author_id_list = self.author_list
     
             self.art_author_ids_str = ", ".join(self.art_author_id_list)

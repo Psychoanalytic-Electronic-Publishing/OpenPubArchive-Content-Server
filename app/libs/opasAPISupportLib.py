@@ -88,7 +88,7 @@ import opasCentralDBLib
 # import opasDocPermissions as opasDocPerm
 import opasPySolrLib
 from opasPySolrLib import search_text, search_text_qs
-import opasProductLib
+# import opasProductLib
 import opasArticleIDSupport
 
 # count_anchors = 0

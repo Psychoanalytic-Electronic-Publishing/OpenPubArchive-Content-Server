@@ -255,7 +255,10 @@ def get_articles_related_to_current_via_artqual(art_id):
     Return a list of any articles in Solr which reference this one
       via artqual.
 
-    >>> get_articles_related_to_current_via_artqual(art_id="PAQ.062.0588A")
+    >>> articles = get_articles_related_to_current_via_artqual(art_id="PAQ.062.0588A")
+    >>> len(articles) > 2
+    True
+    
     """
     ret_val = []
     documentList, ret_status = search_text(query=f"art_qual:{art_id}", 
@@ -1890,16 +1893,17 @@ def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
     Return a source's contents
 
     >>> results = metadata_get_contents("FA", "2001")
-    >>> results.documentList.responseInfo.count == 5
+    >>> results.documentList.responseInfo.count == 22
     True
 
     >>> results = metadata_get_contents("PSP", "2001")
-    >>> results.documentList.responseInfo.count == 5
+    >>> results.documentList.responseInfo.count == 17
     True
 
     >>> results = metadata_get_contents("IJP", "1993", limit=5, offset=0)
     >>> results.documentList.responseInfo.count == 5
     True
+
     >>> results = metadata_get_contents("IJP", "1993", limit=5, offset=5)
     >>> results.documentList.responseInfo.count == 5
     True
@@ -2505,7 +2509,7 @@ def metadata_get_next_and_prev_articles(art_id=None,
     except Exception as e:
         #logger.error(f"MetadataGetArtError: {e}")
         err_info = pysolrerror_processing(e)
-        logger.error(f"MetadataGetNextPrevError: {err_info.httpcode}. Query: {query} Error: {err_info.error_description}")
+        logger.error(f"MetadataGetNextPrevError: {err_info.httpcode}. Query: {query} Error: {err_info.error_description} {e}")
     else:
         # find the doc
         count = 0
@@ -2528,6 +2532,44 @@ def metadata_get_next_and_prev_articles(art_id=None,
     
     return prev_art, match_art, next_art
 #-----------------------------------------------------------------------------
+def metadata_get_sourcecodes():
+    """
+    >>> all = metadata_get_sourcecodes()
+    >>> all_count = len(all)
+    >>> all_count > 70
+    True
+    
+    """
+    ret_val = None
+    distinct_return = "art_sourcecode"
+    
+    query = "bk_subdoc:false"
+
+    try:
+        logger.info(f"Solr Query: q={query}")
+        facet_fields = ["art_sourcecode"]
+        facet_pivot_fields = ["art_sourcecode"]
+        
+        args = {
+            "fl": distinct_return,
+            "fq": "*:*",
+            "sort": "art_sourcecode asc",
+            "facet": "on", 
+            "facet.fields" : facet_fields, 
+            "facet.pivot" : facet_pivot_fields,
+            "facet.mincount" : 1,
+            "facet.sort" : "art_sourcecode asc", 
+        }
+
+        results = solr_docs2.search(query, **args)
+        ret_val = [n["value"] for n in results.facets["facet_pivot"]["art_sourcecode"]]
+        logger.info(f"Solr Query: q={query}")
+
+    except Exception as e:
+        err_info = pysolrerror_processing(e)
+        logger.error(f"SourceCodeValues {err_info.httpcode}. Query: {query} Error: {err_info.error_description}")
+
+    return ret_val
 
 #-----------------------------------------------------------------------------
 def metadata_get_next_and_prev_vols(source_code=None,
@@ -2544,7 +2586,7 @@ def metadata_get_next_and_prev_vols(source_code=None,
     New: 2020-11-17
 
     >>> metadata_get_next_and_prev_vols(source_code="APA", source_vol="66")
-    ({'value': '65', 'count': 89}, {'value': '66', 'count': 95}, {'value': '67', 'count': 88})
+    ({'value': '65', 'count': 99}, {'value': '66', 'count': 100}, {'value': '67', 'count': 101})
     
     >>> metadata_get_next_and_prev_vols(source_code="GW")
     (None, None, None)

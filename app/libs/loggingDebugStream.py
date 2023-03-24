@@ -23,7 +23,7 @@ def log_everywhere_if(condition, level, msg):
         logger.fatal(msg)
         level_int = 50
         
-    if condition and logger.parent.level <= level_int or level_int == 20: # want to see info msgs if condition
+    if condition and (logger.parent.level <= level_int or level_int == 20): # want to see info msgs if condition
         print (msg)
 
     
