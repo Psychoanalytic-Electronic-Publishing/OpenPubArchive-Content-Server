@@ -320,6 +320,18 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents, in
     
     body_xml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//body", default_return=None)
     appxs_xml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//appxs", default_return=None)
+    # added 2023-03-28 per issue 
+    if opasConfig.DELETE_EXTRANEOUS_TAGS:
+        if opasxmllib.xml_get_elements(pepxml, "/*/meta", default_return=None):
+            try:
+                # delete fields we don't want in full-text search
+                file_xml_contents = opasxmllib.xml_remove_tags_from_xmlstr(file_xml_contents, ["meta"])
+            except Exception as e:
+                log_everywhere_if(verbose, "debug", f"Can't delete specified extraneous tags from full-text {e}")
+            else:
+                # repair XML front matter
+                log_everywhere_if(verbose, "info", "\t...Deleted specified extraneous tags from full-text")
+                file_xml_contents + loaderConfig.DEFAULT_XML_DECLARATION + "\n" + opasConfig.PEP_KBD_DOCTYPE + "\n" + file_xml_contents       
 
     # see if this is an offsite article
     if artInfo.file_classification == opasConfig.DOCUMENT_ACCESS_OFFSITE:
@@ -511,8 +523,6 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents, in
                 "summaries_xml" : summaries_xml,
                 "art_excerpt" : excerpt,
                 "art_excerpt_xml" : excerpt_xml,
-                # very important field for displaying the whole document or extracting parts
-                "text_xml" : file_xml_contents,                                # important
                 "art_offsite" : offsite_contents, #  true if it's offsite
                 "author_bio_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//nbio", default_return = None),
                 "author_aff_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//autaff", default_return = None),
@@ -531,6 +541,7 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents, in
                 "caption_title_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//ctitle", default_return = None),
                 "headings_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//h1|//h2|//h3|//h4|//h5|//h6", default_return = None), # reinstated 2020-08-14
                 "meta_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//meta", default_return = None),
+                # very important field for displaying the whole document or extracting parts
                 "text_xml" : file_xml_contents,
                 "timestamp" : artInfo.processed_datetime,                     # important
                 "file_last_modified" : artInfo.filedatetime,
