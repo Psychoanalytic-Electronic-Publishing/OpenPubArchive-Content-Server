@@ -19,9 +19,9 @@ __status__      = "Development"
 
 programNameShort = "opasXMLProcessor"
 
-gDbg1 = False # display errors on stdout
-gDbg2 = False # processing details
-gDbg3 = False # debugging details
+# gDbg1 = False # display errors on stdout
+# gDbg2 = False # processing details
+# gDbg3 = False # debugging details
 
 import logging
 logger = logging.getLogger(programNameShort)
@@ -185,7 +185,8 @@ def find_related_articles(ref, art_or_source_title,
                           max_words=opasConfig.MAX_WORDS,
                           min_words=opasConfig.MIN_WORDS,
                           word_len=opasConfig.MIN_WORD_LEN,
-                          max_cf_list=opasConfig.MAX_CF_LIST):
+                          max_cf_list=opasConfig.MAX_CF_LIST,
+                          verbose=False):
     """
     Search for related articles and add to rxcf of reference
     
@@ -200,12 +201,12 @@ def find_related_articles(ref, art_or_source_title,
         result = opasPySolrLib.search_text(query=query, limit=10, offset=0, full_text_requested=False)
         
         if result[1][0] == 200:
-            if gDbg2:
+            if verbose:
                 title_list = [item.title for item in result[0].documentList.responseSet[0:max_cf_list]]
                 if title_list != []:
-                    print (f"\t\t\t...Article title first {len(title_words)} words of len {word_len} for search: {safe_title_words} from title:{art_or_source_title}")
+                    log_everywhere_if(verbose, level="debug", msg=f"\t\t\t...Article title first {len(title_words)} words of len {word_len} for search: {safe_title_words} from title:{art_or_source_title}")
                     for n in title_list:
-                        print (f"\t\t\t\t...cf Article Title: {n[:max_display_len_cf_articles]}")
+                        log_everywhere_if(verbose, level="debug", msg=f"\t\t\t\t...cf Article Title: {n[:max_display_len_cf_articles]}")
                         
             ret_val = [item.documentID for item in result[0].documentList.responseSet[0:max_cf_list]]
             try:
@@ -216,16 +217,16 @@ def find_related_articles(ref, art_or_source_title,
             if len(ret_val) > 0 and prev_rxcf is None:
                 ref.attrib["rxcf"] = ",".join(ret_val)
                 compare_to = f"\t\t\t...Journal title compare to: {ref.attrib['rxcf']}"
-                log_everywhere_if(gDbg2, level="debug", msg=compare_to)
+                log_everywhere_if(verbose, level="debug", msg=compare_to)
             elif prev_rxcf is not None:
                 ref.attrib["rxcf"] = prev_rxcf + "," + ",".join(ret_val)
                 compare_to = f"\t\t\t...Journal title compare to: {ref.attrib['rxcf']}"
-                log_everywhere_if(gDbg2, level="debug", msg=compare_to)
+                log_everywhere_if(verbose, level="debug", msg=compare_to)
                 
         else:
-            log_everywhere_if(gDbg1, level="debug", msg=result[1][1])
-    elif gDbg2:
-        print (f"\t\t\t...Skipped cf search (too few words): {title_words}")
+            log_everywhere_if(verbose, level="debug", msg=result[1][1])
+    else:
+        log_everywhere_if(verbose, level="debug", msg=f"\t\t\t...Skipped cf search (too few words): {title_words}")
 
     return ret_val
     
@@ -235,18 +236,8 @@ def pgx_add_rx_jump_via_biblio_entry(parsed_xml, ocd, artInfo, split_book_data=N
     Look for pgx links which reference the bibliography and link to the referenced
       source page number
     """
-    global gDbg1, gDbg2
-    if not verbose:
-        gDbg1 = False
-        gDbg2 = False
-    
-    #bxRefR = ""
-    #bxRefRX = ""
-    #bibRef = None
-    #pgLink = None
-    #jrnlCode = artInfo.src_code
-    vol = artInfo.art_vol_str
-    aLoc = Locator(artInfo.art_id)
+    #vol = artInfo.art_vol_str
+    #aLoc = Locator(artInfo.art_id)
 
     #  PGX ATTRIBUTES OF INTEREST:
     #     r = Internal Biblio ID Only, if required above (Differs from other
@@ -266,7 +257,8 @@ def pgx_add_rx_jump_via_biblio_entry(parsed_xml, ocd, artInfo, split_book_data=N
         
     for pgx in pgx_links:
         r_attr = pgx.attrib.get("r", None)
-        if r_attr is not None:
+        rx_attr = pgx.attrib.get("rx", None)
+        if r_attr is not None and rx_attr is None:
             pg_num = pgx.text
             if pg_num is not None:
                 pg_numeric = pg_num.isnumeric()
@@ -285,6 +277,7 @@ def pgx_add_rx_jump_via_biblio_entry(parsed_xml, ocd, artInfo, split_book_data=N
                                 pgx.tag = "cgrp"
                                 pgx.attrib["name"] = "pgx"
                                 pgx.attrib["type"] = "placeholder"
+                                   
                                 # retain r attribute if there is one (now allowed in cgrp, but optional)
             else:
                 logger.warning("pgx does not have a page number reference.")
@@ -297,39 +290,11 @@ def pgx_add_rx_jump_via_biblio_entry(parsed_xml, ocd, artInfo, split_book_data=N
     return ret_val
 
 #------------------------------------------------------------------------------------------------------
-def pgx_add_rx_split_book_links(parsed_xml, ocd, artInfo, split_book_data=None, verbose=False):
-    """
-    Deal with pgx links within split books
-    
-    UNUSED - Delete in late January
-    
-    """
-    ret_val = 0
-    pgx_links = parsed_xml.xpath("/pepkbd3//pgx") 
-    logger.info("\t...Processing page links.")
-    for pgx in pgx_links:
-        inst = split_book_data.get_splitbook_page_instance(book_code=artInfo.src_code, vol=artInfo.art_vol_str, page_id=pgx.text, vol_suffix=artInfo.art_vol_suffix)
-        if gDbg2:
-            print (f"Split book info: {pgx.text}, {pgx.attrib}, {inst}")
-            
-        if inst is not None and pgx.attrib.get("rx", None) is None:
-            if gDbg2: print (f"Setting TOC page link: {pgx.text}, {pgx.attrib}, {inst}")
-            loc = Locator(inst)
-            pgx.attrib["rx"] = str(loc) + ".P" + opasDocuments.PageNumber(pgx.text).pageID()
-            ret_val += 1
-
-    return ret_val
-
-#------------------------------------------------------------------------------------------------------
 def pgx_add_rx_book_links(parsed_xml, ocd, artInfo, split_book_data=None, verbose=False):
     """
     Deal with pgx links within books
     """
-    global gDbg1, gDbg2
-    if not verbose:
-        gDbg1 = False
-        gDbg2 = False
-    
+
     jrnlCode = artInfo.src_code
     vol = artInfo.art_vol_str
     aLoc = Locator(artInfo.art_id)
@@ -358,30 +323,32 @@ def pgx_add_rx_book_links(parsed_xml, ocd, artInfo, split_book_data=None, verbos
                         pgxlink_type = grp_type
                 
             current_rx_link = pgx.attrib.get("rx", None)
-            if current_rx_link is None: # otherwise, no need to do
-                ret_val += 1
-                fulltext = opasxmllib.xml_elem_or_str_to_text(pgx) # x.find("pgx")
-                fulltext_cleaned = fulltext.split("-")[0]
-                fulltext_cleaned = opasgenlib.removeAllPunct(fulltext_cleaned)
-                fulltext_cleaned = opasDocuments.PageNumber(fulltext_cleaned)
-                fulltext_cleaned = fulltext_cleaned.format(keyword=fulltext_cleaned.LOCALID)
-                split_inst_from_fulltext = split_book_data.get_splitbook_page_instance(book_code=jrnlCode, vol=vol, vol_suffix=artInfo.art_vol_suffix, page_id=fulltext_cleaned)
-                if split_inst_from_fulltext is None:
-                    splitLoc = opasLocator.Locator(jrnlCode=jrnlCode, jrnlVol=vol, jrnlVolSuffix=artInfo.art_vol_suffix, pgStart="1", art_info=artInfo)
-                    local = splitLoc.localID(fulltext_cleaned).upper()
-                    # if 1: print (f"\t\t\tLocalID: {local}")
-                    pgx.attrib["rx"] = local
-                    pgx.attrib["type"] = pgxlink_type
-                    log_everywhere_if(gDbg2, level="info", msg=f"\t\t...Reference to non-Split Book. Set link (type={pgxlink_type}) including local to: {local}")
+            current_r_link = pgx.attrib.get("r", None)      
+            if current_r_link is None: # if it has an r, it's pointing to the biblio, so not a split instance, no need to do
+                if current_rx_link is None and current_r_link is None: # otherwise, already linked, no need to do
+                    ret_val += 1
+                    fulltext = opasxmllib.xml_elem_or_str_to_text(pgx) # x.find("pgx")
+                    fulltext_cleaned = fulltext.split("-")[0]
+                    fulltext_cleaned = opasgenlib.removeAllPunct(fulltext_cleaned)
+                    fulltext_cleaned = opasDocuments.PageNumber(fulltext_cleaned)
+                    fulltext_cleaned = fulltext_cleaned.format(keyword=fulltext_cleaned.LOCALID)
+                    split_inst_from_fulltext = split_book_data.get_splitbook_page_instance(book_code=jrnlCode, vol=vol, vol_suffix=artInfo.art_vol_suffix, page_id=fulltext_cleaned)
+                    if split_inst_from_fulltext is None:
+                        splitLoc = opasLocator.Locator(jrnlCode=jrnlCode, jrnlVol=vol, jrnlVolSuffix=artInfo.art_vol_suffix, pgStart="1", art_info=artInfo)
+                        local = splitLoc.localID(fulltext_cleaned).upper()
+                        # if 1: print (f"\t\t\tLocalID: {local}")
+                        pgx.attrib["rx"] = local
+                        pgx.attrib["type"] = pgxlink_type
+                        log_everywhere_if(verbose, level="info", msg=f"\t\t...Reference to non-Split Book. Set link (type={pgxlink_type}) including local to: {local}")
+                    else:
+                        splitLoc = opasLocator.Locator(split_inst_from_fulltext)
+                        #print (splitLoc, SEPage)
+                        local = splitLoc.localID(fulltext_cleaned).upper()
+                        pgx.attrib["rx"] = local
+                        pgx.attrib["type"] = pgxlink_type
+                        log_everywhere_if(verbose, level="info", msg=f"\t\t...Reference to Split Book. Set link (type={pgxlink_type}) including local to: {local}")
                 else:
-                    splitLoc = opasLocator.Locator(split_inst_from_fulltext)
-                    #print (splitLoc, SEPage)
-                    local = splitLoc.localID(fulltext_cleaned).upper()
-                    pgx.attrib["rx"] = local
-                    pgx.attrib["type"] = pgxlink_type
-                    log_everywhere_if(gDbg2, level="info", msg=f"\t\t...Reference to Split Book. Set link (type={pgxlink_type}) including local to: {local}")
-            else:
-                log_everywhere_if(gDbg2, level="info", msg=f"\t\t...Rx link for pgx already set: {current_rx_link}")
+                    log_everywhere_if(verbose, level="info", msg=f"\t\t...Rx link for pgx already set: {current_rx_link}")
 
     return ret_val
 #------------------------------------------------------------------------------------------------------
@@ -401,9 +368,7 @@ def remove_author_pretitles(parsed_xml, verbose=False):
             node.attrib["oldnpreti"] = pretitle
             node.attrib["type"] = "TITLE"
             node.text = ""
-            if verbose:
-                log_everywhere_if(gDbg2, level="info", msg=f"Pretitle: {preTitle} removed!")
-                logger.info()
+            log_everywhere_if(verbose, level="info", msg=f"Pretitle: {preTitle} removed!")
     return count
     
 
@@ -433,7 +398,7 @@ def update_biblio_links(parsed_xml, artInfo, ocd, pretty_print=False, verbose=Fa
                                                           ref_or_parsed_ref=ref,
                                                           verbose=verbose)
             except Exception as e:
-                log_everywhere_if(True, "warning", f"\t..Cannot load/or parse bib_entry {artInfo.art_id} {artInfo.art_year_int} due to bad data {ref} Error: {e}")
+                log_everywhere_if(True, "warning", msg=f"\t..Cannot load/or parse bib_entry {artInfo.art_id} {artInfo.art_year_int} due to bad data {ref} Error: {e}")
                 continue
 
             if bib_entry.record_updated:
@@ -514,8 +479,7 @@ def update_bincs(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
             # compare_to = ""
             ref_id = parsed_ref.attrib.get("id", None)
             if ref_id is None:
-                if gDbg1:
-                    print (f"\t\tSkipping attempted link of {ET.tostring(parsed_ref)}")
+                if verbose: print (f"\t\tSkipping attempted link of {ET.tostring(parsed_ref)}")
                 continue # no id, minor instance, skip
             # see if it's already in table
             bib_saved_entry_tuple = ocd.get_references_from_biblioxml_table(article_id=artInfo.art_id, ref_local_id=ref_id)
@@ -544,7 +508,7 @@ def update_bincs(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
                     pass # not during build. From DB only
                     #if bib_entry.ref_title:
                         ## find and store rxcf for related articles (side effect of function)
-                        #if gDbg2 and verbose: print (f"\t...Finding related articles for bibliography based on ref_title")
+                        #log_everywhere_if(verbose, level="debug", msg=f"\t...Finding related articles for bibliography based on ref_title")
                         ## called routine updates ref if found
                         #rxcf = find_related_articles(parsed_ref,
                                                      #art_or_source_title=bib_entry.ref_title,
@@ -556,7 +520,7 @@ def update_bincs(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
                     #else:
                         #locator = None
                         #msg = f"\t\tSkipped: {bib_saved_entry}"
-                        #log_everywhere_if(gDbg2, level="debug", msg=msg)                            
+                        #log_everywhere_if(verbose, level="debug", msg=msg)                            
                     
                 else: # if not opasgenlib.is_empty(bib_entry.sourcecode):
                     locator = Locator(strLocator=None,
@@ -576,13 +540,13 @@ def update_bincs(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
                     # need to check if it's whole, and if it works, but for now.
                     if not locator.valid:
                         msg = f"\t\tBinc Bib ID {ref_id} not enough link. {bib_entry.ref_year}.{bib_entry.ref_volume}.{bib_pgstart}"
-                        log_everywhere_if(gDbg2, level="info", msg=msg)
+                        log_everywhere_if(verbose, level="info", msg=msg)
                         continue
                         
                     parsed_ref.attrib["rx"] = locator.articleID()
                     search_str = f"//binc[@id='{ref_id}']"
                     msg = f"\t\tBinc Matched Journal {opasxmllib.xml_xpath_return_xmlstringlist(parsed_xml, search_str)[0]}"
-                    log_everywhere_if(gDbg2, level="debug", msg=msg)
+                    log_everywhere_if(verbose, level="debug", msg=msg)
 
                 
             else:
@@ -591,7 +555,7 @@ def update_bincs(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
                     parsed_ref.attrib["rx"] = bk_locator_str 
                     search_str = f"//binc[@id='{ref_id}']"
                     msg = f"\t\tBinc Matched Book {match_val}. {opasxmllib.xml_xpath_return_xmlstringlist(parsed_xml, search_str)[0]}"
-                    log_everywhere_if(gDbg2, level="info", msg=msg)
+                    log_everywhere_if(verbose, level="info", msg=msg)
                     
                 else:
                     # see if we have info to link SE/GW etc., these are in a sense like journals
@@ -642,15 +606,15 @@ def update_bincs(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
                                 parsed_ref.attrib["rx"] = locator.articleID()
                                 search_str = f"//binc[@id='{ref_id}']"
                                 msg = f"\t\tMatched Book {match_val}. {opasxmllib.xml_xpath_return_xmlstringlist(parsed_xml, search_str)[0]}"
-                                log_everywhere_if(gDbg2, level="debug", msg=msg)
+                                log_everywhere_if(verbose, level="debug", msg=msg)
                             else:
-                                log_everywhere_if(gDbg2, level="debug", msg=f"didn't find this: {bib_entry.ref_sourcecode}")
+                                log_everywhere_if(verbose, level="debug", msg=f"didn't find this: {bib_entry.ref_sourcecode}")
                             
                         
                     else:     
                         locator = None
                         msg = f"\t\tSkipped: {bib_entry.ref_text}"
-                        log_everywhere_if(gDbg2, level="debug", msg=msg)
+                        log_everywhere_if(verbose, level="debug", msg=msg)
 
 #------------------------------------------------------------------------------------------------------
 def add_pagenbrs_to_splitbook_table(parsed_xml, artInfo, ocd, split_book_data, pretty_print=False, verbose=False):
@@ -760,7 +724,7 @@ def update_artinfo_in_instance(parsed_xml,
     if art_id_from_instance is not None:
         # check if it agrees
         if art_id_from_instance != artInfo.art_id_from_filename:
-            log_everywhere_if(1, "error", f"filename {artInfo.art_id_from_filename} and instance {art_id_from_instance} art_id disagree")
+            log_everywhere_if(1, "error", msg=f"filename {artInfo.art_id_from_filename} and instance {art_id_from_instance} art_id disagree")
             # copy filename art_id to instance
             xml_artinfo.set("id", artInfo.art_id)
     else:

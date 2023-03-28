@@ -5,8 +5,7 @@ from datetime import datetime
 from optparse import OptionParser
 import logging
 import opasGenSupportLib as opasgenlib
-
-from configLib.opasCoreConfig import solr_docs2, CORES # solr_authors2, solr_gloss2, solr_docs_term_search, solr_authors_term_search
+from configLib.opasCoreConfig import SOLRURL, SOLR_DOCS, CORES # solr_authors2, solr_gloss2, solr_docs_term_search, solr_authors_term_search
 import opasConfig
 
 logger = logging.getLogger(__name__)
@@ -242,6 +241,25 @@ def str_is_author_mastname(search_str):
         return True
     else:
         return False
+ 
+def solr_get_field_names():
+    import requests
+    import json
+    ret_val = []
+    
+    # Define the Schema API URL to get all fields
+    schema_api_url = f"{SOLRURL}{SOLR_DOCS}/schema/fields"
+    
+    # Send a GET request to the Schema API
+    response = requests.get(schema_api_url)
+    
+    if response.ok:
+        # Parse the JSON response to get the field names
+        fields = json.loads(response.text)["fields"]
+        ret_val = [field["name"] for field in fields]
+    
+    return ret_val
+
         
 #-----------------------------------------------------------------------------
 def cleanup_solr_query(solrquery):

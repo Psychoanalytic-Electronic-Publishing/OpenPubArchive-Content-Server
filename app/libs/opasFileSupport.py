@@ -509,7 +509,7 @@ class FlexFileSystem(object):
                 if ret_val:
                     if not insensitive:
                         # fail if they don't match
-                        if base != name or ext != base_ext:
+                        if base != name or (ext != base_ext and base_ext is not None):
                             logger.error(f"FlexFileSystemError: File insensitive match {base} vs {name} found insensitive match but not sensitive match.")
                             ret_val = None
 

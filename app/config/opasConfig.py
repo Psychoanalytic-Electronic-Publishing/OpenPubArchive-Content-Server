@@ -55,8 +55,8 @@ MIN_TERM_LENGTH_MATCH = 4 # smallest length term to match from glossary (i.e., e
 
 # Cache controls
 WHATS_NEW_EXPIRES_DAYS = 0
-WHATS_NEW_EXPIRES_HOURS = 8
-WHATS_NEW_EXPIRES_MINUTES = 0
+WHATS_NEW_EXPIRES_HOURS = 22
+WHATS_NEW_EXPIRES_MINUTES = 5
 CONTINUE_PROCESSING_DAYS = 1
 
 JOURNALNEWFLAG = "*New* "
@@ -921,6 +921,24 @@ AUTHOR_ITEM_DEFAULT_FIELDS ="""
  score
 """
 
+def string_to_list(string):
+    term_list = string.split(',')
+    distinct_terms = []
+    for term in term_list:
+        stripped_term = term.strip()
+        if stripped_term not in distinct_terms:
+            distinct_terms.append(stripped_term)
+    return distinct_terms
+
+MERGED_SOLR_FIELD_LIST = string_to_list(DOCUMENT_ITEM_SUMMARY_FIELDS + ","
+                                        + DOCUMENT_ITEM_CONCORDANCE_FIELDS + ","
+                                        + DOCUMENT_ITEM_VIDEO_FIELDS + ","
+                                        + DOCUMENT_ITEM_TOC_FIELDS + ","
+                                        + DOCUMENT_ITEM_STAT_FIELDS + ","
+                                        + DOCUMENT_ITEM_META_FIELDS + ","
+                                        + GLOSSARY_ITEM_DEFAULT_FIELDS + ","
+                                        + AUTHOR_ITEM_DEFAULT_FIELDS)
+
 running_head_fmts = {
     'xml': "<p><cgrp name='pub_year'>({pub_year})</cgrp>. <cgrp name='source_title'>{source_title}</cgrp><cgrp name='vol'>{vol}</cgrp><cgrp name='issue'>{issue}</cgrp><cgrp name='pgrg'>{pgrg}</cgrp></p>", 
     'html': "<span class='pub_year'>({pub_year})</span>. <span class='source_title'>{source_title}</span><span class='vol'>{vol}</span><span class='issue'>{issue}</span><span class='pgrg'>{pgrg}</span>",
@@ -1130,6 +1148,7 @@ gSplitBooks = {
     "NLP005" : 0,
     "NLP011" : 0,
     "NLP014" : 0,
+    "NLP079" : 0,
     "GW001"  : 0,
     "GW002"  : 0,
     "GW003"  : 0,
@@ -1302,6 +1321,7 @@ gClassicBookTOCList = {
     "NLP.009.0001"  :  "NLP.009.0001",  # A1v7
     "NLP.011.0000"  :  "NLP.011.0000",  # A1v2200r1
     "NLP.014.0000"  :  "NLP.014.0000",  # A1v7
+    "NLP.079.0000" :   "NLP.079.0000",  # New split book 2023-03-27
     "ZBK.002.0000"  :  "ZBK.002.0000",  # split 2022-05-02
     "ZBK.003.0000"  :  "ZBK.003.0000",  # split 2022-05-02
     "ZBK.004.0000"  :  "ZBK.004.0000",

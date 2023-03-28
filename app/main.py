@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2023.0322/v2.3.003"   # removed v3 ExtendedSearch endpoint so new 2.3 compatibility bump
+__version__     = "2023.0328/v2.3.004"   # removed v3 ExtendedSearch endpoint so new 2.3 compatibility bump
 __status__      = "Development/Libs/Loader"  
 
 """
@@ -5504,7 +5504,7 @@ async def documents_image_fetch(response: Response,
                                 request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
                                 imageID: str=Path(..., title=opasConfig.TITLE_IMAGEID, description=opasConfig.DESCRIPTION_IMAGEID),
                                 download: int=Query(0, title="Return or download", description="0 returns the binary image, 1 downloads, 2 returns the article ID"),
-                                insensitive: bool=Query(True, title="Filename case ignored"),  
+                                insensitive: bool=Query(False, title="Filename case ignored"),  
                                 #seed:str=Query(None, title="Seed String to help randomize daily expert pick", description="Use the date, for example, to avoid caching from a prev. date. "),
                                 reselect:bool=Query(False, title="Force a new random image selection"),  
                                 #client_id:int=Depends(get_client_id), 

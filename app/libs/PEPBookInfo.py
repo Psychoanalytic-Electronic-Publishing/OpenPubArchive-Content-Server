@@ -190,6 +190,7 @@ class PEPBookInfo:
 
     andersonR = "Anderson,\s+R\."
     anzieuD = "Anzieu,\s+D\."
+    bleger = "Bleger,\s+J\."
     bionW = "Bion,\s+W\.(\s+R\.)?"
     boehlichW = "Boehlich,\s+W\."
     bowlbyJ = "Bowlby,\s+J\."
@@ -835,6 +836,7 @@ class PEPBookInfo:
                             None
                             ),
         # IPL ************************************************************************************************
+        # minMatchLen, authPat, titlePat, yearPat, extraPat
         "IPL.002.0000A": (  30,
                             ferencziS,  #"Ferenczi, S., Abraham, K., Simmel, E. and Jones, E.",
                             patPsychoanalysis+patAnd+"\s+(the\s+?)?War\s+Neuros(i|e)s",
@@ -991,6 +993,8 @@ class PEPBookInfo:
                             ),
 
         # NLP ************************************************************************************************
+        # minMatchLen, authPat, titlePat, yearPat, extraPat
+        
         "NLP.001.0000A": (  30,
                             rosenfeldH, #"Rosenfeld, H.",    #checked
                             "Impasse and Interpretation("+patSubSep+" Therapeutic and anti-therapeutic  factors in the "+patPsychoanalytic+" treatment of psychotic, borderline, and neurotic patients)?",
@@ -1032,6 +1036,16 @@ class PEPBookInfo:
                             "1992|1991",
                             None
                             ),
+        
+        # minMatchLen, authPat, titlePat, yearPat, extraPat
+        # dummy (not used), bookID, rgxAuth, rgxTitle, rgxYear, rgxExtra in self.bookRGXList:
+        "NLP.079.0000A": (  10, 
+                            bleger, # Bleger, J (See patterns beginning Line 191)
+                            "Symbiosis"+patAnd+"Ambiguity",              
+                            "1967",
+                            None  # extra pattern like volume number
+                            ),
+        
 
         # SE ************************************************************************************************
         "SE.014.0000A": (   9,

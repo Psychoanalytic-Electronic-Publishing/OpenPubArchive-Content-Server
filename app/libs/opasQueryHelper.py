@@ -48,6 +48,8 @@ count_anchors = 0
 import smartsearch
 import smartsearchLib
 
+SOLR_FIELD_NAMES = smartsearchLib.solr_get_field_names()
+
 ocd = opasCentralDBLib.opasCentralDB()
 pat_prefix_amps = re.compile("^\s*&& ")
 
@@ -89,6 +91,37 @@ def is_empty(arg):
         return True
     else:
         return False
+
+def split_at(string, separator):
+    sep_set = set(separator)
+    if not sep_set:
+        return [string]
+    result = []
+    start = 0
+    for i, char in enumerate(string):
+        if char in sep_set:
+            if start != i:
+                result.append(string[start:i])
+            result.append(char)
+            start = i + 1
+    if start != len(string):
+        result.append(string[start:])
+    return result
+
+#-----------------------------------------------------------------------------
+def remove_colons_not_in_list(arg, word_list=opasConfig.MERGED_SOLR_FIELD_LIST):
+    """
+    (({!parent which=’art_level:1’} art_level:2 && ((parent_tag:(p_body || p_summaries || p_appxs) && para:(ego id superego)))) || ({!parent which='art_level:1'} art_level:2 && ((parent_tag:(p_body || p_summaries || p_appxs) && para:(ego id superego)))))
+    """
+    words = split_at(arg, "{’'(,!=:)} ")
+    new_string = ""
+    for i, word in enumerate(words):
+        if ':' in word and i > 0 and words[i-1] not in word_list:
+            word = word.replace(':', '')
+        new_string += word
+    
+    new_string = new_string.replace("’", "'")
+    return new_string.strip()
 
 #-----------------------------------------------------------------------------
 def check_search_args(**kwargs):
@@ -1354,9 +1387,10 @@ def parse_search_query_parameters(search=None,             # url based parameter
     
     implied_issue = None
     if opasgenlib.not_empty(vol):
-        if re.search("[\&\|\,\]]|AND|OR", vol, flags=re.I) is None:
+        vol_nbr_str = str(vol)
+        if re.search("[\&\|\,\]]|AND|OR", vol_nbr_str , flags=re.I) is None:
             # single vol specified, if it contains a suffix, parse apart
-            vol, implied_issue = parse_volume_code(vol)
+            vol, implied_issue = parse_volume_code(vol_nbr_str )
             if implied_issue is not None and implied_issue is not "*":
                 implied_issue = parse_issue_code(issue_code=implied_issue)
                 if opasgenlib.not_empty(issue) == False:
@@ -1369,13 +1403,14 @@ def parse_search_query_parameters(search=None,             # url based parameter
         search_analysis_term_list.append(analyze_this)  # Not collecting this!
 
     if opasgenlib.not_empty(issue):
+        issue_nbr_str = str(issue)
         # issue is a number, so if a letter is supplied, convert to numeric
-        if re.search("[\&\|\,\]]|AND|OR", issue, flags=re.I) is None:
+        if re.search("[\&\|\,\]]|AND|OR", issue_nbr_str, flags=re.I) is None:
             # single issue specified, if it's a code, make it a number
-            issue = parse_issue_code(issue_code=issue)
+            issue = parse_issue_code(issue_code=issue_nbr_str)
 
         if implied_issue is not None:
-            issue = issue + " OR " + implied_issue
+            issue = issue_nbr_str + " OR " + implied_issue
         
         issue = qparse.markup(issue, "art_iss")  # convert AND/OR/NOT, set up field query
             
@@ -1582,9 +1617,9 @@ def parse_search_query_parameters(search=None,             # url based parameter
     # No - As is can cause problems for advanced searches like:
     #  "{!parent which='art_level:1'} art_level:2 && ((parent_tag:(p_body || p_summaries || p_appxs) && para:(ego id superego)))"
     # may not be needed, but sometimes this tricks Solr (2022-04-07). Note: we have already removed colons in the string when it's prefixed by a fieldname+:
-    #if smartsearchLib.quoted_str_has_colons(search_q):
-        ## remove colons
-        #search_q = search_q.replace(":", "")
+    if smartsearchLib.quoted_str_has_colons(search_q):
+        # remove colons
+        search_q = remove_colons_not_in_list(arg=search_q, word_list=SOLR_FIELD_NAMES)
         
     if smartsearchLib.str_has_wildcards(search_q) or smartsearchLib.str_has_fuzzy_ops(search_q): # quoted_str_has_wildcards(search_q):
         complex_phrase = "{!complexphrase}"
