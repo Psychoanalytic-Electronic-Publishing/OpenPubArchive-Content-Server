@@ -48,7 +48,8 @@ count_anchors = 0
 import smartsearch
 import smartsearchLib
 
-SOLR_FIELD_NAMES = smartsearchLib.solr_get_field_names()
+# All schema fields in the doc schema plus the allowed mapped names in the schemaMap (convenience names)
+ALL_FIELDS = smartsearch.docschemainfo.doc_fields + list(schemaMap.USER2SOLRFIELDNAME_MAP.keys()) 
 
 ocd = opasCentralDBLib.opasCentralDB()
 pat_prefix_amps = re.compile("^\s*&& ")
@@ -1619,7 +1620,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
     # may not be needed, but sometimes this tricks Solr (2022-04-07). Note: we have already removed colons in the string when it's prefixed by a fieldname+:
     if smartsearchLib.quoted_str_has_colons(search_q):
         # remove colons
-        search_q = remove_colons_not_in_list(arg=search_q, word_list=SOLR_FIELD_NAMES)
+        search_q = remove_colons_not_in_list(arg=search_q, word_list=ALL_FIELDS)
         
     if smartsearchLib.str_has_wildcards(search_q) or smartsearchLib.str_has_fuzzy_ops(search_q): # quoted_str_has_wildcards(search_q):
         complex_phrase = "{!complexphrase}"

@@ -68,7 +68,7 @@ import re
 import time
 import datetime
 today = datetime.date.today()  # Get today's date
-yesterday = today - datetime.timedelta(days=1)  # Subtract one day from today's date
+yesterday = today - datetime.timedelta(days=2)  # Subtract 24 hours to cover 
 
 from optparse import OptionParser
 from loggingDebugStream import log_everywhere_if

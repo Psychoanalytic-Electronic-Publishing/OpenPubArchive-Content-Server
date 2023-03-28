@@ -242,25 +242,6 @@ def str_is_author_mastname(search_str):
     else:
         return False
  
-def solr_get_field_names():
-    import requests
-    import json
-    ret_val = []
-    
-    # Define the Schema API URL to get all fields
-    schema_api_url = f"{SOLRURL}{SOLR_DOCS}/schema/fields"
-    
-    # Send a GET request to the Schema API
-    response = requests.get(schema_api_url)
-    
-    if response.ok:
-        # Parse the JSON response to get the field names
-        fields = json.loads(response.text)["fields"]
-        ret_val = [field["name"] for field in fields]
-    
-    return ret_val
-
-        
 #-----------------------------------------------------------------------------
 def cleanup_solr_query(solrquery):
     """
