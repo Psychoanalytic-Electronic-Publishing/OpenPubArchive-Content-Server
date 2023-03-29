@@ -368,7 +368,7 @@ def remove_author_pretitles(parsed_xml, verbose=False):
             node.attrib["oldnpreti"] = pretitle
             node.attrib["type"] = "TITLE"
             node.text = ""
-            log_everywhere_if(verbose, level="info", msg=f"Pretitle: {preTitle} removed!")
+            log_everywhere_if(verbose, level="info", msg=f"Pretitle: {pretitle} removed!")
     return count
     
 
