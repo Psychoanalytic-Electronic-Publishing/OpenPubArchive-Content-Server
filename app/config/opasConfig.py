@@ -48,6 +48,7 @@ LOG_CALL_TIMING = True
 LOCAL_TRACE = False                   # turn this on to see the queries easily.
 PADS_INFO_TRACE = False
 DEMOTE_PREVALENT_LOG_ENTRIES = True
+DELETE_EXTRANEOUS_TAGS = True
 
 # Special feature switches
 SMARTQUOTE_EXTENSION = True  # Turn on temporary smartQuote (apos) feature.  Won't be needed if we load only smartquotes.
