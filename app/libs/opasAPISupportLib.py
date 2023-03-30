@@ -546,11 +546,12 @@ def metadata_get_source_info(src_type=None, # opasConfig.VALS_PRODUCT_TYPES
                 # use standardized version of class
                 pep_release = source.get("pepversion")
                 pub_source_url = source.get("landing_page")
-    
+                art_citeas = ""
+                
                 if src_type == "book":
                     book_code = source.get("pepcode")
                     if book_code is None:
-                        logger.warning(f"Book code information missing for requested basecode {base_code} in productbase")
+                        logger.warning(f"Book code (pepcode) information missing for requested basecode {base_code} in productbase")
                     else:
                         m = re.match("(?P<code>[a-z]+)(?P<num>[0-9]+)", book_code, re.IGNORECASE)
                         if m is not None:

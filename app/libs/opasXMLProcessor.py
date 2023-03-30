@@ -410,6 +410,8 @@ def update_biblio_links(parsed_xml, artInfo, ocd, pretty_print=False, verbose=Fa
                 
             bib_entry.compare_to_database(ocd)
             if not bib_entry.record_from_db:
+                if isinstance(bib_entry.ref_rx, opasLocator.Locator):
+                    bib_entry.ref_rx = bib_entry.ref_rx.articleID()
                 ocd.save_ref_to_biblioxml_table(bib_entry)
                 bib_entry.record_from_db = True
             elif bib_entry.link_updated:
