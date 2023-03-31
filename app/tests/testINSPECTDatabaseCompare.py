@@ -24,7 +24,7 @@ class TestDoDatabaseCompare(unittest.TestCase):
         assert(ret_val == 0)
         
     def test_2_active_product_comparison(self):
-        ret_val = compareTables.compare_critical_columns("api_productbase","basecode", "active")
+        ret_val = compareTables.compare_critical_columns("api_productbase")
         assert(ret_val == 0)
 
     def test_2a1_Critical_column_lists_common(self):
@@ -76,12 +76,12 @@ class TestDoDatabaseCompare(unittest.TestCase):
                       "language", 
                       #"updated", 
                       "pepversion", 
-                      "duplicate", # unused now
+                      #"duplicate", # unused now
                       "landing_page", 
                       "coverage_notes", 
-                      "landing_page_intro_html", # unused now
-                      "landing_page_end_html", # unused now
-                      "google_books_link", # unused now
+                      #"landing_page_intro_html", # unused now
+                      #"landing_page_end_html", # unused now
+                      #"google_books_link", # unused now
               ]
         verbose = False
         ret_val = compareTables.compare_critical_column_lists("api_productbase","basecode", col_list, db1Name="LOCALDEV", db2Name="STAGE", verbose=verbose)

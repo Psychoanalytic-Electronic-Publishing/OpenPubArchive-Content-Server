@@ -1062,7 +1062,7 @@ def add_to_tracker_table(ocd, art_id, verbose=None):
     query_param_dict["art_id"] = art_id
         
     try:
-        res = ocd.do_action_query_silent(querytxt=insert_if_not_exists, queryparams=query_param_dict)
+        res = ocd.do_dataupdate_query(querytxt=insert_if_not_exists, queryparams=query_param_dict)
     except Exception as e:
         pass # normal
     else:

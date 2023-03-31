@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2023, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2023.0329/v2.1.024"   # Requires update to api_biblioxml2 and views based on it.
+__version__     = "2023.0330/v2.1.025"   # Requires update to api_biblioxml2 and views based on it.
 __status__      = "Development"
 
 # !!! IMPORTANT: Increment opasXMLProcessor version (if version chgd). It's written to the XML !!!
@@ -1201,6 +1201,7 @@ def main():
     # Closing time
     # ---------------------------------------------------------
     timeEnd = time.time()
+    ocd.close_connection(forced=True)
     #currentfile_info.close()
 
     if not options.no_files: # no_files=false

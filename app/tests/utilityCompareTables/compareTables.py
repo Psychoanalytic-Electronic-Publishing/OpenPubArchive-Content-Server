@@ -356,7 +356,6 @@ def compare_critical_column_lists(table_name, key_col_name, value_col_name_list,
 def compare_tables(db_tables=None):
 
     def_db_tables = [{"name": "api_productbase", "key": "basecode"},
-                     #{"name": "vw_api_productbase_instance_counts", "key": "basecode"},
                      {"name": "api_endpoints", "key": "api_endpoint_id"},
                      {"name": "vw_api_messages", "key": "msg_num_code, msg_language"},
                      {"name": "api_client_apps", "key": "api_client_id"},
@@ -569,6 +568,8 @@ def main():
                           "api_endpoints"   - List of endpoints and ids
                           "api_messages"    - API return messages (from the server)
                           "api_client_apps" - List of registered client apps
+                          "api_articles"    - List of all articles
+
               
             Example Invocation:
                     $ python compareTables.py

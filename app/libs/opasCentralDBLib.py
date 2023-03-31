@@ -257,9 +257,9 @@ class opasCentralDB(object):
         # if 1: print (f"Connection_count: {self.connection_count}")
         return self.connected
         
-    def close_connection(self, caller_name=""):
+    def close_connection(self, caller_name="", forced=False):
         ret_val = False # failed, or not open
-        if self.connected and self.connection_count > 1: # try to keep connection count to 1
+        if self.connected and self.connection_count > 1 or forced: # try to keep connection count to 1
             try:
                 if self.db is not None:
                     self.db.close()
@@ -2718,7 +2718,7 @@ class opasCentralDB(object):
         return ret_val # List of records or empty list
 
     #----------------------------------------------------------------------------------------
-    def do_action_query_silent(self, querytxt, queryparams, contextStr=None):
+    def do_dataupdate_query(self, querytxt, queryparams, contextStr=None):
     
         fname = "do_action_query_silent"
         ret_val = None
@@ -2727,20 +2727,23 @@ class opasCentralDB(object):
             self.open_connection(caller_name=fname) # make sure connection is open
             localDisconnectNeeded = True
             
-        with closing(self.db.cursor(buffered=True, dictionary=True)) as curs:
+        with closing(self.db.cursor()) as curs:
             try:
                 ret_val = curs.execute(querytxt, queryparams)
-            except Exception as e:
-                raise Exception(e)
+                self.db.commit()                
+            except mysql.connector.IntegrityError as e:
+                if e.errno == 1062:
+                    logger.debug('Duplicate entry')
+                else:
+                    logger.error('Error:', e)
     
         if localDisconnectNeeded == True:
             # if so, commit any changesand close.  Otherwise, it's up to caller.
-            self.db.commit()
             self.close_connection(caller_name=fname) # make sure connection is open
         
         return ret_val
-    
-    #----------------------------------------------------------------------------------------
+
+   #----------------------------------------------------------------------------------------
     def log_pads_calls(self,
                        caller,
                        reason, 
