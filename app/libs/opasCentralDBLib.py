@@ -72,7 +72,7 @@ import mysql.connector
 import json
 global SERVER_SETTINGS
 
-gDbg3 = True  # watch mysql connections
+gDbg3 = False  # watch mysql connections
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
