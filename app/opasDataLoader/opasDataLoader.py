@@ -1201,7 +1201,7 @@ def main():
     # Closing time
     # ---------------------------------------------------------
     timeEnd = time.time()
-    ocd.close_connection(forced=True)
+    ocd.close_connection(force_close=True)
     #currentfile_info.close()
 
     if not options.no_files: # no_files=false

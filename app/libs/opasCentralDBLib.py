@@ -70,8 +70,9 @@ import time
 from passlib.context import CryptContext
 import mysql.connector
 import json
+global SERVER_SETTINGS
 
-gDbg3 = False
+gDbg3 = True  # watch mysql connections
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -213,7 +214,16 @@ class opasCentralDB(object):
         self.password = password
         self.database = database
         self.connected = False
-        self.db = None
+        self.connection_count = 0
+        self.reuse_db_connection = opasConfig.DB_REUSE_CONNECTION
+        # try connection right away
+        try:
+            self.db = mysql.connector.connect(user=self.user, password=self.password, database=self.database, host=self.host)
+        except Exception as e:
+            logger.fatal("Connection not available")
+        else:
+            logger.debug(f"Database connection opened. Opening connection number: {self.connection_count}. Will retry after {opasConfig.DB_CONNECT_DELAY} seconds")            
+            
         # self.library_version = self.get_mysql_version() # Removed since it's rarely needed and yet requires a db call to get
         self.session_id = session_id # deprecate?
         self.connection_count = 0
@@ -233,42 +243,37 @@ class opasCentralDB(object):
         >>> ocd.close_connection("my name")
         True
         """
-        pause_len = 5
-        if not self.connected:
+        # pause_len = 5
+        if not self.db:
+            logger.error(f"Database connection could not be opened ({caller_name}) ({e}). Opening connection number: {self.connection_count}. Will retry after {opasConfig.DB_CONNECT_DELAY} seconds")
             try:
                 self.db = mysql.connector.connect(user=self.user, password=self.password, database=self.database, host=self.host)
+                if not self.db:
+                    logger.fatal(f"Database connection not available (mysql.connector) user: {self.user} database: {self.database} host: {self.host}")
             except Exception as e:
-                self.connected = False
-                logger.error(f"Database connection could not be opened ({caller_name}) ({e}). Opening connection number: {self.connection_count}. Will retry after {pause_len} seconds")
-                try:
-                    time.sleep(pause_len)
-                    self.db = mysql.connector.connect(user=self.user, password=self.password, database=self.database, host=self.host)
-                except Exception as e:
-                    log_everywhere_if(DBGSTDOUT, level="warning", msg=f"open_connection: retrying connection failed ({caller_name}) ({e}). Connection number: {self.connection_count}")
-                else:
-                    log_everywhere_if(DBGSTDOUT, level="debug", msg=f"open_connection: retrying connection succeeded: {self.connection_count}")
-                    self.connection_count += 1
-                    if gDbg3: print (f"New Connection: Current Connection count {self.connection_count}")
-            else:
-                self.connected = True
-                self.connection_count += 1
-                if gDbg3: print (f"New Connection: Current Connection count {self.connection_count}")
+                logger.fatal(f"Database not available {e}")
+                            
+        if not self.db.is_connected():
+            self.db.ping(reconnect=True, attempts=opasConfig.DB_CONNECT_ATTEMPTS, delay=opasConfig.DB_CONNECT_DELAY)                
+        
+        if not self.db.is_connected():
+            logger.fatal(f"Connection not available afer {opasConfig.DB_CONNECT_ATTEMPTS} attempts, delay={opasConfig.DB_CONNECT_DELAY}")
+        else:
+            self.connection_count += 1
+            if gDbg3: print (f"New Connection: Current Connection count {self.connection_count}")
         
         # if 1: print (f"Connection_count: {self.connection_count}")
-        return self.connected
+        return self.db.is_connected()
         
-    def close_connection(self, caller_name="", forced=False):
+    def close_connection(self, caller_name="", force_close=False):
         ret_val = False # failed, or not open
-        if self.connected and self.connection_count > 1 or forced: # try to keep connection count to 1
+        if self.db.is_connected() and (force_close == True or self.reuse_db_connection == False): # try to keep connection count to 1
             try:
                 if self.db is not None:
                     self.db.close()
-                    self.db = None
             except Exception as e:
-                #self.connection_count = 0
                 log_everywhere_if(DBGSTDOUT, level="debug", msg=f"caller: {caller_name} the db is not open ({e}).")
             else:
-                self.connected = False
                 self.connection_count -= 1
                 if gDbg3: print (f"Close Connection: Current Connection count {self.connection_count}")
                 ret_val = True # success
@@ -1189,85 +1194,6 @@ class opasCentralDB(object):
             log_everywhere_if(True, "warning", f"Error getting artstat {e}")
         
         return ret_val
-
-    ##------------------------------------------------------------------------------------------------------
-    #def xxx_add_art_relations(self, art_id, origrx, language_code="EN", relation_type="Translation"):
-        #"""
-        #01/24 - CORRECTION: I don't think this table is needed.  The problem with showing
-                #translations was elsewhere!
-        #Add this article's language info to the article qualifier table (linkartqual)
-        #if you supply a document_id returns the origrxID if there are multiple relations
-         #according to the opasloader_art_relations table.
-        
-        #>> ocd = opasCentralDB()
-        #>> ocd.add_art_relations(art_id='ANIJP-FR.2006.0161A', language_code="FR", origrx='IJP.086.1523A')
-        #True
-        #>> ocd = opasCentralDB()
-        #>> ocd.add_art_relations(art_id='IJP.086.1523A', language_code="EN", origrx='IJP.086.1523A')
-        #True
-        #"""
-        #ret_val = False
-        #sel_insert = r"""REPLACE INTO opasloader_art_relations
-                        #(
-                            #articleID, 
-                            #origrxID, 
-                            #languageCode, 
-                            #relationType
-                        #)
-                        #values
-                        #(
-                            #%(articleID)s,
-                            #%(origrxID)s,
-                            #%(languageCode)s, 
-                            #%(relationType)s                              
-                        #)
-                        #"""
-        #query_params = {
-                           #"articleID":art_id,
-                           #"origrxID":origrx, 
-                           #"languageCode":language_code, 
-                           #"relationType": relation_type                     # reflinks
-                        #}
-        
-        #try:
-            ## commit automatically handled by do_action_query
-            #res = ocd.do_action_query(querytxt=sel_insert, queryparams=query_params)
-        #except Exception as e:
-            #errStr = f"DBError: insert error {e}"
-            #logger.error(errStr)
-            #if opasConfig.LOCAL_TRACE: print (errStr)
-        #else:
-            #ret_val = True
-    
-        #return ret_val  # return True for success
-
-    ##------------------------------------------------------------------------------------------------------
-    #def get_art_relations(self, the_id, relation_type="Translation"):
-        #"""
-        #01/24 - CORRECTION: I don't think this table is needed.  The problem with showing
-                #translations was elsewhere!
-        
-        #if you supply a document_id returns the origrxID if there are multiple relations
-         #according to the opasloader_art_relations table.
-         
-        #>>> ocd = opasCentralDB()
-        #>>> ocd.get_art_relations(the_id='IJP.086.1523A')
-        #'IJP.086.1523A'
-        #>>> ocd.get_art_relations(the_id='ANIJP-FR.2006.0161A')
-        #'IJP.086.1523A'
-
-        #"""
-        #ret_val = None
-
-        #sql_select = f"select * from opasloader_art_relations where articleID = '{the_id}' and relationType='{relation_type}'"
-        #ret_val = self.get_select_as_list_of_dicts(sql_select)
-        #if len(ret_val) == 1:
-            ## found, get origrx
-            #ret_val = origrx_id = ret_val[0].get("origrxID", the_id)
-        #else:
-            #ret_val = origrx_id = the_id
-        
-        #return origrx_id
         
     #------------------------------------------------------------------------------------------------------
     def get_select_as_list_of_dicts(self, sqlSelect: str):
@@ -1439,6 +1365,20 @@ class opasCentralDB(object):
         # return session model object
         return ret_val # None or Session Object
 
+    def get_server_settings(self, config_name="serversettings1"):
+        """
+        Get configurable server settings from database
+        
+        >>> ocd = opasCentralDB()
+        >>> ocd.get_server_settings(config_name = "serversettings1")
+        
+        """
+        ret_val = {}
+        ret_val = self.get_client_config(client_id=0, client_config_name=config_name)
+        if ret_val:
+            ret_val = ret_val.configList[0].configSettings
+        return ret_val
+
     def get_session_from_db(self, session_id):
         """
         Get the session record info for session sessionID
@@ -1451,7 +1391,7 @@ class opasCentralDB(object):
         ret_val = None
         if self.db is not None:
             try:
-                self.db.ping()
+                self.db.ping(reconnect=True, attempts=opasConfig.DB_CONNECT_ATTEMPTS, delay=opasConfig.DB_CONNECT_DELAY)
                 with closing(self.db.cursor(buffered=True, dictionary=True)) as cursor:
                     # now insert the session
                     sql = f"SELECT * FROM api_sessions WHERE session_id = '{session_id}'";
@@ -1471,6 +1411,8 @@ class opasCentralDB(object):
                         ret_val = None
                         logger.debug(f"{fname} - Session info not found in db {session_id}")
                         
+            except mysql.connector.InterfaceError as e:
+                logger.error(f"DBError {fname}. DB Connection is not available {e} ({session_id})")
             except mysql.connector.DataError as e:
                 logger.error(f"DBError {fname}. Data Error {e} ({session_id})")
             except mysql.connector.OperationalError as e:
@@ -1915,18 +1857,7 @@ class opasCentralDB(object):
 
         self.close_connection(caller_name=fname) # make sure connection is closed
         return ret_val
-    
-    #def close_expired_sessions(self):
-        #"""
-        #Close any sessions past the set expiration time set in the record
-        
-        #>>> ocd = opasCentralDB()
-        #>>> numb = ocd.close_expired_sessions()
-        #>>> numb >= 0
-        #True
-        #"""
-        #removed 2021-12-07
-        
+            
     def record_session_endpoint(self,
                                 session_info=None,
                                 api_endpoint_id=0,
@@ -2416,7 +2347,7 @@ class opasCentralDB(object):
                             ret_val = None
                             logger.error(f"Error getting config item from database {e}")
                             
-                    if ret_val_list is not None:
+                    if ret_val_list:
                         try:
                             # convert to final return model, a list of ClientConfigItems
                             ret_val = models.ClientConfigList(configList = ret_val_list)
@@ -2722,24 +2653,22 @@ class opasCentralDB(object):
     
         fname = "do_action_query_silent"
         ret_val = None
-        localDisconnectNeeded = False
-        if self.connected != True:
-            self.open_connection(caller_name=fname) # make sure connection is open
-            localDisconnectNeeded = True
+        self.open_connection(caller_name=fname) # make sure connection is open
+        try:
+            with closing(self.db.cursor()) as curs:
+                try:
+                    ret_val = curs.execute(querytxt, queryparams)
+                    self.db.commit()                
+                except mysql.connector.IntegrityError as e:
+                    if e.errno == 1062:
+                        logger.debug('Duplicate entry')
+                    else:
+                        logger.error('Error:', e)
+        except Exception as e:
+            log_everywhere_if(True, level="error", msg=f"Can't update database {e}")
             
-        with closing(self.db.cursor()) as curs:
-            try:
-                ret_val = curs.execute(querytxt, queryparams)
-                self.db.commit()                
-            except mysql.connector.IntegrityError as e:
-                if e.errno == 1062:
-                    logger.debug('Duplicate entry')
-                else:
-                    logger.error('Error:', e)
-    
-        if localDisconnectNeeded == True:
-            # if so, commit any changesand close.  Otherwise, it's up to caller.
-            self.close_connection(caller_name=fname) # make sure connection is open
+        # if so, commit any changesand close.  Otherwise, it's up to caller.
+        self.close_connection(caller_name=fname) # make sure connection is open
         
         return ret_val
 
