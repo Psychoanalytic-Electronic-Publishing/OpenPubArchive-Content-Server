@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2023.0401/v2.3.007"   # removed v3 ExtendedSearch endpoint so new 2.3 compatibility bump
+__version__     = "2023.0402/v2.3.008"   # removed v3 ExtendedSearch endpoint so new 2.3 compatibility bump
 __status__      = "Development/Libs/Loader"  
 
 """
@@ -4865,22 +4865,33 @@ def documents_document_fetch(response: Response,
         ret_val = documents_glossary_term(response, request, termIdentifier=term_id, return_format=return_format)
     else:       
         # Check to see if this is a valid source code, and if it is, that the document exists (or fix it)
-        # new feature 2023-06-22
-        doc_id = ArticleID(art_id=documentID)
-        if doc_id.src_code in all_source_codes:
-            documentID = doc_id.exists(verbose=True, resilient=True)
-        else:
-            documentID = None
-
-        if not documentID:
-            response.status_code=httpCodes.HTTP_404_NOT_FOUND
-            status_message = f"Nonexistant document: {doc_id} Requestor: Client:{client_id}/Sess:{session_id} "
-            logger.warning(status_message)
-            ret_val = None
-            raise HTTPException(
-                status_code=response.status_code,
-                detail=status_message
-            )
+        # new resilient documentID feature 2023-06-22/2023-07-02 (in progress)
+        # Disabled
+        if 0:
+            doc_id = ArticleID(art_id=documentID)
+            if doc_id.src_code in all_source_codes:
+                documentID = doc_id.exists(verbose=True, resilient=True)            
+            else:
+                #documentID = None
+                if doc_id.src_code not in all_source_codes:
+                    status_message = f"Src code {doc_id.src_code} not in {all_source_codes}.  But Letting pass though. "
+                    logger.warning(status_message)
+                    print (status_message)
+                else:
+                    # for now, log and try anyway
+                    status_message = f"Indication of Nonexistant document: {doc_id} Requestor: Client:{client_id}/Sess:{session_id}.  Letting pass though. "
+                    logger.warning(status_message)
+                    print (status_message)
+    
+            if not documentID:
+                response.status_code=httpCodes.HTTP_404_NOT_FOUND
+                status_message = f"Nonexistant document: {doc_id} Requestor: Client:{client_id}/Sess:{session_id} "
+                logger.warning(status_message)
+                ret_val = None
+                raise HTTPException(
+                    status_code=response.status_code,
+                    detail=status_message
+                )
             
         try:
             # documents_get_document handles the view authorization and returns abstract if not authenticated.
@@ -5504,7 +5515,7 @@ async def documents_image_fetch(response: Response,
                                 request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
                                 imageID: str=Path(..., title=opasConfig.TITLE_IMAGEID, description=opasConfig.DESCRIPTION_IMAGEID),
                                 download: int=Query(0, title="Return or download", description="0 returns the binary image, 1 downloads, 2 returns the article ID"),
-                                insensitive: bool=Query(False, title="Filename case ignored"),  
+                                insensitive: bool=Query(True, title="Filename case ignored"),  
                                 #seed:str=Query(None, title="Seed String to help randomize daily expert pick", description="Use the date, for example, to avoid caching from a prev. date. "),
                                 reselect:bool=Query(False, title="Force a new random image selection"),  
                                 #client_id:int=Depends(get_client_id), 

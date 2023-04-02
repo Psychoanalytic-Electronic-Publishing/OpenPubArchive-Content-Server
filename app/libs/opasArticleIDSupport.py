@@ -542,6 +542,10 @@ class ArticleID(BaseModel):
                 log_everywhere_if(verbose, "warning", f"{msg}")
             else:
                 log_everywhere_if(verbose, "warning", f"{msg} No alternative ID found.")
+        else: # just info--else not needed in final
+            if self.art_id != ret_val:
+                msg = f"Document ID {self.art_id} checked...returning {ret_val}."
+                log_everywhere_if(verbose, "warning", f"{msg}")
             
         return ret_val
     
