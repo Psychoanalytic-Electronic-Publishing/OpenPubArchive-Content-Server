@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2023.0402/v2.3.008a"   # removed v3 ExtendedSearch endpoint so new 2.3 compatibility bump
+__version__     = "2023.0402/v2.3.008b"   # removed v3 ExtendedSearch endpoint so new 2.3 compatibility bump
 __status__      = "Development/Libs/Loader"  
 
 """
@@ -4866,8 +4866,8 @@ def documents_document_fetch(response: Response,
     else:       
         # Check to see if this is a valid source code, and if it is, that the document exists (or fix it)
         # new resilient documentID feature 2023-06-22/2023-07-02 (in progress)
-        # Disabled
-        if 0:
+        # 2023.0402/v2.3.008b Enabled
+        if 1:
             doc_id = ArticleID(art_id=documentID)
             if doc_id.src_code in all_source_codes:
                 documentID = doc_id.exists(verbose=True, resilient=True)            
