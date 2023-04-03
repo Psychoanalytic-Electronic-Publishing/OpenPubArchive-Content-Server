@@ -20,6 +20,27 @@ class TestDatabaseSmartSearch(unittest.TestCase):
         #response_set = r["documentList"]["responseSet"]
         assert(response_info["count"] == 1)
 
+    def test_0_smartsearch_resilience(self):
+        # no fix required
+        tests = ["FA.017.0060A",  # right
+                 "FA.017A.0060A", # extra vol variant
+                 "PSU.016.0017A", # missing vol variant C
+                 "APA.069.0259",  # missing page suffix
+                 "FA.010.0014A",  # missing vol variant A
+                 "NLP.079.0007A", # right
+                 "NLP.079.0006A", # page before
+                 "NLP.079.0008A", # page after
+                ]
+        
+        for art_id in tests:
+            full_URL = base_plus_endpoint_encoded(f'/v2/Database/SmartSearch/?smarttext={art_id}&abstract=True')
+            response = requests.get(full_URL, headers=headers)
+            assert(response.ok == True)
+            r = response.json()
+            response_info = r["documentList"]["responseInfo"]
+            print (f'Smarttext: {response_info["description"]}')
+            assert(response_info["count"] == 1)
+        
     def test_0_smartsearch_endpoint_rxcf(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/SmartSearch/?smarttext=cf::JAA.028.0740A:0.66, PSAR.086.0967A:0.66, IJP.080.0189A:0.65, PAQ.068.0313A:0.65, PPSY.016.0481A:0.61//label//')
         response = requests.get(full_URL, headers=headers)

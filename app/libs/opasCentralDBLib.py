@@ -2005,7 +2005,7 @@ class opasCentralDB(object):
             src_code_clause = ""
             prod_type_clause = ""
             src_title_clause = ""
-            
+            sqlAll = ""
             try:
                 if src_code is not None and src_code != "*":
                     if "*" in src_code:
@@ -2057,7 +2057,7 @@ class opasCentralDB(object):
                             except:
                                 total_count  = 0
             except Exception as e:
-                msg = f"Error querying vw_api_productbase_instance_counts: {e}"
+                msg = f"Error querying vw_api_productbase_instance_counts: {e} Qry:'{sqlAll}'"
                 logger.error(msg)
                 # print (msg)
             

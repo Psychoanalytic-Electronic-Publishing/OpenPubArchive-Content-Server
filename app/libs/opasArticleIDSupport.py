@@ -31,6 +31,7 @@ from configLib.opasIJPConfig import IJPOPENISSUES
 from configLib.opasCoreConfig import EXTENDED_CORES
 import opasFileSupport
 import localsecrets
+# import smartsearchLib # not needed without newer exists_with_resilience, now commented out
 
 fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root=localsecrets.XML_ORIGINALS_PATH)
 
@@ -535,19 +536,167 @@ class ArticleID(BaseModel):
                 logger.warning(e)
         else:
             self.art_id_exists = False
-            
+                    
         if ret_val is None:
             msg = f"Document ID {self.art_id} not in Solr."
             if not resilient:
                 log_everywhere_if(verbose, "warning", f"{msg}")
             else:
                 log_everywhere_if(verbose, "warning", f"{msg} No alternative ID found.")
-        else: # just info--else not needed in final
-            if self.art_id != ret_val:
-                msg = f"Document ID {self.art_id} checked...returning {ret_val}."
+        elif verbose: # just info--else not needed in final
+            if doc_id != ret_val:
+                msg = f"Document ID {doc_id} not found. Resilience adjusted to {ret_val}."
                 log_everywhere_if(verbose, "warning", f"{msg}")
-            
+
         return ret_val
+
+    ## this should be faster, using if smartsearchLib.is_value_in_field
+    ## but isn't in my tests, and can be slightly slower
+    ## keep for now to get it in code archive if we want to test more later.
+    #def exists_with_resilience_slower(self, solrcon=None, resilient=False, verbose=False):
+        #"""
+        #Search Solr for the article ID, if not found, try some common variations:
+          #- the ArticleID alt_standard
+          #or
+          #- the simple missing page suffix 'A'
+          #or
+          #- one of the volume variant letters (issue)
+          #or
+          #- Page 0 vs 1 to handle split book variation
+        
+        #Returns:
+            #- the current art_id exists
+            #- None if it doesn't
+            #- OR a heuristically modified existant art_id if resilient=True and
+              #a close match could be resolved
+              
+        #Side Effects:
+            #- art_id changed if resilient id found
+            #- art_id_replaced stores the replaced id
+            
+        #"""
+        #starttime = time.time()
+        #ret_val = None
+        #if self.art_id_exists:
+            #ret_val = self.art_id
+        #elif resilient:
+            #doc_id = self.art_id
+            #if solrcon is None:
+                #solrcon = EXTENDED_CORES.get("pepwebdocs")
+            #try:
+                #if smartsearchLib.is_value_in_field(doc_id, opasConfig.SEARCH_FIELD_LOCATOR):
+                    #self.art_id_exists = True
+                    #ret_val = doc_id
+                #else: # try variations
+                    ## TryAlternateID:
+                    #alt_id = self.alt_standard
+                    #if smartsearchLib.is_value_in_field(alt_id, opasConfig.SEARCH_FIELD_LOCATOR):
+                        #self.art_id_replaced = doc_id
+                        #self.art_id_exists = True
+                        #self.art_id = alt_id
+                        #ret_val = alt_id
+                        #log_everywhere_if(verbose, "debug", f"Document ID {doc_id} not in Solr.  The correct ID seems to be {alt_id}. Using that instead!")
+
+                    #if not ret_val and doc_id[-1].isnumeric():
+                        ## missing page variant?
+                        #alt_id = doc_id + "A"
+                        #if smartsearchLib.is_value_in_field(alt_id, opasConfig.SEARCH_FIELD_LOCATOR):
+                            #self.art_id_replaced = doc_id
+                            #self.art_id_exists = True
+                            #self.art_id = alt_id
+                            #ret_val = alt_id
+                            #log_everywhere_if(verbose, "debug", f"Document ID {doc_id} not in Solr.  The correct ID seems to be {alt_id}. Using that instead!")
+
+                    #if not ret_val and doc_id[-1].isalpha():
+                        ## try without page variant?
+                        #alt_id = doc_id[:-1]
+                        #if smartsearchLib.is_value_in_field(alt_id, opasConfig.SEARCH_FIELD_LOCATOR):
+                            #self.art_id_replaced = doc_id
+                            #self.art_id_exists = True
+                            #self.art_id = alt_id
+                            #ret_val = alt_id
+                            #log_everywhere_if(verbose, "debug", f"Document ID {doc_id} not in Solr.  The correct ID seems to be {alt_id}. Using that instead!")
+                    
+                    #if not ret_val:
+                        ## match volume variant?
+                        #alt_id = self.alt_wild_standard
+                        #if alt_id is not None:
+                            #results = solrcon.search(q = f"art_id:{alt_id}")
+                            #count = results.raw_response["response"]["numFound"]
+                            #if count == 1:  # only accept alternative if there's only one match (otherwise, not known which)
+                                ## odds are good this is what was cited.
+                                #alt_id = results.docs[0]['art_id']
+                                #log_everywhere_if(verbose, "debug", f"Document ID {doc_id} not in Solr.  The correct ID seems to be {alt_id}. Using that instead!")
+                                #self.art_id_replaced = doc_id
+                                #self.art_id_exists = True
+                                #ret_val = self.art_id = alt_id
+                            #elif count > 1:
+                                #alt_id = results.docs[0]['art_id']
+                                #log_everywhere_if(verbose, "debug", f"Found {count} matches for volume variant (issue). Using the first.")
+                                #self.art_id_replaced = doc_id
+                                #self.art_id_exists = True
+                                #self.art_id = alt_id
+                                #ret_val = self.art_id = alt_id
+
+                    #if not ret_val:
+                        ## match without volume variant?
+                        #alt_id = self.alt_no_vol_suffix
+                        #if self.alt_no_vol_suffix is not None:
+                            #results = solrcon.search(q = f"art_id:{alt_id}")
+                            #count = results.raw_response["response"]["numFound"]
+                            #if count == 1:  # only accept alternative if there's only one match (otherwise, not known which)
+                                ## odds are good this is what was cited.
+                                #alt_id = results.docs[0]['art_id']
+                                #log_everywhere_if(verbose, "debug", f"Document ID {doc_id} not in Solr.  The correct ID seems to be {alt_id}. Using that instead!")
+                                #self.art_id_replaced = doc_id
+                                #self.art_id_exists = True
+                                #ret_val = self.art_id = alt_id
+
+                    #if not ret_val:
+                        ## page before or after?
+                        #for n in (-1, 1):
+                            #newloc = opasLocator.Locator(doc_id)
+                            #if newloc.validate():
+                                #try:
+                                    #newloc.pgStart += n
+                                #except Exception as e:
+                                    #log_everywhere_if(verbose, "warning", f"Bad locator {loc_str}. Except: {e}")
+                                #else:
+                                    #revised_doc_id = newloc.articleID()
+                            
+                            #results = solrcon.search(q = f"art_id:{revised_doc_id}")
+                            #count = results.raw_response["response"]["numFound"]
+                            #if count == 1:  # only accept alternative if there's only one match (otherwise, not known which)
+                                ## odds are good this is what was cited.
+                                #alt_id = results.docs[0]['art_id']
+                                #log_everywhere_if(verbose, "info", f"Document ID {doc_id} not in Solr.  The correct ID seems to be {alt_id}. Using that instead!")
+                                #self.art_id_replaced = doc_id
+                                #self.art_id_exists = True
+                                #ret_val = self.art_id = alt_id
+                                #break # got it!
+
+            #except Exception as e:
+                #logger.warning(e)
+        #else:
+            #self.art_id_exists = False
+            
+        #if ret_val is None:
+            #msg = f"Document ID {self.art_id} not in Solr."
+            #if not resilient:
+                #log_everywhere_if(verbose, "warning", f"{msg}")
+            #else:
+                #log_everywhere_if(verbose, "warning", f"{msg} No alternative ID found.")
+        #elif verbose: # just info--else not needed in final
+            #endtime = time.time()
+            #time_diff = endtime - starttime
+            
+            #if doc_id != ret_val:
+                #msg = f"Document ID {doc_id} resilience fixed...returning {ret_val} {time_diff}s."
+                #log_everywhere_if(verbose, "info", f"{msg}")
+            
+        #return ret_val
+    
+
     
 #------------------------------------------------------------------------------------------------------
     

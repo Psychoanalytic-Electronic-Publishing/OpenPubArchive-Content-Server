@@ -141,10 +141,13 @@ def smart_search(smart_search_text):
     smart_article_id = ArticleID(art_id=smart_search_text) # now from opasArticleIDSupport 2022-06-05
     if smart_article_id.is_ArticleID:
         # locator (articleID)
-        if smartsearchLib.is_value_in_field(smart_article_id.standardized, opasConfig.SEARCH_FIELD_LOCATOR):
-            ret_val = {opasConfig.SEARCH_FIELD_LOCATOR: smart_article_id.standardized}
-        elif smartsearchLib.is_value_in_field(smart_article_id.alt_standard, opasConfig.SEARCH_FIELD_LOCATOR):
-            ret_val = {opasConfig.SEARCH_FIELD_LOCATOR: smart_article_id.alt_standard}           
+        doc_id = smart_article_id.exists_with_resilience(resilient=True, verbose=True)        
+        if doc_id:
+            ret_val = {opasConfig.SEARCH_FIELD_LOCATOR: doc_id}
+        #if smartsearchLib.is_value_in_field(smart_article_id.standardized, opasConfig.SEARCH_FIELD_LOCATOR):
+            #ret_val = {opasConfig.SEARCH_FIELD_LOCATOR: smart_article_id.standardized}
+        #elif smartsearchLib.is_value_in_field(smart_article_id.alt_standard, opasConfig.SEARCH_FIELD_LOCATOR):
+            #ret_val = {opasConfig.SEARCH_FIELD_LOCATOR: smart_article_id.alt_standard}           
         
     if ret_val == {}: # (opasConfig.SEARCH_TYPE_ADVANCED, "ADVANCED")
         # this is not much different than search_type_fielded, except the Solr query will be cleaner and perhaps more flexible.
