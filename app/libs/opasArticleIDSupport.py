@@ -392,9 +392,9 @@ class ArticleID(BaseModel):
             self.art_id = self.standardized
             if self.checks:
                 if self.checks[0].upper() == "R":
-                    self.exists(resilient=True)
+                    self.exists_with_resilience(resilient=True)
                 else:
-                    self.exists(resilient=False)
+                    self.exists_with_resilience(resilient=False)
             pass
         else:
             self.is_ArticleID = False   
@@ -403,7 +403,7 @@ class ArticleID(BaseModel):
         return str(self.art_id)
 
 
-    def exists(self, solrcon=None, resilient=False, verbose=False):
+    def exists_with_resilience(self, solrcon=None, resilient=False, verbose=False):
         """
         Search Solr for the article ID, if not found, try some common variations:
           - the ArticleID alt_standard
