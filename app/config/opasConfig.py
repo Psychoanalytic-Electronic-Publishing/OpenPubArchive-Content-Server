@@ -80,6 +80,7 @@ MAX_WORDS = 5 # max words from title
 MIN_WORDS = 2 # min words to match in title
 MAX_DISPLAY_LEN_CF_ARTICLES = 90
 MAX_LOGMSG_LEN = 120
+MAX_SOURCE_COUNT = 200 # used to extend limit of facet for sources above 100 in metadata_get_sourcecodes
 
 # General books
 BOOKSOURCECODE = "ZBK" #  books are listed under this source code, e.g., to make for an id of ZBK.052.0001

@@ -2558,6 +2558,7 @@ def metadata_get_sourcecodes():
             "facet.fields" : facet_fields, 
             "facet.pivot" : facet_pivot_fields,
             "facet.mincount" : 1,
+            "facet.limit": opasConfig.MAX_SOURCE_COUNT,
             "facet.sort" : "art_sourcecode asc", 
         }
 
