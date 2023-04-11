@@ -258,7 +258,7 @@ def compare_critical_columns(table_name, key_col_name, value_col_name, where_cla
             if value_col_val != prod_dict[key_col_val]:
                 count += 1
                 if not isinstance(value_col_val, str):
-                    print (f"Difference in {value_col_name}: {(value_col_val, value_col_val, prod_dict[key_col_val])}")
+                    print (f"Difference in {value_col_name}: {key_col_val} Dev: {value_col_val}, Prod: {prod_dict[key_col_val]}")
                 else:
                     show_comparison(value_col_val, prod_dict[key_col_val], sidebyside=True, width=60, compact=False)
 

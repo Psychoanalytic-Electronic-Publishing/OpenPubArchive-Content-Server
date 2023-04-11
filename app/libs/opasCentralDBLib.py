@@ -1946,8 +1946,15 @@ class opasCentralDB(object):
 
         return ret_val
 
-    def get_sources(self, src_code="*", src_type=None, src_name=None, limit=None, offset=0, get_counts=True):
+    def get_sources(self, src_code:str="*", src_type:str=None, src_name:str=None, limit:int=None, offset:int=0, get_counts:bool=True):
         """
+        2023-04-10 - Parameterized for safety after noticing online call parameters with potential injections
+                     like
+                          WHERE active >= 1
+                                AND product_type <> 'bookseriessub'
+                                AND basecode = ''NVOPZP'
+                                AND product_type = 'journal'
+                                
         Return a list of sources
           - for a specific source_code
           - OR for a specific source type (e.g. journal, book)
@@ -1992,77 +1999,88 @@ class opasCentralDB(object):
         
         """
         fname = "get_sources"
-        self.open_connection(caller_name=fname) # make sure connection is open
-        total_count = 0
-        ret_val = None
-        limit_clause = ""
+        
+        # input validation
+        if not isinstance(src_code, str):
+            logger.warning(f"src_code must be a string")
+            src_code = "*"
+
+        if src_type is not None and not isinstance(src_type, str):
+            logger.warning(f"src_type {src_type} must be a string or None")
+            src_type = None
+
+        if src_name is not None and not isinstance(src_name, str):
+            logger.warning(f"src_name {src_name} must be a string or None")
+            src_name = None
+
+        if limit is not None and not isinstance(limit, int):
+            logger.warning(f"limit must be integer or None")
+            limit = None
+
+        if not isinstance(offset, int):
+            logger.warning(f"offset must be integer or 0")
+            offset = 0
+
+        if not isinstance(get_counts, bool):
+            logger.warning(f"get_counts must be boolean")
+            get_counts = True
+        
+        if get_counts:
+            tbl_name = "vw_api_productbase_instance_counts"
+        else:
+            tbl_name = "vw_api_productbase"
+
+        # parameterized query
+        params = []
+        sqlAll = f"FROM {tbl_name} WHERE active >= 1 AND product_type <> 'bookseriessub'"
+        if src_code != "*":
+            if "*" in src_code:
+                sqlAll += " AND basecode rlike %s"
+            else:
+                sqlAll += " AND basecode = %s"
+            params.append(src_code)
+        if src_type is not None and src_type != "*":
+            if src_type in ("stream", "videos"):
+                src_type = "videostream"
+            sqlAll += " AND product_type = %s"
+            params.append(src_type)
+        if src_name is not None:
+            sqlAll += " AND title rlike %s"
+            params.append(f"(.*\s)?{src_name}(\s.*)?")
         if limit is not None:
-            limit_clause = f"LIMIT {limit}"
+            sqlAll += " ORDER BY title LIMIT %s"
+            params.append(limit)
             if offset != 0:
-                limit_clause += f" OFFSET {offset}"
-
-        if self.db is not None:
-            src_code_clause = ""
-            prod_type_clause = ""
-            src_title_clause = ""
-            sqlAll = ""
-            try:
-                if src_code is not None and src_code != "*":
-                    if "*" in src_code:
-                        src_code_clause = f"AND basecode rlike '^{src_code}$'"
-                    else:
-                        src_code_clause = f"AND basecode = '{src_code}'"
-                        
-                if src_type is not None and src_type != "*":
-                    # already normalized, don't do it again
-                    # src_type = normalize_val(src_type, opasConfig.VALS_PRODUCT_TYPES)
-                    if src_type in ("stream", "videos"):
-                        src_type = "videostream"
-                    prod_type_clause = f"AND product_type = '{src_type}'"
-                if src_name is not None:
-                    src_title_clause = f"AND title rlike '(.*\s)?{src_name}(\s.*)?'"
-
-                # 2020-11-13 - changed ref from vw_api_productbase to vw_api_productbase_instance_counts to include instance counts
-                # 2022-11-02 - Use both views, because if there are no instances yet, you don't get product info from vw_api_productbase_instance_counts
-                if get_counts:
-                    tbl_name = "vw_api_productbase_instance_counts"
-                else:
-                    tbl_name = "vw_api_productbase"
-                    
-                sqlAll = f"""FROM {tbl_name}
-                             WHERE active >= 1
-                                AND product_type <> 'bookseriessub'
-                                {src_code_clause}
-                                {prod_type_clause}
-                                {src_title_clause}
-                             ORDER BY title {limit_clause}"""
-                
-                with closing(self.db.cursor(buffered=True, dictionary=True)) as curs:
-                    sql = "SELECT * " + sqlAll
-                    curs.execute(sql)
-                    warnings = curs.fetchwarnings()
-                    if warnings:
-                        for warning in warnings:
-                            logger.warning(warning)
-                    
-                    total_count = curs.rowcount
-                    ret_val = curs.fetchall()
-                    if limit_clause is not None:
-                        # do another query to count
-                        with closing(self.db.cursor()) as curs2:
-                            sqlCount = "SELECT COUNT(*) " + sqlAll
-                            curs2.execute(sqlCount)
-                            try:
-                                total_count = curs2.fetchone()[0]
-                            except:
-                                total_count  = 0
-            except Exception as e:
-                msg = f"Error querying vw_api_productbase_instance_counts: {e} Qry:'{sqlAll}'"
-                logger.error(msg)
-                # print (msg)
-            
-        self.close_connection(caller_name=fname) # make sure connection is closed
-
+                sqlAll += " OFFSET %s"
+                params.append(offset)
+        
+        # database connection and error handling
+        try:
+            self.open_connection(caller_name=fname)
+            with closing(self.db.cursor(buffered=True, dictionary=True)) as curs:
+                sql = "SELECT * " + sqlAll
+                curs.execute(sql, params)
+                warnings = curs.fetchwarnings()
+                if warnings:
+                    for warning in warnings:
+                        logger.warning(warning)
+                total_count = curs.rowcount
+                ret_val = curs.fetchall()
+                if limit is not None:
+                    with closing(self.db.cursor()) as curs2:
+                        sqlCount = "SELECT COUNT(*) " + sqlAll
+                        curs2.execute(sqlCount, params)
+                        try:
+                            total_count = curs2.fetchone()[0]
+                        except:
+                            total_count = 0
+        except Exception as e:
+            msg = f"Error querying vw_api_productbase_instance_counts: {e} Qry:'{sqlAll}'"
+            logger.error(msg)
+            # print (msg)
+        finally:
+            self.close_connection(caller_name=fname)
+        
         # return session model object
         return total_count, ret_val # None or Session Object
 

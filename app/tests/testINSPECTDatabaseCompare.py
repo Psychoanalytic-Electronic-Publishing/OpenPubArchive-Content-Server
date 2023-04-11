@@ -24,7 +24,7 @@ class TestDoDatabaseCompare(unittest.TestCase):
         assert(ret_val == 0)
         
     def test_2_active_product_comparison(self):
-        ret_val = compareTables.compare_critical_columns("api_productbase")
+        ret_val = compareTables.compare_critical_columns("api_productbase", "basecode", "active")
         assert(ret_val == 0)
 
     def test_2a1_Critical_column_lists_common(self):

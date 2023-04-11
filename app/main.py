@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2023, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2023.0403/v2.3.011"   # removed v3 ExtendedSearch endpoint so new 2.3 compatibility bump
+__version__     = "2023.0410/v2.3.012"   # removed v3 ExtendedSearch endpoint so new 2.3 compatibility bump
 __status__      = "Development/Libs/Loader"  
 
 """
@@ -4326,7 +4326,7 @@ def metadata_volumes(response: Response,
     try:
         source_code = sourcecode.upper()
     except:
-        source_code = None
+        source_code = "*"
 
     src_exists = ocd.get_sources(src_code=source_code)
     
