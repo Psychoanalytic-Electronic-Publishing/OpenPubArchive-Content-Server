@@ -552,13 +552,16 @@ def get_authserver_session_userinfo(session_id, client_id, addl_log_info=""):
         except Exception as e:
             logger.error(f"{caller_name}: Error from auth server user info call: {e}. Non-logged in user {msg}")
         else:
-            status_code = response.status_code
-            padsinfo = response.json()
-            if response.ok:
-                padsinfo = fix_userinfo_invalid_nones(padsinfo)
-                ret_val = models.PadsUserInfo(**padsinfo)
-            else:
-                logger.debug(f"Non-logged in user {msg}. Info from PaDS: {padsinfo}") # 2021.08.08 back to debug...seems consistent.
+            try:
+                status_code = response.status_code
+                padsinfo = response.json()
+                if response.ok:
+                    padsinfo = fix_userinfo_invalid_nones(padsinfo)
+                    ret_val = models.PadsUserInfo(**padsinfo)
+                else:
+                    logger.debug(f"Non-logged in user {msg}. Info from PaDS: {padsinfo}") # 2021.08.08 back to debug...seems consistent.
+            except Exception as e:
+                logger.error(f"{caller_name}: Error from auth server resposne: {e}. ")
         
     return ret_val, status_code # padsinfo, status_code
     
