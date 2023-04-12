@@ -2038,6 +2038,9 @@ class opasCentralDB(object):
                 sqlAll += " AND basecode rlike %s"
             else:
                 sqlAll += " AND basecode = %s"
+                # in logs, we see ' in string sometimes...strip it and double if there.  Should never be there.
+                src_code = src_code.strip('"\'')
+                
             params.append(src_code)
         if src_type is not None and src_type != "*":
             if src_type in ("stream", "videos"):

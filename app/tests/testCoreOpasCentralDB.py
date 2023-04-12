@@ -51,6 +51,13 @@ class TestDatabase(unittest.TestCase):
         sources = ocd.get_sources(src_type="videos")
         assert(sources[0] >= 1)
 
+    def test_opasdb_getsources_abnormal(self):
+        ocd = opasCentralDB()
+        sources = ocd.get_sources(src_code="CFP'")
+        assert(sources[0] == 1)
+        sources = ocd.get_sources(src_code='CFP"')
+        assert(sources[0] == 1)
+
     def test_opasdb_getsourcetypes(self):
         ocd = opasCentralDB()
         sources = ocd.get_sources()
