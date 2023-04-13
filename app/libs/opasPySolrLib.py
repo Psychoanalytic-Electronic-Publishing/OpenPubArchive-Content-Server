@@ -61,7 +61,7 @@ loggerw.setLevel('ERROR')
 
 import pysolr
 LOG = logging.getLogger("pysolr")
-LOG.setLevel(logging.WARNING)
+LOG.setLevel(logging.CRITICAL) # 2023-03-13 - try turning off the logging from within pysolr except critical
 
 # still using a function in solpy
 import solrpy as solr
@@ -79,6 +79,26 @@ rx_nuisance_words = f"""{opasConfig.HITMARKERSTART}(?P<word>i\.e|e\.g|a|am|an|ar
 
 rcx_remove_nuisance_words = re.compile(rx_nuisance_words, flags=re.IGNORECASE)
 
+def pysolr_syntax_check(query):
+    """
+        # Define a query with potential syntax errors
+        >>> query = 'field_name:query_term AND other_field:query_term'
+        >>> pysolr_syntax_check(query)
+        False
+        
+    """    
+    ret_val = True
+    # Send the query to Solr and check for syntax errors in the response
+    try:
+        # Use the `search` method to send the query to Solr
+        solr_docs2.search(query)
+    except Exception as e:
+        # If there are syntax errors, an exception will be raised
+        print(f"Query syntax error: {e}")
+        ret_val = False
+        
+    return ret_val
+    
 #-----------------------------------------------------------------------------
 def pysolrerror_processing(e):
     error = "pySolr.SolrError"
@@ -1427,31 +1447,6 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
         error_description = ret_val.error_description
         ret_status = (ret_val.httpcode, {"reason": error, "body": error_description})
         logger.error(f"Search error for: {query} Code: {ret_val.httpcode}. Error: {error_description}")
-
-        #if e is None:
-            #pass # take defaults
-        #elif e.args is not None:
-            ## defaults, before trying to decode error
-            #error_description = "PySolrError: Search Error"
-            #error = 400
-            #http_error_num = 0
-            #try:
-                #err = e.args
-                #error_set = err[0].split(":", 1)
-                #error = error_set[0]
-                #error = error.replace('Solr ', 'Search engine ')
-                #error_description = error_set[1]
-                #error_description = error_description.strip(" []")
-                #m = re.search("HTTP (?P<err>[0-9]{3,3})", error)
-                #if m is not None:
-                    #http_error = m.group("err")
-                    #http_error_num = int(http_error)
-            #except Exception as e:
-                #logger.error(f"PySolrError: Error parsing Solr error {e.args} Query: {query}")
-                #ret_status = (error_num, e.args)
-            #else:
-                #ret_val = models.ErrorReturn(httpcode=http_error_num, error=error, error_description=error_description)
-                #ret_status = (error_num, {"reason": error, "body": error_description})
 
         logger.error(f"PySolrError: Syntax: {ret_status}. Query: {query} Params sent: {solr_param_dict}")
         

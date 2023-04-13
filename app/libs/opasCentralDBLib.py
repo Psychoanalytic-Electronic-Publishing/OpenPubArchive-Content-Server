@@ -39,6 +39,7 @@ OPASCENTRAL TABLES (and Views) CURRENTLY USED:
 #2020.0426.1 - Updates to ensure doc tests working, a couple of parameters changed names
 #2020.0530.1 - Fixed doc tests for termindex, they were looking at number of terms rather than term counts
 #2021.0321.1 - Set up to allow connection to multiple databases to allow copying from stage to production dbs
+#2023.0413.1 - Additional protection from SQL injection (admin-only routines excluded)
 
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020-2021, Psychoanalytic Electronic Publishing"
@@ -979,13 +980,23 @@ class opasCentralDB(object):
         return ret_val
         
 
-    def get_select_count(self, sqlSelect: str):
+    def get_select_count(self, sqlSelect: str, queryparams=None):
         """
         Generic retrieval from database, return the count
         
         >>> ocd = opasCentralDB()
         >>> count = ocd.get_select_count(sqlSelect="SELECT * from vw_article_sectnames limit 102;")
         >>> count > 100
+        True
+
+        >>> # Example using queryparams and f-string
+        >>> report_view = "vw_reports_charcounts"
+        >>> standard_filter = "1=1"
+        >>> date_condition = 1
+        >>> select_count = f"SELECT * from {report_view} WHERE %(standard_filter)s AND %(date_condition)s"
+        >>> param_dict = {"report_view": report_view, "standard_filter": standard_filter, "date_condition": date_condition}
+        >>> count = ocd.get_select_count(select_count, queryparams=param_dict) # without order by
+        >>> count > 10
         True
         
         """
@@ -996,7 +1007,7 @@ class opasCentralDB(object):
         try:
             if self.db is not None:
                 with closing(self.db.cursor(buffered=True, dictionary=True)) as cursor:
-                    cursor.execute(sqlSelect)
+                    cursor.execute(sqlSelect, queryparams)
                     row = cursor.fetchall()
                     if row: # if there's any data
                         ret_val = row[0].get("FULLCOUNT", 0)
@@ -1017,7 +1028,7 @@ class opasCentralDB(object):
         Return list of articles newer than the current date - days_back.
        
         >>> ocd = opasCentralDB()
-        >>> articles = ocd.get_articles_newer_than(days_back=14) 
+        >>> articles = ocd.get_articles_newer_than(days_back=114) 
         >>> len(articles) > 1
         True
 
@@ -1334,7 +1345,7 @@ class opasCentralDB(object):
         return ret_val  # return True for success
 
     #------------------------------------------------------------------------------------------------------
-    def get_select_as_list(self, sqlSelect: str):
+    def get_select_as_list(self, sqlSelect: str, queryparams=None):
         """
         Generic retrieval from database
         
@@ -1352,7 +1363,7 @@ class opasCentralDB(object):
             # don't use dicts here
             # ret_val = self.SQLSelectGenerator(sqlSelect, use_dict=False)
             with closing(self.db.cursor(buffered=True, dictionary=False)) as curs:
-                curs.execute(sqlSelect)
+                curs.execute(sqlSelect, queryparams)
                 warnings = curs.fetchwarnings()
                 if warnings:
                     for warning in warnings:
@@ -1371,7 +1382,7 @@ class opasCentralDB(object):
         
         >>> ocd = opasCentralDB()
         >>> ocd.get_server_settings(config_name = "serversettings1")
-        
+        {'reusedbconnection': 1, 'loglevel': 20}
         """
         ret_val = {}
         ret_val = self.get_client_config(client_id=0, client_config_name=config_name)
@@ -1394,8 +1405,8 @@ class opasCentralDB(object):
                 self.db.ping(reconnect=True, attempts=opasConfig.DB_CONNECT_ATTEMPTS, delay=opasConfig.DB_CONNECT_DELAY)
                 with closing(self.db.cursor(buffered=True, dictionary=True)) as cursor:
                     # now insert the session
-                    sql = f"SELECT * FROM api_sessions WHERE session_id = '{session_id}'";
-                    cursor.execute(sql)
+                    sql = f"SELECT * FROM api_sessions WHERE session_id = %s";
+                    cursor.execute(sql, (session_id, ))
                     if cursor.rowcount:
                         session = cursor.fetchone()
                         try:
@@ -1709,9 +1720,9 @@ class opasCentralDB(object):
                     with closing(self.db.cursor()) as curs:
                         # now delete the session
                         sql = """DELETE FROM api_sessions
-                                 WHERE session_id = '%s'""" % session_id
+                                 WHERE session_id = %s"""
                         
-                        curs.execute(sql)
+                        curs.execute(sql, (session_id, ))
                         warnings = curs.fetchwarnings()
                         if warnings:
                             for warning in warnings:
@@ -1955,6 +1966,8 @@ class opasCentralDB(object):
                                 AND basecode = ''NVOPZP'
                                 AND product_type = 'journal'
                                 
+                                See https://stackoverflow.com/questions/72470138/what-is-nvopzp-and-1-1-or-iko
+                                
         Return a list of sources
           - for a specific source_code
           - OR for a specific source type (e.g. journal, book)
@@ -2078,7 +2091,7 @@ class opasCentralDB(object):
                         except:
                             total_count = 0
         except Exception as e:
-            msg = f"Error querying vw_api_productbase_instance_counts: {e} Qry:'{sqlAll}'"
+            msg = f"Error querying vw_api_productbase_instance_counts: {e} Qry:{sqlAll}"
             logger.error(msg)
             # print (msg)
         finally:
@@ -2312,7 +2325,7 @@ class opasCentralDB(object):
         >>> ocd.get_client_config("123", "demo")
         ClientConfigList(configList=[ClientConfigItem(api_client_id=123, session_id='test123', configName='demo', configSettings={'A': '123', 'B': '1234'})])
         >>> ocd.get_client_config("123", "doesntexist")
-        ClientConfigList(configList=[])
+    
         
         """
         fname = "get_client_config"
@@ -2336,11 +2349,11 @@ class opasCentralDB(object):
                     for client_config_name in client_config_name_list:
                         sql = f"""SELECT *
                                   FROM api_client_configs
-                                  WHERE client_id = {client_id_int}
-                                  AND config_name = '{client_config_name}'"""
+                                  WHERE client_id = %s
+                                  AND config_name = %s"""
             
                         try:
-                            curs.execute(sql)
+                            curs.execute(sql, (client_id_int, client_config_name))
                             warnings = curs.fetchwarnings()
                             if warnings:
                                 for warning in warnings:
@@ -2379,7 +2392,7 @@ class opasCentralDB(object):
                     elif ret_val is not None:
                         logger.debug("Config item returned.")
                     else:
-                        logger.error("No config returned.")
+                        logger.warning(f"No config returned for ({client_id_int}, {client_config_name}).")
             else:
                 logger.error(f"self.db connection is not set/missing. Can't get client config.")
                 
@@ -2413,12 +2426,12 @@ class opasCentralDB(object):
         else:
             if saved is not None:
                 for client_config_name in client_config_name_list:
-                    sql = f"""DELETE FROM api_client_configs
-                              WHERE client_id = {client_id_int}
-                              AND config_name = '{client_config_name}'"""
-            
+                    sql = """ DELETE FROM api_client_configs
+                              WHERE client_id = %s
+                              AND config_name = %s"""
+    
                     with closing(self.db.cursor(buffered=True, dictionary=True)) as curs:
-                        curs.execute(sql)
+                        curs.execute(sql, (client_id_int, client_config_name))
                         row_count = curs.rowcount
                         if row_count >= 1:
                             ret_val = saved
@@ -2428,7 +2441,7 @@ class opasCentralDB(object):
                 
         self.close_connection(caller_name=fname) # make sure connection is closed
         return ret_val
-
+    
     def record_document_view(self, document_id, session_info=None, view_type="Abstract"):
         """
         Add a record to the api_doc_views table for specified view_type (Abstract, Document, PDF, PDFOriginal, or EPub)
@@ -2494,16 +2507,16 @@ class opasCentralDB(object):
             
         return ret_val   
 
-    def delete_all_article_data(self):
-        """
-        We need this data, so don't test!
-        Disabled:
-        > ocd = opasCentralDB()
-        > ocd.delete_all_article_data()
-        """
-        # commit automatically handled by do_action_query
-        self.do_action_query(querytxt="DELETE FROM api_biblioxml2", queryparams=None)
-        self.do_action_query(querytxt="DELETE FROM api_articles", queryparams=None)
+    #def delete_all_article_data(self):
+        #"""
+        #We need this data, so don't test!
+        #Disabled:
+        #> ocd = opasCentralDB()
+        #> ocd.delete_all_article_data()
+        #"""
+        ## commit automatically handled by do_action_query
+        #self.do_action_query(querytxt="DELETE FROM api_biblioxml2", queryparams=None)
+        #self.do_action_query(querytxt="DELETE FROM api_articles", queryparams=None)
         
     def delete_specific_article_data(self, art_id):
         """
@@ -2626,7 +2639,7 @@ class opasCentralDB(object):
         >>> columns = ("basecode",)
         >>> articles = ocd.do_fetch_records_lists("select * from api_productbase where basecode RLIKE %(param1)s;", queryparams=params, columns=columns, limit=2) 
         >>> print (len(articles))
-        322
+        323
         """
         fname = "do_fetch_records"
         self.open_connection(caller_name=fname) # make sure connection is open

@@ -236,8 +236,6 @@ def clean_reference_links(ocd=ocd,
     fname = "clean_reference_links"
     ocd.open_connection(caller_name=fname) # make sure connection is open
     ret_val = None
-    #artInfo = opasArticleIDSupport.ArticleInfo(art_id="IJP.100.0001A",
-                                               #art_year="2022")
     
     if ocd.db is not None:
         # rows = self.SQLSelectGenerator(sqlSelect)

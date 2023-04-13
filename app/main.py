@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2023, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2023.0411/v2.3.014"   # removed v3 ExtendedSearch endpoint so new 2.3 compatibility bump
+__version__     = "2023.0413/v2.3.015"   # removed v3 ExtendedSearch endpoint so new 2.3 compatibility bump
 __status__      = "Development/Libs/Loader"  
 
 """
@@ -827,7 +827,7 @@ async def admin_reports(response: Response,
         )        
 
     # Get report
-
+    
     # with order by for return
     select = f"""SELECT * from {report_view}
                  WHERE {standard_filter}
@@ -838,7 +838,7 @@ async def admin_reports(response: Response,
                  {extra_condition}
                  {orderby_clause}
                  """
-
+    
     # without order by for full count
     select_count = f"""SELECT * from {report_view}
                        WHERE {standard_filter}
@@ -847,8 +847,8 @@ async def admin_reports(response: Response,
                        {sessionid_condition}
                        {endpoint_condition}
                        {extra_condition}
-"""
-
+                     """
+   
     if getfullcount:
         count = ocd.get_select_count(select_count) # without order by
     else:
