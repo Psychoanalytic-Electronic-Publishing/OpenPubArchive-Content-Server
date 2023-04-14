@@ -328,7 +328,7 @@ def is_value_in_field(value,
                                        rows = limit,
                                        )
         except Exception as e:
-            logger.warning(f"Solr query: {q} fields {field} {e}")
+            logger.warning(f"Solr query: {q} fields: {field} {e}")
             results = []
            
         if len(results) > 0: 

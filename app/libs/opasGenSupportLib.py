@@ -1063,6 +1063,22 @@ def removeLeadingPunctAndSpaces(input_str, punct_set=[',', '.', ' ', ':', ';', '
     return ret_val
 
 # ----------------------------------------------------------------------------------------
+def remove_non_alphanumeric_except_dashes(input_str: str):
+    # Use regular expression to match non-alphanumeric characters except dashes
+    ret_val = input_str
+    try:
+        input_str = str(input_str)
+        pattern = r'[^0-9a-zA-Z-]'
+        # Use re.sub() to replace matched characters with an empty string
+        ret_val = re.sub(pattern, '', input_str)
+        if ret_val != input_str:
+            logger.warning(f"Illegal session id {input_str}--cleaned up to {ret_val}")
+    except Exception as e:
+        logger.error(f"Error while cleaning up string: {input_str}: {e}")
+        
+    return ret_val
+
+# ----------------------------------------------------------------------------------------
 def remove_all_punct(input_str, additional_chars=''):
     standard_additions = '”“'
     punct = string.punctuation + standard_additions + additional_chars

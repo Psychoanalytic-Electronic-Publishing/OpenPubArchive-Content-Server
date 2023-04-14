@@ -52,6 +52,7 @@ import opasCentralDBLib
 #from config import msgdb
 import opasMessageLib
 msgdb = opasMessageLib.messageDB()
+import opasGenSupportLib as opasgenlib
 
 ocd = opasCentralDBLib.opasCentralDB()
 
@@ -286,7 +287,9 @@ def get_base_session_info(request=None, session_id=None, client_id=4, pads_sessi
         #  try to handle pydantic validation errors we're seeing in the production logs - nrs 2022-04-15
         #  to turn off validation for the model, see https://pydantic-docs.helpmanual.io/usage/models/#creating-models-without-validation
         try:
-            base_session_info = models.SessionInfo(session_id=session_id,
+            # clean up session id since for whatever reason we're seeing non-alphanumeric chars (not counting dashes)
+            session_id = opasgenlib.remove_non_alphanumeric_except_dashes(session_id)
+            base_session_info = models.SessionInfo(session_id=session_id, # try forcing string here to prevent model error
                                                    api_client_id=client_id
                                                    )
         except Exception as e: 
