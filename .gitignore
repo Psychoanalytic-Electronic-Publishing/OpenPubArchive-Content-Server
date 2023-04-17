@@ -68,3 +68,4 @@ app/opasDataLoader/data_update_logs/database_updated.txt
 sql/schemas/opascentralStructureOnProduction.sql
 sql/schemas/opascentralStructureOnStaging.sql
 sql/schemas/opascentralStructureOnXPS.sql
+app/opasDataLoader/quicktest.py

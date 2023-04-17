@@ -14,9 +14,6 @@ from opasPySolrLib import search_text
 
 ocd = opasCentralDBLib.opasCentralDB()
 
-import signal
-
-
 class TestSolrRecsWthoutArtID(unittest.TestCase):
     """
     Tests

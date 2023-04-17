@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.1118/v1.0.004"   # semver versioning after date.
+__version__     = "2023.0417/v1.0.005"   # semver versioning after date.
 __status__      = "Development"
 
 programNameShort = "opasDataCleaner"
@@ -80,42 +80,6 @@ else:
 
 # Module Globals
 fs_flex = None
-
-def remove_solr_erroneous_records_seen_in_some_builds(self):
-    
-    def input_with_timeout(prompt, timeout):
-        def alarm_handler(signum, frame):
-            raise TimeoutError
-    
-        signal.signal(signal.SIGALRM, alarm_handler)
-        signal.alarm(timeout)
-    
-        try:
-            user_input = input(prompt)
-            signal.alarm(0)
-            return user_input
-        except TimeoutError:
-            print('Timeout!')
-            return None
-    
-    solrurl_docs = localsecrets.SOLRURL + configLib.opasCoreConfig.SOLR_DOCS  # e.g., http://localhost:8983/solr/    + pepwebdocs'
-    if localsecrets.SOLRUSER is not None and localsecrets.SOLRPW is not None:
-        if 1: # options.fulltext_core_update:
-            solr_docs2 = pysolr.Solr(solrurl_docs, auth=(localsecrets.SOLRUSER, localsecrets.SOLRPW))
-    else: #  no user and password needed
-        solr_docs2 = pysolr.Solr(solrurl_docs)
-
-    query = "-art_id:* AND -id:GW* AND -id:SE*"
-    r1, status = opasPySolrLib.search_text(query=query)
-    r1_count = r1.documentList.responseInfo.fullCount
-    if r1_count > 0:
-        cont = input_with_timeout (prompt=f"Do you want to delete the rogue records matching: '-art_id:* AND -id:GW* AND -id:SE*'", timeout=50)
-        if len(cont) >= 1:
-            if cont[0].lower() == "y":
-                solr_docs2.delete(q="-art_id:* AND -id:GW* AND -id:SE*")
-            else:
-                print ("User requested exit.  No data changed.")
-
 
 #------------------------------------------------------------------------------------------------------
 def main():
@@ -215,7 +179,7 @@ def main():
         # Get list of articles from the tracker table.  TBD: Later add filename with path to the table so you don't need to read all
         #  the files at once above.
         time_milestone1 = time.time()
-        print (f"Filename collection from storage took {(time_milestone1-timeStart)/60} minutes")
+        print (f"Filename collection ({len(filenames)}) from storage took {(time_milestone1-timeStart)/60} minutes")
         print (f"Fetching article info from database...")
         if options.artid_prefix != "":
             search_clause = f" WHERE art_id LIKE '{options.artid_prefix}%'"
@@ -228,7 +192,7 @@ def main():
         article_list = ocd.get_select_as_list_of_dicts(articles_to_check)
         time_milestone2 = time.time()
         
-        print (f"DB Article Load took {time_milestone2-time_milestone1} secs")
+        print (f"DB Article Load ({len(article_list)}) took {time_milestone2-time_milestone1} secs")
         print ("Checking for missing articles...")
         # look to see if they exist
         for article in article_list:
@@ -296,9 +260,9 @@ if __name__ == "__main__":
     parser.add_option("--nohelp", action="store_true", dest="no_help", default=False,
                       help="Turn off front-matter help")
     parser.add_option("--rogues", dest="remove_rogues", action="store_true", default=False,
-                      help="Delete roque records in Solr")
+                      help="Delete roque records (without art_id) in Solr")
     parser.add_option("--noclean", dest="no_cleaning", action="store_true", default=False,
-                      help="Delete roque records in Solr")
+                      help="Don't clean the DB for missing files (use with rogues to just remove rogues).")
 
     (options, args) = parser.parse_args()
     
