@@ -5,7 +5,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2023"
 __license__     = "Apache 2.0"
-__version__     = "2023.0310/v1.0.016"   
+__version__     = "2023.0417/v1.0.017"   
 __status__      = "Development"
 
 programNameShort = "opasDataLinker"
@@ -294,10 +294,23 @@ if __name__ == "__main__":
     options = None
     description = """Process the api_biblioxml2 table of SQL database opasCentral to find links (and potentially related links) to PEP articles.
     After running opasDataLinker, run opasDataLoader with the --smartbuild option to reprocess any articles which updated links
-    from opasDataLinker. This will build new compiled (output) xml files for those with the link data embedded.
+    from opasDataLinker. This will build new compiled (output) xml files for those with the link data embedded."""
+    epilog = """\nNote that the following options are mutually exclusive:
+     --after
+     --all
+     --before
+     --key
+     --nightly (-n)
+     --where
     """
-    parser = OptionParser(usage="%prog [options]", version=f"%prog ver. {__version__}",
-                          description=description)
+    import optparse
+    
+    class MyParser(optparse.OptionParser):
+        def format_epilog(self, formatter):
+            return self.epilog
+        
+    parser = MyParser(usage="%prog [options]", version=f"%prog ver. {__version__}",
+                          description=description, epilog=epilog)
 
     parser.add_option("-a", "--all", action="store_true", dest="process_all", default=False,
                       help="Option to force all records to be checked.")
@@ -460,6 +473,9 @@ if __name__ == "__main__":
     if options.nightly_includes:
         query = biblio_refs_nightly
         print (f"Nightly build option selected. Processing article references added since {yesterday}")
+    elif options.where_condition:
+        query = biblio_refs_advanced_query % (f" AND {options.where_condition}")
+        print (f"Processed records limited by --where condition: ' AND {options.where_condition}'")
     elif options.file_key:
         options.file_key = options.file_key.replace("!", "^")  # on my local machine, can't use ^ on command line arg
         query = biblio_refs_matching_artid % (options.file_key, addon_to_query)
@@ -469,11 +485,8 @@ if __name__ == "__main__":
         print (f"Nightly build option selected. Processing articles added after {options.added_after}")
     elif options.scanned_before:
         query = biblio_refs_updated_before % (options.scanned_before, addon_to_query)
-    elif options.unlinked_refs:
+    elif options.unlinked_refs: # just unlinked, it can still be used with several types above.
         query = biblio_refs_updated_before % (options.scanned_before, addon_to_query)
-    elif options.where_condition:
-        query = biblio_refs_advanced_query % (f" AND {options.where_condition}")
-        print (f"Processed records limited by --where condition: ' AND {options.where_condition}'")
     else: # options.process_all:
         query = biblio_refs_matching_artid % ('.*', addon_to_query)
         print (f"Processing ALL article references")
