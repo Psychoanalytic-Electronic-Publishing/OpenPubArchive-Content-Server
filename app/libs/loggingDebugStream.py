@@ -6,7 +6,7 @@
 import logging
 logger = logging.getLogger(__name__)
 
-def log_everywhere_if(condition, level, msg):
+def log_everywhere_if(condition, level, msg, end=None):
     if level == "debug":    
         logger.debug(msg)
         level_int = 10
@@ -24,6 +24,9 @@ def log_everywhere_if(condition, level, msg):
         level_int = 50
         
     if condition and (logger.parent.level <= level_int or level_int == 20): # want to see info msgs if condition
-        print (msg)
+        if end:
+            print (msg, end)
+        else:
+            print (msg)
 
     

@@ -5,7 +5,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2023"
 __license__     = "Apache 2.0"
-__version__     = "2023.0417/v1.0.017"   
+__version__     = "2023.0418/v1.0.018"   
 __status__      = "Development"
 
 programNameShort = "opasDataLinker"
@@ -126,44 +126,44 @@ def walk_through_reference_set(ocd=ocd,
     if ocd.db is not None:
         cumulative_time_start = time.time()
         # rows = self.SQLSelectGenerator(sqlSelect)
-        print ("Finding candidate references...")
+        log_everywhere_if(True, "info", "Finding candidate references...")
         total_count = ocd.get_select_count(sql_set_select)
         if halfway:
             count = round(total_count / 2)
             limit_clause = f" \nLIMIT {count}"
-            print (f"Limiting to halfway--{count} of {total_count} references.")
+            log_everywhere_if(True, "info", f"Limiting to halfway--{count} of {total_count} references.")
         else:
             limit_clause = ""
             count = total_count
             
         biblio_entries = ocd.get_references_select_biblioxml(sql_set_select + limit_clause)
-        print (f"Scanning {len(biblio_entries)} references in api_biblioxml2 to find new links.")
+        log_everywhere_if(True, "info", f"Scanning {len(biblio_entries)} references in api_biblioxml2 to find new links.")
         counter = 0
         updated_record_count = 0
         for ref_model in biblio_entries:
             reference_time_start = time.time()
             counter += 1
-            print (80*"-")
+            log_everywhere_if(True, "info", 80*"-")
             one_line_text = ""
             if ref_model.ref_text:
                 one_line_text = ref_model.ref_text.replace('\n', '')
             last_updated = ref_model.last_update.strftime("%m/%d/%Y")
-            print (f"{counter}/{count}:Analyzing Record Last Updated:{last_updated} ID:{ref_model.art_id}/{ref_model.ref_local_id}\nRef:{one_line_text}")
+            log_everywhere_if(True, "info", f"{counter}/{count}:Analyzing Record Last Updated:{last_updated} ID:{ref_model.art_id}/{ref_model.ref_local_id}\nRef:{one_line_text}")
             # parsed_ref = ET.fromstring(ref_model.ref_xml, parser=parser)
             bib_entry = opasBiblioSupport.BiblioEntry(ref_model.art_id, db_bib_entry=ref_model, verbose=verbose)
             art_id = bib_entry.art_id
             if not bib_entry.ref_title:
                 # ignore this one from now on
-                if verbose: print (f"\t...No title found, ignoring this one from now on.")
+                log_everywhere_if(verbose, "info", f"\t...No title found, ignoring this one from now on.")
                 bib_entry.ref_rx_confidence = opasConfig.RX_CONFIDENCE_NEVERMORE
                 bib_entry.link_updated = True                        
             else:
                 if bib_entry.ref_rx_confidence == .01 or bib_entry.ref_rx_confidence == opasConfig.RX_CONFIDENCE_POSITIVE:
-                    if verbose: print (f"\t...Skipping Marked 'RX_CONFIDENCE_NEVERMORE (.01)' or RX_CONFIDENCE_POSITIVE (1) Reference ID: {bib_entry.ref_rx} Confidence {bib_entry.ref_rx_confidence}")
+                    log_everywhere_if(verbose, "info", f"\t...Skipping Marked 'RX_CONFIDENCE_NEVERMORE (.01)' or RX_CONFIDENCE_POSITIVE (1) Reference ID: {bib_entry.ref_rx} Confidence {bib_entry.ref_rx_confidence}")
                     continue
                 
                 if bib_entry.ref_rx and not ocd.article_exists(bib_entry.ref_rx):
-                    print (f"\t...Not in PEP. Removing RX link {bib_entry.ref_rx}. Preserving rxcf: {bib_entry.ref_rx}  Will try to match")
+                    log_everywhere_if(verbose, "info", f"\t...Not in PEP. Removing RX link {bib_entry.ref_rx}. Preserving rxcf: {bib_entry.ref_rx}  Will try to match")
                     bib_entry.ref_in_pep = False
                     bib_entry.ref_rx = None
                     bib_entry.ref_rx_confidence = 0
@@ -175,18 +175,18 @@ def walk_through_reference_set(ocd=ocd,
                     # bib_entry.lookup_title_in_db(ocd)
                     bib_entry.identify_heuristic(verbose=verbose)
                     if bib_entry.ref_rx is not None:
-                        if verbose: print (f"\t...Matched Reference ID: {bib_entry.ref_rx} Confidence {bib_entry.ref_rx_confidence} Link Updated: {bib_entry.link_updated}")
+                        log_everywhere_if(verbose, "info", f"\t...Matched Reference ID: {bib_entry.ref_rx} Confidence {bib_entry.ref_rx_confidence} Link Updated: {bib_entry.link_updated}")
                         
                 elif bib_entry.ref_rx_confidence == .01: # check again
-                    if verbose: print (f"\t...Skipping Marked 'RX_CONFIDENCE_NEVERMORE (.01)' Reference ID: {bib_entry.ref_rx} Confidence {bib_entry.ref_rx_confidence}")
+                    log_everywhere_if(verbose, "info", f"\t...Skipping Marked 'RX_CONFIDENCE_NEVERMORE (.01)' Reference ID: {bib_entry.ref_rx} Confidence {bib_entry.ref_rx_confidence}")
                     continue
 
                 if bib_entry.ref_rx is not None:
-                    if verbose: print (f"\t...Checking ref_rx from xml for accuracy")
+                    log_everywhere_if(verbose, "info", f"\t...Checking ref_rx from xml for accuracy")
                     bib_entry.lookup_more_exact_artid_in_db(ocd)
                         
                     if bib_entry.ref_is_book and not bib_entry.ref_in_pep and bib_entry.ref_rxcf is not None:
-                        print (f"\t...Types don't match or not in PEP. Removing RX link {bib_entry.ref_rx}. Preserving rxcf: {bib_entry.ref_rx}")
+                        log_everywhere_if(verbose, "info", f"\t...Types don't match or not in PEP. Removing RX link {bib_entry.ref_rx}. Preserving rxcf: {bib_entry.ref_rx}")
                         bib_entry.ref_rx = None
                         bib_entry.ref_rx_confidence = 0
                         bib_entry.link_updated = True
@@ -199,30 +199,27 @@ def walk_through_reference_set(ocd=ocd,
                 success = ocd.save_ref_to_biblioxml_table(bib_entry, bib_entry_was_from_db=True)
                 if success:
                     if bib_entry.link_updated or options.forceupdate:
-                        print (f"\t...Links updated.  Updating DB: rx:{bib_entry.ref_rx} rxcf:{bib_entry.ref_rxcf} source: ({bib_entry.ref_link_source})")
+                        log_everywhere_if(verbose, "info", f"\t...Links updated.  Updating DB: rx:{bib_entry.ref_rx} rxcf:{bib_entry.ref_rxcf} source: ({bib_entry.ref_link_source})")
                     else:
-                        print (f"\t...Record updated. Updating DB.")
+                        log_everywhere_if(verbose, "info", f"\t...Record updated. Updating DB.")
                     # save, and don't reread database bib_entry values first!
-                    if options.display_verbose: print(f"\t...Time: {time.time() - reference_time_start:.4f} seconds.")
+                    log_everywhere_if(verbose, "info", f"\t...Time: {time.time() - reference_time_start:.4f} seconds.")
                 else:
-                    print (f"\t...Error saving record.")
+                    log_everywhere_if(verbose, "error", f"\t...Error saving record.")
             else:
-                if verbose: print (f"\t...No change.  Reference ID: {bib_entry.ref_rx} Confidence {bib_entry.ref_rx_confidence} Link Updated: {bib_entry.link_updated} Record Updated: {bib_entry.record_updated}")
+                log_everywhere_if(verbose, "info", f"\t...No change.  Reference ID: {bib_entry.ref_rx} Confidence {bib_entry.ref_rx_confidence} Link Updated: {bib_entry.link_updated} Record Updated: {bib_entry.record_updated}")
                 
                 
     ocd.close_connection(caller_name=fname) # make sure connection is closed
     timeEnd = time.time()
     elapsed_seconds = timeEnd-cumulative_time_start # actual processing time going through files
     elapsed_minutes = elapsed_seconds / 60
-    print (80 * "-")
+    log_everywhere_if(True, "info", 80 * "-")
     msg = f"Finished! {updated_record_count} records updated from {counter} references. Total scan/update time: {elapsed_seconds:.2f} secs ({elapsed_minutes:.2f} minutes.) "
+    log_everywhere_if(True, "info", msg)
     if counter > 0:
         msg = f"References per elapsed min: {counter/elapsed_minutes:.2f}"
-        logger.info(msg)
-        print (msg)
-    
-    logger.info(msg)
-    print (msg)
+        log_everywhere_if(True, "info", msg)
     
     # return session model object
     return ret_val # None or Session Object
