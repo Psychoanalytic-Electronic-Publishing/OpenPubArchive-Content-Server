@@ -1118,11 +1118,18 @@ class BiblioEntry(models.Biblioxml):
         {'ref_rx': 'SE.023.0209A', 'ref_rx_confidence': 0.99, 'link_updated': True, 'link_source': 'title', 'ref_rxcf': None, 'ref_rxcf_confidence': 0, 'ref_xml': '<be id="B034"><a><l>Freud</l>, S.</a> (<y>1937</y>). <t>Analysis terminable and interminable.</t> <bst>S. E.</bst>, <v>23</v>.</be>'}
         
         """
-        prior_rx = self.ref_rx
+        # prior_rx = self.ref_rx
         ret_val = self.ref_rx
         if self.ref_rx:
-            ref_id_parts = self.ref_rx.split('.')
-            art_id_prefix_match = f"{ref_id_parts[0]}.{ref_id_parts[1]}.%"
+            if isinstance(self.ref_rx, Locator):
+                part1 = self.ref_rx.jrnlCode
+                part2 = self.ref_rx.jrnlVol
+            else:
+                ref_id_parts = self.ref_rx.split('.')
+                part1 = ref_id_parts[0]
+                part2 = ref_id_parts[1]
+        
+            art_id_prefix_match = f"{part1}.{part2}.%"
             like_clause = f"AND art_id LIKE '{art_id_prefix_match}'"
         else:
             like_clause = ""
