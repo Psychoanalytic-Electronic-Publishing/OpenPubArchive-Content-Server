@@ -911,7 +911,7 @@ def xml_update(parsed_xml,
             elif linktype == "document-link":
                 webx.attrib["url"] = opasConfig.LINK_DOCUMENT_PREFIX + webx.text
             elif linktype == "email":
-                webx.attrib["url"] = opasConfig.LINK_EMAIL_PREFIX + url.text
+                webx.attrib["url"] = opasConfig.LINK_EMAIL_PREFIX + webx.text
     
      
     # if doc part of SE/GW this section adds related IDs for the GW and SE concordance feature.
