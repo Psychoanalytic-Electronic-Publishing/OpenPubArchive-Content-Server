@@ -892,13 +892,28 @@ def xml_update(parsed_xml,
         new_unit = ET.fromstring(pep_addon, parser)
         parsed_xml.append(new_unit)
     
-    web_links = parsed_xml.xpath("/pepkbd3//autaff//url") 
+    url_links = parsed_xml.xpath("/pepkbd3//autaff//url") 
     logger.info("\t...Processing url links.")
-    for url in web_links:
+    for url in url_links:
         urltext = "mailto:" + url.text
         url.tag = "webx"
         url.attrib["url"] = urltext
     
+    webx_links = parsed_xml.xpath("/pepkbd3//webx")
+    for webx in webx_links:
+        #  if there's no url attribute, add prefix to webx text based on type
+        if webx.attrib.get("url", None) is None:
+            linktype = webx.attrib["type"]
+            if linktype == "doi":
+                webx.attrib["url"] = opasConfig.LINK_DOI_PREFIX + webx.text
+            elif linktype == "url":
+                webx.attrib["url"] = webx.text
+            elif linktype == "document-link":
+                webx.attrib["url"] = opasConfig.LINK_DOCUMENT_PREFIX + webx.text
+            elif linktype == "email":
+                webx.attrib["url"] = opasConfig.LINK_EMAIL_PREFIX + url.text
+    
+     
     # if doc part of SE/GW this section adds related IDs for the GW and SE concordance feature.
     if artInfo.src_code in ["GW", "SE"]:
         if verbose: print (f"\t...Starting SE/GW Concordance Tagging")

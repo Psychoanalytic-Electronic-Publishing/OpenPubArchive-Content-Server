@@ -54,6 +54,11 @@ DELETE_EXTRANEOUS_TAGS = True
 SMARTQUOTE_EXTENSION = True  # Turn on temporary smartQuote (apos) feature.  Won't be needed if we load only smartquotes.
 MIN_TERM_LENGTH_MATCH = 4 # smallest length term to match from glossary (i.e., eliminate 'M')
 
+# Link prefixes for xml conversion handling webx
+LINK_DOI_PREFIX = "https://doi.org/"
+LINK_DOCUMENT_PREFIX = "https://pep-web.org/browse/document/"
+LINK_EMAIL_PREFIX = "mailto:"
+
 # Cache controls
 WHATS_NEW_EXPIRES_DAYS = 0
 WHATS_NEW_EXPIRES_HOURS = 22

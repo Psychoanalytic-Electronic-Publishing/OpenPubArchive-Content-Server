@@ -975,10 +975,10 @@ class BiblioEntry(models.Biblioxml):
         ret_val.ref_link_source = self.ref_link_source
         ret_val.ref_rxcf = self.ref_rxcf
         ret_val.ref_rxcf_confidence = self.ref_rxcf_confidence
-        if verbose:
-            time2 = time.time()
-            heuristic_time = time2 - time1
-            print (f"\t...Heuristics time: {heuristic_time:.4f}")
+        #if verbose:
+            #time2 = time.time()
+            #heuristic_time = time2 - time1
+            #print (f"\t...Heuristics time: {heuristic_time:.4f}")
         
         return ret_val
 

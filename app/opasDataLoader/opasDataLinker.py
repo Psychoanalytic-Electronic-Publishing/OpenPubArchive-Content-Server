@@ -5,7 +5,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2023"
 __license__     = "Apache 2.0"
-__version__     = "2023.0418/v1.0.018"   
+__version__     = "2023.0419/v1.0.019"   
 __status__      = "Development"
 
 programNameShort = "opasDataLinker"
@@ -122,7 +122,7 @@ def walk_through_reference_set(ocd=ocd,
     #artInfo = opasArticleIDSupport.ArticleInfo(art_id="IJP.100.0001A",
                                                #art_year="2022")
     
-    parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True)
+    # parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True)
     if ocd.db is not None:
         cumulative_time_start = time.time()
         # rows = self.SQLSelectGenerator(sqlSelect)
@@ -199,15 +199,15 @@ def walk_through_reference_set(ocd=ocd,
                 success = ocd.save_ref_to_biblioxml_table(bib_entry, bib_entry_was_from_db=True)
                 if success:
                     if bib_entry.link_updated or options.forceupdate:
-                        log_everywhere_if(verbose, "info", f"\t...Links updated.  Updating DB: rx:{bib_entry.ref_rx} rxcf:{bib_entry.ref_rxcf} source: ({bib_entry.ref_link_source})")
+                        log_everywhere_if(verbose, "info", f"\t...Link updated.  Updating DB: rx:{bib_entry.ref_rx} rxcf:{bib_entry.ref_rxcf} source: ({bib_entry.ref_link_source})")
                     else:
                         log_everywhere_if(verbose, "info", f"\t...Record updated. Updating DB.")
                     # save, and don't reread database bib_entry values first!
                     log_everywhere_if(verbose, "info", f"\t...Time: {time.time() - reference_time_start:.4f} seconds.")
                 else:
                     log_everywhere_if(verbose, "error", f"\t...Error saving record.")
-            else:
-                log_everywhere_if(verbose, "info", f"\t...No change.  Reference ID: {bib_entry.ref_rx} Confidence {bib_entry.ref_rx_confidence} Link Updated: {bib_entry.link_updated} Record Updated: {bib_entry.record_updated}")
+            #else:
+                #log_everywhere_if(verbose, "info", f"\t...No change.  Reference ID: {bib_entry.ref_rx} Confidence {bib_entry.ref_rx_confidence} Link Updated: {bib_entry.link_updated} Record Updated: {bib_entry.record_updated}")
                 
                 
     ocd.close_connection(caller_name=fname) # make sure connection is closed
