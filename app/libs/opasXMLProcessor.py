@@ -902,17 +902,35 @@ def xml_update(parsed_xml,
     webx_links = parsed_xml.xpath("/pepkbd3//webx")
     for webx in webx_links:
         #  if there's no url attribute, add prefix to webx text based on type
-        if webx.attrib.get("url", None) is None:
-            linktype = webx.attrib["type"]
-            if linktype == "doi":
-                webx.attrib["url"] = opasConfig.LINK_DOI_PREFIX + webx.text
-            elif linktype == "url":
-                webx.attrib["url"] = webx.text
-            elif linktype == "document-link":
-                webx.attrib["url"] = opasConfig.LINK_DOCUMENT_PREFIX + webx.text
-            elif linktype == "email":
-                webx.attrib["url"] = opasConfig.LINK_EMAIL_PREFIX + webx.text
+        if webx.attrib.get("url", None) is None and len(webx.text) > 0:
+            try:
+                linktype = webx.attrib.get("type", None)
     
+                if linktype == "doi":
+                    if "http" not in webx.text:
+                        webx.attrib["url"] = opasConfig.LINK_DOI_PREFIX + webx.text
+                    else:
+                        webx.attrib["url"] = webx.text
+    
+                elif linktype == "url":
+                    webx.attrib["url"] = webx.text
+    
+                elif linktype == "document-link":
+                    if "http" not in webx.text:
+                        webx.attrib["url"] = opasConfig.LINK_DOCUMENT_PREFIX + webx.text
+                    else:
+                        webx.attrib["url"] = webx.text
+    
+                elif linktype == "email":
+                    if opasConfig.LINK_EMAIL_PREFIX not in webx.text:
+                        webx.attrib["url"] = opasConfig.LINK_EMAIL_PREFIX + webx.text
+                    else:
+                        webx.attrib["url"] = webx.text
+                
+                elif linktype is None:
+                    webx.attrib["url"] = webx.text
+            except Exception as e:
+                logger.error(f"webx: {e} for {webx.attrib} and {webx.text}")
      
     # if doc part of SE/GW this section adds related IDs for the GW and SE concordance feature.
     if artInfo.src_code in ["GW", "SE"]:

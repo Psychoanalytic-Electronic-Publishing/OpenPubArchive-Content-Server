@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2023, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2023.0419/v2.1.027"   # Requires update to api_biblioxml2 and views based on it.
+__version__     = "2023.0419/v2.1.028"   # Requires update to api_biblioxml2 and views based on it.
 __status__      = "Development"
 
 # !!! IMPORTANT: Increment opasXMLProcessor version (if version chgd). It's written to the XML !!!
@@ -777,7 +777,9 @@ def main():
             glossary_file_skip_pattern=r"ZBK.069(.*)"
             rc_skip_glossary_kbd3_files = re.compile(glossary_file_skip_pattern, re.IGNORECASE)
             insert_date = ocd.get_last_record_insertion_date()
+            file_number = 0
             for n in filenames:
+                file_number += 1
                 fullfilename = n.filespec
                 fileTimeStart = time.time()
                 input_file_was_updated = False
@@ -791,6 +793,8 @@ def main():
                 #artID = artID.upper()
                 #artID = artID.replace(".EMBARGOED", "")
                 #m = re.match(r"(.*?)\.", artID)
+                if file_number % 500 == 0 and options.display_verbose and processed_files_count == 0:
+                    print (f"#{file_number} of {len(filenames)}")
                 
                 try:
                     inputfilename = n.fileinfo["name"]
@@ -823,10 +827,10 @@ def main():
                                    
                 if not options.forceRebuildAllFiles:  # not forced, but always force processed for single file 
                     if not options.display_verbose and processed_files_count % 100 == 0 and processed_files_count != 0: # precompiled xml files loaded progress indicator
-                        print (f"Precompiled XML Files \t ...loaded {processed_files_count} out of {files_found} possible.")
+                        print (f"Examining file #{file_number} Precompiled XML Files \t ...loaded {processed_files_count} out of {files_found} possible.")
     
                     if not options.display_verbose and skipped_files % 100 == 0 and skipped_files != 0: # xml files loaded progress indicator
-                        print (f"Skipped {skipped_files} so far \t...loaded {processed_files_count} out of {files_found} possible." )
+                        print (f"Examining file #{file_number} Skipped {skipped_files} so far \t...processed or loaded {processed_files_count} out of {files_found} possible." )
                     
                     # if smartload, this will be kbd3, and it basically only decides whether it needs to be built.
                     

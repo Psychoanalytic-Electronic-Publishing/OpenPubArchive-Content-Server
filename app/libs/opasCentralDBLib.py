@@ -2783,6 +2783,10 @@ class opasCentralDB(object):
             
         if bib_entry.ref_rxcf_confidence is None:
             bib_entry.ref_rxcf_confidence = 0
+            
+        if not isinstance(bib_entry.ref_rx, str) and bib_entry.ref_rx is not None:
+            bib_entry.ref_rx = str(bib_entry.ref_rx)
+            
     
         insert_if_not_exists = r"""REPLACE
                                    INTO api_biblioxml2 (
