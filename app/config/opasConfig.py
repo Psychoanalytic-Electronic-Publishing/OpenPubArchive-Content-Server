@@ -87,6 +87,10 @@ MAX_DISPLAY_LEN_CF_ARTICLES = 90
 MAX_LOGMSG_LEN = 120
 MAX_SOURCE_COUNT = 200 # used to extend limit of facet for sources above 100 in metadata_get_sourcecodes
 
+# link types
+BIBPGLINKBOOKS = "BIBPGLINKBOOKS" # link in a book to a references page, giving the referencing ID as the prefix
+
+
 # General books
 BOOKSOURCECODE = "ZBK" #  books are listed under this source code, e.g., to make for an id of ZBK.052.0001
 BOOK_CODES_ALL = ("GW", "SE", "ZBK", "NLP", "IPL")
