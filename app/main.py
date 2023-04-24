@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2023, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2023.0418/v2.3.017"   # removed v3 ExtendedSearch endpoint so new 2.3 compatibility bump
+__version__     = "2023.0424/v2.3.019"   # removed v3 ExtendedSearch endpoint so new 2.3 compatibility bump
 __status__      = "Development/Libs/Loader"  
 
 """
@@ -293,7 +293,7 @@ def find_client_id(request: Request,
            if not there, defaults to 0 (server is client)
     """
     ret_val = 0
-    if client_id == 0 or client_id == None:
+    if client_id == 0 or client_id is None:
         ret_val = opasConfig.NO_CLIENT_ID
         client_id = request.headers.get(opasConfig.CLIENTID, None)
         client_id_qparam = request.query_params.get(opasConfig.CLIENTID, None)

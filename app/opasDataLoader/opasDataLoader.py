@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2023, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2023.0419/v2.1.028"   # Requires update to api_biblioxml2 and views based on it.
+__version__     = "2023.0421/v2.1.029"   # Requires update to api_biblioxml2 and views based on it.
 __status__      = "Development"
 
 # !!! IMPORTANT: Increment opasXMLProcessor version (if version chgd). It's written to the XML !!!
@@ -528,7 +528,7 @@ def main():
     solrurl_docs = None
     solrurl_authors = None
     solrurl_glossary = None
-    if options.rootFolder == localsecrets.XML_ORIGINALS_PATH or options.rootFolder == None:
+    if options.rootFolder == localsecrets.XML_ORIGINALS_PATH or options.rootFolder is None:
         start_folder = pathlib.Path(localsecrets.XML_ORIGINALS_PATH)
     else:
         start_folder = pathlib.Path(options.rootFolder)   

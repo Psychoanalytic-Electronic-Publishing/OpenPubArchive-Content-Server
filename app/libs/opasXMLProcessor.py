@@ -14,7 +14,7 @@ Can optionally
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2023.0131/v.1.0.109"  # recorded in xml processed pepkbd3 procby, keep up to date!
+__version__     = "2023.0420/v.1.0.110"  # recorded in xml processed pepkbd3 procby, keep up to date!
 __status__      = "Development"
 
 programNameShort = "opasXMLProcessor"
@@ -253,7 +253,6 @@ def pgx_add_rx_jump_via_biblio_entry(parsed_xml, ocd, artInfo, split_book_data=N
     # Walk through pgx elements, and fix locators
     pgx_links = parsed_xml.xpath("/pepkbd3//pgx")
     ret_val = 0
-    pgxlink_type = "BIBPGLINK"
         
     for pgx in pgx_links:
         r_attr = pgx.attrib.get("r", None)
@@ -269,14 +268,14 @@ def pgx_add_rx_jump_via_biblio_entry(parsed_xml, ocd, artInfo, split_book_data=N
                         if len(bib_node) == 1:
                             rx = bib_node[0].attrib.get("rx", None)
                             if rx is not None:
-                                pgx.attrib["rx"] = rx + f".P{pg_num}"
-                                pgx.attrib["type"] = pgxlink_type
+                                pgx.attrib["rx"] = rx + f".P{pg_num}" # direct link to reference
+                                pgx.attrib["type"] = opasConfig.BIBPGLINK # this is a reference to a bib with a link within it.
                                 ret_val += 1
                             else:
                                 # neutralize the pgx tag but keep the info
                                 pgx.tag = "cgrp"
                                 pgx.attrib["name"] = "pgx"
-                                pgx.attrib["type"] = "placeholder"
+                                pgx.attrib["type"] = opasConfig.BIBPGLINKPLACEHOLDER
                                    
                                 # retain r attribute if there is one (now allowed in cgrp, but optional)
             else:
@@ -299,17 +298,27 @@ def pgx_add_rx_book_links(parsed_xml, ocd, artInfo, split_book_data=None, verbos
     vol = artInfo.art_vol_str
     aLoc = Locator(artInfo.art_id)
     ret_val = 0
-    pgxlink_type = "BIBPGLINKBOOKS"
+    pgxlink_type = opasConfig.BIBPGLINKBOOKS
 
-    if aLoc.isBook():
+    if aLoc.isBook(): # only process books
         split_book_data = opasXMLSplitBookSupport.SplitBookData(database_connection=ocd)
+        # get all the pg links
         pgx_links = parsed_xml.xpath("/pepkbd3//pgx")
         if verbose:
             print(f"\t...Processing book page links. {len(pgx_links)} pgx links found.")
             
         for pgx in pgx_links:
-            if pgx.attrib.get("type", "") == "BIBPGLINK":
+            # see if it's a 
+            if pgx.attrib.get("type", "") == opasConfig.BIBPGLINK:
                 continue
+            
+            prev = pgx.getprevious()
+            if prev:
+                if prev.tag in ["bxe", "bx"]:
+                    pgxlink_type = "BIBPGLINK"
+            else:
+                pgxlink_type = "PGLINK" # this is a pglink in this book unless r or rx says otherwise!
+            
             #parentNameElem = pgx.getparent()
             grp_ancestor_list = pgx.xpath("ancestor::grp")
             if len(grp_ancestor_list) > 0:
@@ -324,8 +333,8 @@ def pgx_add_rx_book_links(parsed_xml, ocd, artInfo, split_book_data=None, verbos
                 
             current_rx_link = pgx.attrib.get("rx", None)
             current_r_link = pgx.attrib.get("r", None)      
-            if current_r_link is None: # if it has an r, it's pointing to the biblio, so not a split instance, no need to do
-                if current_rx_link is None and current_r_link is None: # otherwise, already linked, no need to do
+            if current_r_link is None: # if it does not have an r
+                if current_rx_link is None: # not already linked, need to do
                     ret_val += 1
                     fulltext = opasxmllib.xml_elem_or_str_to_text(pgx) # x.find("pgx")
                     fulltext_cleaned = fulltext.split("-")[0]
@@ -347,8 +356,21 @@ def pgx_add_rx_book_links(parsed_xml, ocd, artInfo, split_book_data=None, verbos
                         pgx.attrib["rx"] = local
                         pgx.attrib["type"] = pgxlink_type
                         log_everywhere_if(verbose, level="info", msg=f"\t\t...Reference to Split Book. Set link (type={pgxlink_type}) including local to: {local}")
-                else:
+                else: # otherwise, already linked, no need to do
+                    if re.search("B[0-9]{3,4}", current_rx_link) is not None:
+                        # this is a biblink
+                        pgx.attrib["type"] = opasConfig.BIBPGLINKBOOKS
+                        
                     log_everywhere_if(verbose, level="info", msg=f"\t\t...Rx link for pgx already set: {current_rx_link}")
+            else: # it has an r, it's pointing to the biblio, so not a split instance, no need to do
+                if re.search("B[0-9]{3,4}", current_r_link) is not None:
+                    # this is a biblink
+                    pgx.attrib["type"] = opasConfig.BIBPGLINKBOOKS
+                    
+                    #if pgx.getprevious().tag in ["bxe", "bx"]:
+                        #pgxlink_type = "BIBPGLINK"
+                        ## continue
+                    
 
     return ret_val
 #------------------------------------------------------------------------------------------------------
@@ -898,6 +920,7 @@ def xml_update(parsed_xml,
         urltext = "mailto:" + url.text
         url.tag = "webx"
         url.attrib["url"] = urltext
+        url.attrib["type"] = "email"
     
     webx_links = parsed_xml.xpath("/pepkbd3//webx")
     for webx in webx_links:
@@ -928,7 +951,12 @@ def xml_update(parsed_xml,
                         webx.attrib["url"] = webx.text
                 
                 elif linktype is None:
-                    webx.attrib["url"] = webx.text
+                    if "@" in webx.text and opasConfig.LINK_EMAIL_PREFIX not in webx.text:
+                        # then it's probably email and needs prefix
+                        webx.attrib["url"] = opasConfig.LINK_EMAIL_PREFIX + webx.text
+                    else: # a url or already prefixed email
+                        webx.attrib["url"] = webx.text
+                    
             except Exception as e:
                 logger.error(f"webx: {e} for {webx.attrib} and {webx.text}")
      

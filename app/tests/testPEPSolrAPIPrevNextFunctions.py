@@ -64,7 +64,7 @@ class TestSolrAPIPrevNextFunctions(unittest.TestCase):
         print(r['documentList']['responseInfo']['fullCount'])
         print(r['documentList']['responseInfo']['supplementalInfo'])
         assert (r['documentList']['responseInfo']['supplementalInfo']["infosource"] == "volumes_adjacent"), r['documentList']['responseInfo']['supplementalInfo']["infosource"]
-        assert (r['documentList']['responseInfo']['supplementalInfo']["prev_vol"] == None), r['documentList']['responseInfo']['supplementalInfo']["prev_vol"]
+        assert (r['documentList']['responseInfo']['supplementalInfo']["prev_vol"] is None), r['documentList']['responseInfo']['supplementalInfo']["prev_vol"]
         assert (r['documentList']['responseInfo']['supplementalInfo']["next_vol"] == {'value': '2', 'count': 40}), r['documentList']['responseInfo']['supplementalInfo']["next_vol"] 
         assert (r['documentList']['responseInfo']['supplementalInfo']["matched_vol"] == {'value': '1', 'count': 37}), r['documentList']['responseInfo']['supplementalInfo']["matched_vol"]
     

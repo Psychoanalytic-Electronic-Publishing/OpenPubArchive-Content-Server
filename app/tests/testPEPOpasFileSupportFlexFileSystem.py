@@ -60,7 +60,7 @@ class TestFSFileSystem(unittest.TestCase):
                                             secret=localsecrets.S3_SECRET,
                                             root=localsecrets.XML_ORIGINALS_PATH)
         filefound = fs.find(filespec)
-        assert filefound != None
+        assert filefound is not None
         
     def test_05(self):
         fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY,
