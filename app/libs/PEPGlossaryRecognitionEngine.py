@@ -88,12 +88,12 @@ class GlossaryRecognitionEngine(UserDict):
         if gather != True and verbose:
             print ("Gathering regex patterns is off.")
         self.data = {}
-        if self.__class__.matchList == None:
+        if self.__class__.matchList is None:
             self.__class__.matchList = self.__loadGlossaryTerms()
         else:
             self.matchList = self.__class__.matchList
 
-        #if self.__class__.impxList == None:
+        #if self.__class__.impxList is None:
             #self.__class__.impxList = self.loadImpxMatchList()
         #else:
             #self.impxList = self.__class__.impxList
@@ -129,7 +129,7 @@ class GlossaryRecognitionEngine(UserDict):
                     logger.error(f"Glossary Pattern Exception: {n}")
                 
             if self.gather:  # combine the patterns, to speed things up
-                if n[0] == None:
+                if n[0] is None:
                     if gDbg1: logger.debug("Glossary match patterns contain Null pattern: ", n)
                     continue
                 if len(gatherPattern) < 650:
@@ -150,7 +150,7 @@ class GlossaryRecognitionEngine(UserDict):
                     # reset the gather area to start a new combined pattern.
                     gatherPattern = ""
             else: # don't combine them...lets us collect statistics and diagnose the pattern matching
-                if n[0] == None:
+                if n[0] is None:
                     if gDbg1: logger.debug("Warning: Glossary match patterns contain Null pattern: ", n)
                     continue
                 if n[1] < opasConfig.MIN_TERM_LENGTH_MATCH:

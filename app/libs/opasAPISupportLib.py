@@ -464,7 +464,7 @@ def metadata_get_source_info(src_type=None, # opasConfig.VALS_PRODUCT_TYPES
     if src_type is not None and src_type != "*":
         src_type_in = src_type # save it for logging
         src_type = opasConfig.normalize_val(src_type, opasConfig.VALS_PRODUCT_TYPES)
-        if src_type == None:
+        if src_type is None:
             err = f"SourceTypeError: {src_type_in}"
             logger.error(err)
             raise Exception(err)
@@ -891,7 +891,7 @@ def documents_get_document(document_id,
         #if m.group("pagejump") is not None:
             #document_id = m.group("docid")
             ## only if they haven't directly specified page
-            #if page == None:
+            #if page is None:
                 #page = m.group("pagejump")
     # just to be sure
     query = "*:*"

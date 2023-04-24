@@ -139,7 +139,7 @@ def database_uncached_get_whats_new(days_back=14,
         
             whats_new_list_items = sorted(whats_new_list_items, key=lambda x: x.displayTitle, reverse = False)    
     
-            if limit != None:
+            if limit is not None:
                 if offset is None:
                     offset = 0
                 limited_whats_new_list = whats_new_list_items[offset:offset+limit]
@@ -277,7 +277,7 @@ def database_get_whats_new_old(days_back=14,
     
         whats_new_list_items = sorted(whats_new_list_items, key=lambda x: x.displayTitle, reverse = False)    
 
-        if limit != None:
+        if limit is not None:
             if offset is None:
                 offset = 0
             limited_whats_new_list = whats_new_list_items[offset:offset+limit]

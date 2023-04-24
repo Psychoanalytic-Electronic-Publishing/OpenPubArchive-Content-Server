@@ -1092,7 +1092,7 @@ class PEPBookInfo:
                 rgxAuth = re.compile(authPat, re.IGNORECASE)
                 rgxTitle = re.compile(titlePat, re.IGNORECASE)
                 rgxYear = re.compile(yearPat+"[a-d]?", re.IGNORECASE) # allow for when they add a suffix
-                if extraPat != None:
+                if extraPat is not None:
                     rgxExtra = re.compile(extraPat, re.IGNORECASE)
                 else:
                     rgxExtra = None
@@ -1149,7 +1149,7 @@ class PEPBookInfo:
         ## see if it's already marked
         #rxVal = self.LastPYXRefTree.getCurrAttrVal("rx|rxp")
         #if gDbg1: print("Pyxtree Reference: ", repr(self.LastPYXRefTree))
-        ##if refText == None: # so if it's already extracted, we don't need to do it again
+        ##if refText is None: # so if it's already extracted, we don't need to do it again
             ##refText = sciPEPSupport.normalizeTextEntities(self.LastPYXRefTree.getCurrElementText(notIncludingTagRegex=("ftnref|ftnx|impx")), self.LastPYXRefTree.entityTrans)
 
         #refObj = self.parseXMLAuthorYearTitle(self.LastPYXRefTree)
@@ -1172,14 +1172,14 @@ class PEPBookInfo:
             #matchID = self.findBookCodeByTitleAuthorYear(strTitle=articleTitle, strAuth=authors, strYear=year, strReference=refText)
 
         ## matchID is now a tuple (9/2011) so deal with that
-        #if matchID[0] != None:
+        #if matchID[0] is not None:
             ## we found that the source is a book.  So look up the article to see if we can go directly to the page.
             #if not opasgenlib.is_empty(articleTitle):
                 #if gDbg1:
                     #print(40*"%X")
                     #print("Found the book as a source.  Looking for the article/section: '%s'" % articleTitle)
                 #matchPageID, sRatio2 = self.findCompilationBooks(self.biblioDB, articleTitle, targetArticleID = matchID[0])
-                #if matchPageID != None:
+                #if matchPageID is not None:
                     ## use this instead.
                     #if gDbg1:
                         #print("Using page match instead.")
@@ -1225,14 +1225,14 @@ class PEPBookInfo:
             #"Book Pattern being searched: ", rgxTitle.pattern
 
             m = rgxTitle.search(theReference)
-            if m != None:
+            if m is not None:
                 if gDbg1: logger.info("***%s Matched Title.  (Pattern: %s)" % (bookID, rgxTitle.pattern))
                 match = True
             else:
                 continue # keep looking
 
             m = rgxAuth.search(theReference)
-            if m != None:
+            if m is not None:
                 if gDbg1: logger.info("**%s Matched Author.  (Pattern: %s)" % (bookID, rgxAuth.pattern))
             else:
                 match = False
@@ -1240,7 +1240,7 @@ class PEPBookInfo:
                 continue # (must keep looking)
 
             m = rgxYear.search(theReference)
-            if m != None:
+            if m is not None:
                 if gDbg1: logger.info("*%s Matched Year.  (Pattern: %s)" % (bookID, rgxYear.pattern))
             else:
                 match = False
@@ -1250,7 +1250,7 @@ class PEPBookInfo:
             # Add an extra search of the entire reference; this can be used to "whittle down" false positives.
             if isinstance(rgxExtra, re.Pattern):
                 m = rgxExtra.search(theReference)
-                if m != None:
+                if m is not None:
                     if gDbg1: logger.info("*%s Matched Extra Pattern: %s)" % (bookID, rgxExtra.pattern))
                 else:
                     match = False
@@ -1261,7 +1261,7 @@ class PEPBookInfo:
                 matchID = bookID
                 break
 
-        if matchID != None:
+        if matchID is not None:
             retVal = matchID, sRatio, None
         else:
             retVal = None, None, None
@@ -1294,7 +1294,7 @@ class PEPBookInfo:
             matchCount = 0
             retVal = None, None, None
             m = rgxTitle.search(strTitle)
-            if m != None:
+            if m is not None:
                 retVal =  bookID, .75, None
                 if gDbg1: print("***%s Matched Title: %s.  (Pattern: %s)" % (bookID, strTitle, rgxTitle.pattern))
                 match = True
@@ -1304,7 +1304,7 @@ class PEPBookInfo:
 
             if not opasgenlib.is_empty(strAuth):
                 m = rgxAuth.search(strAuth)
-                if m != None:
+                if m is not None:
                     if gDbg1: print("**%s Matched Author: %s.  (Pattern: %s)" % (bookID, strAuth, rgxAuth.pattern))
                     matchCount += 1
                     retVal =  bookID, .80, None
@@ -1315,7 +1315,7 @@ class PEPBookInfo:
 
             if not opasgenlib.is_empty(strYear):
                 m = rgxYear.search(strYear)
-                if m != None:
+                if m is not None:
                     if gDbg1: print("*%s Matched Year: %s.  (Pattern: %s)" % (bookID, strYear, rgxYear.pattern))
                     retVal =  bookID, .85, None
                     matchCount += 1
@@ -1327,7 +1327,7 @@ class PEPBookInfo:
             # Add an extra search of the entire reference; this can be used to "whittle down" false positives.
             if not opasgenlib.is_empty(rgxExtra) and not opasgenlib.is_empty(strReference):
                 m = rgxExtra.search(strReference)
-                if m != None:
+                if m is not None:
                     if gDbg1: print("*%s Matched Extra Pattern: %s)" % (bookID, rgxExtra.pattern))
                     retVal =  bookID, .875, None
                     matchCount += 1

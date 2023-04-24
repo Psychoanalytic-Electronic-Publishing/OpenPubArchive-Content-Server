@@ -1239,6 +1239,17 @@ class BiblioEntry(models.Biblioxml):
                         self.ref_link_source = opasConfig.RX_LINK_SOURCE_DB
                         ret_val = True
                         #ret_val = self.ref_rx, self.ref_rx_confidence, self.link_updated
+                else:
+                    loc_str = Locator(self.ref_rx).articleID()
+                    if ocd.article_exists(loc_str):
+                        self.ref_exists = True
+                        self.ref_in_pep = True
+                        self.link_updated = True
+                        self.ref_link_source = opasConfig.RX_LINK_SOURCE_DOCUMENT
+                        if self.ref_rx_confidence == 0:
+                            self.ref_rx_confidence = opasConfig.RX_CONFIDENCE_KEYED_VERY_LIKELY
+                        ret_val = True
+                        
 
             if bib_refdb_model.ref_rxcf:
                 if self.ref_rxcf:

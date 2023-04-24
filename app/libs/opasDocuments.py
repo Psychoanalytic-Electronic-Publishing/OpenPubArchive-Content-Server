@@ -71,7 +71,7 @@ def split_page_range(str_pgrg):
     """
     patPgRg = "(?P<pgrg>(?P<pgstart>[1-9][0-9]*)(\-(?P<pgend>[1-9][0-9]*))?)"
     m = re.search(patPgRg, str_pgrg)
-    if m != None:
+    if m is not None:
         bpgrg = m.group("pgrg")
         bpgstart = m.group("pgstart")
         bpgend = m.group("pgend")
@@ -156,7 +156,7 @@ class VolumeNumber:
             # if argument is already a volume number instance.
             self.volPrefix = volNum.volPrefix
             self.volNumber = volNum.volNumber
-            if volSuffix == None:
+            if volSuffix is None:
                 self.volSuffix = volNum.volSuffix
             else:
                 self.volSuffix = volSuffix
@@ -169,20 +169,22 @@ class VolumeNumber:
             self.volRomanLower = False			# lowercase roman numerals
             self.volOriginalType = "A"
 
-            if volSuffix == None:
+            if volSuffix is None:
                 self.volSuffix = volSuffix = ""
+                if isinstance(volNum, str):
+                    if volNum[-1].isalpha():
+                        self.volSuffix = volNum[-1].upper()
             else:
                 self.volSuffix = volSuffix
 
             if not opasgenlib.is_empty(volNum):
                 try:
                     if isinstance(volNum, str) and volNum[-1].upper() == "S":
-                        volSuffix = "S"
                         volNum = volNum[:-1]
                 except Exception as e:
                     logger.error(f"Can't remove vol suffix {volNum} {e}")
                 
-            if volNum == None or volNum=="":
+            if volNum is None or volNum=="":
                 logging.debug("Bad volNum. Set to 0")
                 volNum = 0
 
@@ -207,7 +209,7 @@ class VolumeNumber:
                 if self.volSuffix in ["-", "&"]:
                     self.volSuffix = ""
 
-                if self.volSuffix == None:
+                if self.volSuffix is None:
                     self.volSuffix = ""
 
                 # standardize the "Roman" prefix
@@ -323,7 +325,7 @@ class VolumeNumber:
 
     #--------------------------------------------------------------------------------
     def __int__(self):
-        if self.volNumber == None:
+        if self.volNumber is None:
             raise ValueError(f"INT Convert Error: {self.volNumber}")
         else:
             return self.volNumber
@@ -627,7 +629,7 @@ class PageNumber:
 
         """
         pgNumber = self.pgNumber
-        if pgNumber == None:
+        if pgNumber is None:
             retVal = 0
         else:
             if self.pgPrefix == "R" and pgNumber > 0:
@@ -689,7 +691,7 @@ class PageNumber:
         prefix = ""
         suffix = ""
         pgNumber = self.pgNumber
-        if pgNumber == None:
+        if pgNumber is None:
             retVal = ""
         else:
             if self.pgPrefix == "R":
@@ -742,7 +744,7 @@ class PageNumber:
 
     #--------------------------------------------------------------------------------
     def __int__(self):
-        if self.pgNumber == None:
+        if self.pgNumber is None:
             raise ValueError(f"INT Convert Error: {self.pgNumber}")
         else:
             retVal = self.pgNumber
@@ -923,7 +925,7 @@ class PageRange:
         else:
             pgRgWork = pgRg
 
-        if pgRgWork != None:
+        if pgRgWork is not None:
             pgrgList = pgRgWork.split("-")
             pgStart = pgrgList[0]
             if len(pgrgList) > 1:
@@ -1166,7 +1168,7 @@ class PubYear:
             self = pubYear
         elif isinstance(pubYear, str):  	# supports string and unicode Was if type(volNum) == type(""):
             m = self.rgxYear.match(pubYear)
-            if m != None:
+            if m is not None:
                 self.yearValue = m.group("baseYear")
                 self.yearSuffix = m.group("suffix")
         if len(self.yearValue) == 2:
@@ -1229,7 +1231,7 @@ class PubYear:
 
     #--------------------------------------------------------------------------------
     def __int__(self):
-        if self.yearValue == None:
+        if self.yearValue is None:
             raise ValueError("INT Convert Error: %s" % self.yearValue)
         else:
             return int(self.yearValue)
@@ -1240,7 +1242,7 @@ class PubYear:
 
     #--------------------------------------------------------------------------------
     def __long__(self):
-        if self.yearValue == None:
+        if self.yearValue is None:
             raise ValueError("Long Convert Error: %s" % self.yearValue)
         else:
             return int(self.yearValue)

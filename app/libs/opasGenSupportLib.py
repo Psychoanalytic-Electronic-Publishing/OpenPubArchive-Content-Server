@@ -52,7 +52,7 @@ rgxTrim = re.compile("^\s+(?P<cleanStr>.*?)\s+$")
 #----------------------------------------------------------------------------------------
 def	do_escapes(data, hasEscapes=0):
     ret_val = data
-    if ret_val != None:
+    if ret_val is not None:
         if hasEscapes==0:
             if re.search(r'\\',	ret_val)	is not None:
                 ret_val = re.sub(r'\\', r'\\\\',	ret_val)
@@ -826,7 +826,7 @@ def range_list(arg):
 #-----------------------------------------------------------------------------
 def default(val, defVal):
 
-    if val != None:
+    if val is not None:
         return val
     else:
         return defVal
@@ -1023,7 +1023,7 @@ def removeTrailingPunctAndSpaces(input_str, punct_set=[',', '.', ' ', ':', ';', 
     ret_val = ""
     if not is_empty(input_str):
         ret_val = input_str.rstrip()
-        if ret_val != None and len(ret_val) > 0:
+        if ret_val is not None and len(ret_val) > 0:
             while ret_val[-1] in punct_set:
                 ret_val = ret_val[:-1]
                 ret_val = ret_val.rstrip()
@@ -1041,7 +1041,7 @@ def removeLetterPrefixAndSuffix(strArg):
     retValSuffix = ""
     if isinstance(strArg, str):
         m = rgxNumStrSplit.match(strArg)
-        if m != None:
+        if m is not None:
             retValPrefix = m.group("str1")
             retValBase = m.group("num")
             retValSuffix = m.group("str2")
@@ -1055,7 +1055,7 @@ def removeLeadingPunctAndSpaces(input_str, punct_set=[',', '.', ' ', ':', ';', '
     ret_val = ""
     if not is_empty(input_str):
         ret_val = input_str.lstrip()
-        if ret_val != None and len(ret_val) > 0:
+        if ret_val is not None and len(ret_val) > 0:
             while ret_val[0:1] in punct_set:
                 ret_val = ret_val[1:]
                 ret_val = ret_val.lstrip()
@@ -1144,7 +1144,7 @@ def atoiYear(strArg):
             strArg = trimPunctAndSpaces(strArg)
             if len(strArg) > 4:
                 m = re.match("[^0-9]*?(?P<year>[1-2][0-9]{3,3})[^0-9]*?", strArg)
-                if m != None:
+                if m is not None:
                     ret_val = m.group("year")
                 else:
                     ret_val = 0
@@ -1249,7 +1249,7 @@ def trimTrailingNonDigits( str_arg ):
     """
 
     retVal = str_arg
-    if str_arg != None:
+    if str_arg is not None:
         retVal = reverseStr(str_arg)
         retVal = trimLeadingNonDigits(retVal)
         retVal = reverseStr(retVal)

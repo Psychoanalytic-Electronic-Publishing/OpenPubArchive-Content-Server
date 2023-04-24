@@ -351,7 +351,7 @@ class StrReferenceParser(object):
         
         self.full_ref_text = ref_text
         m = self.gRegcVolPages.search(ref_text)
-        if m != None:
+        if m is not None:
             bvol = m.group("vol")
             bpgrg = m.group("pgrg")
             bpgstart = m.group("pgstart")
@@ -366,7 +366,7 @@ class StrReferenceParser(object):
             if gDbg1:
                 print("Ref - No Vol Info: %s" % (ref_text))
 
-        if bissue != None:
+        if bissue is not None:
             bissue = trimPunctAndSpaces(bissue)
 
         # volume might not be part of a vol:pgrg group, so look again if not found
@@ -376,7 +376,7 @@ class StrReferenceParser(object):
 
         # get PEP Journal Info
         (jrnlCode, pepCode, fullJournalName) = gJrnlData.getPEPJournalCode(ref_text)
-        if jrnlCode != None and jrnlCode not in gJrnlData.notInPEPList:
+        if jrnlCode is not None and jrnlCode not in gJrnlData.notInPEPList:
             #"PEP Journal!!!"
             self.bib_sourcecode = jrnlCode
             self.bib_sourcetitleabbr = pepCode
@@ -385,7 +385,7 @@ class StrReferenceParser(object):
             self.bib_ref_in_pep = True                        # Journal is in PEP!
         else:
             seException = get_se_volexceptions(ref_text)
-            if seException != None:
+            if seException is not None:
                 # then it's the poor way of saying SE, and we have a vol.
                 #print "Special SE Notation Exception Recognized"
                 self.bib_sourcecode = "SE"
@@ -402,7 +402,7 @@ class StrReferenceParser(object):
                 else:
                     # see if we recognize the non-PEP journal in this using patterns
                     m = self.gRegcJournal.search(ref_text)
-                    if m != None: #matched.
+                    if m is not None: #matched.
                         bjournal = m.group("journal")
                         #bjournal = bjournal.strip()
                         if self.bib_sourcetitle is None:
@@ -413,10 +413,10 @@ class StrReferenceParser(object):
 
         # Get Year, (1965)
         m = self.gRegcYear.search(ref_text)
-        if m != None:
+        if m is not None:
             byear = m.group("year")
             noYear = 0
-            if byear != None:
+            if byear is not None:
                 byear = trimPunctAndSpaces(byear)
         else:
             if gDbg1: raise "No Year: %s" % (ref_text)
@@ -425,7 +425,7 @@ class StrReferenceParser(object):
 
 
         m = self.gRegcAuthors.search(ref_text)
-        if m != None:
+        if m is not None:
             #bauthors = opasgenlib.doEscapes(string.strip(m.group("authors")))
             bauthors = m.group("authors")
             bauthors = bauthors.strip()
@@ -452,7 +452,7 @@ class StrReferenceParser(object):
 
         # look for special page range
         m = self.gRegcppPgRg.search(ref_text)
-        if m != None:
+        if m is not None:
             bpgrg = m.group("pgrg")
             bpgstart = m.group("pgstart")
             bpgend = m.group("pgend")
@@ -469,8 +469,8 @@ class StrReferenceParser(object):
         if self.bib_year == 0:
             self.bib_year = None
 
-        if self.bib_year == None:
-            if self.bib_volume != None:
+        if self.bib_year is None:
+            if self.bib_volume is not None:
                 gJrnlData.getYear(self.bib_sourcecode, self.bib_volume)
             else:
                 if self.bib_sourcecode == "SE":
@@ -479,7 +479,7 @@ class StrReferenceParser(object):
                     patSE = "(?P<se>((<i>)?\&SE\;|SE[\.,]|(S\.\s*E\.)|(Std\.|((Stand(\.|ard)))\s+Ed(\.|ition|it\.))(</i>)?))"
                     patSEVol = patSE + ",?\s+" + "(?P<vol>[1-2][0-9])(\s|,)"
                     m = re.search(patSEVol, ref_text, re.IGNORECASE)
-                    if m != None:
+                    if m is not None:
                         vol = m.group("vol")
                         if not opasgenlib.is_empty(vol):
                             self.bib_volume = repr(opasgenlib.convertStringToArabic(vol))
@@ -488,9 +488,9 @@ class StrReferenceParser(object):
                 logger.debug("Ref - No year or volume information: %s" % (ref_text))
 
         if self.bib_volume==None:
-            if self.bib_year != None:
+            if self.bib_year is not None:
                 # lookup vol
-                if self.bib_sourcecode != None:
+                if self.bib_sourcecode is not None:
                     try:
                         self.bib_volume, self.bib_vol_list = gJrnlData.getVol(self.bib_sourcecode, self.bib_year)
                     except Exception as e:
@@ -499,11 +499,11 @@ class StrReferenceParser(object):
                     if gDbg1: print("Ref - No source code to look up")
 
             # see if we found it!  If not, try something else.
-            if self.bib_volume == None:
+            if self.bib_volume is None:
                 # try a special vol search for labeled volume)
                 roman = "(?P<romannum>m*(cm|dc{0,3}|cd|c{0,3})(xc|lx{0,3}|xl|x{0,3})(ix|vi{0,3}|iv|i{0,3}))"
                 m = re.search("vol[\.:]?\s*(?P<vol>[0-9]{1-4}|" + roman + ")", ref_text, re.IGNORECASE)
-                if m != None:
+                if m is not None:
                     # new vol
                     vol = m.group("vol")
                     if not opasgenlib.is_empty(vol):
@@ -514,9 +514,9 @@ class StrReferenceParser(object):
 
         # Now figure out title!
         if 1: 
-            if self.bib_year != None:
+            if self.bib_year is not None:
                 str1 = "\(?\s*" + str(self.bib_year) + "[a-z]?\s*\)?"
-            elif self.bib_authors != None:
+            elif self.bib_authors is not None:
                 str1 = opasgenlib.remove_all_punct(self.bib_authors, additional_chars="\t/,[]‘’1234567890")
                 self.bib_authors = str1
             else:
@@ -555,12 +555,12 @@ class StrReferenceParser(object):
             else:
                 str2 = "(" + self.bib_sourcetitle + ")"
 
-            if str1 != None:
+            if str1 is not None:
                 # use date/authors and journal name; find title in between
                 srcTSeries = self.bib_sourcetitle
                 # 'Jones, D. (2009), Addiction and pathological accommodation: An intersubjective look at impediments to the utilization of Alcoholics Anonymous. Internat. J. Psychoanal. Self Psychol., 4:212–233.'
 
-                if srcTSeries != None:
+                if srcTSeries is not None:
                     try:
                         rgP = fr"(?P<front>.*?\))(?P<title>.*?)(?P<journal>{re.escape(srcTSeries)})?"
                     except:
@@ -575,21 +575,21 @@ class StrReferenceParser(object):
                     rgP = "\s*\.?\s*'?(?P<title>[A-Z][^\.]+?)\."
 
                 m = re.search(rgP, ref_text, flags=re.IGNORECASE | re.VERBOSE)
-                if m != None:
+                if m is not None:
                     self.bib_title = trimPunctAndSpaces(m.group("title"))
                     #print "PICKED UP TITLE!!!!", self.bib_title
                 else: # see if there was a year, but it was in the wrong place
                     str1 = self.bib_authors
                     rgP = "\s*\.?\s*'?(?P<title>[A-Z][^\.]+?)\."
                     m = re.compile(opasgenlib.do_re_escapes(str1) + rgP, re.VERBOSE).search(ref_text)
-                    if m != None:
+                    if m is not None:
                         self.bib_title = trimPunctAndSpaces(m.group("title"))
             else:
                 # what do we use!
                 logger.debug("PEPReferenceParserStr - Not enough info in ref to search for title: '%s'." % ref_text.rstrip())
 
         bookCode, sRatio, refObj = bookInfo.getPEPBookCodeStr(ref_text)
-        if bookCode != None:
+        if bookCode is not None:
             #print "BookCode: ", bookCode
             ret_val = bookCode
             # should we fill the ref structure with standard data?  Or leave it as is?  Based on sRatio?
@@ -629,9 +629,9 @@ class StrReferenceParser(object):
             #authList = self.gRegcAuthorListSplit.split(auth1)
             #print "AuthList Split 2:", authList
             #for auth in authList:
-            if auth != None:
+            if auth is not None:
                 m = self.gRegcAuthorInitials.match(auth)
-                if m != None:
+                if m is not None:
                     aName = m.group("author")
                     aName = aName.strip()
                     retVal.append(aName)
@@ -665,12 +665,12 @@ class StrReferenceParser(object):
             # split text at publisher
             refList = refText.split(self.bib_publisher)
             m = self.rgxJrnlPubLocations.search(refList[0])
-            if m != None:
+            if m is not None:
                 retVal = m.group("plc")
             else:
                 # try matching on . pattern
                 m = re.match("(\.)\s+(?P<plc>.*?)\:", refList[0])
-                if m != None:
+                if m is not None:
                     retVal = m.group("plc")
                 else:
                     print("Ref - Cant find publication location in '%s'" % refText)
@@ -685,7 +685,7 @@ class StrReferenceParser(object):
         Only loads if not already loaded, or if force load is selected.
         """
 
-        if self.journalSet == None or forceLoad == 1:
+        if self.journalSet is None or forceLoad == 1:
             if gDbg1: print("Loading journal match set from DB")
             # load journals
             dbc = self.biblioDB.db.cursor()
@@ -721,7 +721,7 @@ class StrReferenceParser(object):
         retVal = None
         self.__load_journal_set_from_db()
         m = self.regcJrnlCompleteSet.search(bStrReference)
-        if m != None:
+        if m is not None:
             retVal = m.group()
             #print "Match!!!", retVal
 
@@ -743,7 +743,7 @@ class StrReferenceParser(object):
 
         if self.biblioDB!=None:
             self.__load_journal_set_from_db()
-            if bJournalName == None:
+            if bJournalName is None:
                 # find the journal name
                 if bStrReference!=None:
                     bJournalName = self.__search_str_for_journal_name(bStrReference)
@@ -777,7 +777,7 @@ class StrReferenceParser(object):
         """
         bvol = bpgrg = bpgstart = bpgend = bissue = None
         m = self.gRegcVolPages.search(refText)
-        if m != None:
+        if m is not None:
             bvol = m.group("vol")
             bvol = bvol.strip()
             bpgrg = m.group("pgrg")
@@ -808,7 +808,7 @@ def get_se_volexceptions(strText):
     """
     rgPat = r"\bSE\s+(?P<vol>1?[0-8])\b"
     m = re.search(rgPat, strText)
-    if m != None:
+    if m is not None:
         # this is probably SE, and we know volume
         retVal = m.group("vol")
     else:

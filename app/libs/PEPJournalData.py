@@ -1734,7 +1734,7 @@ class PEPJournalData:
             jrnlVol = opasDocuments.VolumeNumber(jrnlVol)
             #print "Converted jrnlvol: ", jrnlVol
 
-        if jrnlCode != None:
+        if jrnlCode is not None:
             vol, volList = self.getVol(jrnlCode, jrnlYear)
             if type(volList) == type([]):
                 # then this journal has a list of volumes for that year.
@@ -1785,7 +1785,7 @@ class PEPJournalData:
             #print "%s is a book; no year populated in locator." % jrnlCode
             pass
         else:
-            if currDict != None:
+            if currDict is not None:
                 for (year, vol) in currDict.items():
                     #print "%s/%s/%s/" % (vol, year, jrnlVol)
                     if type(vol) == type([]):
@@ -1843,7 +1843,7 @@ class PEPJournalData:
         #found = True
 
         #matchSE = self.matchSEtoReference(refText, PYXTree)
-        #if matchSE == None:
+        #if matchSE is None:
             ## return none, don't go on!
             ##print "Not SE", refText, PYXTree
             #return ret_val
@@ -1855,7 +1855,7 @@ class PEPJournalData:
 
         ## Ok, we have SE.  What is the volume, page!
 
-        #if PYXTree != None and (PYXTree.getElements(SUB, E("v"))!=[]):
+        #if PYXTree is not None and (PYXTree.getElements(SUB, E("v"))!=[]):
             #elem = PYXTree.CurPos.tag
             ## get vol, but must be direct child of current element.
             #vol = PYXTree.getElementTextSingleton(SUB, E('v'), parentSpec=E(elem))
@@ -1873,7 +1873,7 @@ class PEPJournalData:
                 ##print "Searching for SE: ", refText
 
             #m = self.rgxSEVolPageOnly.search(refText)
-            #if m != None:
+            #if m is not None:
                 #if gDbg1: print("rgxSEVolPageOnly!", m.group("bvol"), m.group("bpgs"))
                 #vol = m.group("bvol")
                 ##print "VOL1: ", vol
@@ -1884,7 +1884,7 @@ class PEPJournalData:
             #else:
                 ##print "Searching for vol using: ", self.rgxSEVol.pattern
                 #m = self.rgxSEVol.search(refText)
-                #if m != None:
+                #if m is not None:
                     #if gDbg1: print("rgxSEVolMatch!", m.group("extra"), m.group("bvol"), m.group("bpgs"))
                     #vol = m.group("bvol")
                     ##print "VOL2: ", vol
@@ -1893,19 +1893,19 @@ class PEPJournalData:
                     #pg = m.group("bpgs")
                     #pg, vol = processPage(pg, vol)
                 #else:
-                    #if restRef == None:
+                    #if restRef is None:
                         #restRef = refText
                     ##print "Searching restRef: ", restRef
                     #m = self.rgxSEVol3.search(restRef)
                     #if gDbg1: print("Warning - Searching for Vol # alone in italics out of desperation.")
-                    #if m != None:
+                    #if m is not None:
                         #if gDbg1: print("rgxSEVolMatch3!", m.groups())
                         #vol = m.group("bvol")
                         #vol = processVol(vol)
                     #else:
                         #m = self.rgxSEVol2.search(restRef)
                         #if gDbg1: print("Warning - Searching Vol # alone out of desperation.")
-                        #if m != None:
+                        #if m is not None:
                             #if gDbg1: print("rgxSEVolMatch2!", m.groups())
                             #vol = m.group("bvol")
                             #vol = processVol(vol)
@@ -1914,7 +1914,7 @@ class PEPJournalData:
                         #else: # try vol, ANYWHERE (not just after the journal
                             #m = self.rgxSEVol2.search(refText)
                             #if gDbg1: print("Warning - Searching Vol only, in all of Ref (4).")
-                            #if m != None:
+                            #if m is not None:
                                 #if gDbg1: print("rgxSEVolMatch4!", m.groups())
                                 #vol = m.group("bvol")
                                 #vol = processVol(vol)
@@ -1943,12 +1943,12 @@ class PEPJournalData:
         ret_val_list = []
         #baseYear = 0
 
-        if jrnlCode == None:
+        if jrnlCode is None:
             logger.warn("getVol: No journal name for %s/%s" % (jrnlCode, jrnlYear))
             return ret_val, ret_val_list
 
         #if gDbg1: print "Args: ", jrnlCode, jrnlYear
-        if jrnlYear != None:
+        if jrnlYear is not None:
             if isinstance(jrnlYear, str):  # supports string and unicode
                 jrnlYear = opasgenlib.atoiNotEmpty(jrnlYear)
                 #if gDbg1: print "Journal Year: ", jrnlYear
@@ -1964,10 +1964,10 @@ class PEPJournalData:
             else:
                 currDict = self.all.get(jrnlCode.upper(), None)
 
-                if currDict != None:
+                if currDict is not None:
                     currVol = currDict.get(jrnlYear) # needs to be numeric!
                     #print "CurrVol, type: ", currVol, type(currVol)
-                    if currVol != None:
+                    if currVol is not None:
                         # Need to do something different if its a list.
                         if type(currVol) == type([]):
                             logger.info("getVol: this year has multiple volume numbers: %s." % currVol)
@@ -2330,7 +2330,7 @@ class PEPJournalData:
                 else:
                     m = rgxJournalPtrn.search(strText)
 
-                if m != None:
+                if m is not None:
                     found = True
                     jrnlName = self.jrnlAbbr.get(code)
                     ret_val = (code, self.jrnlAbbr.get(code, None), jrnlName)
@@ -2374,7 +2374,7 @@ class PEPJournalData:
             ##print "jrnl/src: ", jrnl
             ## try getting the text, minus any sub-bincs
             #fullRef = refPYX.getCurrElementText(notIncludingTagRegex=("binc"))
-        #elif strRef != None:
+        #elif strRef is not None:
             #fullRef = strRef
         #else:
             #raise "No data supplied in reference."
@@ -2383,11 +2383,11 @@ class PEPJournalData:
         #if not opasgenlib.is_empty(jrnl):
             ##print "J/BST present: ", jrnl
             #m = self.rgxSEPat.match(jrnl)
-            #if m == None:
+            #if m is None:
                 ##print "trying pattern 2 on jrnl"
                 #m = self.rgxSEPat2.match(jrnl)
 
-            #if m != None:
+            #if m is not None:
                 ## journal matched, it's SE
                 #rest = refEntry.getElementTextSingleton(SUB, E('v'), parentSpec=E(elem))
                 #ret_val = (jrnl, rest)
@@ -2409,7 +2409,7 @@ class PEPJournalData:
             #else:
                 #jrnl = None
 
-            #if jrnl != None:
+            #if jrnl is not None:
                 #ret_val = (jrnl, rest)
                 ##print "SE Journal found"
             #else:
