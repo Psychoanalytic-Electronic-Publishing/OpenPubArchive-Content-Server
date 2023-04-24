@@ -528,7 +528,7 @@ def main():
     solrurl_docs = None
     solrurl_authors = None
     solrurl_glossary = None
-    if options.rootFolder == localsecrets.XML_ORIGINALS_PATH or options.rootFolder == None:
+    if options.rootFolder == localsecrets.XML_ORIGINALS_PATH or options.rootFolder is None:
         start_folder = pathlib.Path(localsecrets.XML_ORIGINALS_PATH)
     else:
         start_folder = pathlib.Path(options.rootFolder)   

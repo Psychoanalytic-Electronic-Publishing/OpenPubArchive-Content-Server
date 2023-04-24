@@ -148,7 +148,7 @@ def strip_tags(value, compiled_tag_pattern):
     m = compiled_tag_pattern.match(value)
     if m:
         ret_val = m.group("word")
-        if ret_val == None:
+        if ret_val is None:
             ret_val = "pagebreak"
         ret_val = ret_val.translate(str.maketrans('','', '!"#$%&\'()*+,./:;<=>?@[\\]^_`{|}~'))
 
@@ -1140,7 +1140,7 @@ def add_to_artstat_table(ocd, artInfo, verbose=None):
     msg = f"\t...Saving statistics to artStat table."
     log_everywhere_if(verbose, "info", msg)
     
-    if artInfo == None:
+    if artInfo is None:
         print ("Error!")
     else:
         selInsert = r"""REPLACE INTO artstat

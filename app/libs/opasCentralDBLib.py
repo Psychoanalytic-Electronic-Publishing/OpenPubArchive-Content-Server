@@ -570,7 +570,7 @@ class opasCentralDB(object):
         else:
             limit_clause = ""
             
-        if self.db != None:
+        if self.db is not None:
             if sort is None or sort == True:
                 sort_by_clause = f" ORDER BY {view_col_name} DESC"
             elif sort == False:
@@ -725,7 +725,7 @@ class opasCentralDB(object):
         else:
             limit_clause = ""
             
-        if self.db != None:
+        if self.db is not None:
             if sort is None or sort == True:
                 sort_by_clause = f"ORDER BY count{cited_in_period} DESC"
             elif sort == False:

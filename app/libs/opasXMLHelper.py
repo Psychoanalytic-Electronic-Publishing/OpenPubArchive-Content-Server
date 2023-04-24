@@ -1290,7 +1290,7 @@ def xml_node_regx_ancestors(element_node, ancestor_tag="*", regx=".*"):
     lst = [n.tag for n in element_node.iterancestors(ancestor_tag)]
     for n in lst:
         ret_val = re.match(regx, n)
-        if ret_val != None:
+        if ret_val is not None:
             ret_val = True
             break
 

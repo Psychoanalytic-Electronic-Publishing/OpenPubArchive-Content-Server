@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 from configLib.opasCoreConfig import EXTENDED_CORES
 
 def direct_endpoint_call(endpoint, base_api=None):
-    if base_api == None:
+    if base_api is None:
         base_api = SOLRURL
         
     ret_val = base_api + endpoint

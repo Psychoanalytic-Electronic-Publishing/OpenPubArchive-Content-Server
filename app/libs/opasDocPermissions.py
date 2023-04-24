@@ -61,7 +61,7 @@ def user_logged_in_per_header(request, session_id=None, caller_name="unknown") -
     Return logged in per header, or None if no info found, unless there's no request
     
     """
-    if request == None:
+    if request is None:
         logger.warning(f"No request param supplied to check log-in. Returning False ({caller_name} / {session_id})")
         ret_val = False
     else:
@@ -85,7 +85,7 @@ def verify_header(request, caller_name):
     client_session_from_header = request.headers.get(opasConfig.CLIENTSESSIONID, None)
     client_id_from_header = request.headers.get(opasConfig.CLIENTID, None)
     if client_id_from_header == 2 or client_id_from_header == 3:
-        if client_session_from_header == None:
+        if client_session_from_header is None:
             logger.warning(f"***{caller_name}*** - No client-session supplied. Client-id (from header): {client_id_from_header}.")
         else:
             logger.debug(f"***{caller_name}*** - Client-session found. Client-id (from header): {client_id_from_header}.")

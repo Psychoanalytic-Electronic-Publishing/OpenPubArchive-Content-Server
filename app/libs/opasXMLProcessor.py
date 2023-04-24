@@ -253,7 +253,6 @@ def pgx_add_rx_jump_via_biblio_entry(parsed_xml, ocd, artInfo, split_book_data=N
     # Walk through pgx elements, and fix locators
     pgx_links = parsed_xml.xpath("/pepkbd3//pgx")
     ret_val = 0
-    pgxlink_type = "BIBPGLINK"
         
     for pgx in pgx_links:
         r_attr = pgx.attrib.get("r", None)
@@ -269,14 +268,14 @@ def pgx_add_rx_jump_via_biblio_entry(parsed_xml, ocd, artInfo, split_book_data=N
                         if len(bib_node) == 1:
                             rx = bib_node[0].attrib.get("rx", None)
                             if rx is not None:
-                                pgx.attrib["rx"] = rx + f".P{pg_num}"
-                                pgx.attrib["type"] = pgxlink_type
+                                pgx.attrib["rx"] = rx + f".P{pg_num}" # direct link to reference
+                                pgx.attrib["type"] = opasConfig.BIBPGLINK # this is a reference to a bib with a link within it.
                                 ret_val += 1
                             else:
                                 # neutralize the pgx tag but keep the info
                                 pgx.tag = "cgrp"
                                 pgx.attrib["name"] = "pgx"
-                                pgx.attrib["type"] = "placeholder"
+                                pgx.attrib["type"] = opasConfig.BIBPGLINKPLACEHOLDER
                                    
                                 # retain r attribute if there is one (now allowed in cgrp, but optional)
             else:
@@ -301,14 +300,16 @@ def pgx_add_rx_book_links(parsed_xml, ocd, artInfo, split_book_data=None, verbos
     ret_val = 0
     pgxlink_type = opasConfig.BIBPGLINKBOOKS
 
-    if aLoc.isBook():
+    if aLoc.isBook(): # only process books
         split_book_data = opasXMLSplitBookSupport.SplitBookData(database_connection=ocd)
+        # get all the pg links
         pgx_links = parsed_xml.xpath("/pepkbd3//pgx")
         if verbose:
             print(f"\t...Processing book page links. {len(pgx_links)} pgx links found.")
             
         for pgx in pgx_links:
-            if pgx.attrib.get("type", "") == "BIBPGLINK":
+            # see if it's a 
+            if pgx.attrib.get("type", "") == opasConfig.BIBPGLINK:
                 continue
             
             prev = pgx.getprevious()
@@ -366,9 +367,9 @@ def pgx_add_rx_book_links(parsed_xml, ocd, artInfo, split_book_data=None, verbos
                     # this is a biblink
                     pgx.attrib["type"] = opasConfig.BIBPGLINKBOOKS
                     
-                    if pgx.getprevious().tag in ["bxe", "bx"]:
-                        pgxlink_type = "BIBPGLINK"
-                        # continue
+                    #if pgx.getprevious().tag in ["bxe", "bx"]:
+                        #pgxlink_type = "BIBPGLINK"
+                        ## continue
                     
 
     return ret_val
