@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2023, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2023.0424/v2.1.030"   # Requires update to api_biblioxml2 and views based on it.
+__version__     = "2023.0424/v2.1.031"   # Requires update to api_biblioxml2 and views based on it.
 __status__      = "Development"
 
 # !!! IMPORTANT: Increment opasXMLProcessor version (if version chgd). It's written to the XML !!!
@@ -1411,7 +1411,7 @@ will skip these from then on."""
     parser.add_option("--userid", dest="httpUserID", default=None,
                       help="UserID for the server")
 
-    parser.add_option("--verbose", action="store_true", dest="display_verbose", default=False,
+    parser.add_option("--verbose", action="store_true", dest="display_verbose", default=True,
                       help="Display status and operational timing info as load progresses.")
 
     parser.add_option("--whatsnewdays", dest="daysback", default=None,
