@@ -807,7 +807,7 @@ class BiblioEntry(models.Biblioxml):
                             if newloc is not None:
                                 msg = f"\t\t...Page start fix: chgd {loc_str} to {newloc} in ref"
                                 log_everywhere_if(verbose, level="debug", msg=msg)
-                                self.ref_rx = newloc
+                                self.ref_rx = str(newloc)
                                 self.ref_rx_confidence = opasConfig.RX_CONFIDENCE_PROBABLE
                                 link_updated = True
                                 self.ref_link_source = opasConfig.RX_LINK_SOURCE_VARIATION
@@ -816,7 +816,7 @@ class BiblioEntry(models.Biblioxml):
                                 if newloc is not None:
                                     msg = f"\t\t...VolSuffix missing: chgd {loc_str} to {newloc} in ref"
                                     log_everywhere_if(verbose, level="debug", msg=msg)
-                                    self.ref_rx = newloc
+                                    self.ref_rx = str(newloc)
                                     self.ref_rx_confidence = opasConfig.RX_CONFIDENCE_PROBABLE
                                     link_updated = True
                                     self.ref_link_source = opasConfig.RX_LINK_SOURCE_VARIATION
