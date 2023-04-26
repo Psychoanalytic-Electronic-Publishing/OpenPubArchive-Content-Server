@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2023, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2023.0424/v2.1.031"   # Requires update to api_biblioxml2 and views based on it.
+__version__     = "2023.0426/v2.1.032"   # Requires update to api_biblioxml2 and views based on it.
 __status__      = "Development"
 
 # !!! IMPORTANT: Increment opasXMLProcessor version (if version chgd). It's written to the XML !!!
@@ -774,7 +774,19 @@ def main():
             # Now walk through all the filenames selected
             # ----------------------------------------------------------------------
             print (f"{pre_action_verb} started ({time.ctime()}).  Examining files.")
-            glossary_file_skip_pattern=r"ZBK.069(.*)"
+
+            # are we forcing a glossary file to build from kbd3 files?
+            if options.file_key is not None and re.search("zbk.069", options.file_key, re.IGNORECASE):
+                includes_glossary = True
+            if options.file_only is not None and re.search("zbk.069", options.file_only, re.IGNORECASE):
+                includes_glossary = True
+            if options.subFolder is not None and re.search("069.PEP", options.subFolder, re.IGNORECASE):
+                includes_glossary = True
+
+            if not options.glossary_only and not includes_glossary:
+                glossary_file_skip_pattern=r"ZBK.069(.*)"
+            else: # unmatchable pattern, so everything matches and is processed.
+                glossary_file_skip_pattern=r"ZZZX"
             rc_skip_glossary_kbd3_files = re.compile(glossary_file_skip_pattern, re.IGNORECASE)
             insert_date = ocd.get_last_record_insertion_date()
             file_number = 0
@@ -1046,7 +1058,7 @@ def main():
                 # input to the glossary
                 if 1: # options.glossary_core_update:
                     # load the glossary core if this is a glossary item
-                    glossary_file_pattern=r"ZBK.069(.*)\(bEXP_ARCH1\)\.(xml|XML)$"
+                    glossary_file_pattern=r"ZBK.069(.*)\(bKBD3|bEXP_ARCH1\)\.(xml|XML)$" # add bKBD3 so smartload also can load the entry
                     if re.match(glossary_file_pattern, n.basename, re.IGNORECASE):
                         opasSolrLoadSupport.process_article_for_glossary_core(parsed_xml, artInfo, solr_gloss2, fileXMLContents, verbose=options.display_verbose)
                 
@@ -1454,7 +1466,7 @@ will skip these from then on."""
             options.input_build = f"{options.input_build})"
 
     if options.glossary_only and options.file_key is None:
-        options.file_key = "ZBK.069"
+        options.file_key = "ZBK.069(.*)"
 
     if options.testmode:
         import doctest
