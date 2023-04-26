@@ -1,0 +1,21 @@
+name: Plan and deploy infrastructure for staging
+
+on:
+  pull_request:
+    branches:
+      - Stage
+
+concurrency:
+  group: ${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  infrastructure:
+    uses: jordanallen-dev/reusable-terraform-workflow/.github/workflows/terraform.yml@main
+    with:
+      module-path: infra/staging
+      apply-environment: staging
+      s3-cache-bucket: pep-terraform-build-cache
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
