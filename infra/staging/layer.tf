@@ -10,7 +10,7 @@ resource "null_resource" "build_libs_package" {
   }
 
   provisioner "local-exec" {
-    working_dir = "../app"
+    working_dir = "../../app"
     command     = <<-EOT
       mkdir python
       cp -r libs/ python/
@@ -39,5 +39,5 @@ module "libs_lambda_layer" {
   description         = "OPAS libs and Python deps"
   compatible_runtimes = ["python3.7"]
 
-  local_existing_package = "../app/libs-package.zip"
+  local_existing_package = "../../app/libs-package.zip"
 }
