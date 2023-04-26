@@ -2520,13 +2520,15 @@ class opasCentralDB(object):
         
     def delete_specific_article_data(self, art_id):
         """
-        Delete the information for art_id from the api_articles and api_biblioxml2 table
+        Delete the information for art_id from the api_articles, api_biblioxml2, and opasloader_splitbookpages table
+            - added opasloader_splitbookpages
         """
         query_param_dict = {}
         query_param_dict["art_id"] = art_id
         # commit automatically handled by do_action_query        
         self.do_action_query(querytxt="DELETE FROM api_biblioxml2 WHERE art_id=%(art_id)s;", queryparams=query_param_dict)
         self.do_action_query(querytxt="DELETE FROM api_articles WHERE art_id=%(art_id)s;", queryparams=query_param_dict)
+        self.do_action_query(querytxt="DELETE FROM opasloader_splitbookpages WHERE articleID=%(art_id)s;", queryparams=query_param_dict)
 
     #----------------------------------------------------------------------------------------
     def do_action_query(self, querytxt, queryparams=None, contextStr=None, log_integrity_errors=True):

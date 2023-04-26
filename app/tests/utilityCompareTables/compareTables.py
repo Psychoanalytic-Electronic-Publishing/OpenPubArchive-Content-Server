@@ -44,15 +44,21 @@ LOCALDEV_DBPW = ""
 
 def is_date_time(date_text):
     ret_val = True
-    try:
-        if isinstance(date_text, datetime1):
-            ret_val = True
-        else:
-            ret_val = datetime1.strptime(date_text, '%Y-%m-%d')
-            
-    except ValueError:
+    if date_text is not None:
+        try:
+            if isinstance(date_text, datetime1):
+                ret_val = True
+            else:
+                ret_val = datetime1.strptime(date_text, '%Y-%m-%d')
+                
+        except ValueError:
+            ret_val = False
+        except Exception as e:
+            logger.error(f"Test error: {e}")
+            ret_val = False
+    else:
         ret_val = False
-
+        
     return ret_val
 
 # ------------------------------------------------------------------------------------------
@@ -359,7 +365,9 @@ def compare_tables(db_tables=None):
                      {"name": "api_endpoints", "key": "api_endpoint_id"},
                      {"name": "vw_api_messages", "key": "msg_num_code, msg_language"},
                      {"name": "api_client_apps", "key": "api_client_id"},
-                     {"name": "api_articles", "key": "art_id"}
+                     {"name": "api_client_config", "key": "config_id"},
+                     {"name": "opasloader_splitbookpages", "key": "articleID, pagenumber"}, 
+                     #{"name": "api_articles", "key": "art_id"}
     ]
     
     if db_tables is None:
@@ -381,6 +389,9 @@ def compare_tables(db_tables=None):
     total_diffs = 0       
     for db_table in db_tables:
         sql1 = f"""SELECT * from {db_table['name']} ORDER BY {db_table['key']} ASC;"""
+        chk_dev_stage = True
+        chk_awsdev_stage = True
+        chk_stage_prod = True
 
         try:
             print (80*"=")
@@ -391,7 +402,12 @@ def compare_tables(db_tables=None):
             prod_row_count, prod_tbl = prod_ocd.get_table_sql(sql1)
             if stage_row_count != dev_row_count != awsdev_row_count != prod_row_count:
                 print (f"\t{db_table['name']} differs!")
+                print (f"\tRow counts (localdev, awsdev, stage, prod): {(dev_row_count, awsdev_row_count, stage_row_count, prod_row_count)}")
                 continue
+                #row_count = max(dev_row_count, awsdev_row_count, stage_row_count, prod_row_count)
+                #chk_dev_stage = True
+                #chk_awsdev_stage = True
+                #chk_stage_prod = False
             else:
                 row_count = stage_row_count
                 print (f"\tRow counts (localdev, awsdev, stage, prod): {(dev_row_count, awsdev_row_count, stage_row_count, prod_row_count)}")
@@ -418,41 +434,49 @@ def compare_tables(db_tables=None):
             else:
                 for n in range(row_count):
                     if dev_tbl[n] != stage_tbl[n]:
-                        print (f"\tLocalDev vs Stage: {db_table['name']} row {n} differs! Key: {dev_tbl[n][0]}")
-                        for item in range(len(stage_tbl[n])):
-                            if dev_tbl[n][item] !=  stage_tbl[n][item]:
-                                print (f"\t\tCol {item} LocalDev: {dev_tbl[n][item]}")
-                                print (f"\t\tCol {item} Stage: {stage_tbl[n][item]}")
-                                print (f"\t\t{40*'-'}")
-                        #print (f"\t\tDev: {dev_tbl[n]}")
-                        #print (f"\t\tStage: {stage_tbl[n]}")
-                        diffs += 1
-                    if stage_tbl[n] != awsdev_tbl[n]:
-                        print (f"\tStage vs AWS Dev: {db_table['name']} row {n} differs! Key:  {dev_tbl[n][0]}")
-                        for item in range(len(stage_tbl[n])):
-                            if awsdev_tbl[n][item] !=  stage_tbl[n][item]:
-                                if awsdev_tbl[n][item] is not None:
-                                    if is_date_time(awsdev_tbl[n][item]):
-                                        continue
-                                print (f"\t\tCol {item} Dev: {awsdev_tbl[n][item]}")
-                                print (f"\t\tCol {item} Stage: {stage_tbl[n][item]}")
-                                print (f"\t\t{40*'-'}")
-                        #print (f"\t\tStage: {stage_tbl[n]}")
-                        #print (f"\t\tAWSDev: {awsdev_tbl[n]}")
-                        diffs += 1
-                    if stage_tbl[n] != prod_tbl[n]:
-                        print (f"\tStage vs Prod: {db_table['name']} row {n} differs!")
-                        for item in range(len(stage_tbl[n])):
-                            if prod_tbl[n][item] != stage_tbl[n][item]:
-                                if is_date_time(awsdev_tbl[n][item]):
-                                    pass
-                                else:
-                                    print (f"\t\tCol {item} Dev: {prod_tbl[n][item]}")
+                        if chk_dev_stage:
+                            chk_stage_prod = True
+                            print (f"\tLocalDev vs Stage: {db_table['name']} row {n} differs! Key: {dev_tbl[n][0]}")
+                            for item in range(len(stage_tbl[n])):
+                                if dev_tbl[n][item] !=  stage_tbl[n][item]:
+                                    print (f"\t\tCol {item} LocalDev: {dev_tbl[n][item]}")
                                     print (f"\t\tCol {item} Stage: {stage_tbl[n][item]}")
                                     print (f"\t\t{40*'-'}")
-                        #print (f"\t\tStage: {stage_tbl[n]}")
-                        #print (f"\t\tProd: {prod_tbl[n]}")
-                        diffs += 1
+                            #print (f"\t\tDev: {dev_tbl[n]}")
+                            #print (f"\t\tStage: {stage_tbl[n]}")
+                            diffs += 1
+
+                    if stage_tbl[n] != awsdev_tbl[n]:
+                        if chk_awsdev_stage:
+                            print (f"\tStage vs AWS Dev: {db_table['name']} row {n} differs! Key:  {dev_tbl[n][0]}")
+                            for item in range(len(stage_tbl[n])):
+                                if awsdev_tbl[n][item] !=  stage_tbl[n][item]:
+                                    if awsdev_tbl[n][item] is not None:
+                                        if is_date_time(awsdev_tbl[n][item]):
+                                            continue
+                                    print (f"\t\tCol {item} Dev: {awsdev_tbl[n][item]}")
+                                    print (f"\t\tCol {item} Stage: {stage_tbl[n][item]}")
+                                    print (f"\t\t{40*'-'}")
+                            #print (f"\t\tStage: {stage_tbl[n]}")
+                            #print (f"\t\tAWSDev: {awsdev_tbl[n]}")
+                            diffs += 1
+
+                    if stage_tbl[n] != prod_tbl[n]:
+                        if chk_stage_prod:
+                            print (f"\tStage vs Prod: {db_table['name']} row {n} differs!")
+                            for item in range(len(stage_tbl[n])):
+                                if prod_tbl[n][item] != stage_tbl[n][item]:
+                                    if awsdev_tbl[n][item] is not None:
+                                        if is_date_time(awsdev_tbl[n][item]):
+                                            pass
+                                    else:
+                                        print (f"\t\tCol {item} Dev: {prod_tbl[n][item]}")
+                                        print (f"\t\tCol {item} Stage: {stage_tbl[n][item]}")
+                                        print (f"\t\t{40*'-'}")
+                            #print (f"\t\tStage: {stage_tbl[n]}")
+                            #print (f"\t\tProd: {prod_tbl[n]}")
+                            diffs += 1
+
                     if diffs > 10:
                         print (f"{diffs} row differences found; compare was discontinued.")
                         break

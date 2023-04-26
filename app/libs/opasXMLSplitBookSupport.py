@@ -13,10 +13,11 @@ import opasDocuments
 import opasFileSupport
 from loggingDebugStream import log_everywhere_if
 import opasCentralDBLib
+import datetime
 
 DBGSTDOUT = False
 
-SPLIT_BOOK_TABLE = "vw_opasloader_splitbookpages"
+SPLIT_BOOK_TABLE = "opasloader_splitbookpages"
 
 #----------------------------------------------------------------------------------------
 # CLASS DEF: SplitBookData
@@ -221,7 +222,7 @@ class SplitBookData:
         """
 
         ret_val = None
-        insert_splitbook_qry = fr'replace into {SPLIT_BOOK_TABLE} values ("%s"' + (5*', "%s"') + ")"
+        insert_splitbook_qry = fr'replace into {SPLIT_BOOK_TABLE} values ("%s"' + (6*', "%s"') + ")"
 
         if isinstance(art_locator, str):  
             art_id = opasLocator.Locator(art_locator, noStartingPageException=True)
@@ -231,6 +232,7 @@ class SplitBookData:
             art_id_base = art_locator.baseCode()
 
         safeFilename = opasgenlib.do_escapes(full_filename)
+        current_time = datetime.datetime.now()
         
         pn = opasDocuments.PageNumber(page_id)
         page_num = pn.format(keyword=pn.NUMERICSTRING)
@@ -241,7 +243,8 @@ class SplitBookData:
                                            page_num, 
                                            has_biblio,
                                            has_toc,
-                                           safeFilename
+                                           safeFilename, 
+                                           current_time
                                            )
         
         # now add the row

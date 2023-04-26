@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2023.0418/v1.0.006"   # semver versioning after date.
+__version__     = "2023.0425/v1.0.007"   # semver versioning after date.
 __status__      = "Development"
 
 programNameShort = "opasDataCleaner"
@@ -117,7 +117,7 @@ def main():
             print("Article ID Prefix: ", options.artid_prefix)
 
             print(80*"*")
-            print(f"Database tables api_articles and api_biblioxml2 will be updated. Location: {localsecrets.DBHOST}")
+            print(f"Database tables api_articles, api_biblioxml2, and opasloader_splitbookpages will be updated. Location: {localsecrets.DBHOST}")
             print("Solr Full-Text Core will be updated: ", solrurl_docs)
             print("Solr Authors Core will be updated: ", solrurl_authors)
             
@@ -182,11 +182,11 @@ def main():
         #  the files at once above.
         time_milestone1 = time.time()
         log_everywhere_if(True, "info", f"Filename collection ({len(filenames)}) from storage took {round((time_milestone1-timeStart)/60, 2)} minutes")
-        print (f"Fetching article info from database...")
+        print (f"Fetching article info from database (excluding PEP Glossary...")
         if options.artid_prefix != "":
-            search_clause = f" WHERE art_id LIKE '{options.artid_prefix}%'"
+            search_clause = f" WHERE art_id LIKE '{options.artid_prefix}%' AND art_id NOT LIKE 'ZBK.069.%'" # exludes glossary
         else:
-            search_clause = ""
+            search_clause = " WHERE art_id NOT LIKE 'zbk.069.%'"            # exludes glossary
             
         articles_to_check = f"""
                               select art_id, filename from api_articles{search_clause};
