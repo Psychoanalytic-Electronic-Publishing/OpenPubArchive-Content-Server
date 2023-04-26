@@ -1,6 +1,6 @@
 data "archive_file" "zip_source" {
   type        = "zip"
-  source_dir  = "../app"
+  source_dir  = "../../app"
   output_path = "opas.zip"
 }
 
