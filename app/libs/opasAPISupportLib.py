@@ -55,16 +55,12 @@ import time
 # used this name because later we needed to refer to the module, and datetime is also the name
 #  of the import from datetime.
 import datetime as dtime 
-# import datetime
 from datetime import datetime
 from datetime import datetime as dt # to avoid python's confusion with datetime.timedelta
-# from typing import Union, Optional, Tuple, List
-# from enum import Enum
-# import pymysql
-# import s3fs # read s3 files just like local files (with keys)
 
 import opasConfig
 import localsecrets
+import opasXMLHelper as opasxmllib
 
 import opasFileSupport
 from lxml import etree
@@ -72,9 +68,6 @@ parser = etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, 
 
 import PEPGlossaryRecognitionEngine
 glossEngine = PEPGlossaryRecognitionEngine.GlossaryRecognitionEngine(gather=False)
-
-# from configLib.opasCoreConfig import solr_docs2, solr_authors2, solr_gloss2
-# from configLib.opasCoreConfig import EXTENDED_CORES
 
 # Removed support for Py2, only Py3 supported now
 pyVer = 3
@@ -95,7 +88,7 @@ import opasCentralDBLib
 # import opasDocPermissions as opasDocPerm
 import opasPySolrLib
 from opasPySolrLib import search_text, search_text_qs
-import opasProductLib
+# import opasProductLib
 import opasArticleIDSupport
 
 # count_anchors = 0
@@ -471,7 +464,7 @@ def metadata_get_source_info(src_type=None, # opasConfig.VALS_PRODUCT_TYPES
     if src_type is not None and src_type != "*":
         src_type_in = src_type # save it for logging
         src_type = opasConfig.normalize_val(src_type, opasConfig.VALS_PRODUCT_TYPES)
-        if src_type == None:
+        if src_type is None:
             err = f"SourceTypeError: {src_type_in}"
             logger.error(err)
             raise Exception(err)
@@ -553,11 +546,12 @@ def metadata_get_source_info(src_type=None, # opasConfig.VALS_PRODUCT_TYPES
                 # use standardized version of class
                 pep_release = source.get("pepversion")
                 pub_source_url = source.get("landing_page")
-    
+                art_citeas = ""
+                
                 if src_type == "book":
                     book_code = source.get("pepcode")
                     if book_code is None:
-                        logger.warning(f"Book code information missing for requested basecode {base_code} in productbase")
+                        logger.warning(f"Book code (pepcode) information missing for requested basecode {base_code} in productbase")
                     else:
                         m = re.match("(?P<code>[a-z]+)(?P<num>[0-9]+)", book_code, re.IGNORECASE)
                         if m is not None:
@@ -794,8 +788,6 @@ def documents_get_document_from_file(document_id,
     caller_name = "documents_get_document_from_file"
     ret_val = None
     # document_list = None
-    import opasXMLHelper as opasxmllib
-    # from opasSolrLoadSupport import ArticleInfo
     
     # new document ID object provides precision and case normalization
     document_id_obj = opasgenlib.DocumentID(document_id)
@@ -845,7 +837,7 @@ def documents_get_document_from_file(document_id,
             document_list_item.document = fileXMLContents
             # replace facet_counts with new dict
             try:
-                term_dict = glossEngine.getGlossaryLists(fileXMLContents, art_id=document_id, verbose=False)
+                matched_word_count, term_dict = glossEngine.getGlossaryLists(fileXMLContents, art_id=document_id, verbose=False)
                 result.documents.responseInfo.facetCounts = {"facet_fields": {"glossary_group_terms": term_dict}}
             except Exception as e:
                 status_message = f"{caller_name}: {e}"
@@ -899,7 +891,7 @@ def documents_get_document(document_id,
         #if m.group("pagejump") is not None:
             #document_id = m.group("docid")
             ## only if they haven't directly specified page
-            #if page == None:
+            #if page is None:
                 #page = m.group("pagejump")
     # just to be sure
     query = "*:*"
@@ -1016,7 +1008,7 @@ def documents_get_document(document_id,
                 if option_flags & opasConfig.OPTION_2_RETURN_TRANSLATION_SET:
                     # get document translations of the first document (note this also includes the original)
                     if document_list_item.origrx is not None:
-                        translationSet, count = opasPySolrLib.quick_docmeta_docsearch(q_str=f"art_origrx:{document_list_item.origrx}", req_url=req_url)
+                        translationSet, count = opasPySolrLib.quick_docmeta_docsearch(q_str=f"art_origrx:{document_list_item.origrx} OR art_id:{document_list_item.origrx}", req_url=req_url)
                         if translationSet is not None:
                             # set translationSet to a list, just like 
                             document_list_item.translationSet = translationSet
@@ -1028,7 +1020,7 @@ def documents_get_document(document_id,
                 # replace facet_counts with new dict
                 try:
                     pepxml = document_list.documentList.responseSet[0].document
-                    term_dict = glossEngine.getGlossaryLists(pepxml, art_id=document_id, verbose=False)
+                    matched_word_count, term_dict = glossEngine.getGlossaryLists(pepxml, art_id=document_id, verbose=False)
                     response_info.facetCounts = {"facet_fields": {"glossary_group_terms": term_dict}}
                 except Exception as e:
                     logger.error(f"{caller_name}: Error replacing term_dict {e}")

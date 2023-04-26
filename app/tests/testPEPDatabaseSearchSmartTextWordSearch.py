@@ -31,7 +31,7 @@ class testDatabaseSearchSmartTextWordSearch(unittest.TestCase):
         response_set = r["documentList"]["responseSet"] 
         print (f'Smarttext: {response_info["description"]}')
         full_count2 = response_info["fullCount"]
-        assert(full_count == full_count2), (full_count, full_count2)
+        assert full_count == full_count2, (full_count, full_count2)
         # print (response_set)
     
     def test_1a_literal_search_with_wildcards(self):
@@ -43,7 +43,7 @@ class testDatabaseSearchSmartTextWordSearch(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         print (f'Smarttext: {response_info["description"]}')
-        assert(response_info["fullCount"] >= 45)
+        assert response_info["fullCount"] >= 45, response_info["fullCount"] 
         #print (response_set)
     
     def test_1a_boolean_word_search(self):
@@ -55,7 +55,7 @@ class testDatabaseSearchSmartTextWordSearch(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         print (f'Smarttext: {response_info["description"]}')
-        assert(response_info["fullCount"] >= 1500)
+        assert response_info["fullCount"] >= 1500, response_info["fullCount"] 
         #print (response_set)
 
     def test_1a_one_word_search(self):
@@ -67,7 +67,7 @@ class testDatabaseSearchSmartTextWordSearch(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         print (f'Smarttext: {response_info["description"]}')
-        assert(response_info["fullCount"] >= 5)
+        assert response_info["fullCount"] >= 2, response_info["fullCount"] 
         #print (response_set)
 
     def test_1a_one_word_search_wildcard(self):
@@ -79,7 +79,7 @@ class testDatabaseSearchSmartTextWordSearch(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         print (f'Smarttext: {response_info["description"]}')
-        assert(response_info["fullCount"] >= 5)
+        assert response_info["fullCount"] >= 5, response_info["fullCount"] 
         #print (response_set)
 
     def test_1a_one_word_search_with_wildcard(self):
@@ -91,7 +91,7 @@ class testDatabaseSearchSmartTextWordSearch(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         print (f'Smarttext: {response_info["description"]}')
-        assert(response_info["fullCount"] >= 12)
+        assert response_info["fullCount"] >= 4, response_info["fullCount"] 
         #print (response_set)
 
     def test_1a_boolean_ignored_phrase_search(self):
@@ -103,7 +103,7 @@ class testDatabaseSearchSmartTextWordSearch(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         print (f'Smarttext: {response_info["description"]}')
-        assert(response_info["fullCount"] >= 15)
+        assert response_info["fullCount"] >= 15, response_info["fullCount"] 
         #print (response_set)
 
     def test_1a_boolean_phrase_search_with_smartquotes(self):

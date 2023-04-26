@@ -332,7 +332,7 @@ g_transformer.set_transformer(opasConfig.TRANSFORMER_XMLTOHTML_EXCERPT, opasConf
 g_transformer.set_transformer(opasConfig.XSLT_XMLTOHTML_GLOSSARY_EXCERPT, opasConfig.XSLT_XMLTOHTML_GLOSSARY_EXCERPT)
 #g_transformer.set_transformer("testtransform", "testtransform.xslt")
 
-ENCODER_MATCHER = re.compile("\<\?xml\s+version=[\'\"]1.0[\'\"]\s+encoding=[\'\"](UTF-?8|ISO-?8859-?1?)[\'\"]\s*\?\>\n", flags=re.IGNORECASE)  # TODO - Move to module globals to optimize
+ENCODER_MATCHER = re.compile("\<\?xml\s+version=[\'\"]1.0[\'\"]\s+encoding=[\'\"](UTF-?8|ISO-?8859-?1?)[\'\"].*?(\?\>)\n", flags=re.IGNORECASE)  # TODO - Move to module globals to optimize
 
 # -------------------------------------------------------------------------------------------------------
 
@@ -513,14 +513,14 @@ def xmlstr_to_etree(xmlstr):
 
     if isinstance(xmlstr, bytes):
         try:
-            root = etree.parse(BytesIO(xmlstr), parser)
+            root = etree.parse(BytesIO(xmlstr), parser=parser)
         except Exception as e:
             logger.error(f"Error parsing Bytes xmlstr: {e}")
     elif isinstance(xmlstr, str):
         try:
             #xmlstr = xmlstr.replace("encoding=\'UTF-8\'", "")
             xmlstr = remove_encoding_string(xmlstr)
-            root = etree.parse(StringIO(xmlstr), parser)
+            root = etree.parse(StringIO(xmlstr), parser=parser)
         except Exception as e:
             logger.error(f"Error parsing xmlstr: {e}")
     elif etree.iselement(xmlstr):
@@ -1290,7 +1290,7 @@ def xml_node_regx_ancestors(element_node, ancestor_tag="*", regx=".*"):
     lst = [n.tag for n in element_node.iterancestors(ancestor_tag)]
     for n in lst:
         ret_val = re.match(regx, n)
-        if ret_val != None:
+        if ret_val is not None:
             ret_val = True
             break
 

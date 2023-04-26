@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.1118/v1.0.004"   # semver versioning after date.
+__version__     = "2023.0425/v1.0.007"   # semver versioning after date.
 __status__      = "Development"
 
 programNameShort = "opasDataCleaner"
@@ -39,6 +39,7 @@ help_text = (
          -h, --help         List all help options
          --nocheck          Don't prompt whether to proceed after showing setting/option choices
          --nohelp           Turn off front-matter help (that displays when you run)
+         --verbose          Display progress information
          
         Note:
           S3 is set up with root=localsecrets.FILESYSTEM_ROOT (default).  The root must be the bucket name.
@@ -66,9 +67,12 @@ logger = logging.getLogger(programNameShort)
 
 from optparse import OptionParser
 
+import configLib
 import configLib.opasCoreConfig
 import opasCentralDBLib
 import opasFileSupport
+import opasPySolrLib
+from loggingDebugStream import log_everywhere_if
 
 #detect data is on *nix or windows system
 if "AWS" in localsecrets.CONFIG or re.search("/", localsecrets.IMAGE_SOURCE_PATH) is not None:
@@ -98,7 +102,7 @@ def main():
 
     solrurl_docs = None
     solrurl_authors = None
-    if options.rootFolder == localsecrets.XML_ORIGINALS_PATH or options.rootFolder == None:
+    if options.rootFolder == localsecrets.XML_ORIGINALS_PATH or options.rootFolder is None:
         start_folder = pathlib.Path(localsecrets.XML_ORIGINALS_PATH)
     else:
         start_folder = pathlib.Path(options.rootFolder)   
@@ -113,10 +117,10 @@ def main():
             print("Article ID Prefix: ", options.artid_prefix)
 
             print(80*"*")
-            print(f"Database tables api_articles and api_biblioxml will be updated. Location: {localsecrets.DBHOST}")
+            print(f"Database tables api_articles, api_biblioxml2, and opasloader_splitbookpages will be updated. Location: {localsecrets.DBHOST}")
             print("Solr Full-Text Core will be updated: ", solrurl_docs)
             print("Solr Authors Core will be updated: ", solrurl_authors)
-
+            
             print(80*"*")
             if not options.no_check:
                 cont = ""
@@ -149,10 +153,20 @@ def main():
     filenames = []
     name_str = ""
 
-    if 1:
+    if options.remove_rogues:
+        query = "-art_id:* AND -id:GW* AND -id:SE*"
+        r1, status = opasPySolrLib.search_text(query=query)
+        r1_count = r1.documentList.responseInfo.fullCount
+        if r1_count > 0:
+            log_everywhere_if(True, "info", f"There are {r1_count} rogue records without an art_id in Solr.")
+            if not options.testmode:
+                solr_docs2.delete(q="-art_id:* AND -id:GW* AND -id:SE*")
+                solr_docs2.commit()
+
+    if options.no_cleaning == False: # default
         print((80*"-"))
         timeStart = time.time()
-        print (f"Processing started at ({time.ctime()}).")
+        log_everywhere_if(True, "info", f"Processing started at ({time.ctime()}).")
     
         print ("Fetching filenames...")
         if filenames == []:
@@ -167,12 +181,12 @@ def main():
         # Get list of articles from the tracker table.  TBD: Later add filename with path to the table so you don't need to read all
         #  the files at once above.
         time_milestone1 = time.time()
-        print (f"Filename collection from storage took {(time_milestone1-timeStart)/60} minutes")
-        print (f"Fetching article info from database...")
+        log_everywhere_if(True, "info", f"Filename collection ({len(filenames)}) from storage took {round((time_milestone1-timeStart)/60, 2)} minutes")
+        print (f"Fetching article info from database (excluding PEP Glossary...")
         if options.artid_prefix != "":
-            search_clause = f" WHERE art_id LIKE '{options.artid_prefix}%'"
+            search_clause = f" WHERE art_id LIKE '{options.artid_prefix}%' AND art_id NOT LIKE 'ZBK.069.%'" # exludes glossary
         else:
-            search_clause = ""
+            search_clause = " WHERE art_id NOT LIKE 'zbk.069.%'"            # exludes glossary
             
         articles_to_check = f"""
                               select art_id, filename from api_articles{search_clause};
@@ -180,8 +194,9 @@ def main():
         article_list = ocd.get_select_as_list_of_dicts(articles_to_check)
         time_milestone2 = time.time()
         
-        print (f"DB Article Load took {time_milestone2-time_milestone1} secs")
+        log_everywhere_if(True, "info", f"DB Article Load ({len(article_list)}) took {round(time_milestone2-time_milestone1, 2)} secs")
         print ("Checking for missing articles...")
+        delete_count = 0
         # look to see if they exist
         for article in article_list:
             art_id = article["art_id"]
@@ -190,23 +205,24 @@ def main():
             rootname_demarcated = f"#{rootname}#"
             if rootname_demarcated in name_str:
                 continue
-            print (f"article file for {rootname} no longer exists.")
+            log_everywhere_if(options.display_verbose, "warning", f"article file for {rootname} no longer exists.", end=" ")
             # if they don't delete them from the database table and solr
             if not options.testmode:
                 try:
                     result = solr_docs2.delete(q=f"art_id:{art_id}")
                     result = solr_authors.delete(q=f"art_id:{art_id}")
                     ocd.delete_specific_article_data(art_id=art_id)
+                    delete_count += 1
                     
                 except Exception as e:
-                    print (f"Error deleting {art_id} {e}")
+                    log_everywhere_if(options.display_verbose, "error", f"Error deleting {art_id} {e}")
                 else:
-                    print (f"Deleted {art_id} from solr")
+                    log_everywhere_if(options.display_verbose, "warning", f"Deleted {art_id} from solr")
             else:
-                print (f"Test mode active...if not {art_id} would have been removed from the database.")
+                log_everywhere_if(options.display_verbose, "warning", f"Test mode active...if not {art_id} would have been removed from the database.")
         
         time_milestone3 = time.time()
-        print (f"Checking for missing articles and deleting them from the databases (if present) took {time_milestone3-time_milestone2}")
+        print (f"Checking for missing articles and deleting them from the databases (count={delete_count}) took {round(time_milestone3-time_milestone2, 2)}")
         if not options.testmode:
             solr_docs2.commit()
             solr_authors.commit()
@@ -215,13 +231,12 @@ def main():
     # Closing time
     # ---------------------------------------------------------
     timeEnd = time.time()
-    print ("Processing finished.")
+    log_everywhere_if(True, "info", 'Processing finished. %s' % datetime.today().strftime('%Y-%m-%d %H:%M:%S'))
     elapsed_seconds = timeEnd-timeStart # actual processing time going through files
     elapsed_minutes = elapsed_seconds / 60
-    msg = f"Elapsed min: {elapsed_minutes:.4f}"
-    logger.info(msg)
-    print (msg)
-    print (80 * "-")
+    msg = f"Elapsed min: {elapsed_minutes:.2f}"
+    log_everywhere_if(True, "info", msg)
+    log_everywhere_if(True, "info", 80 * "-")
 
 # -------------------------------------------------------------------------------------------------------
 # run it!
@@ -245,23 +260,24 @@ if __name__ == "__main__":
     # New OpasLoader2 Options
     parser.add_option("--outputbuild", dest="output_build", default=opasConfig.DEFAULT_OUTPUT_BUILD,
                       help=f"Specific output build specification, default='{opasConfig.DEFAULT_OUTPUT_BUILD}'. e.g., (bEXP_ARCH1) or just bEXP_ARCH1.")
-    
-    # --load option still the default.  Need to keep for backwards compatibility, at least for now (7/2022)
     parser.add_option("--nohelp", action="store_true", dest="no_help", default=False,
                       help="Turn off front-matter help")
-
+    parser.add_option("--rogues", dest="remove_rogues", action="store_true", default=False,
+                      help="Delete roque records (without art_id) in Solr")
+    parser.add_option("--noclean", dest="no_cleaning", action="store_true", default=False,
+                      help="Don't clean the DB for missing files (use with rogues to just remove rogues).")
 
     (options, args) = parser.parse_args()
     
     if not options.no_help:
-        print (help_text)
+        log_everywhere_if(options.display_verbose, "info", help_text)
 
     if len(options.output_build) < 2:
         logger.error("Bad output buildname. Using default.")
         options.output_build = opasConfig.DEFAULT_OUTPUT_BUILD
         
     if options.output_build is not None and (options.output_build[0] != "(" or options.output_build[-1] != ")"):
-        print ("Warning: output build should have parenthesized format like (bEXP_ARCH1). Adding () as needed.")
+        log_everywhere_if(options.display_verbose, "warning", "Warning: output build should have parenthesized format like (bEXP_ARCH1). Adding () as needed.")
         if options.output_build[0] != "(":
             options.output_build = f"({options.output_build}"
         if options.output_build[-1] != ")":

@@ -91,7 +91,7 @@ from pydantic import BaseModel
     
 #class MostCitedArticles(BaseModel): # [Not used anymore from here (local copy in opasDataUpdateStat)]
     #"""
-    #__Table vw_stat_cited_crosstab__
+    #__Table vw_stat_cited_crosstab2__
 
     #A view with rxCode counts derived from the fullbiblioxml table and the articles table
       #for citing sources in one of the date ranges.
@@ -136,9 +136,9 @@ from pydantic import BaseModel
 # Deleted since article table being deprecated 2020-08-09    
 #class MostCitedArticlesWithDetails(MostCitedArticles):
     #"""
-    #__Table vw_stat_cited_crosstab_with_details__ # was MostCitedArticlesWithDetails
+    #__Table vw_stat_cited_crosstab_with_details2__ # was MostCitedArticlesWithDetails
     #based on 
-    #__Table vw_stat_cited_crosstab__
+    #__Table vw_stat_cited_crosstab2__
 
     #A view with rxCode counts derived from the fullbiblioxml table and the articles table
       #for citing sources in one of the date ranges.
@@ -185,4 +185,49 @@ from pydantic import BaseModel
     #modified_by_user_id: int = None
     #last_update: datetime = None
     
+class Articles(BaseModel):
+    document_id: str = None
+    art_views_update: bool = False
+    art_views_lastcalyear: int = 0
+    art_views_last12mos: int = 0
+    art_views_last6mos: int = 0
+    art_views_last1mos: int = 0
+    art_views_lastweek: int = 0
+    art_cited_5: int = 0
+    art_cited_10: int = 0
+    art_cited_20: int = 0
+    art_cited_all: int = 0
+    art_id: str = None
+    art_doi: str = None
+    art_type: str = None
+    art_lang: str = None
+    art_kwds: str = None
+    art_auth_mast: str = None
+    art_auth_citation: str = None
+    art_title: str = None
+    src_title_abbr: str = None
+    src_code: str = None
+    art_year: int = None
+    art_year_str: str = None
+    art_vol: int = None
+    art_vol_str: str = None
+    art_vol_suffix: str = None
+    art_issue: str = None
+    art_pgrg: str = None
+    art_pgstart: str = None
+    art_pgend: str = None
+    main_toc_id: str = None
+    start_sectname: str = None
+    bk_info_xml: str = None
+    bk_title: str = None
+    bk_publisher: str = None
+    art_citeas_text: str = None
+    art_citeas_xml: str = None
+    ref_count: int = None
+    filename: str = None
+    filedatetime: str = None
+    preserve: str = None
+    fullfilename: str = None
+    manuscript_date_str: str = None
+    last_update: str = None
     

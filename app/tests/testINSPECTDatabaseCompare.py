@@ -24,7 +24,7 @@ class TestDoDatabaseCompare(unittest.TestCase):
         assert(ret_val == 0)
         
     def test_2_active_product_comparison(self):
-        ret_val = compareTables.compare_critical_columns("api_productbase","basecode", "active")
+        ret_val = compareTables.compare_critical_columns("api_productbase", "basecode", "active")
         assert(ret_val == 0)
 
     def test_2a1_Critical_column_lists_common(self):
@@ -39,7 +39,12 @@ class TestDoDatabaseCompare(unittest.TestCase):
         col_list = [
             "config_settings", 
         ]
-        ret_val = compareTables.compare_critical_column_lists("api_client_configs","config_name", col_list, db1Name="STAGE", db2Name="PRODUCTION", key_where_clause='WHERE config_name="en-us"')
+        ret_val = compareTables.compare_critical_column_lists("api_client_configs",
+                                                              "config_name",
+                                                              col_list,
+                                                              db1Name="STAGE",
+                                                              db2Name="PRODUCTION",
+                                                              key_where_clause='WHERE config_name="en-us"')
         print (f"Difference Count ={ret_val}")
         assert(ret_val == 0)
 
@@ -71,12 +76,12 @@ class TestDoDatabaseCompare(unittest.TestCase):
                       "language", 
                       #"updated", 
                       "pepversion", 
-                      "duplicate", # unused now
+                      #"duplicate", # unused now
                       "landing_page", 
                       "coverage_notes", 
-                      "landing_page_intro_html", # unused now
-                      "landing_page_end_html", # unused now
-                      "google_books_link", # unused now
+                      #"landing_page_intro_html", # unused now (removed from db!)
+                      #"landing_page_end_html", # unused now (removed from db!)
+                      #"google_books_link", # unused now (removed from db)
               ]
         verbose = False
         ret_val = compareTables.compare_critical_column_lists("api_productbase","basecode", col_list, db1Name="LOCALDEV", db2Name="STAGE", verbose=verbose)
@@ -105,6 +110,15 @@ class TestDoDatabaseCompare(unittest.TestCase):
         verbose = False
         ret_val = compareTables.compare_critical_column_lists("api_articles","art_id", col_list, db1Name="STAGE", db2Name="LOCALDEV", verbose=verbose)
         print (f"Difference Count ={ret_val}")
+        assert(ret_val == 0)
+
+    def test_3c_compare_splitbookdata_on_stage_with_localdev(self):
+        def_db_tables = [{"name": "opasloader_splitbookpages", "key": "articleID, pagenumber"}        ]
+        ret_val = compareTables.compare_tables(def_db_tables)
+        if ret_val > 0:
+            print (80*"=")
+            print (30*"*FINAL*")
+            print ("Table differences found!")
         assert(ret_val == 0)
 
 if __name__ == '__main__':

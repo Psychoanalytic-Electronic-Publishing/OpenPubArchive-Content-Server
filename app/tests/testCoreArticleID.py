@@ -70,16 +70,16 @@ class TestArticleID(unittest.TestCase):
         # Version 2 style, better, including sourcetype support
         # ---------------------------------------------------------------------------------------
         testIDs = [
-            ("GW.018S.0000A", 0), # (ArticleID, Expected issue number)
+            ("FA.001S.R0001", 19),
+            ("GW.018S.0000A", None), # (ArticleID, Expected issue number)
+            ("IJP.034S.0005A", None),
+            ("FA.002S.R0001", None),
             ("FA.001A.0005A", 1),
             ("FA.001C.0074", 3), 
             ("FA.001F.R0001", 6),
             ("FA.001W.0062A", 23), 
-            ("IJP.034S.0005A", 0),
-            ("FA.001S.R0001", 19),
-            ("FA.002S.R0001", 0),
-            ("ajp.034.0155A", 0), 
-            ("PEPGRANTVS.001.0003A", 0),
+            ("ajp.034.0155A", None), 
+            ("PEPGRANTVS.001.0003A", None),
             ("PEPGRANTVS.001A.0015A", 1), 
             ("JOAP.028B.0184A", 2), 
             ("PAQ.011C.0148B", 3), 
@@ -91,12 +91,11 @@ class TestArticleID(unittest.TestCase):
             # test return
             r = response.json()
             a = ArticleID(**r)
-            if a.isSupplement:
-                assert(a.issueCodeInt == 0)
+            if a.is_supplement and a.src_code != "FA":
+                assert(a.art_issue_int is None)
             else:
-                assert(a.issueCodeInt == n[1])
+                assert(a.art_issue_int == n[1]),  print (n, " = ", r)
             
-            print (n, " = ", r)
           
     def test_2_articleID_manipulation(self):
         testIDs = [
@@ -105,8 +104,8 @@ class TestArticleID(unittest.TestCase):
             "FA.001.R0002", 
         ]
         for n in testIDs:
-            a = ArticleID(articleID=n)
-            print (a.articleID, a.standardized, a.altStandard)
+            a = ArticleID(art_id=n)
+            print (a.art_id, a.standardized, a.alt_standard)
             assert(a.standardized == n.upper())
         
         

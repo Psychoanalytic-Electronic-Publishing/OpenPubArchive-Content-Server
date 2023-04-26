@@ -88,12 +88,12 @@ class GlossaryRecognitionEngine(UserDict):
         if gather != True and verbose:
             print ("Gathering regex patterns is off.")
         self.data = {}
-        if self.__class__.matchList == None:
+        if self.__class__.matchList is None:
             self.__class__.matchList = self.__loadGlossaryTerms()
         else:
             self.matchList = self.__class__.matchList
 
-        #if self.__class__.impxList == None:
+        #if self.__class__.impxList is None:
             #self.__class__.impxList = self.loadImpxMatchList()
         #else:
             #self.impxList = self.__class__.impxList
@@ -129,7 +129,7 @@ class GlossaryRecognitionEngine(UserDict):
                     logger.error(f"Glossary Pattern Exception: {n}")
                 
             if self.gather:  # combine the patterns, to speed things up
-                if n[0] == None:
+                if n[0] is None:
                     if gDbg1: logger.debug("Glossary match patterns contain Null pattern: ", n)
                     continue
                 if len(gatherPattern) < 650:
@@ -150,7 +150,7 @@ class GlossaryRecognitionEngine(UserDict):
                     # reset the gather area to start a new combined pattern.
                     gatherPattern = ""
             else: # don't combine them...lets us collect statistics and diagnose the pattern matching
-                if n[0] == None:
+                if n[0] is None:
                     if gDbg1: logger.debug("Warning: Glossary match patterns contain Null pattern: ", n)
                     continue
                 if n[1] < opasConfig.MIN_TERM_LENGTH_MATCH:
@@ -182,7 +182,9 @@ class GlossaryRecognitionEngine(UserDict):
         If theGroupName is supplied, it means we are marking up the glossary itself, and any impxs that match
         theGroupName will be removed (as self referential)
 
-        Returns the number of changed terms, and a dictionary of terms and counts
+        Returns the matched_word_count (not unique words), and a dictionary of unique terms with counts
+        
+        If markup_terms is True, then the terms will be marked in the document, except where prohibited or risky
 
         >>> glossEngine = GlossaryRecognitionEngine(gather=False, verbose=True)
         Gathering regex patterns is off.
@@ -301,7 +303,7 @@ class GlossaryRecognitionEngine(UserDict):
         sorted_term_dict = dict(sorted(found_term_dict.items(), key=lambda item: item[1], reverse=True))
 
         # returns count of changes and list of tuples with (term, count)
-        return ret_status, sorted_term_dict
+        return ret_status, sorted_term_dict # matches getGlossaryLists return
 
     #--------------------------------------------------------------------------------
     def getGlossaryLists(self,
@@ -312,7 +314,7 @@ class GlossaryRecognitionEngine(UserDict):
         """
         Get glossary term lists from document without marking any up.
     
-        Returns the number of changed terms, and a dictionary of terms and counts
+        Returns the matched_word_count (not unique words), and a dictionary of unique terms with counts
     
         """
         
@@ -404,9 +406,10 @@ class GlossaryRecognitionEngine(UserDict):
                 print (f"\t...{count_in_doc} glossary terms recognized in {timeDiff:.4f} secs")
             else:
                 print (f"\t...Glossary terms loaded from compiled XML in {timeDiff:.4f} secs")
-            
-        return ret_val
 
+        ret_status = sum(ret_val.values()) # total number of words found (not unique words)
+        return ret_status, ret_val # matches doGlossaryMarkup return
+    
 
 #==================================================================================================
 # Main Routines

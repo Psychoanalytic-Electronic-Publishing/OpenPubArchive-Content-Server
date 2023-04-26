@@ -587,7 +587,7 @@ class Solr:
 
             for value in values:
                 # ignore values that are not defined
-                if value == None:
+                if value is None:
                     continue
                 # Do some basic data conversion
                 if isinstance(value, datetime.datetime):

@@ -30,7 +30,7 @@ TIME_FORMAT_STR = '%Y-%m-%dT%H:%M:%SZ'  # solr wants the Z; mysql connector does
 # TEMPORARY COMPATIBILITY SWITCHES
 TEMP_IJPOPEN_VER_COMPAT_FIX = True   # Production server can't be updated yet (June 1) and doesn't understand IJPOPEN_FULLY_REMOVED
 
-DATA_SOURCE = "v2022r1a/"
+DATA_SOURCE = "v2023r1a/"
 # BASELOGFILENAME = "opasAPI"
 # logFilename = BASELOGFILENAME + "_" + datetime.date.today().strftime('%Y-%m-%d') + ".log"
 FORMAT = '%(asctime)s %(name)s/%(funcName)s(%(lineno)d): %(levelname)s %(message)s'
@@ -39,22 +39,31 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_INPUT_BUILD = "(bKBD3)"
 DEFAULT_OUTPUT_BUILD = "(bEXP_ARCH1)"
+PEP_KBD_DTD = "https://pep-web-includes.s3.amazonaws.com/pepkbd3.dtd"
+PEP_KBD_DOCTYPE = f'<!DOCTYPE pepkbd3 SYSTEM "{PEP_KBD_DTD}">'
 
 # Various switches for information/debugging
 DEBUG_TRACE = False
 LOG_CALL_TIMING = True
 LOCAL_TRACE = False                   # turn this on to see the queries easily.
 PADS_INFO_TRACE = False
+DEMOTE_PREVALENT_LOG_ENTRIES = True
+DELETE_EXTRANEOUS_TAGS = True
 
 # Special feature switches
 SMARTQUOTE_EXTENSION = True  # Turn on temporary smartQuote (apos) feature.  Won't be needed if we load only smartquotes.
 MIN_TERM_LENGTH_MATCH = 4 # smallest length term to match from glossary (i.e., eliminate 'M')
 
+# Link prefixes for xml conversion handling webx
+LINK_DOI_PREFIX = "https://doi.org/"
+LINK_DOCUMENT_PREFIX = "https://pep-web.org/browse/document/"
+LINK_EMAIL_PREFIX = "mailto:"
+
 # Cache controls
 WHATS_NEW_EXPIRES_DAYS = 0
-WHATS_NEW_EXPIRES_HOURS = 8
-WHATS_NEW_EXPIRES_MINUTES = 0
-CONTINUE_PROCESSING_DAYS = 2
+WHATS_NEW_EXPIRES_HOURS = 22
+WHATS_NEW_EXPIRES_MINUTES = 5
+CONTINUE_PROCESSING_DAYS = 1
 
 JOURNALNEWFLAG = "*New* "
 NO_OFFSITE_DOCUMENT_ACCESS_CHECKS = True # set to false if the server should check with PaDS for offsite documents
@@ -75,7 +84,14 @@ MIN_WORD_LEN = 4 # minimum word length to be considered frmo titles
 MAX_WORDS = 5 # max words from title
 MIN_WORDS = 2 # min words to match in title
 MAX_DISPLAY_LEN_CF_ARTICLES = 90
+MAX_LOGMSG_LEN = 120
+MAX_SOURCE_COUNT = 200 # used to extend limit of facet for sources above 100 in metadata_get_sourcecodes
 
+# pgx link types
+BIBPGLINKBOOKS = "BIBPGLINKBOOKS" # link in a book to a references page, giving the referencing ID as the prefix
+BIBPGLINK = "BIBPGLINK" # link in a book to a references page, giving the referencing ID as the prefix
+BIBPGLINKPLACEHOLDER = "PLACEHOLDER" # neutralize biblink pgx turning them into cgrp "placeholders" which can be later turned back to pgx links.
+PGLINK = "PGLINK" # direct book or article page link
 
 # General books
 BOOKSOURCECODE = "ZBK" #  books are listed under this source code, e.g., to make for an id of ZBK.052.0001
@@ -85,7 +101,7 @@ ALL_EXCEPT_JOURNAL_CODES = BOOK_CODES_ALL + VIDEOSTREAM_CODES_ALL
 JOURNAL_CODES = """ADPSA|AFCVS|AIM|AJP|AJRPP|ANIJP-CHI|ANIJP-DE|ANIJP-EL|ANIJP-FR|ANIJP-IT|ANIJP-TR
 |ANRP|AOP|APA|APM|APS|BAFC|BAP|BIP|BJP|BPSIVS|CFP|CJP|CPS|DR
 |FA|FD|GAP|GW|IFP|IJAPS|IJFP|IJP|IJP-ES|IJPOPEN|IJPSP|IJPSPPSC|IJPVS|IMAGO|IPL|IPSAVS|IRP|IZPA|JAA|JBP|JCP|JCPTX|JEP|JICAP|JOAP
-|JPPF|JPT|LU-AM|MPSA|NLP|NP|NYPSIVS|OEDA|OFFSITE|OPUS|PAH|PAQ|PB|PCAS|PCS|PCT|PCVS|PD|PDPSY|PEPGRANTVS|PEPTOPAUTHVS|PEPVS|PI
+|JPPF|JPT|LU-AM|MPSA|NLP|NP|NYPSIVS|OEDA|OAJPSI|OFFSITE|OPUS|PAH|PAQ|PB|PCAS|PCS|PCT|PCVS|PD|PDPSY|PEPGRANTVS|PEPTOPAUTHVS|PEPVS|PI
 |PPC|PPERSP|PPSY|PPTX|PSABEW|PSAR|PSC|PSP|PSU|PSW|PSYCHE|PY|RBP|REVAPA|RFP|RIP|RPP-CS|RPSA|RRP|SE|SFCPVS|SGS|SPIVS|SPR|TVPA
 |UCLVS|ZBK|ZBPA|ZPSAP"""
 SPECIAL_SUBSCRIPTION_CODES = ["IJPOPEN", ]  # use all uppercase
@@ -235,7 +251,10 @@ DEFAULT_CITED_MORE_THAN = 0
 DEFAULT_PAGE_LIMIT = 999
 DEFAULT_PUBLICATION_PERIOD = "ALL"
 
+DB_REUSE_CONNECTION = False
 DB_ITEM_OF_INTEREST_WIDTH = 255 # database col for logging query/item of interest
+DB_CONNECT_ATTEMPTS = 5
+DB_CONNECT_DELAY = 1
 
 SOLR_KWIC_MAX_ANALYZED_CHARS = 25200000 # kwic (and highlighting) wont show any hits past this.
 SOLR_FULL_TEXT_MAX_ANALYZED_CHARS = 25200000 # full-text markup won't show matches beyond this.
@@ -288,8 +307,42 @@ def normalize_val(val, val_dict, default=None):
     
     return ret_val
 
+BIBLIO_TABLE = "api_biblioxml2"
 # Special relatedrx field name from Solr schema
 RELATED_RX_FIELDNAME = "art_qual"
+# standard confidence values with implied meaning
+RX_CONFIDENCE_POSITIVE = 1                        # human verified, no need to update
+RX_CONFIDENCE_NEVERMORE = .01                     # use this value to manually flag a reference so 
+                                                  # it is not included in scans, it will NEVER be in PEP.
+                                                  # (if wrong, just delete the value and it will 
+                                                  # be included again!)
+RX_CONFIDENCE_KEYED_VERY_LIKELY = .98             # as sure as possible, keyed
+RX_CONFIDENCE_AUTO_VERY_LIKELY = .97              # as sure as possible, automatically
+RX_CONFIDENCE_PROBABLE = .91                      # target exists and likely right
+RX_CONFIDENCE_PARSED_PROBABLE = .89               # string parsed (missing markup) target likely right
+RX_CONFIDENCE_PAGE_ADJUSTED = .88                 # matched by page adjusting
+RX_CONFIDENCE_EXISTS = .85                        # target exists
+RX_CONFIDENCE_SAME_AUT_TITLE_OTH_SRC = .81        # matched by page adjusting
+RX_CONFIDENCE_TITLE_MATCH_NOT_YEAR = .79
+RX_CONFIDENCE_THIS_IS_NOT_THE_REFERENCE = .01
+RX_CONFIDENCE_MINIMUM_NO_REPLACE = .77
+
+HEURISTIC_SEARCH_LIST_MAX_LEN = 5                # Max length of ref_rxcf list
+HEURISTIC_SEARCH_MAX_COUNT = 10                  # max matches to consider in heuristic search
+
+RX_LINK_SOURCE_DB = "database"
+RX_LINK_SOURCE_DOCUMENT = "instance_rx"
+RX_LINK_SOURCE_DOCUMENT_RXP = "instance_rxp"
+RX_LINK_SOURCE_TITLE = "title"
+RX_LINK_SOURCE_TITLE_AND_YEAR = "title and year"
+RX_LINK_SOURCE_XML = "xml"
+RX_LINK_SOURCE_PATTERN = "pattern"
+RX_LINK_SOURCE_VARIATION = "variation"
+RX_LINK_SOURCE_HEURISTIC = "heuristic"
+RX_LINK_SOURCE_TITLE_HEURISTIC = "title heuristic"
+RX_LINK_SOURCE_TITLE_WEIGHTED = "title wtd heuristic"
+RX_LINK_SOURCE_RX = "in rx"
+
 # OR'd list RE of terms to not match in the documents for glossary items
 GLOSSARY_TERM_SKIP_REGEX = "(stage|feeling)"
 
@@ -665,12 +718,13 @@ DOCUMENT_ITEM_SUMMARY_FIELDS ="""
  art_subtitle_xml, 
  art_author_id, 
  art_authors, 
+ art_authors_citation,
  art_citeas_xml, 
  art_info_xml, 
  meta_xml, 
  art_sourcecode, 
  art_sourcetitleabbr, 
- art_sourcetitlefull, 
+ art_sourcetitlefull,
  art_sourcetype, 
  art_level,
  para_art_id,
@@ -725,6 +779,7 @@ DOCUMENT_ITEM_CONCORDANCE_FIELDS ="""
  art_subtitle_xml, 
  art_author_id, 
  art_authors, 
+ art_authors_citation,
  art_citeas_xml, 
  art_info_xml, 
  meta_xml, 
@@ -760,7 +815,8 @@ DOCUMENT_ITEM_CONCORDANCE_FIELDS ="""
 
 # try the more squashed approach to listing, see if that shows better in the solr call logs
 DOCUMENT_ITEM_VIDEO_FIELDS = """
-art_id,art_issn, art_sourcecode,art_authors, title, art_subtitle_xml, art_title_xml,
+art_id,art_issn, art_sourcecode,art_authors,art_authors_citation,
+title, art_subtitle_xml, art_title_xml,
 art_sourcetitlefull,art_sourcetitleabbr,art_info_xml, meta_xml, 
 art_vol,art_vol_title, art_year, art_iss, art_iss_title,
 art_year, art_citeas_xml, art_pgrg, art_pgcount, art_lang, art_origrx, art_qual, art_kwds, file_classification
@@ -773,6 +829,7 @@ DOCUMENT_ITEM_TOC_FIELDS = """
  art_title_xml, 
  art_subtitle_xml, 
  art_authors_xml, 
+ art_authors_citation,
  art_citeas_xml, 
  art_sourcecode, 
  art_sourcetitleabbr, 
@@ -826,6 +883,7 @@ DOCUMENT_ITEM_STAT_FIELDS = """
  art_citeas_xml, 
  art_title, 
  art_authors, 
+ art_authors_citation,
  art_sourcecode, 
  art_sourcetitleabbr, 
  art_sourcetitlefull, 
@@ -878,6 +936,24 @@ AUTHOR_ITEM_DEFAULT_FIELDS ="""
  timestamp, 
  score
 """
+
+def string_to_list(string):
+    term_list = string.split(',')
+    distinct_terms = []
+    for term in term_list:
+        stripped_term = term.strip()
+        if stripped_term not in distinct_terms:
+            distinct_terms.append(stripped_term)
+    return distinct_terms
+
+MERGED_SOLR_FIELD_LIST = string_to_list(DOCUMENT_ITEM_SUMMARY_FIELDS + ","
+                                        + DOCUMENT_ITEM_CONCORDANCE_FIELDS + ","
+                                        + DOCUMENT_ITEM_VIDEO_FIELDS + ","
+                                        + DOCUMENT_ITEM_TOC_FIELDS + ","
+                                        + DOCUMENT_ITEM_STAT_FIELDS + ","
+                                        + DOCUMENT_ITEM_META_FIELDS + ","
+                                        + GLOSSARY_ITEM_DEFAULT_FIELDS + ","
+                                        + AUTHOR_ITEM_DEFAULT_FIELDS)
 
 running_head_fmts = {
     'xml': "<p><cgrp name='pub_year'>({pub_year})</cgrp>. <cgrp name='source_title'>{source_title}</cgrp><cgrp name='vol'>{vol}</cgrp><cgrp name='issue'>{issue}</cgrp><cgrp name='pgrg'>{pgrg}</cgrp></p>", 
@@ -1085,9 +1161,10 @@ gSplitBooks = {
     "IPL118" : 0,
     "NLP001" : 0,
     "NLP003" : 0,
-    "NLP005" : 1,
+    "NLP005" : 0,
     "NLP011" : 0,
     "NLP014" : 0,
+    "NLP079" : 0,
     "GW001"  : 0,
     "GW002"  : 0,
     "GW003"  : 0,
@@ -1260,6 +1337,7 @@ gClassicBookTOCList = {
     "NLP.009.0001"  :  "NLP.009.0001",  # A1v7
     "NLP.011.0000"  :  "NLP.011.0000",  # A1v2200r1
     "NLP.014.0000"  :  "NLP.014.0000",  # A1v7
+    "NLP.079.0000" :   "NLP.079.0000",  # New split book 2023-03-27
     "ZBK.002.0000"  :  "ZBK.002.0000",  # split 2022-05-02
     "ZBK.003.0000"  :  "ZBK.003.0000",  # split 2022-05-02
     "ZBK.004.0000"  :  "ZBK.004.0000",
@@ -1381,7 +1459,6 @@ gGWIndex =         {
     "GW.018.0000"   :  "GW.018.0000",
     "GW.018S.0000"   :  "GW.018S.0000",
 }
-
 
 # -------------------------------------------------------------------------------------------------------
 # test it!

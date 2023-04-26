@@ -66,7 +66,7 @@ class TestSolrAPIStandaloneFunctions(unittest.TestCase):
     def test_1_get_source_list_NLP(self):
         data = opasPySolrLib.metadata_get_volumes(source_code="NLP") # , source_type="book")
         count = data.volumeList.responseInfo.fullCount
-        assert(count == 6)
+        assert(count == unitTestConfig.VOL_COUNT_NLP)
 
     def test_1_get_source_list_books(self):
         data = opasPySolrLib.metadata_get_volumes(source_code="IPL", source_type="book*")

@@ -60,7 +60,7 @@ def isMunged(testStr):
 def makeTermList(strTerm = None, separatorPattern = "\/|;", removeParentheticalPattern="\(.*\)" ):
     """
     Splits the term into a list based on a separatorPattern.
-    If removeParentheticalPattern is not == None, then parenthesized material is removed.
+    If removeParentheticalPattern is not is None, then parenthesized material is removed.
 
     >>> makeTermList("Scene of Seduction (see whatever); Theory of Seduction")
     ['Scene of Seduction', 'Theory of Seduction']

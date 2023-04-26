@@ -10,15 +10,16 @@ import PEPGlossaryRecognitionEngine
 import opasXMLProcessor
 import opasArticleIDSupport
 import opasCentralDBLib
+import opasConfig
 from lxml import etree
 
 import logging
 logger = logging.getLogger()
 
 ocd = opasCentralDBLib.opasCentralDB()
-test_data = """
+test_data = f"""
 <?xml version='1.0' encoding='UTF-8'?>
-<!DOCTYPE pepkbd3 SYSTEM "http://peparchive.org/pepa1dtd/pepkbd3.dtd">
+{opasConfig.PEP_KBD_DOCTYPE}
 <pepkbd3 lang="en">
 <artinfo arttype="ART" j="PAQ" newsecnm="Original Articles" doi="10.1080/00332828.2019.1556036" ISSN="0033-2828">
     <artyear>2019</artyear>
@@ -53,9 +54,9 @@ test_data = """
 </pepkbd3>
 """
 
-test_data2 = """
+test_data2 = f"""
 <?xml version='1.0' encoding='UTF-8'?>
-<!DOCTYPE pepkbd3 SYSTEM "http://peparchive.org/pepa1dtd/pepkbd3.dtd">
+{opasConfig.PEP_KBD_DOCTYPE}
 <pepkbd3 lang="en">
 <artinfo arttype="ART" j="ZBK" doi="10.7208/chicago/9780226450148.001.0001" id="ZBK.049.0001A">
         <artyear>1971</artyear>
@@ -86,9 +87,9 @@ test_data2 = """
 </pepkbd3>
 """
 
-test_data3 = """
+test_data3 = f"""
 <?xml version="1.0" encoding="UTF-8" ?>
-<!DOCTYPE pepkbd3 SYSTEM "http://peparchive.org/pepa1dtd/pepkbd3.dtd">
+{opasConfig.PEP_KBD_DOCTYPE}
 <pepkbd3 srcdate="2022-10-11" cvtby="aptara" cvtfrom="TF">
 <artinfo arttype="ART" j="CPS" ISSN="0010-7530" doi="10.1080/00107530.2022.2110758">
 <artyear>2022</artyear>
@@ -129,9 +130,9 @@ class TestXMLProcessing(unittest.TestCase):
 
     DocumentID = [
                   ('IJP.101.0273A', 'B.*'), 
-                  ('LU-AM.005I.0025A', 'B0001'),
-                  ('CPS.039.0107A', 'B0008'), 
-                  ('CPS.039.0107A', 'B0003'),
+                  ('LU-AM.005I.0025A', 'B001'),
+                  ('CPS.039.0107A', 'B008'), 
+                  ('CPS.039.0107A', 'B003'),
                   ]
 
     def test_1_get_reference_from_api_biblio_table(self):
@@ -142,7 +143,7 @@ class TestXMLProcessing(unittest.TestCase):
             local_id = n[1]
             result = ocd.get_references_from_biblioxml_table(document_id, local_id)
             assert result[0].art_id == document_id
-            print(result[0].art_id, result[0].bib_sourcetitle)
+            print(result[0].art_id, result[0].ref_sourcetitle)
 
     def test_2_glossary_word_markup(self):
         """

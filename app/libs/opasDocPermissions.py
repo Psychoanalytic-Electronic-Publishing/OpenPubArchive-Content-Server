@@ -52,6 +52,7 @@ import opasCentralDBLib
 #from config import msgdb
 import opasMessageLib
 msgdb = opasMessageLib.messageDB()
+import opasGenSupportLib as opasgenlib
 
 ocd = opasCentralDBLib.opasCentralDB()
 
@@ -60,7 +61,7 @@ def user_logged_in_per_header(request, session_id=None, caller_name="unknown") -
     Return logged in per header, or None if no info found, unless there's no request
     
     """
-    if request == None:
+    if request is None:
         logger.warning(f"No request param supplied to check log-in. Returning False ({caller_name} / {session_id})")
         ret_val = False
     else:
@@ -84,7 +85,7 @@ def verify_header(request, caller_name):
     client_session_from_header = request.headers.get(opasConfig.CLIENTSESSIONID, None)
     client_id_from_header = request.headers.get(opasConfig.CLIENTID, None)
     if client_id_from_header == 2 or client_id_from_header == 3:
-        if client_session_from_header == None:
+        if client_session_from_header is None:
             logger.warning(f"***{caller_name}*** - No client-session supplied. Client-id (from header): {client_id_from_header}.")
         else:
             logger.debug(f"***{caller_name}*** - Client-session found. Client-id (from header): {client_id_from_header}.")
@@ -286,7 +287,9 @@ def get_base_session_info(request=None, session_id=None, client_id=4, pads_sessi
         #  try to handle pydantic validation errors we're seeing in the production logs - nrs 2022-04-15
         #  to turn off validation for the model, see https://pydantic-docs.helpmanual.io/usage/models/#creating-models-without-validation
         try:
-            base_session_info = models.SessionInfo(session_id=session_id,
+            # clean up session id since for whatever reason we're seeing non-alphanumeric chars (not counting dashes)
+            session_id = opasgenlib.remove_non_alphanumeric_except_dashes(session_id)
+            base_session_info = models.SessionInfo(session_id=session_id, # try forcing string here to prevent model error
                                                    api_client_id=client_id
                                                    )
         except Exception as e: 
@@ -427,10 +430,16 @@ def get_session_info(request: Request,
                         update_db = True
                 elif not user_logged_in_bool and session_info_from_db.is_valid_login == True: # if login status has changed
                     # Not logged in but database says they are, so logout
-                    result = authserver_logout(session_id)
-                    session_info = session_info_from_db
-                    session_info.is_valid_login = False
-                    update_db = True
+                    try:
+                        result = authserver_logout(session_id)
+                        session_info = session_info_from_db
+                        session_info.is_valid_login = False
+                        update_db = True
+                    except Exception as e:
+                        logger.warning(f"PaDS logout call failed {e}.")
+                        session_info = session_info_from_db
+                        session_info.is_valid_login = False
+                        
                 else: # logged in, no changes
                     # important state is the same. So use db record (should we
                     # compare here?)
@@ -546,13 +555,16 @@ def get_authserver_session_userinfo(session_id, client_id, addl_log_info=""):
         except Exception as e:
             logger.error(f"{caller_name}: Error from auth server user info call: {e}. Non-logged in user {msg}")
         else:
-            status_code = response.status_code
-            padsinfo = response.json()
-            if response.ok:
-                padsinfo = fix_userinfo_invalid_nones(padsinfo)
-                ret_val = models.PadsUserInfo(**padsinfo)
-            else:
-                logger.debug(f"Non-logged in user {msg}. Info from PaDS: {padsinfo}") # 2021.08.08 back to debug...seems consistent.
+            try:
+                status_code = response.status_code
+                padsinfo = response.json()
+                if response.ok:
+                    padsinfo = fix_userinfo_invalid_nones(padsinfo)
+                    ret_val = models.PadsUserInfo(**padsinfo)
+                else:
+                    logger.debug(f"Non-logged in user {msg}. Info from PaDS: {padsinfo}") # 2021.08.08 back to debug...seems consistent.
+            except Exception as e:
+                logger.error(f"{caller_name}: Error from auth server resposne: {e}. ")
         
     return ret_val, status_code # padsinfo, status_code
     
@@ -683,8 +695,13 @@ def authserver_logout(session_id, request: Request=None, response: Response=None
         ocd.log_pads_calls(caller=caller_name, reason=caller_name, session_id=session_id, pads_call=full_URL, return_status_code=response.status_code) # Log Call PaDS
         if response.ok:
             ret_val = True
+        elif response.status_code == 500 or response.status_code == 404:
+            logger.error(f"{caller_name}: Error Logging out for sessionId: {session_id} PaDS returned code: {response.status_code}")
         else:
-            logger.error(f"{caller_name}: Error Logging out for sessionId: {session_id} from PaDS: {response.json()}")
+            try:
+                logger.error(f"{caller_name}: Error Logging out for sessionId: {session_id} from PaDS: {response.json()}")
+            except Exception as e:
+                logger.error(f"{caller_name}: Error Logging out for sessionId: {session_id} {e}")
     else:
         logger.error(f"{caller_name}: No SessionId supplied.")
 

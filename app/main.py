@@ -2,9 +2,9 @@
 # -*- coding: utf-8 -*-
 
 __author__      = "Neil R. Shapiro"
-__copyright__   = "Copyright 2019-2022, Psychoanalytic Electronic Publishing"
+__copyright__   = "Copyright 2019-2023, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2023.0110c/v2.1.206c"   # semver versioning after date.
+__version__     = "2023.0424/v2.3.019"   # removed v3 ExtendedSearch endpoint so new 2.3 compatibility bump
 __status__      = "Development/Libs/Loader"  
 
 """
@@ -147,7 +147,6 @@ from opasPySolrLib import search_text_qs # , search_text
 import opasPDFStampCpyrght
 import opasCacheSupport
 from opasArticleIDSupport import ArticleID
-
 expert_pick_image = ["", ""]
 
 # Check text server version
@@ -156,6 +155,8 @@ text_server_url = localsecrets.SOLRURL
 ocd = opasCentralDBLib.opasCentralDB()
 database_update_date = ocd.get_update_date_database()
 ocd = None
+all_source_codes = opasPySolrLib.metadata_get_sourcecodes()
+all_source_codes.append("OAJPSI")
 
 PARAMS = {'wt':'json'}
 url = f"{localsecrets.SOLRURL}admin/info/system"
@@ -292,7 +293,7 @@ def find_client_id(request: Request,
            if not there, defaults to 0 (server is client)
     """
     ret_val = 0
-    if client_id == 0 or client_id == None:
+    if client_id == 0 or client_id is None:
         ret_val = opasConfig.NO_CLIENT_ID
         client_id = request.headers.get(opasConfig.CLIENTID, None)
         client_id_qparam = request.query_params.get(opasConfig.CLIENTID, None)
@@ -369,7 +370,14 @@ def get_client_session(response: Response,
         if client_id == opasConfig.NO_CLIENT_ID:
             # No client id, not allowed to get session.
             msg = ERR_MSG_CALLER_IDENTIFICATION_ERROR + f" URL: {request.url._url} Headers:{request.headers} "
-            logger.error(msg)
+            #
+            # 20230322 New switch to demote these froms errors to info for now...they dominate the logs.
+            #  (and decided to change them to warning when not demoted.)
+            if opasConfig.DEMOTE_PREVALENT_LOG_ENTRIES:
+                logger.info(msg)
+            else:
+                logger.warning(msg)
+                
             raise HTTPException(
                 status_code=httpCodes.HTTP_428_PRECONDITION_REQUIRED,
                 detail=ERR_MSG_CALLER_IDENTIFICATION_ERROR
@@ -819,7 +827,7 @@ async def admin_reports(response: Response,
         )        
 
     # Get report
-
+    
     # with order by for return
     select = f"""SELECT * from {report_view}
                  WHERE {standard_filter}
@@ -830,7 +838,7 @@ async def admin_reports(response: Response,
                  {extra_condition}
                  {orderby_clause}
                  """
-
+    
     # without order by for full count
     select_count = f"""SELECT * from {report_view}
                        WHERE {standard_filter}
@@ -839,8 +847,8 @@ async def admin_reports(response: Response,
                        {sessionid_condition}
                        {endpoint_condition}
                        {extra_condition}
-"""
-
+                     """
+   
     if getfullcount:
         count = ocd.get_select_count(select_count) # without order by
     else:
@@ -2130,298 +2138,6 @@ async def database_advanced_search(response: Response,
                                 )
 
     return ret_val
-
-#---------------------------------------------------------------------------------------------------------
-@app.post("/v3/Database/ExtendedSearch/", tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_EXTENDED_SEARCH)  #  response_model_exclude_unset=True removed for now: response_model=models.DocumentList, response_model=models.SolrReturnList, 
-async def database_extendedsearch(response: Response,
-                                  request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
-                                  solrcore: str=Body("pepwebdocs", embed=True),
-                                  solrquery: str=Body(None, embed=True),
-                                  solrargs: dict=Body(None, embed=True),
-                                  api_key: APIKey = Depends(get_api_key),
-                                  client_id:int=Depends(get_client_id), 
-                                  client_session:str= Depends(get_client_session)
-                                  ):
-    """
-    ## Function
-    
-    EXPERIMENTAL.  Previously, extended had many enforced limitations, but this version
-      allows the client to access any Solr feature as long as it's one of the configured
-      cores.
-      
-      Since this goes directly to Solr, to protect the full-text data, the return of
-      data in field text_xml is not permitted.
-      
-    Takes three body parameters:
-      solrcore: the name of the core
-      solrquery: the "q" query from the solrapi
-      solrargs: a dictionary of solr args, as accepted by pysolr.
-
-    ## Return Type
-      Returns a solr results record.
-
-    ## Status
-       This endpoint is working.  But its existance is experimental.
-
-    ## Sample Call
-         /v2/Database/ExtendedSearch/
-         
-       with body parameters:
-           
-       Related query without main document IJP.078.0335A example
-       (Added this example since the NOT within a field spec doesn't work in the regular
-       query endpoints, but works here. The problem appears to be within the
-       pysolr/solrpy library)
-
-           {
-             "solrcore": "pepwebdocs",
-             "solrquery": "art_qual:(IJP.076.0019A)", 
-              "solrargs": {
-                 "fq": "art_id:(NOT IJP.078.0335A)",
-                 "fl": "art_id, art_title, art_title_xml, art_subtitle_xml, art_author_id, art_authors, art_citeas_xml, art_info_xml, art_sourcecode, art_sourcetitleabbr, art_sourcetitlefull, art_sourcetype, art_level, para_art_id, parent_tag, para, art_vol, art_type, art_vol_title, art_year, art_iss, art_iss_title, art_newsecnm, art_pgrg, art_lang, art_doi, art_issn, art_isbn, art_origrx, art_qual, art_kwds, art_cited_all, art_cited_5, art_cited_10, art_cited_20, art_views_lastcalyear, art_views_last1mos, art_views_last6mos, art_views_last12mos, art_views_lastweek, reference_count, art_fig_count, art_tbl_count, art_kwds_count, art_words_count, art_citations_count, art_ftns_count, art_notes_count, art_dreams_count, file_last_modified, file_classification, timestamp, score, id"
-              }
-           }           
-           
-           {
-             "solrcore":"pepwebdocs",
-             "solrquery": "art_level:1",
-             "solrargs": {
-                "fl":"art_id, art_authors, art_authors_id,text_xml",
-                "rows":10,
-                "facet":"on",
-                "facet.field":"art_authors_ids"
-             }
-           }
-           
-           or, for a different core:
-           
-           {
-             "solrcore":"pepwebauthors",
-             "solrquery": "*",
-             "solrargs": {
-                "fl":"art_id, art_author_id, art_author_listed",
-                "rows":5,
-                "facet":"on",
-                "facet.field":"art_author_role"
-             }
-           }
-           
-           This last example, for example, returns:
-           
-           {
-           "responseHeader": {
-             "status": 0,
-             "QTime": 47,
-             "params": {
-               "q": "*",
-               "facet.field": "art_author_role",
-               "fl": "art_id, art_author_id, art_author_listed",
-               "rows": "5",
-               "facet": "on",
-               "wt": "json"
-             }
-           },
-           "response": {
-             "numFound": 138591,
-             "start": 0,
-             "numFoundExact": true,
-             "docs": [
-               {
-                 "art_id": "TVPA.004.0238A",
-                 "art_author_id": "Thys, Michel",
-                 "art_author_listed": "true"
-               },
-               {
-                 "art_id": "TVPA.004.0235A",
-                 "art_author_id": "Thys, Michel",
-                 "art_author_listed": "true"
-               },
-               {
-                 "art_id": "ANRP.007.0199A",
-                 "art_author_id": "Petrelli, Diomira",
-                 "art_author_listed": "true"
-               },
-               {
-                 "art_id": "TVPA.004.0232A",
-                 "art_author_id": "Schalkwijk, Frans",
-                 "art_author_listed": "true"
-               },
-               {
-                 "art_id": "ANRP.008.0009A",
-                 "art_author_id": "Bezoari, Michele",
-                 "art_author_listed": "true"
-               }
-             ]
-           },
-           "facet_counts": {
-             "facet_queries": {},
-             "facet_fields": {
-               "art_author_role": [
-                 "author",
-                 100464,
-                 "reviewer",
-                 33545,
-                 "edited-by",
-                 1792,
-                 "translator",
-                 1506,
-                 "in-collaboration",
-                 278,
-                 "reporter",
-                 183,
-                 "interviewee",
-                 141,
-                 "moderator",
-                 111,
-                 "panelist",
-                 109,
-                 "other",
-                 91,
-                 "assisted-by",
-                 69,
-                 "produced-by",
-                 56,
-                 "issue-editor",
-                 47,
-                 "interviewer",
-                 32,
-                 "compiled-by",
-                 26,
-                 "director",
-                 18,
-                 "published-by",
-                 16,
-                 "presenter",
-                 14,
-                 "chaired-by",
-                 13,
-                 "intro",
-                 13,
-                 "commentary-by",
-                 9,
-                 "editorial-assistant",
-                 7,
-                 "executive-producer",
-                 7,
-                 "director-assistant",
-                 6,
-                 "series-editor",
-                 6,
-                 "additional-cinematography-by",
-                 5,
-                 "transcribed-by",
-                 5,
-                 "preface",
-                 3,
-                 "cinematography-by",
-                 2,
-                 "coordinator",
-                 2,
-                 "director-and-producer",
-                 2,
-                 "associate-producer",
-                 1,
-                 "line-producer",
-                 1,
-                 "narrated-by",
-                 1,
-                 "under-supervision-of",
-                 1
-               ]
-             },
-             "facet_ranges": {},
-             "facet_intervals": {},
-             "facet_heatmaps": {}
-           }
-         }
-           
-           
-
-    ## Notes
-       ### Requires API key
-       ### Requires client_id in the header (use 'client-id' in call header)
-        
-    ## Potential Errors
-       APP NEEDS TO BE AUTHENTICATED with API_KEY for access.
-       Otherwise, returns error.
-
-    """
-    caller_name = "[v3/Database/ExtendedSearch]"
-    #if opasConfig.DEBUG_TRACE: print(caller_name)
-   
-    opasDocPermissions.verify_header(request, caller_name) # for debugging client call
-    log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
-
-    ocd, session_info = opasDocPermissions.get_session_info(request, response, session_id=client_session, client_id=client_id, caller_name=caller_name)
-    # session_id = session_info.session_id 
-    logger.debug("Solr Search Request: %s", request.url._url)
-    
-    if solrcore is not None:
-        try:
-            from configLib.opasCoreConfig import EXTENDED_CORES
-            solr_core2 = EXTENDED_CORES.get(solrcore.lower(), None)
-        except Exception as e:
-            detail=ERR_MSG_CORE_SPEC_ERROR + f"CoreSpecError: {e}"
-            logger.error(detail)
-            raise HTTPException(
-                status_code=httpCodes.HTTP_400_BAD_REQUEST, 
-                detail=detail
-            )
-        else:
-            if solr_core2 is None:
-                detail="CoreSpecError: Bad Extended Request. Core not specified."
-                logger.error(detail)
-                raise HTTPException(
-                    status_code=httpCodes.HTTP_400_BAD_REQUEST, 
-                    detail=detail
-                )
-
-        # get default args
-        if solrargs is None or solrargs == {}:
-            solr_param_dict = EXTENDED_CORES_DEFAULTS[solrcore.lower()]
-        else:
-            solr_param_dict = solrargs
-    else:
-        #solrqueryspec.core = SOLR_DEFAULT_CORE
-        solr_core2 = solr.SolrConnection(localsecrets.SOLRURL + solrcore.lower(), http_user=localsecrets.SOLRUSER, http_pass=localsecrets.SOLRPW)
-        
-    try:
-        # PySolr does not like None's, so clean them
-        solr_param_dict = opasPySolrLib.cleanNullTerms(solr_param_dict)
-        for key, val in solr_param_dict.items():
-            if key == "fl":
-                solr_param_dict[key] = val.replace("text_xml", "art_excerpt_xml")
-                break
-            
-        results = solr_core2.search(solrquery, **solr_param_dict)
-        
-    except solr.SolrException as e:
-        ret_status = (e.httpcode, e)
-        raise HTTPException(
-            status_code=ret_status[0], 
-            detail=f"Bad Solr Search Request. {ret_status[1].reason}:{ret_status[1].body}"
-        )
-    except Exception as e:
-        ret_status = (httpCodes.HTTP_400_BAD_REQUEST, e) # e has type <class 'solrpy.core.SolrException'>, with useful elements of httpcode, reason, and body, e.g.,
-        raise HTTPException(
-            status_code=ret_status[0], 
-            detail=f"Bad Request. {e}"
-        )
-                                
-    else: #  search was ok
-        ret_status = 200
-        ret_val = results.raw_response
-        numfound = len(results.docs)
-        statusMsg = f"RAW Q:{solrquery} / F:{solr_param_dict} N: {numfound}"
-        # client_host = request.client.host
-        ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DATABASE_EXTENDEDSEARCH,
-                                    session_info=session_info, 
-                                    params=request.url._url,
-                                    return_status_code = ret_status, 
-                                    status_message=statusMsg
-                                    )
-
-    return ret_val # solr_ret_list
 
 #---------------------------------------------------------------------------------------------------------
 @app.post("/v2/Database/Glossary/Search/", response_model=models.DocumentList, response_model_exclude_unset=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_GLOSSARY_SEARCH_POST)
@@ -4139,7 +3855,7 @@ def database_word_wheel(response: Response,
 
        Examples of applicable fields from solr core docs for PEP:
              text - full-text document search
-             para or art_para - full-text, all paragraphs (para is level 2, art_para is level 1)
+             para or art_para (deprecated) - full-text, all paragraphs (para is level 2, art_para is level 1 (deprecated))
              art_authors - string_ci, returns matching full names (authors is string, so it cannot be used)
              art_authors_xml - text, returns matching components of names
              quotes_spkr
@@ -4259,7 +3975,7 @@ def metadata_articleid(response: Response,
     # api_id = opasCentralDBLib.API_METADATA_ARTICLEID
     
     # return the articleID model to the client to break it down for them
-    ret_val = ArticleID(articleID=articleID, allInfo=diagnostics)
+    ret_val = ArticleID(art_id=articleID, allInfo=diagnostics)
     
     return ret_val
 
@@ -4610,9 +4326,10 @@ def metadata_volumes(response: Response,
     try:
         source_code = sourcecode.upper()
     except:
-        source_code = None
+        source_code = "*"
 
     src_exists = ocd.get_sources(src_code=source_code)
+    
     if not src_exists[0] and source_code != "*" and source_code not in ["ZBK", "NLP", "IPL"] and source_code is not None: # ZBK not in productbase table without booknum
         response.status_code = httpCodes.HTTP_400_BAD_REQUEST
         status_message = f"Failure: Bad SourceCode {source_code}"
@@ -5054,7 +4771,7 @@ def documents_document_fetch(response: Response,
                              page:int=Query(None, title=opasConfig.TITLE_PAGEREQUEST, description=opasConfig.DESCRIPTION_PAGEREQUEST),
                              return_format: str=Query("HTML", title=opasConfig.TITLE_RETURNFORMATS, description=opasConfig.DESCRIPTION_RETURNFORMATS),
                              similarcount: int=Query(0, title=opasConfig.TITLE_SIMILARCOUNT, description=opasConfig.DESCRIPTION_SIMILARCOUNT),
-                             translations: bool=Query(False, title=opasConfig.TITLE_TRANSLATIONS, description=opasConfig.DESCRIPTION_TRANSLATIONS),
+                             translations: bool=Query(True, title=opasConfig.TITLE_TRANSLATIONS, description=opasConfig.DESCRIPTION_TRANSLATIONS),
                              search: str=Query(None, title=opasConfig.TITLE_SEARCHPARAM, description=opasConfig.DESCRIPTION_SEARCHPARAM),
                              pagelimit: int=Query(None,title=opasConfig.TITLE_PAGELIMIT, description=opasConfig.DESCRIPTION_PAGELIMIT),
                              pageoffset: int=Query(None, title=opasConfig.TITLE_PAGEOFFSET,description=opasConfig.DESCRIPTION_PAGEOFFSET),
@@ -5146,26 +4863,42 @@ def documents_document_fetch(response: Response,
         term_id = m.group("termid")
         #ret_val = view_a_glossary_entry(response, request, term_id=term_id, search=search, return_format=return_format)
         ret_val = documents_glossary_term(response, request, termIdentifier=term_id, return_format=return_format)
-    else:
-        # notes:
-        #  if a page extension to the docid is supplied, it is ignored. The client should use that instead to jump to that page.
-        # m = re.match("(?P<docid>[A-Z]{2,12}\.[0-9]{3,3}[A-F]?\.(?P<pagestart>[0-9]{4,4})[A-Z]?)(\.P(?P<pagenbr>[0-9]{4,4}))?", documentID)
-        #if m is not None:
-            #documentID = m.group("docid")
-            #page_number = m.group("pagenbr")
-            #if page_number is not None:
-                #try:
-                    #page_start_int = int(m.group("pagestart"))
-                    #page_number_int = int(page_number)
-                    #pageoffset = page_number_int - page_start_int
-                #except Exception as e:
-                    #logger.error(f"Page offset calc issue.  {e}")
-                    #pageoffset = 0
-
-        # TODO: do we really need to do this extra query?  Why not just let get_document do the work?
-        # doc_info = opasAPISupportLib.document_get_info(documentID,
-                                                        #fields="art_id, art_sourcetype, art_year, file_classification, art_sourcecode")
-        # file_classification = doc_info.get("file_classification", opasConfig.DOCUMENT_ACCESS_UNDEFINED)
+    else:       
+        # Check to see if this is a valid source code, and if it is, that the document exists (or fix it)
+        # new resilient documentID feature 2023-06-22/2023-07-02 (in progress)
+        # 2023.0402/v2.3.008b Enabled
+        if 1:
+            doc_id = ArticleID(art_id=documentID)
+            try:
+                if doc_id is not None:
+                    src_code = doc_id.src_code.upper()
+                    if src_code in all_source_codes:
+                        documentID = doc_id.exists_with_resilience(verbose=True, resilient=True)            
+                    else:
+                        #documentID = None
+                        if src_code not in all_source_codes:
+                            status_message = f"Src code {doc_id.src_code} not in {all_source_codes}.  But Letting pass though. "
+                            logger.warning(status_message)
+                            print (status_message)
+                        else:
+                            # for now, log and try anyway
+                            status_message = f"Indication of Nonexistant document: {doc_id} Requestor: Client:{client_id}/Sess:{session_id}.  Letting pass though. "
+                            logger.warning(status_message)
+                            print (status_message)
+            except Exception as e:
+                logger.debug(f"Article ID resilience error ({e})")
+            
+            if not documentID:
+                response.status_code=httpCodes.HTTP_404_NOT_FOUND
+                status_message = f"Nonexistant document: {doc_id} Requestor: Client:{client_id}/Sess:{session_id} "
+                logger.warning(status_message)
+                ret_val = None
+                raise HTTPException(
+                    status_code=response.status_code,
+                    detail=status_message
+                )
+                
+            
         try:
             # documents_get_document handles the view authorization and returns abstract if not authenticated.
             req_url=urllib.parse.unquote(request.url._url)
@@ -5180,6 +4913,7 @@ def documents_document_fetch(response: Response,
                 search = f"&smarttext={ft2}"
             if ft1 is not None:
                 search += f"&fulltext1={ft1}"
+                
             solr_query_params = opasQueryHelper.parse_search_query_parameters(fulltext1=ft1, smarttext=ft2)
             
             # solr_query_params = opasQueryHelper.parse_search_query_parameters(**argdict)
@@ -5437,6 +5171,9 @@ def documents_downloads(response: Response,
                         request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
                         documentID: str=Path(..., title=opasConfig.TITLE_DOCUMENT_ID, description=opasConfig.DESCRIPTION_DOCIDORPARTIAL), 
                         retFormat=Path(..., title=opasConfig.TITLE_RETURNFORMATS, description=opasConfig.DESCRIPTION_DOCDOWNLOADFORMAT),
+                        page:int=Query(None, title=opasConfig.TITLE_PAGEREQUEST, description=opasConfig.DESCRIPTION_PAGEREQUEST),
+                        pagelimit: int=Query(None,title=opasConfig.TITLE_PAGELIMIT, description=opasConfig.DESCRIPTION_PAGELIMIT),
+                        pageoffset: int=Query(None, title=opasConfig.TITLE_PAGEOFFSET,description=opasConfig.DESCRIPTION_PAGEOFFSET),
                         client_id:int=Depends(get_client_id), 
                         client_session:str= Depends(get_client_session)
                         ):
@@ -5514,6 +5251,9 @@ def documents_downloads(response: Response,
                                                              base_filename="opasDoc",
                                                              session_info=session_info, 
                                                              flex_fs=flex_fs,
+                                                             page=page, 
+                                                             page_limit=pagelimit, 
+                                                             page_offset=pageoffset, 
                                                             )    
 
     request_qualifier_text = f" Request: {documentID}. Session {session_info.session_id}."
@@ -5843,9 +5583,15 @@ async def documents_image_fetch(response: Response,
     if client_id is not None:
         try:
             a = int(client_id)
-        except:
-            msg = ERR_MSG_CALLER_IDENTIFICATION_ERROR + f" Client/Session {client_id}/{client_session}. URL: {request.url._url} Headers:{request.headers} "
-            logger.error(msg)
+        except Exception as e:
+            # 20230322 New switch to demote these froms errors to info for now...they dominate the logs.
+            #  (and decided to change them to warning when not demoted.)
+            msg = ERR_MSG_CALLER_IDENTIFICATION_ERROR + f" Client/Session {client_id}/{client_session}. URL: {request.url._url} Headers:{request.headers} {e}"
+            if opasConfig.DEMOTE_PREVALENT_LOG_ENTRIES:
+                logger.info(msg)
+            else:
+                logger.warning(msg)
+
             response.status_code = httpCodes.HTTP_400_BAD_REQUEST 
             status_message = ERR_MSG_CALLER_IDENTIFICATION_ERROR
             raise HTTPException(

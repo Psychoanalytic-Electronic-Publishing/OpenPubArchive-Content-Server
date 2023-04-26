@@ -923,7 +923,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                         # Note: the question mark before the first field in search= matters
                         #  e.g., http://development.org:9100/v2/Documents/Document/JCP.001.0246A/?return_format=XML&search=%27?fulltext1="Evenly%20Suspended%20Attention"~25&limit=10&facetmincount=1&facetlimit=15&sort=score%20desc%27
                         # documentListItem.document = opasxmllib.xml_remove_tags_from_xmlstr(documentListItem.document,['impx'])
-                        if documentListItem.document == None:
+                        if documentListItem.document is None:
                             errmsg = f"DocumentError: Fetch failed! ({solr_query_spec.solrQuery.searchQ}"
                             logger.error(errmsg)
                             documentListItem.termCount = 0
@@ -1054,7 +1054,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
             # Moved this down here, so we can fill in the Limit, Page and Offset fields based on whether there
             #  was a full-text request with a page offset and limit
             # Solr search was ok
-            responseInfo = models.ResponseInfo(count = len(results.docs),
+            responseInfo = models.ResponseInfo(count = len(documentItemList),
                                                fullCount = results.hits,
                                                totalMatchCount = results.hits,
                                                description=solr_query_spec.solrQuery.semanticDescription, 

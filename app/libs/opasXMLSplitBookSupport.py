@@ -13,10 +13,11 @@ import opasDocuments
 import opasFileSupport
 from loggingDebugStream import log_everywhere_if
 import opasCentralDBLib
+import datetime
 
 DBGSTDOUT = False
 
-SPLIT_BOOK_TABLE = "vw_opasloader_splitbookpages"
+SPLIT_BOOK_TABLE = "opasloader_splitbookpages"
 
 #----------------------------------------------------------------------------------------
 # CLASS DEF: SplitBookData
@@ -155,6 +156,7 @@ class SplitBookData:
                         # delete this article record, the file was consolidated or removed
                         count = count + 1
                         delqry = f"delete from {SPLIT_BOOK_TABLE} where articleID = '{articleID}'"
+                        # commit automatically handled by do_action_query
                         self.ocd.do_action_query(delqry, queryparams=None, contextStr=f"({SPLIT_BOOK_TABLE} %s)" % articleID)
                         log_everywhere_if(DBGSTDOUT, level="debug", msg=f"Deleted from {SPLIT_BOOK_TABLE} ArticleID: {articleID}")
                         
@@ -201,6 +203,7 @@ class SplitBookData:
         prequery = f"delete from {SPLIT_BOOK_TABLE} where articleID = '{art_id}' {add_page_pattern} {add_filename_pattern}"
         log_everywhere_if(DBGSTDOUT, level="debug", msg=prequery)
         
+        # commit automatically handled by do_action_query
         ret_val = self.ocd.do_action_query(prequery, queryparams=None, contextStr=f"(SplitBookPages Removed for {art_id})")
         return ret_val
 
@@ -219,7 +222,7 @@ class SplitBookData:
         """
 
         ret_val = None
-        insert_splitbook_qry = fr'replace into {SPLIT_BOOK_TABLE} values ("%s"' + (5*', "%s"') + ")"
+        insert_splitbook_qry = fr'replace into {SPLIT_BOOK_TABLE} values ("%s"' + (6*', "%s"') + ")"
 
         if isinstance(art_locator, str):  
             art_id = opasLocator.Locator(art_locator, noStartingPageException=True)
@@ -229,6 +232,7 @@ class SplitBookData:
             art_id_base = art_locator.baseCode()
 
         safeFilename = opasgenlib.do_escapes(full_filename)
+        current_time = datetime.datetime.now()
         
         pn = opasDocuments.PageNumber(page_id)
         page_num = pn.format(keyword=pn.NUMERICSTRING)
@@ -239,10 +243,12 @@ class SplitBookData:
                                            page_num, 
                                            has_biblio,
                                            has_toc,
-                                           safeFilename
+                                           safeFilename, 
+                                           current_time
                                            )
         
         # now add the row
+        # commit automatically handled by do_action_query
         ret_val = self.ocd.do_action_query(querytxt,
                                            queryparams=None,
                                            contextStr="(SPLITBOOKS %s/%s)" % (art_id_base, page_id))

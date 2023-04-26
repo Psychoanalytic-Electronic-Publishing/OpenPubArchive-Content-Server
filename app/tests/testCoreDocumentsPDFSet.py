@@ -16,13 +16,15 @@ import logging
 logger = logging.getLogger(__name__)
 
 import unittest
-from localsecrets import PADS_TEST_ID2, PADS_TEST_PW2
+from localsecrets import PADS_TEST_ID2, PADS_TEST_PW2, APIDOMAIN
 from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_id, UNIT_TEST_CLIENT_ID, test_login
+
+COOKIE_DOMAIN = f".{APIDOMAIN}"
+BASEURL = "pep-web.org"
+APIURL = "https://stage-api.pep-web.org"
 
 # Login!
 sessID, headers, session_info = test_login(username=PADS_TEST_ID2, password=PADS_TEST_PW2)
-
-import opasPySolrLib
 
 class TestDocumentDownloadSetForInspection(unittest.TestCase):
     """

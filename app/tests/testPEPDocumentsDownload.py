@@ -81,6 +81,28 @@ class TestdocumentsDownload(unittest.TestCase):
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
        
+    def test_2C_PDF_Download(self):
+        import opasPySolrLib
+        doc = opasPySolrLib.prep_document_download(document_id = "IFP.017.0240A",
+                                                   session_info=session_info, 
+                                                   ret_format="PDF",
+                                                   base_filename="test",
+                                                   flex_fs=None,
+                                                   page=240, 
+                                                   page_limit=2)        
+        # Confirm that the request-response cycle completed successfully.
+        assert(doc is not None)
+
+    def test_2D_PDF_Download(self):
+        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/PDF/IFP.017.0240A/?pageoffset=3&pagelimit=3')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+
+    def test_2D2_PDF_Download(self):
+        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/PDF/IFP.017.0240A/?page=240&pagelimit=3')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+
     def test_3_EPUB_Download(self):
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/EPUB/BAP.013.0720A/')
         response = requests.get(full_URL, headers=headers)
@@ -126,8 +148,6 @@ class TestdocumentsDownload(unittest.TestCase):
     def test_10_Disallowed_Download(self):
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/PDFORIG/pi.041.0138a/')
         response = requests.get(full_URL, headers=headers)
-        r = response.json()
-        print (r["detail"])
         assert(response.ok == False)
 
     def test_11_PDFOrig_Download_Embargoed(self):

@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.1119/v1.0.2" 
+__version__     = "2023.0322/v1.0.3" 
 __status__      = "Development"
 
 programNameShort = "opasGoogleMetadataExport"
@@ -295,7 +295,7 @@ def find_or_emptystr(elem, find_target: str, default=""):
     return ret_val
 
 #--------------------------------------------------------------------------------
-def writePublisherFile(path=None, fs=None, online_link_location="http://peparchive.org/links/pepwebmeta/%s.xml", publisher_file_name = r"publisher-info.xml", doValidate=False, path_is_root_bucket=False):
+def writePublisherFile(path=None, fs=None, online_link_location="https://pep-web-google-metadata.s3.amazonaws.com/", publisher_file_name = r"publisher-info.xml", doValidate=False, path_is_root_bucket=False):
     pat = ".*\.xml"
     metadata_files_names = fs.get_matching_filelist(filespec_regex=pat, path=path)
     #fileInfo = {}

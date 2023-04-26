@@ -88,7 +88,7 @@ class TestDocumentsDocumentGet(unittest.TestCase):
         response_info = r["documents"]["responseInfo"]
         response_set = r["documents"]["responseSet"]
         docitem = response_set[0]
-        assert(docitem["termCount"] >= 25)
+        assert docitem["termCount"] >= 25, docitem["termCount"]
 
     def test_1_get_document(self):
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Document/PCT.011.0171A/')
@@ -132,7 +132,7 @@ class TestDocumentsDocumentGet(unittest.TestCase):
         response_set = r["documents"]["responseSet"] 
         assert(response_info["count"] == 1)
         # this document should be available
-        assert(response_set[0]["accessLimited"] == False)
+        assert (response_set[0]["accessLimited"] == False)
         #print (response_set)
 
     def test_2_get_document_with_search_context(self):
@@ -221,8 +221,8 @@ class TestDocumentsDocumentGet(unittest.TestCase):
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Document/APA.064E.6666A/')
         response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
-        assert(response.status_code == 404)
-        assert(response.reason == "Not Found")
+        assert response.status_code == 404, response.status_code
+        assert response.reason == "Not Found", response.reason
 
 
 if __name__ == '__main__':

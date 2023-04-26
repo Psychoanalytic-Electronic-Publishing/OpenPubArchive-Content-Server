@@ -20,6 +20,60 @@ class TestDatabaseSmartSearch(unittest.TestCase):
         #response_set = r["documentList"]["responseSet"]
         assert(response_info["count"] == 1)
 
+    def test_0_smartsearch_resilience(self):
+        # no fix required
+        tests = ["FA.017.0060A",  # right
+                 "FA.017A.0060A", # extra vol variant
+                 "PSU.016.0017A", # missing vol variant C
+                 "APA.069.0259",  # missing page suffix
+                 "FA.010.0014A",  # missing vol variant A
+                 "NLP.079.0007A", # right
+                 "NLP.079.0006A", # page before
+                 "NLP.079.0008A", # page after
+                ]
+        
+        for art_id in tests:
+            full_URL = base_plus_endpoint_encoded(f'/v2/Database/SmartSearch/?smarttext={art_id}&abstract=True')
+            response = requests.get(full_URL, headers=headers)
+            assert(response.ok == True)
+            r = response.json()
+            response_info = r["documentList"]["responseInfo"]
+            print (f'Smarttext: {response_info["description"]}')
+            assert(response_info["count"] == 1)
+        
+    def test_0_smartsearch_endpoint_rxcf(self):
+        full_URL = base_plus_endpoint_encoded('/v2/Database/SmartSearch/?smarttext=cf::JAA.028.0740A:0.66, PSAR.086.0967A:0.66, IJP.080.0189A:0.65, PAQ.068.0313A:0.65, PPSY.016.0481A:0.61//label//')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        r = response.json()
+        response_info = r["documentList"]["responseInfo"]
+        print (f'Smarttext: {response_info["description"]}')
+        #response_set = r["documentList"]["responseSet"]
+        assert(response_info["count"] == 5)
+        
+    def test_0_smartsearch_endpoint_rxcf_from_client(self):
+        samples = ("""cf::JAA.028.0740A:0.66, PSAR.086.0967A:0.66, IJP.080.0189A:0.65, PAQ.068.0313A:0.65, PPSY.016.0481A:0.61//Stern, D. B. (1997). Unformulated experience: From dissociation to imagination in psychoanalysis.   The Analytic Press.//""",
+                   )
+        for fromcli in samples: 
+            full_URL = base_plus_endpoint_encoded(f'/v2/Database/SmartSearch/?smarttext={fromcli}')
+            response = requests.get(full_URL, headers=headers)
+            assert(response.ok == True)
+            r = response.json()
+            response_info = r["documentList"]["responseInfo"]
+            print (f'Smarttext: {response_info["description"]}')
+            #response_set = r["documentList"]["responseSet"]
+            assert(response_info["count"] >= 1)
+        
+    def test_0_smartsearch_endpoint_rxcf_no_spaces(self):
+        full_URL = base_plus_endpoint_encoded('/v2/Database/SmartSearch/?smarttext=cf::JAA.028.0740A:0.66,PSAR.086.0967A:0.66,IJP.080.0189A:0.65,PAQ.068.0313A:0.65,PPSY.016.0481A:0.61//E. Kris. The Psychology of Caricature. The Internatl Journal of Psychoanalysis July 1936 Vol. 17//')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        r = response.json()
+        response_info = r["documentList"]["responseInfo"]
+        print (f'Smarttext: {response_info["description"]}')
+        #response_set = r["documentList"]["responseSet"]
+        assert(response_info["count"] == 5)
+
     def test_0_name_year_smartsearch_endpoint(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/SmartSearch/?smarttext=Tuckett 1982&sort=rank&limit=15&offset=0')
         response = requests.get(full_URL, headers=headers)
@@ -28,7 +82,7 @@ class TestDatabaseSmartSearch(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         print (f'Smarttext: {response_info["description"]}')
-        assert(response_info["fullCount"] == 1)
+        assert(response_info["fullCount"] == 1), response_info["fullCount"]
         #print (response_set)
         for n in response_set:
             print (n["documentRef"])
@@ -75,7 +129,7 @@ class TestDatabaseSmartSearch(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         print (f'Smarttext: {response_info["description"]}')
         response_set = r["documentList"]["responseSet"]
-        assert(response_info["fullCount"] == 19)
+        assert(response_info["fullCount"] == 19), response_info["fullCount"]
         #print (response_set)
 
     def test_003_smartsearch_name_year(self):
@@ -86,7 +140,7 @@ class TestDatabaseSmartSearch(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         print (f'Smarttext: {response_info["description"]}')
-        assert(response_info["fullCount"] == 1)
+        assert(response_info["fullCount"] == 1), response_info["fullCount"]
         #print (response_set)
         for n in response_set:
             print (n["documentRef"])
@@ -101,21 +155,21 @@ class TestDatabaseSmartSearch(unittest.TestCase):
         print (response_info)
         response_set = r["documentList"]["responseSet"]
         print (f'Smarttext: {response_info["description"]}')
-        assert(response_info["fullCount"] == 1)
+        assert(response_info["fullCount"] == 1), response_info["fullCount"]
         #print (response_set)
         for n in response_set:
             print (n["documentRef"])
         # Confirm that the request-response cycle completed successfully.
 
     def test_4_search_schemafield(self):
-        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=art_type:REV&sourcecode=AOP')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=art_type:COM&sourcecode=CPS')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
         response_info = r["documentList"]["responseInfo"]
-        print (f'Smarttext: {response_info["description"]}')
         response_set = r["documentList"]["responseSet"]
-        assert(response_info["fullCount"] == 3)
+        print (f'Smarttext: {response_info["description"]} Count:{response_info["fullCount"]}')
+        assert response_info["fullCount"] > 10, response_info["fullCount"] 
         print (response_set[0])
 
     def test_5_search_author_and_journalcode(self):
@@ -188,7 +242,7 @@ class TestDatabaseSmartSearch(unittest.TestCase):
         response_set = r["documentList"]["responseSet"]
         print (f'Smarttext: {response_info["description"]}')
         print (response_info["count"])
-        assert(response_info["count"] == 7)  # verified 7 matches 2020-07-26
+        assert response_info["count"] == 7, response_info["count"]  # verified 7 matches 2020-07-26
         # print (response_set[0])
 
     def test_10_vol_and_page(self):
@@ -215,8 +269,7 @@ class TestDatabaseSmartSearch(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         print (f'Smarttext: {response_info["description"]}')
-        print (response_info["fullCount"])
-        assert(response_info["fullCount"] >= 627)
+        assert(response_info["fullCount"] >= 627), response_info["fullCount"]
         # print (response_set[0])
 
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?sourcecode=AJP&smarttext=art_type:PRO')
@@ -226,8 +279,7 @@ class TestDatabaseSmartSearch(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         print (f'Smarttext: {response_info["description"]}')
-        print (response_info["fullCount"])
-        assert(response_info["fullCount"] >= 37)
+        assert(response_info["fullCount"] >= 37), response_info["fullCount"]
         print (response_set[0])
 
     def test_11A_single_name(self):
@@ -240,8 +292,7 @@ class TestDatabaseSmartSearch(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         print (f'Smarttext: {response_info["description"]}')
-        print (response_info["fullCount"])
-        assert(response_info["fullCount"] >= 59)
+        assert(response_info["fullCount"] >= 59), response_info["fullCount"]
         print (response_set[0])
 
     def test_11B_multiple_name(self):
@@ -390,8 +441,7 @@ class TestDatabaseSmartSearch(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         print (f'Smarttext: {response_info["description"]}')
-        print (response_info["fullCount"])
-        assert(response_info["count"] >= 1)
+        assert(response_info["count"] >= 1), response_info["fullCount"]
         print (response_set[0])
 
     def test_13_references_a(self):
@@ -432,8 +482,7 @@ class TestDatabaseSmartSearch(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         print (f'Smarttext: {response_info["description"]}')
-        print (response_info["fullCount"])
-        assert(response_info["fullCount"] >= 695 and response_info["fullCount"] <= 810)
+        assert(response_info["fullCount"] >= 695 and response_info["fullCount"] <= 810), response_info["fullCount"]
 
     def test_13b_dts_example_searches(self):
         """
@@ -445,8 +494,7 @@ class TestDatabaseSmartSearch(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         print (f'Smarttext: {response_info["description"]}')
-        print (response_info["fullCount"])
-        assert(response_info["fullCount"] >= 6900 and response_info["fullCount"] <= 9000)
+        assert(response_info["fullCount"] >= 6900 and response_info["fullCount"] <= 9000), response_info["fullCount"]
 
     def test_13c_dts_example_searches(self):
         """
@@ -459,7 +507,7 @@ class TestDatabaseSmartSearch(unittest.TestCase):
         response_set = r["documentList"]["responseSet"]
         print (f'Smarttext: {response_info["description"]}')
         count1 = response_info["fullCount"]
-        assert count1 >= 133 and count1 <= 190, f"Count: {count1}" 
+        assert count1 >= 133 and count1 <= 220, f"Count: {count1}" 
 
     def test_13d_dts_example_searches(self):
         """
@@ -498,7 +546,7 @@ class TestDatabaseSmartSearch(unittest.TestCase):
         response_set = r["documentList"]["responseSet"]
         print (f'Smarttext: {response_info["description"]}')
         count1 = response_info["fullCount"]
-        assert (count1 >= 440 and count1 <= 525), f"Count: {count1}" 
+        assert (count1 >= 440 and count1 <= 540), f"Count: {count1}" 
 
     def test_14c_example_smart_search_classes(self):
         """

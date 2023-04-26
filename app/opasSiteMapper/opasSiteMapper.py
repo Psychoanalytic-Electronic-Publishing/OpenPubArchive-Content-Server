@@ -134,7 +134,7 @@ if __name__ == "__main__":
                       help="Clear prior sitemap files (delete files in path/bucket matching sitemap.*)")
     parser.add_option("-t", "--test", dest="testmode", action="store_true", default=False,
                       help="Run Doctests.  Will run a small sample of records and total output")
-    parser.add_option("-r", "--recordsperfile", dest="recordsperfile", type="int", default=8000,
+    parser.add_option("-r", "--recordsperfile", dest="recordsperfile", type="int", default=4000,
                       help="Max Number of records per file")
     parser.add_option("-m", "--maxrecords", dest="maxrecords", type="int", default=200000,
                       help="Max total records to be exported")
@@ -147,15 +147,12 @@ if __name__ == "__main__":
         doctest.testmod()
         print ("Finished Doctests!")
         #try new addition
-        import subprocess
-        subprocess.run(path_name="../opasGoogleMetadataExport/opasGoogleMetadataExport.py")
         print ("Fini. Tests complete.")
     else:
         ret_val = sitemapper(path=options.bucket, size=options.recordsperfile, max_records=options.maxrecords, clear_sitemap=options.clearsitemap)
         print (ret_val["siteMapIndexFile"])
         print (ret_val["siteMapList"])
         print ("Sitemap Finished!")
-        print ("Running Google Metadata Generator (interim solution)")
         print ("Finished!")
 
     sys.exit()

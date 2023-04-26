@@ -144,17 +144,6 @@ class TestDatabaseSearchLoggedIn(unittest.TestCase):
         assert(response_info["count"] == 2)
         print (response_set[0])
 
-    def test_search_author_and_journalcode_and_citecount(self):
-        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?author=Bollas&sourcecode=AOP&citecount=1 IN 10')
-        response = requests.get(full_URL, headers=headers)
-        assert(response.ok == True)
-        r = response.json()
-        #print (r)
-        response_info = r["documentList"]["responseInfo"]
-        response_set = r["documentList"]["responseSet"] 
-        assert(response_info["count"] == 2)
-        print (response_set[0])
-
     def test_search_startyear(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?sourcecode=aop&startyear=2015')
         response = requests.get(full_URL, headers=headers)

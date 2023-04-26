@@ -52,15 +52,16 @@ class TestMetadataVolumes(unittest.TestCase):
         print (f"Video Source Count: {r['volumeList']['responseInfo']['fullCount']}")
         assert(r['volumeList']['responseInfo']['fullCount'] == unitTestConfig.VOL_COUNT_VIDEOS)
 
-    def test_0_meta_volumes_api_ZBK(self): 
+    def test_0_meta_volumes_api_ZBK(self):
+        # ---------------------------------------------------------------------------------------
+        # Reminder: Requires load of offsite ZBKs to pass
         # ---------------------------------------------------------------------------------------
         full_URL = base_plus_endpoint_encoded('/v2/Metadata/Volumes/?sourcecode=ZBK')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         # test return
         r = response.json()
-        print (f"ZBK Volume Count: {r['volumeList']['responseInfo']['fullCount']}")
-        assert(r['volumeList']['responseInfo']['fullCount'] >= unitTestConfig.VOL_COUNT_ZBK) 
+        assert r['volumeList']['responseInfo']['fullCount'] >= unitTestConfig.VOL_COUNT_ZBK, f"{r['volumeList']['responseInfo']['fullCount']} should be >= {unitTestConfig.VOL_COUNT_ZBK}"
 
     def test_0_meta_volumes_api_IJPSP(self): 
         # ---------------------------------------------------------------------------------------

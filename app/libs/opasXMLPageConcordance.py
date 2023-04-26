@@ -69,7 +69,7 @@ class PageConcordance:
                 pg_num = pg_numbers[0]
                 if pg_num is not None:
                     pgLocator = self.get_page_locator(art_id, pg_num.text)  #look it up in the concordance table
-                    if pgLocator != None:
+                    if pgLocator is not None:
                         pg_num_tgt = pgLocator.splitArticleID(includeLocalID=1)[-1][1:]
                         pg_num_tgt = opasDocuments.PageNumber(pg_num_tgt)
                         if aLoc.jrnlCode == "SE":
@@ -121,7 +121,7 @@ class PageConcordance:
 
         """
         retVal = None
-        aLoc = opasLocator.Locator(articleID, ocd=self.ocd)
+        aLoc = opasLocator.Locator(articleID)
         if aLoc.jrnlCode == "SE":
             retVal = self.get_page_locator_for_GW(articleID, page_number)
         elif aLoc.jrnlCode == "GW":
@@ -167,10 +167,10 @@ class PageConcordance:
         pgLocRow = ocd.get_select_as_list(selqry)
         if not opasgenlib.is_empty(pgLocRow):
             GWVol, GWFirstPgNum, GWLastPgNum = pgLocRow[0]
-            if GWFirstPgNum != None:
+            if GWFirstPgNum is not None:
                 GWFirstPgNum = int(GWFirstPgNum)
                 GWInstanceID = split_book_data.get_splitbook_page_instance(book_code="GW", vol=GWVol, page_id=GWFirstPgNum)
-                if GWInstanceID != None:
+                if GWInstanceID is not None:
                     retVal = opasLocator.Locator("%s.P%04d" % (GWInstanceID, GWFirstPgNum))
                 else:
                     retVal = opasLocator.Locator("GW.0%s.%04d.P%04d" % (GWVol, GWFirstPgNum, GWFirstPgNum))
@@ -212,11 +212,11 @@ class PageConcordance:
         pg_loc_row = ocd.get_select_as_list(selqry)
         if not opasgenlib.is_empty(pg_loc_row):
             src_name, src_vol, src_pg_num = pg_loc_row[0]
-            if src_vol != None and src_pg_num != None:
+            if src_vol is not None and src_pg_num is not None:
                 src_pg_num = int(src_pg_num)
                 pg_src_pg_num = opasDocuments.PageNumber(src_pg_num)
                 SE_instance_id = split_book_data.get_splitbook_page_instance(book_code="SE", vol=src_vol, page_id=src_pg_num)
-                if SE_instance_id != None:
+                if SE_instance_id is not None:
                     retVal = opasLocator.Locator("%s.%s" % (SE_instance_id, pg_src_pg_num.format(keyword=pg_num.LOCALID)))
                 else:
                     retVal = None

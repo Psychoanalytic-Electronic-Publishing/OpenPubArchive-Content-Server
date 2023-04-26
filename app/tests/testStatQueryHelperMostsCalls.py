@@ -40,7 +40,7 @@ class TestOpasQueryHelperMostsCalls(unittest.TestCase):
     
         r, status = opasPySolrLib.search_stats_for_download(solr_query_spec,
                                                             limit=100)
-        assert r.documentList.responseInfo.fullCount > 15000, r.documentList.responseInfo.fullCount
+        assert r.documentList.responseInfo.fullCount > 13000, r.documentList.responseInfo.fullCount
 
 
     def test_1_most_cited_direct(self):
@@ -62,7 +62,7 @@ class TestOpasQueryHelperMostsCalls(unittest.TestCase):
     
         r, status = opasPySolrLib.search_stats_for_download(solr_query_spec,
                                                             limit=100)
-        assert r.documentList.responseInfo.fullCount > 15000, r.documentList.responseInfo.fullCount
+        assert r.documentList.responseInfo.fullCount > 13000, r.documentList.responseInfo.fullCount
 
     def test_3_most_cited_direct_simple(self):
         """

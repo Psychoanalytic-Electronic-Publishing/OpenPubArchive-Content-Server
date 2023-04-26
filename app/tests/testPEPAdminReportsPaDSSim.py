@@ -4,7 +4,7 @@
 import requests
 import unittest
 import time
-from pydantic import BaseModel, Field # removed Field, causing an error on AWS
+from pydantic import BaseModel, Field 
 from datetime import datetime
 from datetime import date, timedelta
 

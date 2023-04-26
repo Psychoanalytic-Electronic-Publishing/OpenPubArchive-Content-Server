@@ -48,6 +48,9 @@ count_anchors = 0
 import smartsearch
 import smartsearchLib
 
+# All schema fields in the doc schema plus the allowed mapped names in the schemaMap (convenience names)
+ALL_FIELDS = smartsearch.docschemainfo.doc_fields + list(schemaMap.USER2SOLRFIELDNAME_MAP.keys()) 
+
 ocd = opasCentralDBLib.opasCentralDB()
 pat_prefix_amps = re.compile("^\s*&& ")
 
@@ -89,6 +92,37 @@ def is_empty(arg):
         return True
     else:
         return False
+
+def split_at(string, separator):
+    sep_set = set(separator)
+    if not sep_set:
+        return [string]
+    result = []
+    start = 0
+    for i, char in enumerate(string):
+        if char in sep_set:
+            if start != i:
+                result.append(string[start:i])
+            result.append(char)
+            start = i + 1
+    if start != len(string):
+        result.append(string[start:])
+    return result
+
+#-----------------------------------------------------------------------------
+def remove_colons_not_in_list(arg, word_list=opasConfig.MERGED_SOLR_FIELD_LIST):
+    """
+    (({!parent which=’art_level:1’} art_level:2 && ((parent_tag:(p_body || p_summaries || p_appxs) && para:(ego id superego)))) || ({!parent which='art_level:1'} art_level:2 && ((parent_tag:(p_body || p_summaries || p_appxs) && para:(ego id superego)))))
+    """
+    words = split_at(arg, "{’'(,!=:)} ")
+    new_string = ""
+    for i, word in enumerate(words):
+        if ':' in word and i > 0 and words[i-1] not in word_list:
+            word = word.replace(':', '')
+        new_string += word
+    
+    new_string = new_string.replace("’", "'")
+    return new_string.strip()
 
 #-----------------------------------------------------------------------------
 def check_search_args(**kwargs):
@@ -975,156 +1009,161 @@ def parse_search_query_parameters(search=None,             # url based parameter
     #else:
         #sort = f"{opasConfig.DEFAULT_SOLR_SORT_FIELD} {opasConfig.DEFAULT_SOLR_SORT_DIRECTION}"
 
-    if smarttext is not None:
-        search_dict = smartsearch.smart_search(smarttext)
-        # set up parameters as a solrQueryTermList to share that processing
-        # solr_query_spec.solrQueryOpts.qOper = "OR"
-        schema_field = search_dict.get(opasConfig.KEY_SEARCH_FIELD)
-        limit = 0
-        try:
-            search_result_explanation = search_dict[opasConfig.KEY_SEARCH_SMARTSEARCH]
-        except Exception as e:
-            search_result_explanation = "" # check why there's no explanation!
-            logger.warning(f"SmartSearch result explanation is not defined {e}")
-            
-        if schema_field is not None:
-            if schema_field == "solr": # adv comes back as schema_field "solr" as does if they use "solr::"
-                schema_value = search_dict.get(opasConfig.KEY_SEARCH_VALUE)
-                if opasgenlib.not_empty(schema_value):
-                    search_q += f"&& {schema_value} "
-                    limit = 1
-                else: # not what we thought
-                    limit = 0
-            else:
-                schema_value = search_dict.get(opasConfig.KEY_SEARCH_VALUE)
-                if opasgenlib.not_empty(schema_value):
-                    if schema_field in opasConfig.SS_BROADEN_DICT.keys():
-                        broad_field_list = opasConfig.SS_BROADEN_DICT.get(schema_field, None)
-                        if broad_field_list is not None:
-                            search_q += f"&& ("
-                            for n in broad_field_list:
-                                search_q += f"{n}:{schema_value} "
-                                if n != broad_field_list[-1]: # if this isn't the last, add an OR
-                                    search_q += f"|| "
-                            # done, end the parens
-                            search_q += f")"
-                            limit = 1
+    if smarttext:
+        check_if_only_punct = '!"#$%&()+,-./;:<=>@[\\]^_`{|}~' # punctuation Solr doesn't like by itself
+        nonemptycheck = re.sub(f'[{check_if_only_punct}]', '', smarttext)
+        if not nonemptycheck:
+            logger.error(f"Bad smarttext field data. {smarttext}") 
+        else:
+            search_dict = smartsearch.smart_search(smarttext)
+            # set up parameters as a solrQueryTermList to share that processing
+            # solr_query_spec.solrQueryOpts.qOper = "OR"
+            schema_field = search_dict.get(opasConfig.KEY_SEARCH_FIELD)
+            limit = 0
+            try:
+                search_result_explanation = search_dict[opasConfig.KEY_SEARCH_SMARTSEARCH]
+            except Exception as e:
+                search_result_explanation = "" # check why there's no explanation!
+                logger.warning(f"SmartSearch result explanation is not defined {e}")
+                
+            if schema_field is not None:
+                if schema_field == "solr": # adv comes back as schema_field "solr" as does if they use "solr::"
+                    schema_value = search_dict.get(opasConfig.KEY_SEARCH_VALUE)
+                    if opasgenlib.not_empty(schema_value):
+                        search_q += f"&& {schema_value} "
+                        limit = 1
+                    else: # not what we thought
+                        limit = 0
+                else:
+                    schema_value = search_dict.get(opasConfig.KEY_SEARCH_VALUE)
+                    if opasgenlib.not_empty(schema_value):
+                        if schema_field in opasConfig.SS_BROADEN_DICT.keys():
+                            broad_field_list = opasConfig.SS_BROADEN_DICT.get(schema_field, None)
+                            if broad_field_list is not None:
+                                search_q += f"&& ("
+                                for n in broad_field_list:
+                                    search_q += f"{n}:{schema_value} "
+                                    if n != broad_field_list[-1]: # if this isn't the last, add an OR
+                                        search_q += f"|| "
+                                # done, end the parens
+                                search_q += f")"
+                                limit = 1
+                            else:
+                                logger.error(f"SS_Broaden configuration error: {schema_field}")
+                                # don't broaden
+                                if "'" in schema_value or '"' in schema_value:
+                                    search_q += f"&& {schema_field}:{schema_value} "
+                                else:
+                                    search_q += f"&& {schema_field}:({schema_value}) "
                         else:
-                            logger.error(f"SS_Broaden configuration error: {schema_field}")
-                            # don't broaden
                             if "'" in schema_value or '"' in schema_value:
                                 search_q += f"&& {schema_field}:{schema_value} "
                             else:
                                 search_q += f"&& {schema_field}:({schema_value}) "
-                    else:
-                        if "'" in schema_value or '"' in schema_value:
-                            search_q += f"&& {schema_field}:{schema_value} "
-                        else:
-                            search_q += f"&& {schema_field}:({schema_value}) "
-                        limit = 1
-        else:
-            syntax = search_dict.get("syntax")
-            if syntax is not None:
-                if syntax == "solr" and search_q == "*:*":
-                    query = search_dict.get("query")
-                    if query is not None:
-                        search_q = f"{query}"
-                        limit = 1
+                            limit = 1
             else:
-                doi = search_dict.get("doi")
-                if opasgenlib.not_empty(doi):
-                    filter_q += f"&& art_doi:({doi}) "
-                    limit = 1
-                    
-        if limit == 0: # not found special token
-            art_id = search_dict.get("art_id")
-            if opasgenlib.not_empty(art_id):
-                limit = 1
-                filter_q += f"&& art_id:({art_id}) "
-            else:
-                art_vol = search_dict.get("vol")
-                if art_vol is not None:
-                    if vol is None:
-                        vol = art_vol.lstrip("0")
-        
-                art_pgrg = search_dict.get("pgrg")
-                if opasgenlib.not_empty(art_pgrg):
-                    # art_pgrg1 = art_pgrg.split("-")
-                    if "-" in art_pgrg:
-                        filter_q += f"&& art_pgrg:({art_pgrg}) "
-                    else:
-                        filter_q += f"&& art_pgrg:({art_pgrg}-*) "
-        
-                art_yr = search_dict.get("yr")
-                if art_yr is not None:
-                    if startyear is None and endyear is None:
-                        startyear = art_yr
-        
-                art_authors = search_dict.get("author_list")
-                if art_authors is not None:
-                    try:
-                        #lastnames = [x[1] for x in art_authors]
-                        #authorids = [x for x in art_authors]
-                        authorids = art_authors
-                    except Exception as e:
-                        logging.warning(f"Error getting author names: {e}")
-                    else:
-                        authors_bool = ""
-                        for n in authorids:
-                            n_nospaces = re.sub(" ", "", n)
-                            if authors_bool == "":
-                                authors_bool = f'("{n}" '
-                                authors_bool_nospaces = f'({n_nospaces}* ' # author id with no spaces
-                            else:
-                                authors_bool += f'&& "{n}" '
-                                authors_bool_nospaces += f'&& {n_nospaces}* ' # author id with no spaces
-                                
-                        if authors_bool != "":
-                            authors_bool += ")"
-                            authors_bool_nospaces += ")"
-                            # _nospaces for special space removed solr schema fields, of type string_sql
-                            filter_q += f"&& (art_authors:({authors_bool}) || art_authors_ids_strings_sql:({authors_bool_nospaces}) || art_authors_citation_list_strings_sql:({authors_bool_nospaces}) || art_authors_mast_list_strings_sql:({authors_bool_nospaces})) "
-                            
-                    #if author is None:
-                        #author = art_authors
-                
-                art_author = search_dict.get("author")
-                if art_author is not None:
-                    if author is None:
-                        author = f'"{art_author}"'
-    
-                title_search = search_dict.get(opasConfig.SEARCH_FIELD_TITLE)
-                if title_search is not None:
-                    if title is None:
-                        title = title_search
+                syntax = search_dict.get("syntax")
+                if syntax is not None:
+                    if syntax == "solr" and search_q == "*:*":
+                        query = search_dict.get("query")
+                        if query is not None:
+                            search_q = f"{query}"
+                            limit = 1
+                else:
+                    doi = search_dict.get("doi")
+                    if opasgenlib.not_empty(doi):
+                        filter_q += f"&& art_doi:({doi}) "
+                        limit = 1
                         
-                word_search = search_dict.get("wordsearch")
-                if word_search is not None:
-                    art_level = 1
-                    # if it already has a field name, it won't be here as a word search. so add body_xml as default
-                    field_name = "body_xml"
-                    if synonyms:
-                        field_name += opasConfig.SYNONYM_SUFFIX
-
-                    search_q += f'&& {field_name}:({word_search}) '
-
-                search_type = search_dict.get(opasConfig.KEY_SEARCH_TYPE)
-                if search_type == opasConfig.SEARCH_TYPE_LITERAL:
-                    literal_str = search_dict.get(opasConfig.KEY_SEARCH_VALUE)
-                    literal_str = opasgenlib.add_smart_quote_search(literal_str) # temp, until we load smartquotes only
-                    search_q += f'&& {literal_str}'
-                elif search_type == opasConfig.SEARCH_TYPE_BOOLEAN:
-                    boolean_str = search_dict.get(opasConfig.KEY_SEARCH_VALUE)
-                    boolean_str = opasgenlib.add_smart_quote_search(boolean_str) # temp, until we load smartquotes only 
-                    search_q += f'&& {boolean_str}'
-                elif search_type == opasConfig.SEARCH_TYPE_PARAGRAPH:
-                    para_str = search_dict.get(opasConfig.KEY_SEARCH_VALUE) 
-                    para_str = opasgenlib.add_smart_quote_search(para_str) # temp, until we load smartquotes only
-                    search_q += f'&& {para_str}'
-                elif search_type == opasConfig.SEARCH_TYPE_WORDSEARCH:
-                    pass # nothing else to do here, but don't want to hit else in this case
-                else: # allow trapping during debug
-                    logger.debug(f"search_type passthrough: {search_type}")                   
+            if limit == 0: # not found special token
+                art_id = search_dict.get("art_id")
+                if opasgenlib.not_empty(art_id):
+                    limit = 1
+                    filter_q += f"&& art_id:({art_id}) "
+                else:
+                    art_vol = search_dict.get("vol")
+                    if art_vol is not None:
+                        if vol is None:
+                            vol = art_vol.lstrip("0")
+            
+                    art_pgrg = search_dict.get("pgrg")
+                    if opasgenlib.not_empty(art_pgrg):
+                        # art_pgrg1 = art_pgrg.split("-")
+                        if "-" in art_pgrg:
+                            filter_q += f"&& art_pgrg:({art_pgrg}) "
+                        else:
+                            filter_q += f"&& art_pgrg:({art_pgrg}-*) "
+            
+                    art_yr = search_dict.get("yr")
+                    if art_yr is not None:
+                        if startyear is None and endyear is None:
+                            startyear = art_yr
+            
+                    art_authors = search_dict.get("author_list")
+                    if art_authors is not None:
+                        try:
+                            #lastnames = [x[1] for x in art_authors]
+                            #authorids = [x for x in art_authors]
+                            authorids = art_authors
+                        except Exception as e:
+                            logging.warning(f"Error getting author names: {e}")
+                        else:
+                            authors_bool = ""
+                            for n in authorids:
+                                n_nospaces = re.sub(" ", "", n)
+                                if authors_bool == "":
+                                    authors_bool = f'("{n}" '
+                                    authors_bool_nospaces = f'({n_nospaces}* ' # author id with no spaces
+                                else:
+                                    authors_bool += f'&& "{n}" '
+                                    authors_bool_nospaces += f'&& {n_nospaces}* ' # author id with no spaces
+                                    
+                            if authors_bool != "":
+                                authors_bool += ")"
+                                authors_bool_nospaces += ")"
+                                # _nospaces for special space removed solr schema fields, of type string_sql
+                                filter_q += f"&& (art_authors:({authors_bool}) || art_authors_ids_strings_sql:({authors_bool_nospaces}) || art_authors_citation_list_strings_sql:({authors_bool_nospaces}) || art_authors_mast_list_strings_sql:({authors_bool_nospaces})) "
+                                
+                        #if author is None:
+                            #author = art_authors
+                    
+                    art_author = search_dict.get("author")
+                    if art_author is not None:
+                        if author is None:
+                            author = f'"{art_author}"'
+        
+                    title_search = search_dict.get(opasConfig.SEARCH_FIELD_TITLE)
+                    if title_search is not None:
+                        if title is None:
+                            title = title_search
+                            
+                    word_search = search_dict.get("wordsearch")
+                    if word_search is not None:
+                        art_level = 1
+                        # if it already has a field name, it won't be here as a word search. so add body_xml as default
+                        field_name = "body_xml"
+                        if synonyms:
+                            field_name += opasConfig.SYNONYM_SUFFIX
+    
+                        search_q += f'&& {field_name}:({word_search}) '
+    
+                    search_type = search_dict.get(opasConfig.KEY_SEARCH_TYPE)
+                    if search_type == opasConfig.SEARCH_TYPE_LITERAL:
+                        literal_str = search_dict.get(opasConfig.KEY_SEARCH_VALUE)
+                        literal_str = opasgenlib.add_smart_quote_search(literal_str) # temp, until we load smartquotes only
+                        search_q += f'&& {literal_str}'
+                    elif search_type == opasConfig.SEARCH_TYPE_BOOLEAN:
+                        boolean_str = search_dict.get(opasConfig.KEY_SEARCH_VALUE)
+                        boolean_str = opasgenlib.add_smart_quote_search(boolean_str) # temp, until we load smartquotes only 
+                        search_q += f'&& {boolean_str}'
+                    elif search_type == opasConfig.SEARCH_TYPE_PARAGRAPH:
+                        para_str = search_dict.get(opasConfig.KEY_SEARCH_VALUE) 
+                        para_str = opasgenlib.add_smart_quote_search(para_str) # temp, until we load smartquotes only
+                        search_q += f'&& {para_str}'
+                    elif search_type == opasConfig.SEARCH_TYPE_WORDSEARCH:
+                        pass # nothing else to do here, but don't want to hit else in this case
+                    else: # allow trapping during debug
+                        logger.debug(f"search_type passthrough: {search_type}")                   
 
     if art_level is not None:
         filter_q = f"&& art_level:{art_level} "  # for solr filter fq
@@ -1349,9 +1388,10 @@ def parse_search_query_parameters(search=None,             # url based parameter
     
     implied_issue = None
     if opasgenlib.not_empty(vol):
-        if re.search("[\&\|\,\]]|AND|OR", vol, flags=re.I) is None:
+        vol_nbr_str = str(vol)
+        if re.search("[\&\|\,\]]|AND|OR", vol_nbr_str , flags=re.I) is None:
             # single vol specified, if it contains a suffix, parse apart
-            vol, implied_issue = parse_volume_code(vol)
+            vol, implied_issue = parse_volume_code(vol_nbr_str )
             if implied_issue is not None and implied_issue is not "*":
                 implied_issue = parse_issue_code(issue_code=implied_issue)
                 if opasgenlib.not_empty(issue) == False:
@@ -1364,13 +1404,14 @@ def parse_search_query_parameters(search=None,             # url based parameter
         search_analysis_term_list.append(analyze_this)  # Not collecting this!
 
     if opasgenlib.not_empty(issue):
+        issue_nbr_str = str(issue)
         # issue is a number, so if a letter is supplied, convert to numeric
-        if re.search("[\&\|\,\]]|AND|OR", issue, flags=re.I) is None:
+        if re.search("[\&\|\,\]]|AND|OR", issue_nbr_str, flags=re.I) is None:
             # single issue specified, if it's a code, make it a number
-            issue = parse_issue_code(issue_code=issue)
+            issue = parse_issue_code(issue_code=issue_nbr_str)
 
         if implied_issue is not None:
-            issue = issue + " OR " + implied_issue
+            issue = issue_nbr_str + " OR " + implied_issue
         
         issue = qparse.markup(issue, "art_iss")  # convert AND/OR/NOT, set up field query
             
@@ -1577,9 +1618,9 @@ def parse_search_query_parameters(search=None,             # url based parameter
     # No - As is can cause problems for advanced searches like:
     #  "{!parent which='art_level:1'} art_level:2 && ((parent_tag:(p_body || p_summaries || p_appxs) && para:(ego id superego)))"
     # may not be needed, but sometimes this tricks Solr (2022-04-07). Note: we have already removed colons in the string when it's prefixed by a fieldname+:
-    #if smartsearchLib.quoted_str_has_colons(search_q):
-        ## remove colons
-        #search_q = search_q.replace(":", "")
+    if smartsearchLib.quoted_str_has_colons(search_q):
+        # remove colons
+        search_q = remove_colons_not_in_list(arg=search_q, word_list=ALL_FIELDS)
         
     if smartsearchLib.str_has_wildcards(search_q) or smartsearchLib.str_has_fuzzy_ops(search_q): # quoted_str_has_wildcards(search_q):
         complex_phrase = "{!complexphrase}"
@@ -1989,6 +2030,7 @@ def get_base_article_info_from_search_result(result: dict, documentListItem: mod
             documentListItem.docType = result.get("art_type", None)
             if result.get("art_doi", None): documentListItem.doi = result.get("art_doi", None)
             documentListItem.issue = result.get("art_iss", None)
+            if documentListItem.issue == '0': documentListItem.issue = None
             documentListItem.issn = result.get("art_issn", None)
             documentListItem.isbn = result.get("art_isbn", None)
             documentListItem.embargo = result.get("art_embargo", False)
@@ -2021,6 +2063,11 @@ def get_base_article_info_from_search_result(result: dict, documentListItem: mod
                 documentListItem.authorMast = result.get("art_authors_mast", "")
             else:
                 documentListItem.authorMast = opasgenlib.derive_author_mast(author_ids)
+
+            author_cited = result.get("art_authors_citation", None)
+            if author_cited is not None:
+                documentListItem.authorCitation = author_cited
+                
             if result.get("art_newsecnm", None): documentListItem.newSectionName=result.get("art_newsecnm", None)
             ## Usually we put the abbreviated title here, but that won't always work here.
             # for reference, art_citeas_xml is both legal xml and html

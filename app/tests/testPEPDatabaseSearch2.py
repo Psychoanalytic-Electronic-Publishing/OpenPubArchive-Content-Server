@@ -17,8 +17,8 @@ class Test_PEPOnly_DatabaseSearch(unittest.TestCase):
         assert(response.ok == True)
         r = response.json()
         print (f"Count: {r['documentList']['responseInfo']['fullCount']} Count complete: {r['documentList']['responseInfo']['fullCountComplete']}")
-        assert(r['documentList']['responseInfo']['fullCount'] == 5)
-        assert(r['documentList']['responseInfo']['fullCountComplete'] == True)
+        assert(r['documentList']['responseInfo']['fullCount'] == 5),  r['documentList']['responseInfo']['fullCount']
+        assert(r['documentList']['responseInfo']['fullCountComplete'] == True),  r['documentList']['responseInfo']['fullCountComplete']
 
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?sourcecode=IJP&volume=34S&limit=10&offset=0')
         response = requests.get(full_URL, headers=headers)
@@ -26,8 +26,8 @@ class Test_PEPOnly_DatabaseSearch(unittest.TestCase):
         assert(response.ok == True)
         r = response.json()
         print (f"Count: {r['documentList']['responseInfo']['fullCount']} Count complete: {r['documentList']['responseInfo']['fullCountComplete']}")
-        assert(r['documentList']['responseInfo']['fullCount'] == 5)
-        assert(r['documentList']['responseInfo']['fullCountComplete'] == True)
+        assert(r['documentList']['responseInfo']['fullCount'] == 5),  r['documentList']['responseInfo']['fullCount']
+        assert(r['documentList']['responseInfo']['fullCountComplete'] == True), r['documentList']['responseInfo']['fullCountComplete']
 
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?sourcecode=IJP&volume=034&issue=S&limit=10&offset=0')
         response = requests.get(full_URL, headers=headers)
@@ -35,9 +35,9 @@ class Test_PEPOnly_DatabaseSearch(unittest.TestCase):
         assert(response.ok == True)
         r = response.json()
         print (f"Count: {r['documentList']['responseInfo']['fullCount']} Count complete: {r['documentList']['responseInfo']['fullCountComplete']}")
-        assert(r['documentList']['responseInfo']['fullCount'] == 5)
-        assert(r['documentList']['responseSet'][0]['issue'] == 'Supplement')
-        assert(r['documentList']['responseInfo']['fullCountComplete'] == True)
+        assert(r['documentList']['responseInfo']['fullCount'] == 5), r['documentList']['responseInfo']['fullCount']
+        assert(r['documentList']['responseSet'][0]['issue'] == 'Supplement'), r['documentList']['responseSet'][0]['issue']
+        assert(r['documentList']['responseInfo']['fullCountComplete'] == True), r['documentList']['responseInfo']['fullCountComplete']
 
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?sourcecode=FA&volume=001C&limit=10&offset=0')
         response = requests.get(full_URL, headers=headers)
@@ -45,8 +45,8 @@ class Test_PEPOnly_DatabaseSearch(unittest.TestCase):
         assert(response.ok == True)
         r = response.json()
         print (f"Count: {r['documentList']['responseInfo']['fullCount']} Count complete: {r['documentList']['responseInfo']['fullCountComplete']}")
-        assert(r['documentList']['responseInfo']['fullCount'] == 6)
-        assert(r['documentList']['responseSet'][0]['issue'] == '3')
+        assert(r['documentList']['responseInfo']['fullCount'] == 6), r['documentList']['responseInfo']['fullCount']
+        assert(r['documentList']['responseSet'][0]['issue'] == '3'), r['documentList']['responseSet'][0]['issue']
 
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?sourcecode=FA&volume=001&issue=C&limit=10&offset=0')
         response = requests.get(full_URL, headers=headers)
@@ -54,8 +54,8 @@ class Test_PEPOnly_DatabaseSearch(unittest.TestCase):
         assert(response.ok == True)
         r = response.json()
         print (f"Count: {r['documentList']['responseInfo']['fullCount']} Count complete: {r['documentList']['responseInfo']['fullCountComplete']}")
-        assert(r['documentList']['responseInfo']['fullCount'] == 6)
-        assert(r['documentList']['responseSet'][0]['issue'] == '3')
+        assert(r['documentList']['responseInfo']['fullCount'] == 6), r['documentList']['responseInfo']['fullCount']
+        assert(r['documentList']['responseSet'][0]['issue'] == '3'), r['documentList']['responseSet'][0]['issue']
 
 
 if __name__ == '__main__':

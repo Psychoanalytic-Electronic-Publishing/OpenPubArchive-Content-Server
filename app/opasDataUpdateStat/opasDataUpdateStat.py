@@ -3,38 +3,44 @@
 # To run:
 #     python3 updateSolrviewData
 __author__      = "Neil R. Shapiro"
-__copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
+__copyright__   = "Copyright 2019-2023, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.0618/v1.1.8"
+__version__     = "2023.0317/v1.1.14"
 __status__      = "Beta"
 
 programNameShort = "opasDataUpdateStat"
 
 print(
     f"""
-    {programNameShort} - Program to update the view and citation stat fields in the pepwebdocs
-      database.
+    {programNameShort} - Program to update the view and citation stat fields in the pepwebdocs Solr database.
       
       By default, it only updates records which have views data.
+      
+      Use -h or --help for complete options.  Below are key ones.
 
-      If you use command line option --all, it will add all citation and views data to the
-        pepwebdocs data.  (This takes significantly longer.)
+      Use command line option --everything to add all citation and views data to pepwebdocs.
+      (This takes significantly longer.)
         
-         - The first update after a load should be with option --all
-         - Then, omit --all to update views daily
-         - Citations (include --all) only need be updated after data updates
+         - The first update after a load should be with option --everything (--all is deprecated)
+         - Then, omit --everything to update views daily
+            - only records with views will update Solr
+            - views data needs to be updated again when moved to Production, since those are the REAL views for the DB.
+              The citation data does not need to be reupdated, so you don't need all
+         - Citations (include --everything) only need be updated after non PEPCurrent data updates
+         
+      To limit the records to an art_id pattern, use --key pattern, e.g., --key PSYCHE\..*
+      
+      To limit the views records to after a date, use --since date, e.g., --since 2023-03-01
          
          For complete details, see:
           https://github.com/Psychoanalytic-Electronic-Publishing/OpenPubArchive-Content-Server/wiki/Loading-Data-into-OpenPubArchive
 
       The records added are controlled by the database views:
          vw_stat_docviews_crosstab
-         vw_stat_cited_crosstab
+         vw_stat_cited_crosstab2
          
-      2020-11-21 Added library numbers display to main startup to monitor what it's running under.
-      
-      2020-10-29 Important update - Since it is used at database build/rebuild time, it now updates all records
-         where views are non-zero, not just the last week.
+         Bad article ids, e.g., ref_rx in these tables will cause "article not found" warnings (in Solr)
+
     """
 )
 
@@ -43,21 +49,24 @@ sys.path.append('../libs')
 sys.path.append('../config')
 sys.path.append('../libs/configLib')
 
-UPDATE_AFTER = 2500
+UPDATE_AFTER = 100
 
 import logging
 import time
 import pymysql
 import pysolr
 import localsecrets
+from optparse import OptionParser
+
 from pydantic import BaseModel
 from datetime import datetime
+from loggingDebugStream import log_everywhere_if
 
 from opasArticleIDSupport import ArticleID
 
 # logFilename = programNameShort + "_" + datetime.today().strftime('%Y-%m-%d') + ".log"
 FORMAT = '%(asctime)s %(name)s %(funcName)s %(lineno)d - %(levelname)s %(message)s'
-logging.basicConfig(format=FORMAT, level=logging.WARNING, datefmt='%Y-%m-%d %H:%M:%S')
+logging.basicConfig(format=FORMAT, level=logging.ERROR, datefmt='%Y-%m-%d %H:%M:%S')
 logger = logging.getLogger(programNameShort)
 start_notice = f"{programNameShort} version {__version__} started at {datetime.today().strftime('%Y-%m-%d %H:%M:%S')}."
 print (start_notice)
@@ -79,7 +88,7 @@ class ArticleStat(BaseModel):
 
 class MostCitedArticles(BaseModel):
     """
-    __Table vw_stat_cited_crosstab__
+    __Table vw_stat_cited_crosstab2__
 
     A view with rxCode counts derived from the fullbiblioxml table and the articles table
       for citing sources in one of the date ranges.
@@ -169,13 +178,30 @@ class opasCentralDBMini(object):
         row_count = 0
         # always make sure we have the right input value
         self.open_connection(caller_name="get_most_viewed_crosstab") # make sure connection is open
-        
+        print ("Getting most viewed data...this may take a few minutes...")
+        and_subset = ""
+        if options.file_key:
+            and_subset = f"WHERE document_id RLIKE '{options.file_key}'"
+
+        if not options.all_records:
+            if options.since_date:
+                if options.file_key:
+                    connector = "AND"
+                else:
+                    connector = "WHERE"
+    
+                and_subset = f" {connector} last_viewed >= '{options.since_date}'"
+                
         if self.db is not None:
-            cursor = self.db.cursor(pymysql.cursors.DictCursor)
-            sql = """SELECT DISTINCTROW * FROM vw_stat_docviews_crosstab"""
-            row_count = cursor.execute(sql)
-            ret_val = cursor.fetchall() # returns empty list if no rows
-            cursor.close()
+            try:
+                cursor = self.db.cursor(pymysql.cursors.DictCursor)
+                sql = f"""SELECT DISTINCTROW * FROM vw_stat_docviews_crosstab {and_subset}"""
+                row_count = cursor.execute(sql)
+                print (f"{row_count} view records retrieved")
+                ret_val = cursor.fetchall() # returns empty list if no rows
+                cursor.close()
+            except Exception as e:
+                log_everywhere_if(options.verbose, "error", f"RDS Database error: {e}")
         else:
             logger.fatal("Connection not available to database.")
         
@@ -184,68 +210,30 @@ class opasCentralDBMini(object):
 
     def get_citation_counts(self) -> dict:
         """
-         Using the opascentral vw_stat_cited_crosstab view, based on the api_biblioxml which is used to detect citations,
-           return the cited counts for each art_id
-           
-           Primary view definition copied here for safe keeping.
-           ----------------------
-           vw_stat_cited_crosstab
-           ----------------------
-           
-           SELECT
-           `r0`.`cited_document_id` AS `cited_document_id`,
-           any_value (
-           COALESCE ( `r1`.`count5`, 0 )) AS `count5`,
-           any_value (
-           COALESCE ( `r2`.`count10`, 0 )) AS `count10`,
-           any_value (
-           COALESCE ( `r3`.`count20`, 0 )) AS `count20`,
-           any_value (
-           COALESCE ( `r4`.`countAll`, 0 )) AS `countAll` 
-           FROM
-               (((((
-                               SELECT DISTINCT
-                                   `api_biblioxml`.`art_id` AS `articleID`,
-                                   `api_biblioxml`.`bib_local_id` AS `internalID`,
-                                   `api_biblioxml`.`full_ref_xml` AS `fullReference`,
-                                   `api_biblioxml`.`bib_rx` AS `cited_document_id` 
-                               FROM
-                                   `api_biblioxml` 
-                                   ) `r0`
-                               LEFT JOIN `vw_stat_cited_in_last_5_years` `r1` ON ((
-                                       `r1`.`cited_document_id` = `r0`.`cited_document_id` 
-                                   )))
-                           LEFT JOIN `vw_stat_cited_in_last_10_years` `r2` ON ((
-                                   `r2`.`cited_document_id` = `r0`.`cited_document_id` 
-                               )))
-                       LEFT JOIN `vw_stat_cited_in_last_20_years` `r3` ON ((
-                               `r3`.`cited_document_id` = `r0`.`cited_document_id` 
-                           )))
-                   LEFT JOIN `vw_stat_cited_in_all_years` `r4` ON ((
-                           `r4`.`cited_document_id` = `r0`.`cited_document_id` 
-                       ))) 
-           WHERE
-               ((
-                       `r0`.`cited_document_id` IS NOT NULL 
-                       ) 
-                   AND ( `r0`.`cited_document_id` <> 'None' ) 
-                   AND (
-                   substr( `r0`.`cited_document_id`, 1, 3 ) NOT IN ( 'ZBK', 'IPL', 'SE.', 'GW.' ))) 
-           GROUP BY
-               `r0`.`cited_document_id` 
-           ORDER BY
-               `countAll` DESC
-           
+         Using the opascentral vw_stat_cited_crosstab2 view, based on the api_biblioxml2 which
+         is used to detect citations
+         
+         Return the cited counts for each art_id
+         
         """
         citation_table = []
-        print ("Collecting citation counts from cross-tab in biblio database...this will take a minute or two...")
+        print ("Collecting citation counts from cross-tab in biblio database...this may take a few minutes...")
+        and_subset = ""
+        if options.file_key:
+            and_subset = f"AND cited_document_id RLIKE '{options.file_key}'"
+        
         try:
             self.open_connection("get_citation_counts")
             # Get citation lookup table
             try:
                 cursor = self.db.cursor(pymysql.cursors.DictCursor)
-                sql = """
-                      SELECT cited_document_id, count5, count10, count20, countAll from vw_stat_cited_crosstab; 
+                # 2023-02-12 Watch out for Null and empty doc ids
+                sql = f"""
+                      SELECT cited_document_id, count5, count10, count20, countAll
+                      from vw_stat_cited_crosstab2
+                      where cited_document_id is not Null
+                      AND cited_document_id != ''
+                      {and_subset};
                       """
                 success = cursor.execute(sql)
                 if success:
@@ -285,16 +273,19 @@ def load_unified_article_stat():
         except Exception as e:
             logger.error("opasDataUpdateStatLoadError: no document id")
         else:
-            unified_article_stat[doc_id] = ArticleStat(
-                art_cited_5 = n.get("count5", 0), 
-                art_cited_10 = n.get("count10", 0), 
-                art_cited_20 = n.get("count20", 0), 
-                art_cited_all = n.get("countAll", 0)
-            ) 
+            if doc_id:
+                unified_article_stat[doc_id] = ArticleStat(
+                    art_cited_5 = n.get("count5", 0), 
+                    art_cited_10 = n.get("count10", 0), 
+                    art_cited_20 = n.get("count20", 0), 
+                    art_cited_all = n.get("countAll", 0)
+                )
+            else:
+                logger.error(f"Doc ID Error: '{doc_id}'")
             
     for n in most_viewed:
         doc_id = n.get("document_id", None)
-        if doc_id is not None:
+        if doc_id:
             try:
                 unified_article_stat[doc_id].art_views_update = True
                 unified_article_stat[doc_id].art_views_lastcalyear = n.get("lastcalyear", None)
@@ -310,6 +301,8 @@ def load_unified_article_stat():
                 unified_article_stat[doc_id].art_views_last6mos = n.get("last6months", None) 
                 unified_article_stat[doc_id].art_views_last1mos = n.get("lastmonth", None)
                 unified_article_stat[doc_id].art_views_lastweek = n.get("lastweek", None)
+        else:
+            logger.error(f"Doc ID Error: '{doc_id}'")
                 
 def update_solr_stat_data(solrcon, all_records:bool=False):
     """
@@ -318,74 +311,96 @@ def update_solr_stat_data(solrcon, all_records:bool=False):
     update_count = 0
     skipped_as_update_error = 0
     skipped_as_missing = 0
+    skipped_as_not_updated = 0
     item_count = len(unified_article_stat.items())
     remaining_count = item_count
     print (f"Merging up to {item_count} stat records into Solr Docs core records.")
     
     for key, art_stat in unified_article_stat.items():
         remaining_count -= 1
+        if not key or "?" in key:
+            print (f"Key Error (skipping): '{key}': {art_stat}")
+            continue
             
-        if all_records==False:
+        if not all_records:
             if not art_stat.art_views_update:
+                #print (f"Skipping {key} (No update)")
                 continue
+            elif art_stat.art_views_lastcalyear == \
+                 art_stat.art_views_last12mos == \
+                 art_stat.art_views_last6mos == \
+                 art_stat.art_views_last1mos == \
+                 art_stat.art_views_lastweek == 0:
+                    skipped_as_not_updated += 1
+                    #print (f"Skipping {key} (all 0 views)")
+                    continue
 
         if remaining_count % 1000 == 0:
             print (f"...{remaining_count} records to go")
             
         # set only includes those with the desired update value > 0 
-        doc_id = key
+        parsed_id = ArticleID(art_id=key)
+        doc_id = parsed_id.art_id
         found = False
         try:
+            import opasSolrLoadSupport
             results = solrcon.search(q = f"art_id:{doc_id}")
             if results.raw_response["response"]["numFound"] > 0:
                 found = True
             else: # TryAlternateID:
-                parsed_id = ArticleID(articleID=doc_id)
-                results = solrcon.search(q = f"art_id:{parsed_id.altStandard}")
-                if results.raw_response["response"]["numFound"] == 1:  # only accept alternative if there's only one match (otherwise, not known which)
-                    # odds are good this is what was cited.
+                # try this 
+                found_results, found_id = opasSolrLoadSupport.find_article_id(solrcon, parsed_id, verbose=options.display_verbose)
+                if found_id:
+                    results = found_results
+                    doc_id = found_id
                     found = True
-                    logger.info(f"Document ID {doc_id} not in Solr.  The correct ID seems to be {parsed_id.altStandard}. Using that instead!")
-                    doc_id = parsed_id.altStandard
                 else:
-                    logger.warning(f"Document ID {doc_id} not in Solr.  No alternative ID found.")
-                
+                    skipped_as_missing += 1
+
         except Exception as e:
-            logger.error(f"Issue finding Document ID {doc_id} in Solr...Exception: {e}")
+            log_everywhere_if(options.display_verbose, "error", f"Issue when finding Document ID {doc_id} in Solr...Exception: {e}")
             skipped_as_missing += 1
         else:
             if found:
                 update_rec = False
                 try:
                     result = results.raw_response["response"]["docs"][0]
-                    if result["art_cited_5"] != art_stat.art_cited_5 or \
-                       result["art_cited_10"] != art_stat.art_cited_10 or \
-                       result["art_cited_20"] != art_stat.art_cited_20 or \
-                       result["art_cited_all"] != art_stat.art_cited_all or \
-                       result["art_views_lastcalyear"] != art_stat.art_views_lastcalyear or \
-                       result["art_views_last12mos"] != art_stat.art_views_last12mos or \
-                       result["art_views_last6mos"] != art_stat.art_views_last6mos or \
-                       result["art_views_last1mos"] != art_stat.art_views_last1mos or \
-                       result["art_views_lastweek"] != art_stat.art_views_lastweek:
+                    solr_art_cited_5 = result.get("art_cited_5", 0)
+                    solr_art_cited_10 = result.get("art_cited_10", 0)
+                    solr_art_cited_20 = result.get("art_cited_20", 0)
+                    solr_art_cited_all = result.get("art_cited_all", 0)
+                    solr_art_cited_lastcalyear = result.get("art_cited_lastcalyear", 0)
+                    solr_art_cited_last12mos = result.get("art_cited_last12mos", 0)
+                    solr_art_cited_last6mos = result.get("art_cited_last6mos", 0)
+                    solr_art_cited_last1mos = result.get("art_cited_last1mos", 0)
+                    solr_art_cited_lastweek = result.get("art_cited_lastweek", 0)
+                    if solr_art_cited_5 != art_stat.art_cited_5 or \
+                       solr_art_cited_10 != art_stat.art_cited_10 or \
+                       solr_art_cited_20 != art_stat.art_cited_20 or \
+                       solr_art_cited_all != art_stat.art_cited_all or \
+                       solr_art_cited_lastcalyear != art_stat.art_views_lastcalyear or \
+                       solr_art_cited_last12mos != art_stat.art_views_last12mos or \
+                       solr_art_cited_last6mos != art_stat.art_views_last6mos or \
+                       solr_art_cited_last1mos != art_stat.art_views_last1mos or \
+                       solr_art_cited_lastweek != art_stat.art_views_lastweek:
                         update_rec = True
-
+                    else:
+                        update_rec = False
                 except Exception as e:
-                    logger.info(f"...No data for document {doc_id}.")
-                    if 0 != art_stat.art_cited_5 or \
-                       0 != art_stat.art_cited_10 or \
-                       0 != art_stat.art_cited_20 or \
-                       0 != art_stat.art_cited_all or \
-                       0 != art_stat.art_views_lastcalyear or \
-                       0 != art_stat.art_views_last12mos or \
-                       0 != art_stat.art_views_last6mos or \
-                       0 != art_stat.art_views_last1mos or \
-                       0 != art_stat.art_views_lastweek:
-                        update_rec = True
-                    
+                    logger.error(f"Update stat for {doc_id} in Solr...Error: {e}.")
+                    skipped_as_update_error += 1
+                    continue
+                        
                 if doc_id is not None and update_rec:
-                    logger.info(f"...Updating stat for {doc_id} in Solr...{remaining_count} more to check.")
+                    if options.display_verbose:
+                        if all_records == False:
+                            print(f"Upd. solr stat {doc_id} {remaining_count} more to go. Vws 12m:{art_stat.art_views_last12mos} 6m:{art_stat.art_views_last6mos} 1m:{art_stat.art_views_last1mos} 1w:{art_stat.art_views_lastweek}")
+                        else:
+                            print(f"...{remaining_count} more to go (views/citations). Updated:{doc_id} Cited: {solr_art_cited_all} Vws 12m:{art_stat.art_views_last12mos}")
+
                     upd_rec = {
                                 "id":doc_id,
+                                "art_id": doc_id,
                                 "art_cited_5": art_stat.art_cited_5, 
                                 "art_cited_10": art_stat.art_cited_10, 
                                 "art_cited_20": art_stat.art_cited_20, 
@@ -410,22 +425,23 @@ def update_solr_stat_data(solrcon, all_records:bool=False):
                                                              "art_views_lastweek": 'set'
                                                              })
         
+                        #if all_records == False:
+                            #if options.display_verbose:
+                                #print (f"{doc_id} - Views Yr:{art_stat.art_views_lastcalyear} 12mos:{art_stat.art_views_last12mos} 6mos:{art_stat.art_views_last6mos} 1mo:{art_stat.art_views_last1mos} 1wk:{art_stat.art_views_lastweek}")
+                            
                         if update_count > 0 and update_count % UPDATE_AFTER == 0:
                             solr_docs2.commit()
-                            errStr = f"Updated {update_count} records with citation data"
-                            print (errStr)
-                            logger.info(errStr)
+                            infoStr = f"...Updated {update_count} records with citation data"
+                            print (infoStr)
                         
                     except Exception as err:
-                        errStr = f"opasDataUpdateStatUpdateError: Solr call exception for update on {doc_id}: {err}"
-                        print (errStr)
+                        errStr = f"Solr call exception for update on {doc_id}: {err}"
                         skipped_as_update_error += 1
                         logger.error(errStr)
                     else:
                         update_count += 1
             else:
                 errStr = (f"Document {doc_id} not in Solr...skipping")
-                #print (errStr)
                 logger.warning(errStr)
                 if ".jpg" in errStr:
                     print (f"Todo: eliminate these jpgs from the table driving the stat {doc_id}")
@@ -434,28 +450,39 @@ def update_solr_stat_data(solrcon, all_records:bool=False):
     try:
         solr_docs2.commit()
     except Exception as e:
-        msg = f"opasDataUpdateStatUpdateError: Final commit error {e}"
+        msg = f"Exception in final commit {e}"
         print(msg)
-        logger.error(msg)
+        logger.error(msg)        
 
-    print (f"Finished updating Solr stat with {update_count} article records updated; records skipped: {skipped_as_update_error }.")
+    print (f"Finished updating Solr stat with {update_count} art records updated; skipped: {skipped_as_not_updated} errors:{skipped_as_update_error }.")
     return update_count
 
 if __name__ == "__main__":
-    import argparse
     import pymysql
+    global options  # so the information can be used in support functions
+    options = None
     
-    parser = argparse.ArgumentParser() 
-    parser.add_argument('--version', action='version',
-                        version='%(prog)s {version}'.format(version=__version__))    
-    parser.add_argument("--loglevel", "-l", dest="logLevel", default=logging.ERROR,
+    description = """Collect citation and view counts from the RDS database and copy them to Solr"""
+    parser = OptionParser(usage="%prog [options]", version=f"%prog ver. {__version__}", description=description)
+
+    #parser = argparse.ArgumentParser() 
+    parser.add_option("--loglevel", "-l", dest="logLevel", default='ERROR',
                         help="Level at which events should be logged (DEBUG, INFO, WARNING, ERROR")
-    parser.add_argument("-a", "--all", dest="all_records", default=False, action="store_true",
-                        help="Update records with views and any citation data (takes significantly longer)")
+    parser.add_option("-a", "--all", "--everything", dest="all_records", default=False, action="store_true",
+                        help="Include citation data update with the standard views update (can take significantly longer)")
+    parser.add_option("--verbose", action="store_true", dest="display_verbose", default=False,
+                        help="Display status and operational timing info as load progresses.")
+    parser.add_option("--key", dest="file_key", default=None,
+                        help="Key for a single file to load, e.g., AIM.076.0269A.")
+    parser.add_option("--since", dest="since_date", default=None,
+                        help="If only doing view records, you can use this to update only records updated after this date")
     
-    args = parser.parse_args()
-    logger = logging.getLogger(programNameShort)
-    logger.setLevel(args.logLevel)
+    (options, args) = parser.parse_args()
+
+    if options.file_key:
+        print (f"Limit selected to file_key: {options.file_key}")
+
+    logger.setLevel(options.logLevel)
 
     updates = 0
     SOLR_DOCS = "pepwebdocs"
@@ -476,7 +503,7 @@ if __name__ == "__main__":
                        }
     print (f"Key Library Versions: {library_versions}")
     load_unified_article_stat()
-    updates = update_solr_stat_data(solr_docs2, args.all_records)
+    updates = update_solr_stat_data(solr_docs2, options.all_records)
     total_time = time.time() - start_time
     final_stat = f"{time.ctime()} Updated {updates} Solr records in {total_time} secs ({total_time/60} minutes))."
     print (final_stat)

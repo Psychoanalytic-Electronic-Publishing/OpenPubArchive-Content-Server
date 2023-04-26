@@ -9,7 +9,7 @@ import requests
 import sys
 from datetime import datetime
 
-from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in
+from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in, test_login
 # Get session, but not logged in.
 headers = get_headers_not_logged_in()
 
@@ -103,6 +103,28 @@ class TestMost(unittest.TestCase):
         except:
             logger.warn("No stat to test for test_0_mostviewed_videos")
         # print (r)
+        
+    def test_0a_pads_tests(self):
+        # moved from test pads calls because it requires stat run.
+        # Login to PaDS with test account and then check responses to mostCited for access.
+        # Login!
+        
+        session_id, headers, session_info = test_login()        
+        if session_id is None:
+            logger.error(f"PaDS Login error in test")
+            assert(False)
+        else:
+            full_URL = base_plus_endpoint_encoded('/v2/Database/MostCited/?limit=10')
+            response = requests.get(full_URL, headers=headers)
+            # Confirm that the request-response cycle completed successfully.
+            r = response.json()
+            print (f"Count: {r['documentList']['responseInfo']['fullCount']} Count complete: {r['documentList']['responseInfo']['fullCountComplete']}")
+            # PaDS ID provided has peparchive!
+            # 20211008 Access to items in result list is no longer checked...only when one item is returned.
+            assert(r['documentList']['responseSet'][0].get("accessChecked", None) == False)
+            #assert(r['documentList']['responseSet'][0].get("accessLimited", None) == True)
+
+        
 
 if __name__ == '__main__':
     unittest.main()

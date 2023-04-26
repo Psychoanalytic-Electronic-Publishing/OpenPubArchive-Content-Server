@@ -11,7 +11,6 @@ This library is meant to support query to Solr
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.1118.1"
 __status__      = "Development"
 
 import sys
@@ -62,7 +61,7 @@ loggerw.setLevel('ERROR')
 
 import pysolr
 LOG = logging.getLogger("pysolr")
-LOG.setLevel(logging.WARNING)
+LOG.setLevel(logging.CRITICAL) # 2023-03-13 - try turning off the logging from within pysolr except critical
 
 # still using a function in solpy
 import solrpy as solr
@@ -80,6 +79,26 @@ rx_nuisance_words = f"""{opasConfig.HITMARKERSTART}(?P<word>i\.e|e\.g|a|am|an|ar
 
 rcx_remove_nuisance_words = re.compile(rx_nuisance_words, flags=re.IGNORECASE)
 
+def pysolr_syntax_check(query):
+    """
+        # Define a query with potential syntax errors
+        >>> query = 'field_name:query_term AND other_field:query_term'
+        >>> pysolr_syntax_check(query)
+        False
+        
+    """    
+    ret_val = True
+    # Send the query to Solr and check for syntax errors in the response
+    try:
+        # Use the `search` method to send the query to Solr
+        solr_docs2.search(query)
+    except Exception as e:
+        # If there are syntax errors, an exception will be raised
+        print(f"Query syntax error: {e}")
+        ret_val = False
+        
+    return ret_val
+    
 #-----------------------------------------------------------------------------
 def pysolrerror_processing(e):
     error = "pySolr.SolrError"
@@ -247,6 +266,33 @@ def get_translated_article_info_by_origrx_id(art_id):
     except Exception as e:
         logger.error(f"Error getting article {art_id} by id: {e}")
         ret_val = None
+        
+    return ret_val
+
+#-----------------------------------------------------------------------------
+def get_articles_related_to_current_via_artqual(art_id):
+    """
+    Return a list of any articles in Solr which reference this one
+      via artqual.
+
+    >>> articles = get_articles_related_to_current_via_artqual(art_id="PAQ.062.0588A")
+    >>> len(articles) > 2
+    True
+    
+    """
+    ret_val = []
+    documentList, ret_status = search_text(query=f"art_qual:{art_id}", 
+                                           limit=10,
+                                           abstract_requested=False,
+                                           full_text_requested=False
+                                           )
+
+    try:
+        if documentList.documentList.responseInfo.count > 0:
+            ret_val = documentListItem = documentList.documentList.responseSet
+    except Exception as e:
+        logger.error(f"Error getting article {art_id} by id: {e}")
+        ret_val = []
         
     return ret_val
 
@@ -1183,8 +1229,8 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
     except Exception as e:
         if req_url != opasConfig.CACHEURL: # no session supplied when loading caching, ok
             logger.warning("No Session info supplied to search_text_qs")
-        # mark as not logged in
-        #user_logged_in_bool = False
+            # mark as not logged in
+            #user_logged_in_bool = False
 
     if 1: # just to allow folding
         if solr_query_spec.solrQueryOpts is None: # initialize a new model
@@ -1402,31 +1448,6 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
         ret_status = (ret_val.httpcode, {"reason": error, "body": error_description})
         logger.error(f"Search error for: {query} Code: {ret_val.httpcode}. Error: {error_description}")
 
-        #if e is None:
-            #pass # take defaults
-        #elif e.args is not None:
-            ## defaults, before trying to decode error
-            #error_description = "PySolrError: Search Error"
-            #error = 400
-            #http_error_num = 0
-            #try:
-                #err = e.args
-                #error_set = err[0].split(":", 1)
-                #error = error_set[0]
-                #error = error.replace('Solr ', 'Search engine ')
-                #error_description = error_set[1]
-                #error_description = error_description.strip(" []")
-                #m = re.search("HTTP (?P<err>[0-9]{3,3})", error)
-                #if m is not None:
-                    #http_error = m.group("err")
-                    #http_error_num = int(http_error)
-            #except Exception as e:
-                #logger.error(f"PySolrError: Error parsing Solr error {e.args} Query: {query}")
-                #ret_status = (error_num, e.args)
-            #else:
-                #ret_val = models.ErrorReturn(httpcode=http_error_num, error=error, error_description=error_description)
-                #ret_status = (error_num, {"reason": error, "body": error_description})
-
         logger.error(f"PySolrError: Syntax: {ret_status}. Query: {query} Params sent: {solr_param_dict}")
         
     except Exception as e:
@@ -1612,7 +1633,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                         # Note: the question mark before the first field in search= matters
                         #  e.g., http://development.org:9100/v2/Documents/Document/JCP.001.0246A/?return_format=XML&search=%27?fulltext1="Evenly%20Suspended%20Attention"~25&limit=10&facetmincount=1&facetlimit=15&sort=score%20desc%27
                         # documentListItem.document = opasxmllib.xml_remove_tags_from_xmlstr(documentListItem.document,['impx'])
-                        if documentListItem.document == None:
+                        if documentListItem.document is None:
                             errmsg = f"DocumentError: Fetch failed! ({solr_query_spec.solrQuery.searchQ}"
                             logger.error(errmsg)
                             documentListItem.termCount = 0
@@ -1866,13 +1887,119 @@ def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
     """
     Return a source's contents
 
+    >>> results = metadata_get_contents("FA", "2001")
+    >>> results.documentList.responseInfo.count == 22
+    True
+
+    >>> results = metadata_get_contents("PSP", "2001")
+    >>> results.documentList.responseInfo.count == 17
+    True
+
     >>> results = metadata_get_contents("IJP", "1993", limit=5, offset=0)
     >>> results.documentList.responseInfo.count == 5
     True
+
     >>> results = metadata_get_contents("IJP", "1993", limit=5, offset=5)
     >>> results.documentList.responseInfo.count == 5
     True
     """
+    document_item_list = []
+    prev_section_name = None
+    prev_issue = None
+    document_list = []
+    
+    def process_toc_list_item(result):
+        nonlocal prev_section_name
+        nonlocal prev_issue
+        nonlocal document_item_list
+        
+        try:     # for debugging type error
+            document_id = result.get("art_id", None) # everything should have an ID
+            
+            # transform authorID list to authorMast
+            author_ids = result.get("art_authors", None)
+            if author_ids is None:
+                # try this, instead of abberrant behavior in alpha of display None!
+                authorMast = result.get("art_authors_mast", "")
+            else:
+                authorMast = opasgenlib.derive_author_mast(author_ids)
+                
+            pgRg = result.get("art_pgrg", None)
+            pgCount = result.get("art_pgcount", None)
+            source_title = result.get("art_sourcetitlefull")
+            source_title_abbr = result.get("art_sourcetitleabbr")
+            
+            if pgRg is not None:
+                pgStart, pgEnd = opasgenlib.pgrg_splitter(pgRg)
+            else:
+                pgStart, pgEnd = (0, 0)
+            citeAs = result.get("art_citeas_xml", None)  
+            citeAs = opasgenlib.force_string_return_from_various_return_types(citeAs)
+            vol = result.get("art_vol", None)
+            issue = result.get("art_iss", None)
+            if issue == '0': issue = None
+            issue_title = result.get("art_iss_title", None)
+            issue_seqnbr = result.get("art_iss_seqnbr", None)
+            listed_new_section_name = new_section_name = result.get("art_newsecnm", None)
+            if prev_section_name is not None and new_section_name is None and issue == prev_issue:
+                title_sample = opasgenlib.trimPunctAndSpaces(result["title"]).lower()
+                prev_section_sample = opasgenlib.trimPunctAndSpaces(prev_section_name).lower()
+                if title_sample not in ("correction", "editorial") and prev_section_sample != title_sample:
+                    current_section_name = new_section_name = opasgenlib.trimPunctAndSpaces(prev_section_name)
+            
+            if new_section_name is None:
+                current_section_name = new_section_name = "TopLevel"
+            else:
+                current_section_name = new_section_name = opasgenlib.trimPunctAndSpaces(new_section_name)
+                           
+            embargotype = result.get("art_embargotype", None)
+            embargo_toc_addon = opasConfig.EMBARGO_TOC_TEXT.get(embargotype, "")
+            
+            # handle ijopen differently, always a number.
+            if pep_code == "IJPOPEN":
+                toc_pg_start = f"{opasgenlib.DocumentID(document_id).get_page_number(default=pgStart)}"
+                if embargo_toc_addon != "":
+                    # in case the config didn't include a space
+                    toc_pg_start = embargo_toc_addon
+                    embargo_toc_addon = ""
+            else:
+                toc_pg_start = pgStart
+                
+            # record prior info
+            prev_section_name = new_section_name
+            prev_issue = issue
+            
+        except Exception as e:
+            logger.error(f"metadata_get_contents: Value prep error: {e} (query: {query}) (log params: {log_params})")
+           
+        try:
+            item = models.DocumentListItem(PEPCode = pep_code, 
+                                           year = result.get("art_year", None),
+                                           sourceTitle = source_title, 
+                                           sourceTitleAbbr = source_title_abbr, 
+                                           vol = vol,
+                                           issue = issue,
+                                           issueTitle = issue_title,
+                                           issueSeqNbr = issue_seqnbr, 
+                                           newSectionName = new_section_name,
+                                           currSectionName = new_section_name,
+                                           pgRg = result.get("art_pgrg", None),
+                                           pgCount=pgCount, 
+                                           pgStart = toc_pg_start,
+                                           pgEnd = pgEnd,
+                                           title = result.get("title", None) + embargo_toc_addon, 
+                                           authorMast = authorMast,
+                                           documentID = document_id,
+                                           documentRef = opasxmllib.xml_elem_or_str_to_text(citeAs, default_return=""),
+                                           documentRefHTML = citeAs,
+                                           documentInfoXML=result.get("art_info_xml", None), 
+                                           score = result.get("score", None)
+                                           )
+            #logger.debug(item)
+            document_item_list.append(item)
+        except Exception as e:
+            logger.error(f"metadata_get_contents: model assign error: {e} (query: {query}) (log params: {log_params})")
+
     ret_val = []
 
     # for debugging type error
@@ -1978,107 +2105,27 @@ def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
         # return_status = (err_info.httpcode, e) 
         logger.error(f"metadata_get_contents: {err_info.httpcode}. Query: {query} Error: {err_info.error_description}")
         
-    document_item_list = []
-    prev_section_name = None
-    prev_issue = None
-    for result in results.docs:
-        try:     # for debugging type error
-            document_id = result.get("art_id", None) # everything should have an ID
-            
-            # transform authorID list to authorMast
-            author_ids = result.get("art_authors", None)
-            if author_ids is None:
-                # try this, instead of abberrant behavior in alpha of display None!
-                authorMast = result.get("art_authors_mast", "")
-            else:
-                authorMast = opasgenlib.derive_author_mast(author_ids)
-                
-            pgRg = result.get("art_pgrg", None)
-            pgCount = result.get("art_pgcount", None)
-            source_title = result.get("art_sourcetitlefull")
-            source_title_abbr = result.get("art_sourcetitleabbr")
-            
-            if pgRg is not None:
-                pgStart, pgEnd = opasgenlib.pgrg_splitter(pgRg)
-            else:
-                pgStart, pgEnd = (0, 0)
-            citeAs = result.get("art_citeas_xml", None)  
-            citeAs = opasgenlib.force_string_return_from_various_return_types(citeAs)
-            vol = result.get("art_vol", None)
-            issue = result.get("art_iss", None)
-            issue_title = result.get("art_iss_title", None)
-            issue_seqnbr = result.get("art_iss_seqnbr", None)
-            listed_new_section_name = new_section_name = result.get("art_newsecnm", None)
-            if prev_section_name is not None and new_section_name is None and issue == prev_issue:
-                title_sample = opasgenlib.trimPunctAndSpaces(result["title"]).lower()
-                prev_section_sample = opasgenlib.trimPunctAndSpaces(prev_section_name).lower()
-                if title_sample not in ("correction", "editorial") and prev_section_sample != title_sample:
-                    current_section_name = new_section_name = opasgenlib.trimPunctAndSpaces(prev_section_name)
-            
-            if new_section_name is None:
-                current_section_name = new_section_name = "TopLevel"
-            else:
-                current_section_name = new_section_name = opasgenlib.trimPunctAndSpaces(new_section_name)
-                
-            #if listed_new_section_name == prev_section_name:
-                #new_section_name = None
-            
-            # turned this off 2022-05-25, the PEP Client generates issue numbers/sequence numbers so don't put it in the title
-            #if issue is not None:
-                #if issue_title is None:
-                    #if issue_seqnbr is None:
-                        #issue_title = f"Issue {issue}"
-                    #else:
-                        #issue_title = f"No. {issue_seqnbr}"
-            
-            embargotype = result.get("art_embargotype", None)
-            embargo_toc_addon = opasConfig.EMBARGO_TOC_TEXT.get(embargotype, "")
-            
-            # handle ijopen differently, always a number.
-            if pep_code == "IJPOPEN":
-                toc_pg_start = f"{opasgenlib.DocumentID(document_id).get_page_number(default=pgStart)}"
-                if embargo_toc_addon != "":
-                    # in case the config didn't include a space
-                    toc_pg_start = embargo_toc_addon
-                    embargo_toc_addon = ""
-            else:
-                toc_pg_start = pgStart
-                
-            # record prior info
-            prev_section_name = new_section_name
-            prev_issue = issue
-            
-        except Exception as e:
-            logger.error(f"metadata_get_contents: Value prep error: {e} (query: {query}) (log params: {log_params})")
-           
-        try:
-            item = models.DocumentListItem(PEPCode = pep_code, 
-                                           year = result.get("art_year", None),
-                                           sourceTitle = source_title, 
-                                           sourceTitleAbbr = source_title_abbr, 
-                                           vol = vol,
-                                           issue = issue,
-                                           issueTitle = issue_title,
-                                           issueSeqNbr = issue_seqnbr, 
-                                           newSectionName = new_section_name,
-                                           currSectionName = new_section_name,
-                                           pgRg = result.get("art_pgrg", None),
-                                           pgCount=pgCount, 
-                                           pgStart = toc_pg_start,
-                                           pgEnd = pgEnd,
-                                           title = result.get("title", None) + embargo_toc_addon, 
-                                           authorMast = authorMast,
-                                           documentID = document_id,
-                                           documentRef = opasxmllib.xml_elem_or_str_to_text(citeAs, default_return=""),
-                                           documentRefHTML = citeAs,
-                                           documentInfoXML=result.get("art_info_xml", None), 
-                                           score = result.get("score", None)
-                                           )
-            #logger.debug(item)
-            document_item_list.append(item)
-        except Exception as e:
-            logger.error(f"metadata_get_contents: model assign error: {e} (query: {query}) (log params: {log_params})")
+    # need to resort results.docs minus roman letter
+    # this doesn't provide the list in order if there are multiple issues requested, but the client
+    #   appears to sort them correctly, e.g., FA.2022
+    roman_section = []
+    for result in results.docs[::-1]:
+        document_id = result.get("art_id", None) # everything should have an ID
+        issue = result.get("art_issue_int", 0)
+        year = result.get("art_year_int", 0)
+        art_id = ArticleID(art_id=document_id)
+        if art_id.is_roman:
+            roman_section.append(result)
+            results.docs.remove(result)
 
+    roman_section.sort(key=lambda artid: artid["art_id"])
+    
+    for result in roman_section:
+        process_toc_list_item(result)
+    
+    for result in results.docs:
+        process_toc_list_item(result)
+        
     # two options 2020-11-17 for extra info (lets see timing for each...)
     try:
         suppinfo = None
@@ -2421,7 +2468,7 @@ def metadata_get_next_and_prev_articles(art_id=None,
     # works for journal, videostreams have more than one year per vol.
     # works for books, videostream vol numbers
     
-    article_id = ArticleID(articleID=art_id) # now from opasArticleIDSupport
+    article_id = ArticleID(art_id=art_id) # now from opasArticleIDSupport
     
     distinct_return = "art_sourcecode, art_year, art_vol, art_id, art_iss, art_iss_seqnbr"
     next_art = {}
@@ -2429,16 +2476,16 @@ def metadata_get_next_and_prev_articles(art_id=None,
     match_art = {}
     
     query = "art_level:1 "
-    if article_id.sourceCode is not None:
-        query += f" && art_sourcecode:{article_id.sourceCode}"
+    if article_id.src_code is not None:
+        query += f" && art_sourcecode:{article_id.src_code}"
 
-    if article_id.volumeInt is not None:
-        query += f" && art_vol:{article_id.volumeInt}"
+    if article_id.art_vol_int is not None:
+        query += f" && art_vol:{article_id.art_vol_int}"
         
-    if article_id.issueInt != 0:
-        query += f" && art_iss:{article_id.issueInt}"  # just the number representation, 1-n
-    elif article_id.issueCode != '':
-        query += f" && art_iss:{article_id.issueCode}*" # could be S, or A, B, C..., but issue_code could be spelled out supplement
+    if article_id.art_issue_int:
+        query += f" && art_iss:{article_id.art_issue_int}"  # just the number representation, 1-n
+    elif article_id.art_issue_alpha_code != '':
+        query += f" && art_iss:{article_id.art_issue_alpha_code}*" # could be S, or A, B, C..., but issue_code could be spelled out supplement
         # Need to deal with FA...has Pilot and then numbers    
         #if source_year is not None and source_year.isalnum():
             #query += f" && art_year:{source_year}"
@@ -2457,7 +2504,7 @@ def metadata_get_next_and_prev_articles(art_id=None,
     except Exception as e:
         #logger.error(f"MetadataGetArtError: {e}")
         err_info = pysolrerror_processing(e)
-        logger.error(f"MetadataGetNextPrevError: {err_info.httpcode}. Query: {query} Error: {err_info.error_description}")
+        logger.error(f"MetadataGetNextPrevError: {err_info.httpcode}. Query: {query} Error: {err_info.error_description} {e}")
     else:
         # find the doc
         count = 0
@@ -2473,12 +2520,52 @@ def metadata_get_next_and_prev_articles(art_id=None,
                     next_art = results.docs[count+1]
                 except:
                     next_art = {}
+                break
             else:
                 count += 1
                 continue
     
     return prev_art, match_art, next_art
 #-----------------------------------------------------------------------------
+def metadata_get_sourcecodes():
+    """
+    >>> all = metadata_get_sourcecodes()
+    >>> all_count = len(all)
+    >>> all_count > 70
+    True
+    
+    """
+    ret_val = None
+    distinct_return = "art_sourcecode"
+    
+    query = "bk_subdoc:false"
+
+    try:
+        logger.info(f"Solr Query: q={query}")
+        facet_fields = ["art_sourcecode"]
+        facet_pivot_fields = ["art_sourcecode"]
+        
+        args = {
+            "fl": distinct_return,
+            "fq": "*:*",
+            "sort": "art_sourcecode asc",
+            "facet": "on", 
+            "facet.fields" : facet_fields, 
+            "facet.pivot" : facet_pivot_fields,
+            "facet.mincount" : 1,
+            "facet.limit": opasConfig.MAX_SOURCE_COUNT,
+            "facet.sort" : "art_sourcecode asc", 
+        }
+
+        results = solr_docs2.search(query, **args)
+        ret_val = [n["value"] for n in results.facets["facet_pivot"]["art_sourcecode"]]
+        logger.info(f"Solr Query: q={query}")
+
+    except Exception as e:
+        err_info = pysolrerror_processing(e)
+        logger.error(f"SourceCodeValues {err_info.httpcode}. Query: {query} Error: {err_info.error_description}")
+
+    return ret_val
 
 #-----------------------------------------------------------------------------
 def metadata_get_next_and_prev_vols(source_code=None,
@@ -2495,7 +2582,7 @@ def metadata_get_next_and_prev_vols(source_code=None,
     New: 2020-11-17
 
     >>> metadata_get_next_and_prev_vols(source_code="APA", source_vol="66")
-    ({'value': '65', 'count': 89}, {'value': '66', 'count': 95}, {'value': '67', 'count': 88})
+    ({'value': '65', 'count': 99}, {'value': '66', 'count': 100}, {'value': '67', 'count': 101})
     
     >>> metadata_get_next_and_prev_vols(source_code="GW")
     (None, None, None)
@@ -2521,71 +2608,77 @@ def metadata_get_next_and_prev_vols(source_code=None,
         if source_vol is None:
             logger.error("No source vol number provided;")
         else:
-            source_vol_int = int(source_vol)
-            next_source_vol_int = source_vol_int + 1
-            prev_source_vol_int = source_vol_int - 1
             try:
-                logger.info(f"Solr Query: q={query}")
-                facet_fields = ["art_vol", "art_sourcecode"]
-                facet_pivot_fields = "art_sourcecode,art_vol" # important ...no spaces! Take out year
-                query += f" && art_vol:({source_vol} || {next_source_vol_int} || {prev_source_vol_int})"
-        
-                args = {
-                    "fl": distinct_return,
-                    "fq": "*:*",
-                    "sort": "art_sourcecode asc, art_year asc",
-                    "facet": "on", 
-                    "facet.fields" : facet_fields, 
-                    "facet.pivot" : facet_pivot_fields,
-                    "facet.mincount" : 1,
-                    "facet.sort" : "art_year asc", 
-                    #"rows": limit,
-                    #"start": offset
-                }
-        
-                results = solr_docs2.search(query, **args)
-                logger.info(f"Solr Query: q={query}")
-                facet_pivot = results.facets["facet_pivot"][facet_pivot_fields]
-
+                source_vol_int = opasgenlib.str_to_int(source_vol)
+                # replace original with int version
+                source_vol = str(source_vol_int)
             except Exception as e:
-                err_info = pysolrerror_processing(e)
-                logger.error(f"MetadataGetNextPrevError: {err_info.httpcode}. Query: {query} Error: {err_info.error_description}")
+                logger.warning(f"Bad volume number: {source_vol} / {e}")
             else:
-                prev_vol = None
-                match_vol = None
-                next_vol = None
-                if facet_pivot != []:
-                    match_vol_idx = None
-                    #pivot_len = len(facet_pivot[0]['pivot'])
-                    counter = 0
-                    for n in facet_pivot[0]['pivot']:
-                        if n['value'] == str(source_vol):
-                            match_vol_idx = counter
-                            match_vol = n
-                        elif n['value'] == str(int(source_vol) - 1):
-                            prev_vol = n
-                        elif n['value'] == str(int(source_vol) + 1):
-                            next_vol = n
-
-                        counter += 1
-        
-                    if match_vol_idx is None:
-                        logger.warning(f"No match for source {source_code} volume: {source_vol} ")
+                next_source_vol_int = source_vol_int + 1
+                prev_source_vol_int = source_vol_int - 1
+                try:
+                    logger.info(f"Solr Query: q={query}")
+                    facet_fields = ["art_vol", "art_sourcecode"]
+                    facet_pivot_fields = "art_sourcecode,art_vol" # important ...no spaces! Take out year
+                    query += f" && art_vol:({source_vol} || {next_source_vol_int} || {prev_source_vol_int})"
+            
+                    args = {
+                        "fl": distinct_return,
+                        "fq": "*:*",
+                        "sort": "art_sourcecode asc, art_year asc",
+                        "facet": "on", 
+                        "facet.fields" : facet_fields, 
+                        "facet.pivot" : facet_pivot_fields,
+                        "facet.mincount" : 1,
+                        "facet.sort" : "art_year asc", 
+                        #"rows": limit,
+                        #"start": offset
+                    }
+            
+                    results = solr_docs2.search(query, **args)
+                    logger.info(f"Solr Query: q={query}")
+                    facet_pivot = results.facets["facet_pivot"][facet_pivot_fields]
+    
+                except Exception as e:
+                    err_info = pysolrerror_processing(e)
+                    logger.error(f"MetadataGetNextPrevError: {err_info.httpcode}. Query: {query} Error: {err_info.error_description}")
+                else:
+                    prev_vol = None
+                    match_vol = None
+                    next_vol = None
+                    if facet_pivot != []:
+                        match_vol_idx = None
+                        #pivot_len = len(facet_pivot[0]['pivot'])
+                        counter = 0
+                        for n in facet_pivot[0]['pivot']:
+                            if n['value'] == str(source_vol):
+                                match_vol_idx = counter
+                                match_vol = n
+                            elif n['value'] == str(int(source_vol) - 1):
+                                prev_vol = n
+                            elif n['value'] == str(int(source_vol) + 1):
+                                next_vol = n
+    
+                            counter += 1
+            
+                        if match_vol_idx is None:
+                            logger.warning(f"No match for source {source_code} volume: {source_vol} ")
+                            
+                    try:
+                        del(match_vol['field'])
+                    except:
+                        pass
                         
-                try:
-                    del(match_vol['field'])
-                except:
-                    pass
-                    
-                try:
-                    del(prev_vol['field'])
-                except:
-                    pass
-                    
-                try:
-                    del(next_vol['field'])
-                except:
-                    pass
+                    try:
+                        del(prev_vol['field'])
+                    except:
+                        pass
+                        
+                    try:
+                        del(next_vol['field'])
+                    except:
+                        pass
 
     if opasConfig.LOCAL_TRACE:
         print(f"Match Prev {prev_vol}, Curr: {match_vol}, Next: {next_vol}")
@@ -2771,7 +2864,7 @@ def metadata_get_volumes(source_code=None,
                 "facet.mincount":1,
                 "facet.sort":"art_year asc",
                 "facet.limit": facet_limit,
-                "rows":row_limit, 
+                "rows":20 # row_limit, 
                 #"start":offset
               }
 
@@ -2850,7 +2943,10 @@ def prep_document_download(document_id,
                            session_info=None, 
                            ret_format="HTML",
                            base_filename="opasDoc",
-                           flex_fs=None):
+                           flex_fs=None,
+                           page: int=None, # first page requested,
+                           page_offset: int=0, 
+                           page_limit: int=None):
     """
     Preps a file in the right format for download.  Returns the filename of the prepared file and the status.
     Note:
@@ -2898,9 +2994,19 @@ def prep_document_download(document_id,
         try:
             documentListItem = models.DocumentListItem()
             art_info = results.docs[0]
-            docs = art_info.get("text_xml", art_info.get("art_excerpt", None))
+            documentListItem = get_fulltext_from_search_results(result=results.docs[0],
+                                                                text_xml=None,
+                                                                format_requested="XML",
+                                                                page=page,
+                                                                page_offset=page_offset,
+                                                                page_limit=page_limit,
+                                                                documentListItem=documentListItem)
+            # set up documentListItem in case the article is embargoed. 
+            docs = art_info["text_xml"] = documentListItem.document
+
             # set up documentListItem in case the article is embargoed. 
             documentListItem = opasQueryHelper.get_base_article_info_from_search_result(results.docs[0], documentListItem)
+            
         except IndexError as e:
             err_msg = msgdb.get_user_message(opasConfig.ERROR_404_DOCUMENT_NOT_FOUND) + request_qualifier_text
             logger.error(err_msg)
@@ -2977,9 +3083,12 @@ def prep_document_download(document_id,
 
                         elif ret_format.upper() == "PDF":
                             """
-                            Generated PDF, no page breaks, but page numbering, for reading and printing without wasting pages.
+                            Generated PDF, no page breaks, but page numbering, for reading and
+                                    printing without wasting pages.
                             """
-                            html_string = opasxmllib.xml_str_to_html(doc, transformer_name=opasConfig.TRANSFORMER_XMLTOHTML, document_id=document_id) # transformer_name default used explicitly for code readability
+                            html_string = opasxmllib.xml_str_to_html(doc,
+                                                                     transformer_name=opasConfig.TRANSFORMER_XMLTOHTML,
+                                                                     document_id=document_id) # transformer_name default used explicitly for code readability
                             html_string = re.sub("\[\[RunningHead\]\]", f"{heading}", html_string, count=1)
                             html_string = re.sub("\(\)", f"", html_string, count=1) # in running head, missing issue
                             copyright_page = COPYRIGHT_PAGE_HTML.replace("[[username]]", session_info.username)
@@ -3177,15 +3286,19 @@ def get_fulltext_from_search_results(result,
     if text_xml is not None:
         reduce = False
         # see if an excerpt was requested.
-        if page is not None and page <= int(documentListItem.pgEnd) and page > int(documentListItem.pgStart):
+        if page is not None and page >= int(documentListItem.pgStart) and page < int(documentListItem.pgEnd):
             # use page to grab the starting page
             # we've already done the search, so set page offset and limit these so they are returned as offset and limit per V1 API
             offset = page - int(documentListItem.pgStart)
             reduce = True
+
         # Only use supplied offset if page parameter is out of range, or not supplied
-        if reduce == False and page_offset is not None and page_offset != 0: 
-            offset = page_offset
-            reduce = True
+        if reduce == False and page_offset is not None and page_offset > 0:
+            if page_offset + int(documentListItem.pgStart) < int(documentListItem.pgEnd):
+                offset = page_offset
+                reduce = True
+            else: # only the last page
+                offset = int(documentListItem.pgEnd) - 1
 
         if reduce == True or page_limit is not None:
             # extract the requested pages
@@ -3318,7 +3431,7 @@ def quick_docmeta_docsearch(q_str,
         results = solr_docs2.search(q=q_str, **args)
     except Exception as e:
         err_info = pysolrerror_processing(e)
-        logger.error(f"DocMetaDocSearch: {err_info.httpcode}. Query: {query} Error: {err_info.error_description}")
+        logger.error(f"DocMetaDocSearch: {err_info.httpcode}. Query: {q_str} Error: {err_info.error_description}")
         
     document_item_list = []
     count = len(results)

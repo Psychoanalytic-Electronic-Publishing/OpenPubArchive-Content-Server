@@ -59,7 +59,7 @@ class PEPGWSEParaConcordance:
                 lgrLinkType = node.attrib.get("lgrtype", None)
                 lgIDCount += 1
 
-                if lgrID != None:
+                if lgrID is not None:
                     # now look it up
                     if artInfo.src_code == "GW":
                         lgrLinkLookup = self.getSEParaID(lgrID)

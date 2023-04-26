@@ -214,7 +214,7 @@ class TestXMLProcessing(unittest.TestCase):
                     print(lin)
            
                 if test_line in lin:
-                    assert test_text in lin
+                    assert test_text in lin, (test_text, lin)
                     print (f"Test {test_counter} passed.")
                     if "bEXP_ARCH1" in lin:
                         print (f"Deleting temporary test files: {delete_exp_arch1_files}")
