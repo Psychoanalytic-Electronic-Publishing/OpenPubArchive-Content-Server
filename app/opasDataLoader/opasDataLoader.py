@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2023, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2023.0426/v2.1.032"   # Requires update to api_biblioxml2 and views based on it.
+__version__     = "2023.0426/v2.1.033"   # Requires update to api_biblioxml2 and views based on it.
 __status__      = "Development"
 
 # !!! IMPORTANT: Increment opasXMLProcessor version (if version chgd). It's written to the XML !!!
@@ -775,6 +775,7 @@ def main():
             # ----------------------------------------------------------------------
             print (f"{pre_action_verb} started ({time.ctime()}).  Examining files.")
 
+            includes_glossary = False
             # are we forcing a glossary file to build from kbd3 files?
             if options.file_key is not None and re.search("zbk.069", options.file_key, re.IGNORECASE):
                 includes_glossary = True
