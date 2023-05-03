@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2023, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2023.0426/v2.1.033"   # Requires update to api_biblioxml2 and views based on it.
+__version__     = "2023.0502/v2.1.034"
 __status__      = "Development"
 
 # !!! IMPORTANT: Increment opasXMLProcessor version (if version chgd). It's written to the XML !!!
@@ -806,8 +806,8 @@ def main():
                 #artID = artID.upper()
                 #artID = artID.replace(".EMBARGOED", "")
                 #m = re.match(r"(.*?)\.", artID)
-                if file_number % 500 == 0 and options.display_verbose and processed_files_count == 0:
-                    print (f"#{file_number} of {len(filenames)}")
+                #if file_number % 500 == 0 and options.display_verbose and processed_files_count == 0:
+                    #print (f"#{file_number} of {len(filenames)}")
                 
                 try:
                     inputfilename = n.fileinfo["name"]
@@ -851,6 +851,8 @@ def main():
                         reload_count += 1
                     else:
                         skipped_files += 1
+                        if file_number % 250 == 0 and options.display_verbose:
+                            print (f"#Skipped {skipped_files} of {len(filenames)}")
                         continue
                 elif options.continue_processing: # don't rebuild or reload anythng newer than Solr
                     # This option can also be used to run simultaneous overlapping builds.  
