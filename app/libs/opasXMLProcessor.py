@@ -313,7 +313,7 @@ def pgx_add_rx_book_links(parsed_xml, ocd, artInfo, split_book_data=None, verbos
                 continue
             
             prev = pgx.getprevious()
-            if prev:
+            if prev is not None:                   
                 if prev.tag in ["bxe", "bx"]:
                     pgxlink_type = "BIBPGLINK"
             else:
