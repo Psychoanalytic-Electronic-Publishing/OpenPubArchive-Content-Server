@@ -32,17 +32,19 @@ EOF
 }
 
 locals {
-  config_sha1 = sha1(join("", [for f in fileset(path.cwd, "../../app/config/*") : filesha1(f)]))
-  libs_sha1   = sha1(join("", [for f in fileset(path.cwd, "../../app/libs/*") : filesha1(f)]))
-  lambda_sha1 = sha1(join("", [for f in fileset(path.cwd, "../../lambda/test/*") : filesha1(f)]))
+  config_sha1     = sha1(join("", [for f in fileset(path.cwd, "../../app/config/*") : filesha1(f)]))
+  libs_sha1       = sha1(join("", [for f in fileset(path.cwd, "../../app/libs/*") : filesha1(f)]))
+  lambda_sha1     = sha1(join("", [for f in fileset(path.cwd, "../../lambda/test/*") : filesha1(f)]))
+  dockerfile_sha1 = filesha1("../../lambda/Dockerfile")
 }
 
 
 resource "null_resource" "build_test_lambda_image" {
   triggers = {
-    config_sha1 = local.config_sha1
-    libs_sha1   = local.libs_sha1
-    lambda_sha1 = local.lambda_sha1
+    config_sha1     = local.config_sha1
+    libs_sha1       = local.libs_sha1
+    lambda_sha1     = local.lambda_sha1
+    dockerfile_sha1 = local.dockerfile_sha1
   }
 
   provisioner "local-exec" {
@@ -77,9 +79,10 @@ resource "null_resource" "deploy_lambda_package" {
   ]
 
   triggers = {
-    config_sha1 = local.config_sha1
-    libs_sha1   = local.libs_sha1
-    lambda_sha1 = local.lambda_sha1
+    config_sha1     = local.config_sha1
+    libs_sha1       = local.libs_sha1
+    lambda_sha1     = local.lambda_sha1
+    dockerfile_sha1 = local.dockerfile_sha1
   }
 
   provisioner "local-exec" {
