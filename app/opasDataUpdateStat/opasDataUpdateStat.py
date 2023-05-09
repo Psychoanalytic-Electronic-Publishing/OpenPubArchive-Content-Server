@@ -5,7 +5,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2023, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2023.0317/v1.1.14"
+__version__     = "2023.0509/v1.1.15"
 __status__      = "Beta"
 
 programNameShort = "opasDataUpdateStat"
@@ -15,18 +15,24 @@ print(
     {programNameShort} - Program to update the view and citation stat fields in the pepwebdocs Solr database.
       
       By default, it only updates records which have views data.
+        Views data needs to be updated when the database is moved to Production, since those are the REAL views for the DB.
+        The citation data does not need to be reupdated, so you don't need --all (and not including it will save a lot
+        of time)
       
       Use -h or --help for complete options.  Below are key ones.
 
       Use command line option --everything to add all citation and views data to pepwebdocs.
       (This takes significantly longer.)
         
-         - The first update after a load should be with option --everything (--all is deprecated)
-         - Then, omit --everything to update views daily
+         - The first stat run after a load should be with option --everything or --all (these are the same; "everything"
+            might be clearer though, since it's two types of data rather than just the number of records)
+
+         - Then, omit --all to update views daily
             - only records with views will update Solr
             - views data needs to be updated again when moved to Production, since those are the REAL views for the DB.
-              The citation data does not need to be reupdated, so you don't need all
-         - Citations (include --everything) only need be updated after non PEPCurrent data updates
+              The citation data does not need to be reupdated, so you don't need --all
+
+         - Citations (include --all) only need be updated after non PEPCurrent data updates
          
       To limit the records to an art_id pattern, use --key pattern, e.g., --key PSYCHE\..*
       
@@ -49,9 +55,12 @@ sys.path.append('../libs')
 sys.path.append('../config')
 sys.path.append('../libs/configLib')
 
-UPDATE_AFTER = 100
+DATA_WITH_SUB_RECORDS = "GW.*|SE.*"
+UPDATE_AFTER = 500
+REMAINING_COUNT_INTERVAL = 1000
 
 import logging
+import re
 import time
 import pymysql
 import pysolr
@@ -61,7 +70,7 @@ from optparse import OptionParser
 from pydantic import BaseModel
 from datetime import datetime
 from loggingDebugStream import log_everywhere_if
-
+import opasSolrLoadSupport
 from opasArticleIDSupport import ArticleID
 
 # logFilename = programNameShort + "_" + datetime.today().strftime('%Y-%m-%d') + ".log"
@@ -197,7 +206,8 @@ class opasCentralDBMini(object):
                 cursor = self.db.cursor(pymysql.cursors.DictCursor)
                 sql = f"""SELECT DISTINCTROW * FROM vw_stat_docviews_crosstab {and_subset}"""
                 row_count = cursor.execute(sql)
-                print (f"{row_count} view records retrieved")
+                msg = f"{row_count} view records retrieved"
+                log_everywhere_if(True, "info", msg)
                 ret_val = cursor.fetchall() # returns empty list if no rows
                 cursor.close()
             except Exception as e:
@@ -243,14 +253,18 @@ class opasCentralDBMini(object):
                     logger.error("opasDataUpdateStatDBError: Cursor execution failed.  Can't fetch.")
                     
             except MemoryError as e:
-                print(("Memory error loading table: {}".format(e)))
+                msg = "Memory error loading table: {}".format(e)
+                log_everywhere_if(True, "error", msg)
+                
             except Exception as e:
-                print(("Table Query Error: {}".format(e)))
+                msg = "Table Query Error: {}".format(e)
+                log_everywhere_if(True, "error", msg)
             
             self.close_connection("get_citation_counts")
             
         except Exception as e:
-            print(("Database Connect Error: {}".format(e)))
+            msg = "Database Connect Error: {}".format(e)
+            log_everywhere_if(True, "error", msg)
             citation_table["dummy"] = MostCitedArticles()
         
         return citation_table
@@ -312,17 +326,25 @@ def update_solr_stat_data(solrcon, all_records:bool=False):
     skipped_as_update_error = 0
     skipped_as_missing = 0
     skipped_as_not_updated = 0
+    skipped_as_special_case = 0
     item_count = len(unified_article_stat.items())
     remaining_count = item_count
-    print (f"Merging up to {item_count} stat records into Solr Docs core records.")
+    msg = f"Merging up to {item_count} stat records into Solr Docs core records."
+    log_everywhere_if(True, "info", msg)
     
     for key, art_stat in unified_article_stat.items():
         remaining_count -= 1
         if not key or "?" in key:
-            print (f"Key Error (skipping): '{key}': {art_stat}")
+            msg = f"Key Error (skipping): '{key}': {art_stat}"
+            log_everywhere_if(True, "warning", msg)
             continue
             
-        if not all_records:
+        if not all_records: # not --all
+            # if not doing all records, for optimum speed, we don't bother to update items with citation info only.  
+            # Unless --all was specified, we just update those with view data, and skip if there are no views.           
+            # When doing a full update, or a full rebuild, the stat run should include --all (or --everywhere), which will fill in 
+            # the citation data..
+            
             if not art_stat.art_views_update:
                 #print (f"Skipping {key} (No update)")
                 continue
@@ -335,15 +357,15 @@ def update_solr_stat_data(solrcon, all_records:bool=False):
                     #print (f"Skipping {key} (all 0 views)")
                     continue
 
-        if remaining_count % 1000 == 0:
-            print (f"...{remaining_count} records to go")
+        if remaining_count % REMAINING_COUNT_INTERVAL == 0:
+            msg = f"...{remaining_count} records to go (update count: {update_count})"
+            log_everywhere_if(True, "info", msg)
             
         # set only includes those with the desired update value > 0 
         parsed_id = ArticleID(art_id=key)
         doc_id = parsed_id.art_id
         found = False
         try:
-            import opasSolrLoadSupport
             results = solrcon.search(q = f"art_id:{doc_id}")
             if results.raw_response["response"]["numFound"] > 0:
                 found = True
@@ -392,59 +414,69 @@ def update_solr_stat_data(solrcon, all_records:bool=False):
                     continue
                         
                 if doc_id is not None and update_rec:
-                    if options.display_verbose:
-                        if all_records == False:
-                            print(f"Upd. solr stat {doc_id} {remaining_count} more to go. Vws 12m:{art_stat.art_views_last12mos} 6m:{art_stat.art_views_last6mos} 1m:{art_stat.art_views_last1mos} 1w:{art_stat.art_views_lastweek}")
-                        else:
-                            print(f"...{remaining_count} more to go (views/citations). Updated:{doc_id} Cited: {solr_art_cited_all} Vws 12m:{art_stat.art_views_last12mos}")
-
-                    upd_rec = {
-                                "id":doc_id,
-                                "art_id": doc_id,
-                                "art_cited_5": art_stat.art_cited_5, 
-                                "art_cited_10": art_stat.art_cited_10, 
-                                "art_cited_20": art_stat.art_cited_20, 
-                                "art_cited_all": art_stat.art_cited_all, 
-                                "art_views_lastcalyear": art_stat.art_views_lastcalyear, 
-                                "art_views_last12mos": art_stat.art_views_last12mos, 
-                                "art_views_last6mos": art_stat.art_views_last6mos, 
-                                "art_views_last1mos": art_stat.art_views_last1mos, 
-                                "art_views_lastweek": art_stat.art_views_lastweek
-                    }                    
-        
-                    try:
-                        solrcon.add([upd_rec], fieldUpdates={
-                                                             "art_cited_5": 'set',
-                                                             "art_cited_10": 'set',
-                                                             "art_cited_20": 'set',
-                                                             "art_cited_all": 'set',
-                                                             "art_views_lastcalyear": 'set',
-                                                             "art_views_last12mos": 'set',
-                                                             "art_views_last6mos": 'set',
-                                                             "art_views_last1mos": 'set',
-                                                             "art_views_lastweek": 'set'
-                                                             })
-        
-                        #if all_records == False:
-                            #if options.display_verbose:
-                                #print (f"{doc_id} - Views Yr:{art_stat.art_views_lastcalyear} 12mos:{art_stat.art_views_last12mos} 6mos:{art_stat.art_views_last6mos} 1mo:{art_stat.art_views_last1mos} 1wk:{art_stat.art_views_lastweek}")
-                            
-                        if update_count > 0 and update_count % UPDATE_AFTER == 0:
-                            solr_docs2.commit()
-                            infoStr = f"...Updated {update_count} records with citation data"
-                            print (infoStr)
-                        
-                    except Exception as err:
-                        errStr = f"Solr call exception for update on {doc_id}: {err}"
-                        skipped_as_update_error += 1
-                        logger.error(errStr)
+                    if re.match(DATA_WITH_SUB_RECORDS, doc_id):
+                        # can't update GW/SE this way because they have subrecords
+                        # if we want to track these in Solr, we need to do that during
+                        # loading, or reload the whole record here.
+                        skipped_as_special_case += 1
+                        if skipped_as_special_case == 1 or skipped_as_special_case % 100 == 0:
+                            msg = f"Skipped {DATA_WITH_SUB_RECORDS} documents with subrecords (e.g., {doc_id})"
+                            log_everywhere_if(options.display_verbose, "warning", msg)
                     else:
-                        update_count += 1
+                        if options.display_verbose:
+                            if all_records == False:
+                                print(f"Upd. solr stat {doc_id} {remaining_count} more to go. Vws 12m:{art_stat.art_views_last12mos} 6m:{art_stat.art_views_last6mos} 1m:{art_stat.art_views_last1mos} 1w:{art_stat.art_views_lastweek}")
+                            else:
+                                print(f"...{remaining_count} more to go (views/citations). Updated:{doc_id} Cited: {solr_art_cited_all} Vws 12m:{art_stat.art_views_last12mos}")
+    
+                        upd_rec = {
+                                    "id":doc_id,
+                                    "art_id": doc_id,
+                                    "art_cited_5": art_stat.art_cited_5, 
+                                    "art_cited_10": art_stat.art_cited_10, 
+                                    "art_cited_20": art_stat.art_cited_20, 
+                                    "art_cited_all": art_stat.art_cited_all, 
+                                    "art_views_lastcalyear": art_stat.art_views_lastcalyear, 
+                                    "art_views_last12mos": art_stat.art_views_last12mos, 
+                                    "art_views_last6mos": art_stat.art_views_last6mos, 
+                                    "art_views_last1mos": art_stat.art_views_last1mos, 
+                                    "art_views_lastweek": art_stat.art_views_lastweek
+                        }                    
+            
+                        try:
+                            solrcon.add([upd_rec], fieldUpdates={
+                                                                 "art_cited_5": 'set',
+                                                                 "art_cited_10": 'set',
+                                                                 "art_cited_20": 'set',
+                                                                 "art_cited_all": 'set',
+                                                                 "art_views_lastcalyear": 'set',
+                                                                 "art_views_last12mos": 'set',
+                                                                 "art_views_last6mos": 'set',
+                                                                 "art_views_last1mos": 'set',
+                                                                 "art_views_lastweek": 'set'
+                                                                 })
+            
+                            #if all_records == False:
+                                #if options.display_verbose:
+                                    #print (f"{doc_id} - Views Yr:{art_stat.art_views_lastcalyear} 12mos:{art_stat.art_views_last12mos} 6mos:{art_stat.art_views_last6mos} 1mo:{art_stat.art_views_last1mos} 1wk:{art_stat.art_views_lastweek}")
+                                
+                            if update_count > 0 and update_count % UPDATE_AFTER == 0:
+                                solr_docs2.commit()
+                                infoStr = f"...Updated {update_count} records with citation data"
+                                log_everywhere_if(options.display_verbose, "info", infoStr)
+                            
+                        except Exception as err:
+                            errStr = f"Solr call exception for update on {doc_id}: {err}"
+                            skipped_as_update_error += 1
+                            log_everywhere_if(True, "error", errStr)
+                        else:
+                            update_count += 1
             else:
-                errStr = (f"Document {doc_id} not in Solr...skipping")
-                logger.warning(errStr)
-                if ".jpg" in errStr:
-                    print (f"Todo: eliminate these jpgs from the table driving the stat {doc_id}")
+                msg = (f"Document {doc_id} not in Solr...skipping")
+                log_everywhere_if(options.display_verbose, "warning", msg)
+                if ".jpg" in msg or ".JPG" in msg:
+                    msg = f"TODO: eliminate these jpgs from the table driving the stat {doc_id}"
+                    log_everywhere_if(options.display_verbose, "warning", msg)
 
     #  final commit
     try:
@@ -454,7 +486,7 @@ def update_solr_stat_data(solrcon, all_records:bool=False):
         print(msg)
         logger.error(msg)        
 
-    print (f"Finished updating Solr stat with {update_count} art records updated; skipped: {skipped_as_not_updated} errors:{skipped_as_update_error }.")
+    print (f"Finished updating Solr stat. Article records updated: {update_count} skipped: {skipped_as_not_updated} errors: {skipped_as_update_error }.")
     return update_count
 
 if __name__ == "__main__":
@@ -505,7 +537,7 @@ if __name__ == "__main__":
     load_unified_article_stat()
     updates = update_solr_stat_data(solr_docs2, options.all_records)
     total_time = time.time() - start_time
-    final_stat = f"{time.ctime()} Updated {updates} Solr records in {total_time} secs ({total_time/60} minutes))."
+    final_stat = f"{time.ctime()} Updated {updates} Solr records in {total_time:0,.2f} secs ({total_time/60:0,.2f} minutes))."
     print (final_stat)
         
 
