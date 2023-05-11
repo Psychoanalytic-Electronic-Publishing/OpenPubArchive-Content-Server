@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2023, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2023.0502/v2.1.034(D)"
+__version__     = "2023.0502/v2.1.034(D2)"
 __status__      = "Development"
 
 # !!! IMPORTANT: Increment opasXMLProcessor version (if version chgd). It's written to the XML !!!
@@ -829,6 +829,10 @@ def main():
                 #   - input file is dated after the output file
                 #   - if a reference in the biblio (via api_biblioxml2) has been updated
                 # ###############################################################################
+                if 'IJP' in art_id_from_filename:
+                    msg = f"{80*'-'}\n{art_id_from_filename} EVALUATING WHETHER NEEDS UPDATE."
+                    log_everywhere_if(SPECIAL_DEBUG_FLAG, level="info", msg=msg)
+                
                 file_status_tuple = output_file_needs_rebuilding(inputfilespec=n,
                                                                  inputfilename=inputfilename,
                                                                  outputfilename=outputfilename,
