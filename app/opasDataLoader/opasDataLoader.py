@@ -333,8 +333,9 @@ def output_file_needs_rebuilding(outputfilename, inputfilename=None, inputfilesp
                         print (e)
                     
                     else:
-                        msg = f"{80*'-'}\n{art_id} Biblio Links Updated {last_update} XML Rebuild Needed: {ret_val}: last file update time: {file_updated_time}."
-                        log_everywhere_if(SPECIAL_DEBUG_FLAG, level="info", msg=msg)
+                        if 'IJP' in art_id:
+                            msg = f"{80*'-'}\n{art_id} Biblio Links Updated {last_update} XML Rebuild Needed: {ret_val}: last file update time: {file_updated_time}."
+                            log_everywhere_if(SPECIAL_DEBUG_FLAG, level="info", msg=msg)
                             
             else:
                 ret_val = False
