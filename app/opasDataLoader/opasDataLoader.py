@@ -7,12 +7,13 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2023, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2023.0502/v2.1.034"
+__version__     = "2023.0502/v2.1.034(D)"
 __status__      = "Development"
 
 # !!! IMPORTANT: Increment opasXMLProcessor version (if version chgd). It's written to the XML !!!
 
 programNameShort = "opasDataLoader"
+SPECIAL_DEBUG_FLAG = True
 
 border = 80 * "*"
 print (f"""\n
@@ -324,12 +325,16 @@ def output_file_needs_rebuilding(outputfilename, inputfilename=None, inputfilesp
                         else: # rds configured for utc time
                             localized = utc_tz.localize(last_update)
                             last_update = localized.astimezone(utc_tz)
-
+                            
                         if last_update >= file_updated_time:
                             ret_val = True
-                
+
                     except Exception as e:
                         print (e)
+                    
+                    else:
+                        msg = f"{80*'-'}\n{art_id} Biblio Links Updated {last_update} XML Rebuild Needed: {ret_val}: last file update time: {file_updated_time}."
+                        log_everywhere_if(SPECIAL_DEBUG_FLAG, level="info", msg=msg)
                             
             else:
                 ret_val = False
@@ -341,6 +346,7 @@ def output_file_needs_rebuilding(outputfilename, inputfilename=None, inputfilesp
             ret_val = False # no need to rebuild
     else:
         both_same = True
+        
     
     return (ret_val, infile_exists, outfile_exists, both_same)
 
