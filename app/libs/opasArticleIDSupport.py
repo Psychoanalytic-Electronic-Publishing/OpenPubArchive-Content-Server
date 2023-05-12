@@ -890,8 +890,12 @@ class ArticleInfo(BaseModel):
                 
         if not opasgenlib.is_empty(parsed_xml):
             # critical to set these, used from basic_art_info below and it's not always part of the articleID
+            # art_issue is a STRING, might be a range, or a name
             basic_art_info.art_issue = opasxmllib.xml_xpath_return_textsingleton(parsed_xml, '//artinfo/artiss/node()', default_return=None)
-            basic_art_info.art_issue_int = opasgenlib.str_to_int(basic_art_info.art_issue, default=None)
+            try:
+                basic_art_info.art_issue_int = int(basic_art_info.art_issue)
+            except:
+                basic_art_info.art_issue_int = None
         
         if basic_art_info.is_ArticleID and not opasgenlib.is_empty(parsed_xml):
             # should try not to call this this way, but for testing, it's useful.  
@@ -945,7 +949,7 @@ class ArticleInfo(BaseModel):
             elif basic_art_info.is_supplement:
                 self.art_issue = "Supplement"
             else:
-                self.art_issue = None
+                self.art_issue = basic_art_info.art_issue
 
             self.art_pgstart = basic_art_info.art_pgstart
         else:
