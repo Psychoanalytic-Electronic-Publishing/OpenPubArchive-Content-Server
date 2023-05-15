@@ -25,26 +25,6 @@ class TestReports(unittest.TestCase):
 
     #TODO: Later these will need to be done while logged in.
     
-    def test00_document_char_counts_report(self):
-        # note api_key is required, but already in headers
-        full_URL = base_plus_endpoint_encoded(f'/v2/Admin/Reports/Character%20Count%20Report?limit=100&offset=0&getfullcount=false&download=false')
-        response = requests.get(full_URL, headers=headers)
-        assert(response.ok == True)
-        # these don't get affected by the level.
-        r = response.json()
-        response_info = r["report"]["responseInfo"]
-        response_set = r["report"]["responseSet"]
-        assert(response_info["count"] >= 1)
-        assert(response_set[0]["row"]["jrnlgrpname"] == 'ADPSA')  # to validate content is in record
-        
-    def test00B_document_char_counts_report(self):
-        # note api_key is required, but already in headers
-        full_URL = base_plus_endpoint_encoded(f'/v2/Admin/Reports/Character%20Count%20Report?limit=100&offset=0&getfullcount=false&download=true')
-        response = requests.get(full_URL, headers=headers)
-        assert(response.ok == True)
-        content = response.headers['content-disposition']
-        print (content)
-        assert (content[0:10] == 'attachment')
 
     def test01_session_log_report_daterange(self):
         # note api_key is required, but already in headers
@@ -267,7 +247,37 @@ class TestReports(unittest.TestCase):
         response_set = r["report"]["responseSet"]
         assert(response_info["count"] >= 1)           
 
+    def test09a_document_char_counts_report(self):
+        # data return (non-download) version
+        # note api_key is required, but already in headers
+        full_URL = base_plus_endpoint_encoded(f'/v2/Admin/Reports/Character-Count-Report?limit=100&offset=0&getfullcount=false&download=false')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        # these don't get affected by the level.
+        r = response.json()
+        response_info = r["report"]["responseInfo"]
+        response_set = r["report"]["responseSet"]
+        assert(response_info["count"] >= 1)
+        assert(response_set[0]["row"]["jrnlgrpname"] == 'ADPSA')  # to validate content is in record
+        
+    def test09b_document_char_counts_report_download(self):
+        # note api_key is required, but already in headers
+        full_URL = base_plus_endpoint_encoded(f'/v2/Admin/Reports/Character-Count-Report?getfullcount=false&download=true')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        content = response.headers['content-disposition']
+        print (content)
+        assert (content[0:10] == 'attachment')
 
+    def test10a_document_char_counts_details_report_download(self):
+        # note api_key is required, but already in headers
+        full_URL = base_plus_endpoint_encoded(f'/v2/Admin/Reports/Character-Count-Details-Report?getfullcount=false&download=true')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        content = response.headers['content-disposition']
+        print (content)
+        assert (content[0:10] == 'attachment')
+        
 if __name__ == '__main__':
     unittest.main()
     print ("Tests Complete.")
