@@ -28,6 +28,7 @@ import os
 import os.path
 import sys
 # import shlex
+import json
 import copy
 import string
 
@@ -54,21 +55,19 @@ import time
 # used this name because later we needed to refer to the module, and datetime is also the name
 #  of the import from datetime.
 import datetime as dtime 
-# import datetime
 from datetime import datetime
 from datetime import datetime as dt # to avoid python's confusion with datetime.timedelta
-# from typing import Union, Optional, Tuple, List
-# from enum import Enum
-# import pymysql
-# import s3fs # read s3 files just like local files (with keys)
 
 import opasConfig
 import localsecrets
+import opasXMLHelper as opasxmllib
 
 import opasFileSupport
+from lxml import etree
+parser = etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True)
 
-# from configLib.opasCoreConfig import solr_docs2, solr_authors2, solr_gloss2
-# from configLib.opasCoreConfig import EXTENDED_CORES
+import PEPGlossaryRecognitionEngine
+glossEngine = PEPGlossaryRecognitionEngine.GlossaryRecognitionEngine(gather=False)
 
 # Removed support for Py2, only Py3 supported now
 pyVer = 3
@@ -89,6 +88,8 @@ import opasCentralDBLib
 # import opasDocPermissions as opasDocPerm
 import opasPySolrLib
 from opasPySolrLib import search_text, search_text_qs
+# import opasProductLib
+import opasArticleIDSupport
 
 # count_anchors = 0
 
@@ -113,7 +114,6 @@ def set_log_level(level_int):
     ret_val = logger.level
     logger.debug(f"Log Level: {logger.level}")
     return ret_val
-
     
 def get_query_item_of_interest(solrQuery):
     """
@@ -224,7 +224,7 @@ def extract_abstract_from_html(html_str, xpath_to_extract=opasConfig.HTML_XPATH_
         if ret_val != []:
             ret_val = htree.xpath(opasConfig.HTML_XPATH_DOC_BODY) # e.g., "//div[@class='body']"
     # make sure it's a string
-    ret_val = opasQueryHelper.force_string_return_from_various_return_types(ret_val)
+    ret_val = opasgenlib.force_string_return_from_various_return_types(ret_val)
 
     return ret_val
 
@@ -464,7 +464,7 @@ def metadata_get_source_info(src_type=None, # opasConfig.VALS_PRODUCT_TYPES
     if src_type is not None and src_type != "*":
         src_type_in = src_type # save it for logging
         src_type = opasConfig.normalize_val(src_type, opasConfig.VALS_PRODUCT_TYPES)
-        if src_type == None:
+        if src_type is None:
             err = f"SourceTypeError: {src_type_in}"
             logger.error(err)
             raise Exception(err)
@@ -546,11 +546,12 @@ def metadata_get_source_info(src_type=None, # opasConfig.VALS_PRODUCT_TYPES
                 # use standardized version of class
                 pep_release = source.get("pepversion")
                 pub_source_url = source.get("landing_page")
-    
+                art_citeas = ""
+                
                 if src_type == "book":
                     book_code = source.get("pepcode")
                     if book_code is None:
-                        logger.warning(f"Book code information missing for requested basecode {base_code} in productbase")
+                        logger.warning(f"Book code (pepcode) information missing for requested basecode {base_code} in productbase")
                     else:
                         m = re.match("(?P<code>[a-z]+)(?P<num>[0-9]+)", book_code, re.IGNORECASE)
                         if m is not None:
@@ -713,12 +714,16 @@ def documents_get_abstracts(document_id,
 
     if document_id is not None:
         # new document ID object provides precision and case normalization
-        document_id_obj = opasgenlib.DocumentID(document_id)
-        document_id = document_id_obj.document_id
-        if document_id is None:
-            document_id = document_id_obj.jrnlvol_id
+        if re.search("[\?\*]", document_id) is None:
+            # fix it, or add a wildcard if needed
+            document_id_obj = opasgenlib.DocumentID(document_id)
+            document_id = document_id_obj.document_id
             if document_id is None:
-                document_id = document_id_obj.journal_code          
+                document_id = document_id_obj.jrnlvol_id
+                if document_id is None:
+                    document_id = document_id_obj.journal_code          
+        #else:
+            #document_id = document_id # leave it alone, it has wildcards
 
         if sort is None:
             sort="art_citeas_xml asc"
@@ -767,6 +772,82 @@ def documents_get_abstracts(document_id,
     return ret_val
 
 #-----------------------------------------------------------------------------
+def documents_get_document_from_file(document_id,
+                                     ret_format="XML",
+                                     req_url:str=None,
+                                     fullfilename=None, 
+                                     authenticated=True,
+                                     session_info=None, 
+                                     option_flags=0,
+                                     request=None
+                                     ):
+    """
+    Load an article into the document_list_item directly from a file in order to return
+      **archived** articles (such as used by IJPOPen) which have been removed from Solr
+    """
+    caller_name = "documents_get_document_from_file"
+    ret_val = None
+    # document_list = None
+    
+    # new document ID object provides precision and case normalization
+    document_id_obj = opasgenlib.DocumentID(document_id)
+    document_id = document_id_obj.document_id
+    filenamebase = os.path.basename(fullfilename)
+    fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root=localsecrets.FILESYSTEM_ROOT)
+    #temp for testing
+    #if not fs.exists(fullfilename, localsecrets.FILESYSTEM_ROOT):
+        #fullfilename = fs.find(fullfilename, path_root="X:\AWS_S3\AWS PEP-Web-Live-Data\_PEPTests")
+    
+    fileXMLContents, input_fileinfo = fs.get_file_contents(fullfilename)
+    parsed_xml = etree.fromstring(opasxmllib.remove_encoding_string(fileXMLContents), parser)
+    title = opasxmllib.xml_xpath_return_textsingleton(parsed_xml, '//arttitle', default_return=None)
+    abstract = opasxmllib.xml_xpath_return_textsingleton(parsed_xml, '//abs', default_return=None)
+    pgrg = opasxmllib.xml_xpath_return_textsingleton(parsed_xml, '//artpgrg', default_return=None)
+    # save common document (article) field values into artInfo instance for both databases
+    #sourceDB = opasProductLib.SourceInfoDB()
+    artInfo = opasArticleIDSupport.ArticleInfo(parsed_xml=parsed_xml, art_id=document_id, filename_base=filenamebase, fullfilename=fullfilename, logger=logger)
+    generic_document_id = document_id[:-1] + "?"
+    # query the latest version of this document to get the documentListItem info
+    #result = documents_get_document(generic_document_id, session_info)
+    # have to call abstracts to get whatever matching root document is in solr
+    result = documents_get_abstracts(generic_document_id, 
+                                     ret_format=ret_format,
+                                     req_url=req_url, 
+                                     session_info=session_info,
+                                     request=request
+                                     )
+
+    if result.documents.responseInfo.count == 1:
+        # change fields as needed
+        document_list_item = result.documents.responseSet[0]
+        document_list_item.documentID = document_id
+        document_list_item.title = title
+        document_list_item.abstract = abstract
+        document_list_item.pgRg = pgrg
+        document_list_item.pgStart = artInfo.art_pgstart
+        document_list_item.pgEnd = artInfo.art_pgend
+        document_list_item.stat = None
+        document_list_item.documentRef = artInfo.art_citeas_text 
+        # for reference, art_citeas_xml is both legal xml and html
+        document_list_item.documentRefXML = artInfo.art_citeas_xml 
+        document_list_item.documentRefHTML = artInfo.art_citeas_xml
+        document_list_item.documentMetaXML = opasxmllib.xml_xpath_return_textsingleton(parsed_xml, '//meta', default_return=None)
+        
+        if result.documents.responseSet[0].accessChecked and result.documents.responseSet[0].accessLimited == False:
+            document_list_item.document = fileXMLContents
+            # replace facet_counts with new dict
+            try:
+                matched_word_count, term_dict = glossEngine.getGlossaryLists(fileXMLContents, art_id=document_id, verbose=False)
+                result.documents.responseInfo.facetCounts = {"facet_fields": {"glossary_group_terms": term_dict}}
+            except Exception as e:
+                status_message = f"{caller_name}: {e}"
+                logger.error(status_message)
+            
+        ret_val = result
+
+    return ret_val
+
+#-----------------------------------------------------------------------------
 def documents_get_document(document_id,
                            solr_query_spec=None,
                            ret_format="XML",
@@ -796,6 +877,8 @@ def documents_get_document(document_id,
     caller_name = "documents_get_document"
     ret_val = None
     document_list = None
+    search_context = None
+    
     ext = localsecrets.PDF_ORIGINALS_EXTENSION #  PDF originals extension
     # search_text_qs handles the authentication verification
 
@@ -808,7 +891,7 @@ def documents_get_document(document_id,
         #if m.group("pagejump") is not None:
             #document_id = m.group("docid")
             ## only if they haven't directly specified page
-            #if page == None:
+            #if page is None:
                 #page = m.group("pagejump")
     # just to be sure
     query = "*:*"
@@ -925,7 +1008,7 @@ def documents_get_document(document_id,
                 if option_flags & opasConfig.OPTION_2_RETURN_TRANSLATION_SET:
                     # get document translations of the first document (note this also includes the original)
                     if document_list_item.origrx is not None:
-                        translationSet, count = opasPySolrLib.quick_docmeta_docsearch(q_str=f"art_origrx:{document_list_item.origrx}", req_url=req_url)
+                        translationSet, count = opasPySolrLib.quick_docmeta_docsearch(q_str=f"art_origrx:{document_list_item.origrx} OR art_id:{document_list_item.origrx}", req_url=req_url)
                         if translationSet is not None:
                             # set translationSet to a list, just like 
                             document_list_item.translationSet = translationSet
@@ -933,6 +1016,14 @@ def documents_get_document(document_id,
             # is user authorized?
             if document_list.documentList.responseSet[0].accessLimited or document_list.documentList.responseSet[0].accessChecked == False or document_list.documentList.responseSet[0].accessLimited is None:
                 document_list.documentList.responseSet[0].document = document_list.documentList.responseSet[0].abstract
+            else: # yes
+                # replace facet_counts with new dict
+                try:
+                    pepxml = document_list.documentList.responseSet[0].document
+                    matched_word_count, term_dict = glossEngine.getGlossaryLists(pepxml, art_id=document_id, verbose=False)
+                    response_info.facetCounts = {"facet_fields": {"glossary_group_terms": term_dict}}
+                except Exception as e:
+                    logger.error(f"{caller_name}: Error replacing term_dict {e}")
                 
             document_list_struct = models.DocumentListStruct( responseInfo = response_info, 
                                                               responseSet = [document_list_item]

@@ -35,6 +35,7 @@ import opasConfig
 # from pysolr import Results
 
 from enum import Enum
+from lxml import etree
 
 class ExtendedEnum(Enum):
     @classmethod
@@ -107,33 +108,61 @@ class TimePeriod(Enum):
     alltime = 'all'
 
 #--------------------------------------------------------------------
+# ArticleIfno, pydantic model defined in opasArticleIDSupport
+#--------------------------------------------------------------------
+#class ArticleInfo(BaseModel):
+    #"""
+    #An entry from a documents metadata.
+    #See opasArticleIDSupport for model and supporting functions
+    #"""    
+#--------------------------------------------------------------------
 # Biblio records, moved from modelsOpasCentralPydantic
 #--------------------------------------------------------------------
 class BiblioxmlGeneric(BaseModel):
     row: dict = Field({}, title="Fully flexible content row from Database")
 
 class Biblioxml(BaseModel):
-    art_id: str = Field(None)
-    bib_local_id: str = Field(None)
-    art_year: int = Field(0)
-    bib_rx: str = Field(None)
-    bib_rxcf: str = Field(None)
-    bib_sourcecode: str = None
-    bib_authors: str = Field(None)
-    bib_articletitle: str = Field(None)
-    title: str = Field(None)
-    full_ref_text: str = Field(None)
-    bib_sourcetype: str = Field(None)
-    bib_sourcetitle: str = Field(None)
-    bib_authors_xml: str = Field(None)
-    full_ref_xml: str = Field(None)
-    bib_pgrg: str = Field(None)
-    doi: str = Field(None)
-    bib_year: str = Field(None)
-    bib_year_int: int = Field(0)
-    bib_volume: str = Field(None)
-    bib_publisher: str = Field(None)
+    art_id: str = Field(None, title="Article ID (locator) of the instance containing the reference")
+    ref_local_id: str = Field(None, title="ID of the be or binc element in the instance")
+    art_year: Optional[int]
+    ref_rx: str = Field(None)
+    ref_rx_confidence: float = Field(0, title="Confidence level of assigned rx. Manual QA = 1, code parsed = .99, Heuristic = .1 to .97")
+    ref_rxcf: str = Field(None, title="List of possible article ID codes for this reference")
+    ref_rxcf_confidence: float = Field(0, title="Max confidence level of rxcf codes")
+    ref_sourcecode: str = Field(None)
     last_update: datetime = Field(None)
+    ref_authors: str = Field(None)
+    ref_authors_xml: str = Field(None)
+    ref_link_source: str = Field(None, title="Source of rx link, 'xml', 'database', or 'pattern'")
+    # ref_articletitle: str = Field(None)
+    art_title: str = Field(None)
+    ref_rxp: str = Field(None, title="Previous system method to correct rx value without overwriting.  Will now use to figure correct rx")
+    ref_rxp_confidence: float = Field(0, title="rxp confidence value")
+    ref_text: str = Field(None)
+    ref_sourcetype: str = Field(None, title="journal, book, unknown") # could add video
+    ref_is_book: bool = Field(False)
+    ref_sourcetitle: str = Field(None)
+    ref_authors_xml: str = Field(None)
+    ref_xml: str = Field(None)
+    # ref_xml_corrected: bool = Field(False) No longer needed 2023-02-16 (references have been integrated into KBD3 XML)
+    ref_pgrg: str = Field(None)
+    ref_pgstart: str = Field("")
+    ref_doi: Optional[str]
+    ref_title: str = Field(None)
+    ref_year: str = Field(None)
+    ref_year_int: Optional[int]
+    ref_volume: str = Field(None)
+    ref_volume_int: Optional[int]
+    ref_volume_isroman: bool = Field(False, title="True if ref_volume is roman")
+    ref_publisher: str = Field(None)
+    ref_in_pep: bool = Field(False, title="Indicates this is a PEP reference")
+    ref_exists: bool = Field(False, title="Indicates this ref link has been verified")
+    link_updated: bool = Field(False, title="Indicates whether the data was corrected during load. If so, may need to update DB.  See link_source for method")
+    record_from_db: bool = Field(False, title="This entry is from the biblioDB")
+    record_updated: bool = Field(False)
+    skip_incremental_scans: Optional[bool] # Field(False, title="Use to skip for speed during normal scans. Can reset it (in bulk) for a full rescan--in that way it's different than NEVERMORE")
+    skip_reason: str = Field(None)
+    parsed_ref: Optional[object]
 
 #-------------------------------------------------------
 # Error Return classes (Can also return "No Error", 200 httpcode)
@@ -177,8 +206,8 @@ class ResponseInfo(BaseModel):
 #-------------------------------------------------------
 class APIStatusItem(BaseModel):
     opas_version: str = Field(None, title="Version of OPAS")
-    timeStamp: str = Field(None, title="Current time")
-    
+    timeStamp: str = Field(None, title="Current time")   
+
 #-------------------------------------------------------
 # General Data Encapsulation classes
 #-------------------------------------------------------
@@ -295,6 +324,7 @@ class DocumentListItem(BaseModel):
     authorMast: str = Field(None, title="Author Names", description="The author names as displayed below the title in an article.")
     #2020-10-19, new convenience listing of author info (requires Field change to parse during load)
     authorList: list = Field(None, title="List of individual author data parsed from documentInfoXML", description="List of individual author data parsed from documentInfoXML")
+    authorCitation: str = Field(None, title="Author Names Citation style", description="The author names as they would appear in a reference.")
     origrx: str = Field(None, title="Original Document (documentID)", description="Document idref (documentID) linking this to an original document, e.g, this is a translation of...")
     relatedrx: str = Field(None, title="Closely Related Documents (documentID)", description="Document idref (documentID) associating all closely related documents to this one, e.g., this is a commentary on...")
     PEPCode: str = Field(None, title="Source Acronym", description="Acronym-type code assigned to the document source e.g., CPS, IJP, ANIJP-EL, ZBK. (The first part of the document ID.)")
@@ -565,6 +595,12 @@ class ServerStatusItem(BaseModel):
     text_server_url: str = Field(None, title="Current SOLR URL")
     cors_regex: str = Field(None, title="Current CORS Regex")
     db_server_url: str = Field(None, title="Current DB URL")
+    sitemap_path:  str = Field(None, title="Current Sitemap folder location setting")
+    google_metadata_path:  str = Field(None, title="Current google metadata folder location setting")
+    pdf_originals_path:  str = Field(None, title="Current folder location setting")
+    image_source_path:  str = Field(None, title="Current folder location setting")
+    image_expert_picks_path:  str = Field(None, title="Current folder location setting")
+    xml_originals_path:  str = Field(None, title="Current folder location setting")
     library_versions: dict = Field({}, title="Server Python Library Versions")
 
 #-------------------------------------------------------
@@ -890,6 +926,23 @@ class VolumeListStruct(BaseModel):
 
 class VolumeList(BaseModel):
     volumeList: VolumeListStruct
+
+#-------------------------------------------------------
+class YearListItem(BaseModel):
+    PEPCode: str = Field(None, title="")
+    vol: str = Field(None, title="")
+    year: str = Field(None, title="")
+    vols: list = Field([], title="")
+    count: int = Field(0, title="")
+    
+#-------------------------------------------------------
+
+class YearListStruct(BaseModel):
+    responseInfo: ResponseInfo
+    responseSet: List[YearListItem] = []   
+
+class YearList(BaseModel):
+    yearList: YearListStruct
     
 #-------------------------------------------------------
 class WhatsNewListItem(BaseModel):

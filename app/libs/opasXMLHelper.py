@@ -332,7 +332,7 @@ g_transformer.set_transformer(opasConfig.TRANSFORMER_XMLTOHTML_EXCERPT, opasConf
 g_transformer.set_transformer(opasConfig.XSLT_XMLTOHTML_GLOSSARY_EXCERPT, opasConfig.XSLT_XMLTOHTML_GLOSSARY_EXCERPT)
 #g_transformer.set_transformer("testtransform", "testtransform.xslt")
 
-ENCODER_MATCHER = re.compile("\<\?xml\s+version=[\'\"]1.0[\'\"]\s+encoding=[\'\"](UTF-?8|ISO-?8859-?1?)[\'\"]\s*\?\>\n", flags=re.IGNORECASE)  # TODO - Move to module globals to optimize
+ENCODER_MATCHER = re.compile("\<\?xml\s+version=[\'\"]1.0[\'\"]\s+encoding=[\'\"](UTF-?8|ISO-?8859-?1?)[\'\"].*?(\?\>)\n", flags=re.IGNORECASE)  # TODO - Move to module globals to optimize
 
 # -------------------------------------------------------------------------------------------------------
 
@@ -513,14 +513,14 @@ def xmlstr_to_etree(xmlstr):
 
     if isinstance(xmlstr, bytes):
         try:
-            root = etree.parse(BytesIO(xmlstr))
+            root = etree.parse(BytesIO(xmlstr), parser=parser)
         except Exception as e:
             logger.error(f"Error parsing Bytes xmlstr: {e}")
     elif isinstance(xmlstr, str):
         try:
             #xmlstr = xmlstr.replace("encoding=\'UTF-8\'", "")
             xmlstr = remove_encoding_string(xmlstr)
-            root = etree.parse(StringIO(xmlstr))
+            root = etree.parse(StringIO(xmlstr), parser=parser)
         except Exception as e:
             logger.error(f"Error parsing xmlstr: {e}")
     elif etree.iselement(xmlstr):
@@ -1290,7 +1290,7 @@ def xml_node_regx_ancestors(element_node, ancestor_tag="*", regx=".*"):
     lst = [n.tag for n in element_node.iterancestors(ancestor_tag)]
     for n in lst:
         ret_val = re.match(regx, n)
-        if ret_val != None:
+        if ret_val is not None:
             ret_val = True
             break
 
@@ -1837,33 +1837,6 @@ if __name__ == "__main__":
                 <div class='pagebreak><p class='pagenumber'>6</p></div>
               </test>
               """
-
-    test_xml3 = xml_file_to_xmlstr("./tstfiles/IJP.051.0175A(bEXP_ARCH1).XML")
-    
-    if 0:
-        page0 = xml_get_pages(test_xml3, 0, 1, inside="body", env="tes1")
-        # print (page0[0][-33:])
-        txt = page0[0][-33:]
-        page0 = xml_get_pages(test_xml3, 1, 2, env="body")
-        assert ("177" == page0[0][-22:-19])
-        page0 = xml_get_pages(test_xml3, 2, 3, env="body")
-        # print (page0[0][-33:])
-        assert ("179" == page0[0][-22:-19])
-        test_xml3 = xml_file_to_xmlstr("./tstfiles/IJP.043.0306A(bEXP_ARCH1).XML")
-        page0 = xml_get_pages(test_xml3, 0, 1, inside="body", env="tes2")
-        txt = page0[0][-33:]
-        #assert ("306" == page0[0][-22:-19])
-        # print (page0[0][-33:])
-        
-        # it doesn't work for page breaks inside a list, underneath body!!
-        page0 = xml_get_pages(test_xml3, 1, 2, env="body")
-        txt = page0[0][-33:]
-        # print (page0[0][-33:])
-        #assert ("308" == page0[0][-22:-19])
-        page0 = xml_get_pages(test_xml3, 2, 3, env="body")
-        # print (page0[0][-33:])
-        #assert ("309" == page0[0][-22:-19])
-    
     doctest.testmod(optionflags=doctest.ELLIPSIS|doctest.NORMALIZE_WHITESPACE)
     print ("All Tests Completed")
     sys.exit()

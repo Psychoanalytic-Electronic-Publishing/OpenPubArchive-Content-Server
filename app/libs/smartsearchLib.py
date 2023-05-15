@@ -5,8 +5,7 @@ from datetime import datetime
 from optparse import OptionParser
 import logging
 import opasGenSupportLib as opasgenlib
-
-from configLib.opasCoreConfig import solr_docs2, CORES # solr_authors2, solr_gloss2, solr_docs_term_search, solr_authors_term_search
+from configLib.opasCoreConfig import SOLRURL, SOLR_DOCS, CORES # solr_authors2, solr_gloss2, solr_docs_term_search, solr_authors_term_search
 import opasConfig
 
 logger = logging.getLogger(__name__)
@@ -46,6 +45,7 @@ rx_author_list_year_vol_pgrg = rx_author_list_and_year + ".*?" + rx_vol_pgrg
 # rx_has_wildcards = "[*?]"
 rx_series_of_author_last_names = "(?P<author_list>([A-Z][a-z]+((\,\s+)|(\s*and\s+))?)+)"
 rx_doi = "((h.*?://)?(.*?/))?(?P<doi>(10\.[0-9]{4,4}/[A-z0-9\.\-/]+)|(doi.org/[A-z0-9\-\./]+))"
+
 # rx_pepdoi = "(?P<prefix>PEP\/\.)(?P<locator>[A-Z\-]{2,10}\.[0-9]{3,3}\.[0-9]{4,4}([PN]{1,2}[0-9]{4,4})?"
 
 # schema fields must have a _ in them to use.  A - at the beginning is allowed, for negation
@@ -56,6 +56,7 @@ rx_solr_field = f"(?P<schema_field>^{SS_SEARCH_FIELDS})\:(?P<schema_value>([^:]*
 rx_solr_field2 = f"(?P<schema_field>^{SS_SEARCH_FIELDS})\:(?P<schema_value>(.*$))"
 # rx_syntax = "(?P<schema_field>^[a-z]{3,9})\:\:(?P<schema_value>.+$)"
 advanced_syntax = f"(?P<schema_field>^(adv|solr))\:\:(?P<schema_value>.+$)"
+list_of_rxs = f"(?P<schema_field>^(cf|rxcf))\:\:(?P<schema_value>[^/]+?)(?P<custom_label>//.*//)?$" # to allow a list of rx values
 
 pat_prefix_amps = re.compile("^\s*&& ")
 
@@ -240,7 +241,7 @@ def str_is_author_mastname(search_str):
         return True
     else:
         return False
-        
+ 
 #-----------------------------------------------------------------------------
 def cleanup_solr_query(solrquery):
     """
@@ -299,39 +300,41 @@ def is_value_in_field(value,
         
     """
     ret_val = 0
-    
-    try:
-        solr_core = cores[core]
-    except Exception as e:
-        logger.debug(f"Core selection: {core}. 'docs' is default {e}")
-        solr_core  = solr_docs2    
-
-    if match_type == "exact":
-        q = f'{field}:"{value}"'
-    elif match_type == "ordered":
-        q = f'{field}:"{value}"~10'
-    elif match_type == "proximate":
-        q = f'{field}:"{value}"~25'
-    elif match_type == "adjacent":
-        q = f'{field}:"{value}"~2'
+    if value:
+        try:
+            solr_core = cores[core]
+        except Exception as e:
+            logger.debug(f"Core selection: {core}. 'docs' is default {e}")
+            solr_core  = solr_docs2    
+        
+        if match_type == "exact":
+            q = f'{field}:"{value}"'
+        elif match_type == "ordered":
+            q = f'{field}:"{value}"~10'
+        elif match_type == "proximate":
+            q = f'{field}:"{value}"~25'
+        elif match_type == "adjacent":
+            q = f'{field}:"{value}"~2'
+        else:
+            q = f'{field}:({value})'
+        
+        if str_has_wildcards(q): # quoted_str_has_wildcards(q):
+            complex_phrase = "{!complexphrase}"
+            q = f"{complex_phrase}{q}"
+        
+        try:
+            results = solr_core.search(q=q,  
+                                       fields = f"{field}", 
+                                       rows = limit,
+                                       )
+        except Exception as e:
+            logger.warning(f"Solr query: {q} fields: {field} {e}")
+            results = []
+           
+        if len(results) > 0: 
+            ret_val = len(results) # results.numFound # it looks like the solr response object to this query always has a len == numFound
     else:
-        q = f'{field}:({value})'
-
-    if str_has_wildcards(q): # quoted_str_has_wildcards(q):
-        complex_phrase = "{!complexphrase}"
-        q = f"{complex_phrase}{q}"
-
-    try:
-        results = solr_core.search(q=q,  
-                                   fields = f"{field}", 
-                                   rows = limit,
-                                   )
-    except Exception as e:
-        logger.warning(f"Solr query: {q} fields {field} {e}")
-        results = []
-       
-    if len(results) > 0: 
-        ret_val = len(results) # results.numFound # it looks like the solr response object to this query always has a len == numFound
+        logger.warning(f"Empty value parameter for field {field}")
 
     return ret_val
 
@@ -355,22 +358,25 @@ def get_list_of_name_ids(names_mess):
       ['Goldberg, E.', 'Myers, W.', 'Zeifman, I.']
     """
     ret_val = []
-    names = HumanNames(names_mess)
-    try:
-        for n in names.human_names:
-            if n.last != "":
-                if n.first != "":
-                    name_id = n.last + f", {n.first[0]}."
+    if len(names_mess.split()) == 1:
+        ret_val = [names_mess]
+    else:
+        names = HumanNames(names_mess)
+        try:
+            for n in names.human_names:
+                if n.last != "":
+                    if n.first != "":
+                        name_id = n.last + f", {n.first[0]}."
+                    else:
+                        name_id = n.last
+                    ret_val.append(name_id)
                 else:
-                    name_id = n.last
-                ret_val.append(name_id)
-            else:
-                ret_val.append(n.first)
-            
-    except Exception as e:
-        logger.warning(f"name parse: {names_mess} {e}")
-        print (e)
-
+                    ret_val.append(n.first)
+                
+        except Exception as e:
+            logger.warning(f"name parse: {names_mess} {e}")
+            print (e)
+    
     return ret_val
         
 #-----------------------------------------------------------------------------

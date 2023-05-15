@@ -198,9 +198,9 @@ class FlexFileSystem(object):
                     if m is None:
                         ret_val = localsecrets.PATH_SEPARATOR.join((self.root, ret_val)) # "pep-graphics/embedded-graphics"
         else:
-            if path is None:
+            if path is None or path in ['""', "''"]:
                 path = ""
-            if self.root is None:
+            if self.root is None or self.root in ['""', "''"]:
                 root = ""
             else:
                 root = self.root
@@ -208,8 +208,8 @@ class FlexFileSystem(object):
             if filespec is None:
                 info = f"No filespec supplied! {filespec} root: {root}, path:{path} "
                 raise FileNotFoundError(info)
-            
             ret_val = os.path.join(root, path, filespec)
+            # print (f"Root: {root}, Path: {path} Filespec: {filespec} ret_val: {ret_val}")
 
         if localsecrets.PATH_SEPARATOR == "/":
             ret_val = ret_val.replace("\\", localsecrets.PATH_SEPARATOR)
@@ -306,6 +306,35 @@ class FlexFileSystem(object):
                     
         except Exception as e:
             logger.error(f"FlexFileSystemError: File access error: ({e})")
+        
+        return ret_val        
+
+    #-----------------------------------------------------------------------------
+    def create_local_text_file(self, filespec, path="", data=" ", encoding="utf-8", delete_existing=True):
+        """
+        Provide a means to write a file using local file system access, even when running on AWS s3 where self.key is defined.
+        
+         >>> fs = FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root=localsecrets.XML_ORIGINALS_PATH)
+         >>> fs.create_local_text_file('test-delete.txt', delete_existing=True)
+         True
+        """
+        #  see if the file exists
+        ret_val = False
+        fullfilespec = os.path.join(path, filespec)
+        try:
+            if delete_existing:
+                os.remove(fullfilespec)
+        except Exception as e:
+            logger.info(f"Delete existing selected but file {fullfilespec} was not found, so no change there (not an error).  Exception: {e}")
+            pass # ok
+            
+        try:
+            with open(fullfilespec, 'w', encoding=encoding) as out:
+                out.write(data)
+        except Exception as e:
+            logger.error(f"FlexFileSystemError: Local File System write/access error: ({e})")
+        else:
+            ret_val = True
         
         return ret_val        
 
@@ -480,7 +509,7 @@ class FlexFileSystem(object):
                 if ret_val:
                     if not insensitive:
                         # fail if they don't match
-                        if base != name or ext != base_ext:
+                        if base != name or (ext != base_ext and base_ext is not None):
                             logger.error(f"FlexFileSystemError: File insensitive match {base} vs {name} found insensitive match but not sensitive match.")
                             ret_val = None
 
@@ -582,6 +611,7 @@ class FlexFileSystem(object):
             fileinfoout.mapFS(filespec, path)
                 
             fullfilespec = self.fullfilespec(filespec=filespec, path=path, path_is_root_bucket=path_is_root_bucket)
+            # print (f"Fullfilespec: {fullfilespec}")
             if fullfilespec is not None:
                 try:
                     if self.fs is not None:
@@ -590,20 +620,20 @@ class FlexFileSystem(object):
                         f = open(fullfilespec, "r", encoding="utf-8")
                 except Exception as e:
                     logger.error("GetFileError: Open: %s", e)
-                    
-                try:
-                    ret_val = f.read()
-                    f.close()    
-                except OSError as e:
-                    logger.error("GetFileError: Read: %s", e)
-                except Exception as e:
-                    logger.error("GetFileError: Exception: %s", e)
+                else:    
+                    try:
+                        ret_val = f.read()
+                        f.close()    
+                    except OSError as e:
+                        logger.error("GetFileError: Read: %s", e)
+                    except Exception as e:
+                        logger.error("GetFileError: Exception: %s", e)
             else:
                 logger.error("GetFileError: File %s not found", fullfilespec)
       
         return ret_val, fileinfoout
     
-    def get_matching_filelist(self, path=None, filespec_regex=None, revised_after_date=None, max_items=None):
+    def get_matching_filelist(self, path=None, filespec_regex=None, revised_after_date=None, subfolder=None, max_items=None):
         """
         Return a list of matching files, as FileInfo objects
 
@@ -618,22 +648,27 @@ class FlexFileSystem(object):
         ret_val = []
         count = 0
         rc_match = re.compile(filespec_regex, flags=re.IGNORECASE)
-        
+        if subfolder is not None:
+            if subfolder[0] not in ("/", r"\\"):
+                subfolder = "/" + subfolder
+        else:
+            subfolder = ""
+                
         if path is None:
-            data_folder = pathlib.Path(localsecrets.XML_ORIGINALS_PATH) # "pep-web-xml"
+            data_folder = pathlib.Path(localsecrets.XML_ORIGINALS_PATH + subfolder) # "pep-web-live-xml"
         else:
             if path == pathlib.Path(localsecrets.XML_ORIGINALS_PATH):
-                data_folder = pathlib.Path(localsecrets.XML_ORIGINALS_PATH)
+                data_folder = pathlib.Path(localsecrets.XML_ORIGINALS_PATH + subfolder)
             elif self.key is not None:
                 # s3 running from local
-                data_folder = pathlib.Path(path)
+                data_folder = pathlib.Path(str(path) + subfolder)
             else:
-                data_folder = path
+                data_folder = pathlib.Path(str(path) + subfolder)
             
         if self.key is not None:
             data_folder = data_folder.as_posix()
             
-        kwargs = {"detail": True,}
+        kwargs = {"detail": True, "filter": [filespec_regex]} # fs.walk does not appear to support the filter keyword unfortunately. os.walk does not either.
         if revised_after_date is not None:
             revised_after_date = datetime.datetime.date(datetime.datetime.strptime(revised_after_date, '%Y-%m-%d'))
             
@@ -714,7 +749,30 @@ def find_s3_file(bucket=r'pep-web-xml',
                     break
 
     return ret_val            
+
+def get_build_name(filename, with_markup=True):
+    """
+    Return the build name with the encapsulating markup (parens and b prefix) by default,
+    e.g.,
+      (bEXP_ARCH1)
+      
+    >>> get_build_name("GW.001.0000A(bEXP_ARCH1).xml")
+    '(bEXP_ARCH1)'
+    
+    >>> get_build_name("GW.001.0000A(bEXP_ARCH1).xml", with_markup=False)
+    'EXP_ARCH1'
+
+    """
+    m = re.search(r"\(b(?P<bldname>.*?)\)", filename)
+    if m:
+        if with_markup:
+            ret_val = f'(b{m.group("bldname")})'
+        else:
+            ret_val = m.group("bldname")
+    else:
+        ret_val = None
         
+    return ret_val
 
 def iterate_bucket_items(bucket):
     """

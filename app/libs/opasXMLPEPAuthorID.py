@@ -60,13 +60,13 @@ def getStandardAuthorID(nlast, nfirst=None, nmid=None, nsufx=None, quoteSafe=0):
     'Anonymous'
     """
 
-    if nlast == None or nlast == "":
+    if nlast is None or nlast == "":
         retVal = "Anonymous"
     else:
         retVal = opasgenlib.trimPunctAndSpaces(nlast, punct_set="!\u2019\u2018\"#$%&'*+,-./:;=?@[\]^_`{|}~")  # exception for parentheses, since sometimes we need them, e.g. McLoughlin (Akashadevi), Claudia
 
         # compute rest of it
-        if nfirst != None:
+        if nfirst is not None:
             # don't remove period, it could be there because it's a "GIVEN" name from T&F
             nfirst = opasgenlib.trimPunctAndSpaces(nfirst, punct_set=PUNCTSETNOPERIOD)
             if len(nfirst) == 1 and nfirst[0] != ".":
@@ -75,17 +75,17 @@ def getStandardAuthorID(nlast, nfirst=None, nmid=None, nsufx=None, quoteSafe=0):
             if nfirst != "":
                 retVal += ", " + nfirst
 
-        if nmid != None and nmid != '':
+        if nmid is not None and nmid != '':
             retVal += " " + opasgenlib.trimPunctAndSpaces(nmid[0:1]) + "."
 
-        if nsufx != None:
+        if nsufx is not None:
             nsufx = opasgenlib.trimPunctAndSpaces(nsufx)
             if nsufx.lower() in ["jr", "sr", "esq"]:
                 nsufx += "."
 
             retVal += " " + nsufx
 
-        if retVal != None:
+        if retVal is not None:
 
             # double any single quotes (used as apostrophes)
             if quoteSafe == 1:
@@ -101,7 +101,7 @@ def decompileAuthorIDString(idString):
     retVal = {}
     # decompile the id (based on lastname, firstname or initial id)
     m = autLocator.match(idString)
-    if m != None:
+    if m is not None:
         retVal = m.groupdict()
     else:
         raise Exception("Unknown Author ID format")
@@ -121,12 +121,12 @@ def isAuthorIDString(idString):
         if not isinstance(idString, str):  # supports string and unicode
             idString = repr(idString)
         m = autLocator.match(idString)
-        if m == None:
+        if m is None:
             retVal = False
         else:
             retVal = True
     else:
-        logging.warning("Empty idString to isAuthorID")
+        logger.warning("Empty idString to isAuthorID")
         retVal = False
 
     return retVal

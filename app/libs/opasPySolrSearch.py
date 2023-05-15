@@ -16,7 +16,6 @@ from datetime import datetime
 import localsecrets
 from opasConfig import TIME_FORMAT_STR
 
-# from localsecrets import BASEURL, SOLRURL, SOLRUSER, SOLRPW, DEBUG_DOCUMENTS, SOLR_DEBUG, CONFIG, COOKIE_DOMAIN  
 import starlette.status as httpCodes
 from configLib.opasCoreConfig import solr_docs2, solr_authors2, solr_gloss2
 import opasConfig 
@@ -156,7 +155,7 @@ def get_fulltext_from_search_results(result,
     documentListItem.docPagingInfo["page_offset"] = page_offset
 
     fullText = result.get("text_xml", None)
-    text_xml = opasQueryHelper.force_string_return_from_various_return_types(text_xml)
+    text_xml = opasgenlib.force_string_return_from_various_return_types(text_xml)
     if text_xml is None:  # no highlights, so get it from the main area
         try:
             text_xml = fullText
@@ -392,7 +391,7 @@ def search_stats_for_download(solr_query_spec: models.SolrQuerySpec,
                     documentListItem = models.DocumentListItem()
                     #documentListItem = get_base_article_info_from_search_result(result, documentListItem)
                     citeas = result.get("art_citeas_xml", None)
-                    citeas = opasQueryHelper.force_string_return_from_various_return_types(citeas)
+                    citeas = opasgenlib.force_string_return_from_various_return_types(citeas)
                     
                     documentListItem.score = result.get("score", None)               
                     # see if this article is an offsite article
@@ -924,7 +923,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                         # Note: the question mark before the first field in search= matters
                         #  e.g., http://development.org:9100/v2/Documents/Document/JCP.001.0246A/?return_format=XML&search=%27?fulltext1="Evenly%20Suspended%20Attention"~25&limit=10&facetmincount=1&facetlimit=15&sort=score%20desc%27
                         # documentListItem.document = opasxmllib.xml_remove_tags_from_xmlstr(documentListItem.document,['impx'])
-                        if documentListItem.document == None:
+                        if documentListItem.document is None:
                             errmsg = f"DocumentError: Fetch failed! ({solr_query_spec.solrQuery.searchQ}"
                             logger.error(errmsg)
                             documentListItem.termCount = 0
@@ -1055,7 +1054,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
             # Moved this down here, so we can fill in the Limit, Page and Offset fields based on whether there
             #  was a full-text request with a page offset and limit
             # Solr search was ok
-            responseInfo = models.ResponseInfo(count = len(results.docs),
+            responseInfo = models.ResponseInfo(count = len(documentItemList),
                                                fullCount = results.hits,
                                                totalMatchCount = results.hits,
                                                description=solr_query_spec.solrQuery.semanticDescription, 

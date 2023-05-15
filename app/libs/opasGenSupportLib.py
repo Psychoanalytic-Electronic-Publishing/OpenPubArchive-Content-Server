@@ -21,16 +21,20 @@ import os.path
 import re
 import logging
 import numbers
+import string
 logger = logging.getLogger(__name__)
 
 import time
 from datetime import datetime
+import datetime as dtime
 from dateutil import parser
 import calendar
 import email.utils
 import opasConfig
 # import roman
 import difflib
+from lxml import etree
+
 
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
@@ -47,21 +51,33 @@ rgxTrim = re.compile("^\s+(?P<cleanStr>.*?)\s+$")
 
 #----------------------------------------------------------------------------------------
 def	do_escapes(data, hasEscapes=0):
-    retVal = data
-    if retVal != None:
+    ret_val = data
+    if ret_val is not None:
         if hasEscapes==0:
-            if re.search(r'\\',	retVal)	is not None:
-                retVal = re.sub(r'\\', r'\\\\',	retVal)
-        if re.search(r'"',	retVal)	is not None:
-            retVal = re.sub(r'(?P<pre>([^\\]|\A))"', r'\1\\"', retVal)
+            if re.search(r'\\',	ret_val)	is not None:
+                ret_val = re.sub(r'\\', r'\\\\',	ret_val)
+        if re.search(r'"',	ret_val)	is not None:
+            ret_val = re.sub(r'(?P<pre>([^\\]|\A))"', r'\1\\"', ret_val)
         # if doubled, take care of second one here, and first in next set
         # This extra effort has to be done because you have to watch for
         # already-escaped slashes!
-        if re.search(r"''", retVal) is not None:
-            retVal = re.sub(r"''",	r"'\\'", retVal)
-        if re.search(r"'", retVal) is not None:
-            retVal = re.sub(r"(?P<pre>([^\\]|\A))'", r"\1\\'", retVal)
-    return retVal
+        if re.search(r"''", ret_val) is not None:
+            ret_val = re.sub(r"''",	r"'\\'", ret_val)
+        if re.search(r"'", ret_val) is not None:
+            ret_val = re.sub(r"(?P<pre>([^\\]|\A))'", r"\1\\'", ret_val)
+    return ret_val
+
+#----------------------------------------------------------------------------------------
+def	do_re_escapes(data):
+    """
+    Escape periods and other regular expression chars in data
+    """
+    if data is not None:
+        ret_val = re.escape(data)
+    else:
+        ret_val = ""
+
+    return ret_val
 
 class DocumentID(object):
     """
@@ -328,6 +344,17 @@ def first_item_grabber(the_str: str, re_separator_ptn=";|\-|&#8211;|,|\|", def_r
 
     return ret_val    
 
+def utctimestampstr_to_timestamp(timestampstr: str):
+    """
+    Convert UTC timestamp string to UTC timestamp
+    
+    >>> utctimestampstr_to_timestamp('2023-01-09T23:10:33Z')
+    datetime.datetime(2023, 1, 9, 23, 10, 33, tzinfo=datetime.timezone.utc)
+    
+    """
+    TIME_FORMAT='%Y-%m-%dT%H:%M:%S'
+    ret_val = datetime.strptime(timestampstr, TIME_FORMAT + '%z')
+    return ret_val
 
 def uppercase_andornot(boolean_str: str) -> str:
     ret_val = " ".join([x.upper() if x in ("or", "and", "not") else x for x in re.split("\s+(and|or|not)\s+", boolean_str)])
@@ -367,18 +394,18 @@ def pgrg_splitter(pgrg_str: str) -> tuple:
     try:
         pgParts = [n.strip() for n in re.split("[-–—]", pgrg_str)]
     except:
-        logging.error(f"pgrg_splitter: bad input: {pgrg_str}")
+        logger.error(f"pgrg_splitter: bad input: {pgrg_str}")
         ret_val = (None, None)
     else:
         try:
             pgStart = pgParts[0]
         except IndexError as e:
-            logging.debug(f"pgrg_splitter (arg={pgrg_str}): pgStart index error: {e} PGParts: {pgParts}")
+            logger.debug(f"pgrg_splitter (arg={pgrg_str}): pgStart index error: {e} PGParts: {pgParts}")
             pgStart = None
         try:
             pgEnd = pgParts[1]
         except IndexError as e:
-            logging.debug(f"pgrg_splitter (arg={pgrg_str}): pgEnd index error: {e} PGParts: {pgParts}")
+            logger.debug(f"pgrg_splitter (arg={pgrg_str}): pgEnd index error: {e} PGParts: {pgParts}")
             pgEnd = None
 
     ret_val = (pgStart, pgEnd)    
@@ -405,7 +432,7 @@ def format_http_timestamp(ts: Union[int, float, tuple, time.struct_time, datetim
 def derive_author_mast(authorIDList):
     """
     """
-    retVal = ""
+    ret_val = ""
     authorMast = ""
     authCount = 0
     if authorIDList is not None:
@@ -426,9 +453,9 @@ def derive_author_mast(authorIDList):
                 authorMast += aut
                 logger.error("Could not derive Author Mast name")
 
-        retVal = authorMast.strip()
+        ret_val = authorMast.strip()
 
-    return retVal
+    return ret_val
 #-----------------------------------------------------------------------------
 def string_to_list(strlist: str, sep=","):
     """
@@ -511,6 +538,48 @@ def in_quotes(arg):
     except Exception as e:
         logger.error(f"Exception {e}")
         return False
+
+#-----------------------------------------------------------------------------
+def force_string_return_from_various_return_types(text_str, min_length=5):
+    """
+    Sometimes the return isn't a string (it seems to often be "bytes") 
+      and depending on the schema, from Solr it can be a list.  And when it
+      involves lxml, it could even be an Element node or tree.
+
+    This checks the type and returns a string, converting as necessary.
+
+    >>> force_string_return_from_various_return_types(["this is really a list",], min_length=5)
+    'this is really a list'
+
+    """
+    ret_val = None
+    if text_str is not None:
+        if isinstance(text_str, str):
+            if len(text_str) > min_length:
+                # we have an abstract
+                ret_val = text_str
+        elif isinstance(text_str, list):
+            if text_str == []:
+                ret_val = None
+            else:
+                ret_val = text_str[0]
+                if ret_val == [] or ret_val == '[]':
+                    ret_val = None
+        else:
+            logger.error("Type mismatch on Solr Data. forceStringReturn ERROR: %s", type(ret_val))
+
+        try:
+            if isinstance(ret_val, etree._Element):
+                ret_val = etree.tostring(ret_val)
+
+            if isinstance(ret_val, bytes) or isinstance(ret_val, bytearray):
+                logger.error("Byte Data")
+                ret_val = ret_val.decode("utf8")
+        except Exception as e:
+            err = "forceStringReturn Error forcing conversion to string: %s / %s" % (type(ret_val), e)
+            logger.error(err)
+
+    return ret_val        
 
 def in_brackets(arg):
     """
@@ -757,7 +826,7 @@ def range_list(arg):
 #-----------------------------------------------------------------------------
 def default(val, defVal):
 
-    if val != None:
+    if val is not None:
         return val
     else:
         return defVal
@@ -883,6 +952,68 @@ def split_long_lines(line, maxlen, splitter_ptn, joiner_ptn):
 
     return ret_val
 
+def str_to_int(str_to_convert:str, default=None, zero_allowed=False):
+    """
+    Convert string to int with error trapping, and default optional
+    where zero can be allowed or not allowed.
+    
+    >>> str_to_int("21")
+    21
+
+    >>> a = str_to_int("a", default="")
+    >>> a
+    ''
+    >>> a = str_to_int("a")
+    >>> a
+    """
+    ret_val = default
+    if str_to_convert:
+        f = filter(str.isdigit, str_to_convert)
+        str_to_convert = "".join(f)
+        try:
+            converted = int(str_to_convert)
+            if converted == 0 and not zero_allowed:
+                ret_val = default
+            else:
+                ret_val = converted
+        except Exception as e:
+            ret_val = default
+           
+    return ret_val
+
+def str_to_float(str_to_convert:str, default=None, zero_allowed=False):
+    """
+    Convert string to float with error trapping, and default optional
+    where zero can be allowed or not allowed.
+    
+    >>> str_to_float("21")
+    21
+
+    >>> a = str_to_float("a", default="")
+    >>> a
+    ''
+    >>> a = str_to_float("a")
+    >>> a
+    """
+    ret_val = default
+    if str_to_convert:
+        if isinstance(str_to_convert, str):
+            # Remove whitespace and non-numeric characters from the input string
+            str_to_convert = str_to_convert.strip()
+            str_to_convert = ''.join(c for c in str_to_convert if c.isdigit() or c == '.')
+        
+            # Try to convert the cleaned-up string to a float
+            try:
+                ret_val = float(str_to_convert)
+                return ret_val
+            except ValueError:
+                # If the conversion fails, return None
+                ret_val = default
+        else:
+            ret_val = str_to_convert
+
+    return ret_val
+
 # ----------------------------------------------------------------------------------------
 # the following routines from older codebase
 # ----------------------------------------------------------------------------------------
@@ -892,7 +1023,7 @@ def removeTrailingPunctAndSpaces(input_str, punct_set=[',', '.', ' ', ':', ';', 
     ret_val = ""
     if not is_empty(input_str):
         ret_val = input_str.rstrip()
-        if ret_val != None and len(ret_val) > 0:
+        if ret_val is not None and len(ret_val) > 0:
             while ret_val[-1] in punct_set:
                 ret_val = ret_val[:-1]
                 ret_val = ret_val.rstrip()
@@ -910,7 +1041,7 @@ def removeLetterPrefixAndSuffix(strArg):
     retValSuffix = ""
     if isinstance(strArg, str):
         m = rgxNumStrSplit.match(strArg)
-        if m != None:
+        if m is not None:
             retValPrefix = m.group("str1")
             retValBase = m.group("num")
             retValSuffix = m.group("str2")
@@ -924,7 +1055,7 @@ def removeLeadingPunctAndSpaces(input_str, punct_set=[',', '.', ' ', ':', ';', '
     ret_val = ""
     if not is_empty(input_str):
         ret_val = input_str.lstrip()
-        if ret_val != None and len(ret_val) > 0:
+        if ret_val is not None and len(ret_val) > 0:
             while ret_val[0:1] in punct_set:
                 ret_val = ret_val[1:]
                 ret_val = ret_val.lstrip()
@@ -932,7 +1063,34 @@ def removeLeadingPunctAndSpaces(input_str, punct_set=[',', '.', ' ', ':', ';', '
     return ret_val
 
 # ----------------------------------------------------------------------------------------
-def removeAllPunct(input_str, punct_set=[',', '.', ':', ';', '(', ')', '\t', '"', "'"]):
+def remove_non_alphanumeric_except_dashes(input_str: str):
+    # Use regular expression to match non-alphanumeric characters except dashes
+    ret_val = input_str
+    try:
+        input_str = str(input_str)
+        pattern = r'[^0-9a-zA-Z-]'
+        # Use re.sub() to replace matched characters with an empty string
+        ret_val = re.sub(pattern, '', input_str)
+        if ret_val != input_str:
+            logger.warning(f"Illegal session id {input_str}--cleaned up to {ret_val}")
+    except Exception as e:
+        logger.error(f"Error while cleaning up string: {input_str}: {e}")
+        
+    return ret_val
+
+# ----------------------------------------------------------------------------------------
+def remove_all_punct(input_str, additional_chars=''):
+    standard_additions = '”“'
+    punct = string.punctuation + standard_additions + additional_chars
+    ret_val = input_str.translate(str.maketrans('', '', punct))
+    return ret_val
+
+# ----------------------------------------------------------------------------------------
+def remove_these_chars(input_str, these_chars=''):
+    ret_val = input_str.translate(str.maketrans('', '', these_chars))
+    return ret_val
+# ----------------------------------------------------------------------------------------
+def removeAllPunct(input_str, punct_set=[',', '.', ':', ';', '(', ')', '\t', r'/', '"', "'", "[", "]", '”', '“']):
     # Beginning in Python 2.2.3 you can do this
     #ret_val = string.rstrip(input_str, ",.\t ")
     ret_val = ""
@@ -958,6 +1116,19 @@ def removeExtraSpaces(self, s):
     return s
 
 # ----------------------------------------------------------------------------------------
+def text_slice(textstr: str, start_chr_count=25, end_chr_count=None):
+    "Slice the middle out of a string to make it easy to display in summary"
+    ret_val = textstr
+    if end_chr_count is None:
+        end_chr_count = start_chr_count
+        
+    # for short displaying/debug
+    if len(textstr) > 80:
+        ret_val = f"{textstr[:start_chr_count]}...{textstr[-end_chr_count:]}"
+        
+    return ret_val
+
+# ----------------------------------------------------------------------------------------
 def trimPunctAndSpaces(input_str, punct_set=[',', '.', ' ', ':', ';', ')', '(', '\t', '"', "'"]):
     ret_val = removeLeadingPunctAndSpaces(input_str, punct_set)
     ret_val = removeTrailingPunctAndSpaces(ret_val, punct_set)
@@ -970,15 +1141,15 @@ def atoiYear(strArg):
         ret_val = 0
     else:
         if isinstance(strArg, str):  # supports string and unicode Was if type(strArg) == type(""):
-            str = trimPunctAndSpaces(strArg)
-            if len(str) > 4:
-                m = re.match("[^0-9]*?(?P<year>[1-2][0-9]{3,3})[^0-9]*?", str)
-                if m != None:
+            strArg = trimPunctAndSpaces(strArg)
+            if len(strArg) > 4:
+                m = re.match("[^0-9]*?(?P<year>[1-2][0-9]{3,3})[^0-9]*?", strArg)
+                if m is not None:
                     ret_val = m.group("year")
                 else:
                     ret_val = 0
             else:
-                ret_val = str
+                ret_val = strArg
 
             try:
                 ret_val = int(ret_val)
@@ -1078,7 +1249,7 @@ def trimTrailingNonDigits( str_arg ):
     """
 
     retVal = str_arg
-    if str_arg != None:
+    if str_arg is not None:
         retVal = reverseStr(str_arg)
         retVal = trimLeadingNonDigits(retVal)
         retVal = reverseStr(retVal)
@@ -1099,16 +1270,28 @@ def trimNonDigits( str_arg ):
 
 # -------------------------------------------------------------------------------------------------------
 def isRoman(roman_str):
-
     # Searching the input string in expression and
-    # returning the boolean value
-    if isinstance(roman_str, str):
-        ret_val = bool(re.search(r"^M{0,3}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})$", roman_str.upper()))
-    else:
-        ret_val = False
+    # returning the boolean True if roman
+    # if negative, assumes coded for roman
+    ret_val = False
+    if roman_str:
+        if isinstance(roman_str, str):
+            ret_val = bool(re.search(r"^M{0,3}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})$", roman_str.upper()))
+        elif isinstance(roman_str, int):
+            ret_val = roman_str < 0 #  true if negative
 
     return ret_val
 
+# -------------------------------------------------------------------------------------------------------
+def is_roman_str(roman_str):
+    # Searching the input string in expression and
+    # returning the boolean True if roman
+    ret_val = False
+    if roman_str:
+        if isinstance(roman_str, str):
+            ret_val = bool(re.search(r"^M{0,3}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})$", roman_str.upper()))
+
+    return ret_val
 # -------------------------------------------------------------------------------------------------------
 def romanToInt(S: str) -> int:
     roman = {'I':1,'V':5,'X':10,'L':50,'C':100,'D':500,'M':1000}

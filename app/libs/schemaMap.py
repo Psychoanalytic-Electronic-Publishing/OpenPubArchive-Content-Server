@@ -236,7 +236,6 @@ def user2solrReplace(query):
         ret_val = query.replace(parent, user2solrparent(parent))
     return ret_val
     
-    
 if __name__ == "__main__":
     import doctest
     doctest.testmod()    

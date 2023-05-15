@@ -62,3 +62,14 @@ requirements.in
 pydantic_model_test.py
 *abandoned*
 *in prog*
+app/opasDataLoader/dataUpdateLogs/database_updated.txt
+app/opasGoogleMetadataExport/PEPGoogleMetaBookExportDraft.py
+app/opasDataLoader/data_update_logs/database_updated.txt
+sql/schemas/opascentralStructureOnProduction.sql
+sql/schemas/opascentralStructureOnStaging.sql
+sql/schemas/opascentralStructureOnXPS.sql
+app/opasDataLoader/quicktest.py
+app/opasDataLoader/quicktest2.bat
+app/opasDataLoader/quicktest.bat
+app/opasDataLoader/scratch.bat
+app/opasDataLoader/runlinker.bat

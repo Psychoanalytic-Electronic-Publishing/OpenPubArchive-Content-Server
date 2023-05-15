@@ -108,7 +108,7 @@ def smart_search(smart_search_text):
     ret_val = {}
 
     for_words_only_remove_punct = '!"#$%&()+,-./;:<=>@[\\]^_`{|}~' # punctuation to be removed from words only searches - wild cards accepted
-    
+
     # get rid of leading spaces and zeros
     smart_search_text = smart_search_text.lstrip(" 0")
     # get rid of trailing spaces and zeros
@@ -138,15 +138,16 @@ def smart_search(smart_search_text):
         ret_val[opasConfig.KEY_SEARCH_TYPE] = opasConfig.SEARCH_TYPE_LITERAL
         ret_val[opasConfig.KEY_SEARCH_VALUE] = smart_search_text
         
-    smart_article_id = ArticleID(articleID=smart_search_text) # now from opasArticleIDSupport 2022-06-05
-    if smart_article_id.isArticleID:
+    smart_article_id = ArticleID(art_id=smart_search_text) # now from opasArticleIDSupport 2022-06-05
+    if smart_article_id.is_ArticleID:
         # locator (articleID)
-        if smartsearchLib.is_value_in_field(smart_article_id.standardized, opasConfig.SEARCH_FIELD_LOCATOR):
-            ret_val = {opasConfig.SEARCH_FIELD_LOCATOR: smart_article_id.standardized}
-        elif smartsearchLib.is_value_in_field(smart_article_id.altStandard, opasConfig.SEARCH_FIELD_LOCATOR):
-            ret_val = {opasConfig.SEARCH_FIELD_LOCATOR: smart_article_id.altStandard}           
-
-
+        doc_id = smart_article_id.exists_with_resilience(resilient=True, verbose=True)        
+        if doc_id:
+            ret_val = {opasConfig.SEARCH_FIELD_LOCATOR: doc_id}
+        #if smartsearchLib.is_value_in_field(smart_article_id.standardized, opasConfig.SEARCH_FIELD_LOCATOR):
+            #ret_val = {opasConfig.SEARCH_FIELD_LOCATOR: smart_article_id.standardized}
+        #elif smartsearchLib.is_value_in_field(smart_article_id.alt_standard, opasConfig.SEARCH_FIELD_LOCATOR):
+            #ret_val = {opasConfig.SEARCH_FIELD_LOCATOR: smart_article_id.alt_standard}           
         
     if ret_val == {}: # (opasConfig.SEARCH_TYPE_ADVANCED, "ADVANCED")
         # this is not much different than search_type_fielded, except the Solr query will be cleaner and perhaps more flexible.
@@ -158,6 +159,26 @@ def smart_search(smart_search_text):
             ret_val[opasConfig.KEY_SEARCH_FIELD] = "solr"
             ret_val[opasConfig.KEY_SEARCH_VALUE] = f"{ret_val[opasConfig.KEY_SEARCH_SMARTSEARCH]}"
             ret_val[opasConfig.KEY_SEARCH_SMARTSEARCH] = f"Matched articles for advanced search: {ret_val[opasConfig.KEY_SEARCH_SMARTSEARCH]} "
+
+    if ret_val == {}: # (opasConfig.list_of_rxs, "CF List")    #e.g., JAA.028.0740A:0.66, PSAR.086.0967A:0.66, IJP.080.0189A:0.65, PAQ.068.0313A:0.65, PPSY.016.0481A:0.61
+        m = re.match(smartsearchLib.list_of_rxs, smart_search_text)
+        if m is not None:
+            list_of_rxs = m.group("schema_value")
+            label = m.group("custom_label")
+            if list_of_rxs:
+                # get rid of confidences
+                list_of_rxs = re.sub("\:0\.[0-9]{1,2}", "", list_of_rxs)
+                or_bar_rxs = re.sub("\,\s*", " || ", list_of_rxs)
+                ret_val[opasConfig.KEY_SEARCH_SMARTSEARCH] = f"art_id:({or_bar_rxs})"
+                ret_val[opasConfig.KEY_SEARCH_TYPE] = opasConfig.ADVANCED
+                ret_val[opasConfig.KEY_SEARCH_FIELD] = "solr"
+                ret_val[opasConfig.KEY_SEARCH_VALUE] = f"art_id:({or_bar_rxs})"
+                if label is not None:
+                    label = label.replace("//", "")
+                else:
+                    label = "Matching Articles"
+
+                ret_val[opasConfig.KEY_SEARCH_SMARTSEARCH] = f"{label}"
     
     if ret_val == {}:
         # Smartpatterns:   pattern: descriptive pattern label     
@@ -211,7 +232,7 @@ def smart_search(smart_search_text):
 
             pattern_boolean_test = "&&|\|\||\s(AND|OR|NOT)\s"
             has_bool = re.search(pattern_boolean_test, words) # case sensitive
-            has_bool_insensitive = re.search(pattern_boolean_test, words, flags=re.I) # case sensitive
+            # has_bool_insensitive = re.search(pattern_boolean_test, words, flags=re.I) # case sensitive
             
             if smartsearchLib.is_value_in_field(words, core="docs", field=opasConfig.SEARCH_FIELD_AUTHOR_CITATION, match_type="proximate") and words[0].isupper():
                 # see if it's a list of names
@@ -287,7 +308,7 @@ def smart_search(smart_search_text):
                         if not opasgenlib.is_boolean(smart_search_text):
                             if not opasgenlib.in_brackets(smart_search_text) and word_count > 1:
                                 # phrase search, remove punctuation which if on the first word can be mistaken for field identifiers (fix 2022-02-05)
-                                punct = '!"#$%&()+,-./:;<=>@[\\]^_`{|}~' # string.punctuation - wild cards accepted (2022-04-15 Removed ' from string)
+                                punct = '!"#$%&()+,./:;<=>@[\\]^_`{|}~' # string.punctuation - wild cards accepted (2022-04-15 Removed ' from string) (2922-11-07 removed - from string)
                                 phrase_search = re.sub(f'[{punct}]', '', smart_search_text)
                                 smart_search_text = f'"{phrase_search}"~25'         
                                 smart_search_text = opasgenlib.add_smart_quote_search(smart_search_text)
@@ -340,7 +361,7 @@ def smart_search(smart_search_text):
             alist = opasgenlib.get_author_list_not_comma_separated(working_author_list)
             ret_val["author_list"] = alist
         except Exception as e:
-            logging.warning(f"Can't parse and replace author list {e}")
+            logger.warning(f"Can't parse and replace author list {e}")
     
         if alist == []:
             # try and?
@@ -348,7 +369,7 @@ def smart_search(smart_search_text):
                 alist = opasgenlib.get_author_list_and_separated(author_list)
                 ret_val["author_list"] = alist
             except Exception as e:
-                logging.warning(f"Can't parse and replace author list {e}")
+                logger.warning(f"Can't parse and replace author list {e}")
             
         ret_val["author_list"] = smartsearchLib.get_list_of_name_ids(author_list)
     return ret_val

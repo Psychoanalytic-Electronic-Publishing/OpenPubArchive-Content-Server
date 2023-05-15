@@ -168,7 +168,7 @@ class LocalID:
             localIDRef = localIDRef.format()
             if gDbg1: print("LocalIDRef: ", localIDRef)
 
-        if localIDRef != None:
+        if localIDRef is not None:
 
             self.localIDList = localIDRef.split(" ")
             if len(self.localIDList) > 1:
@@ -189,7 +189,7 @@ class LocalID:
             self.initStr = localIDRef
             self.locatorBaseStr, self.localIDStr = splitLocalID(localIDRef)
 
-            if self.localIDStr == None:
+            if self.localIDStr is None:
                 print("Warning: no local ID component")
                 return
 
@@ -240,7 +240,7 @@ class LocalID:
 
     #----------------------------------------------------------------------------------------
     def __cmp__(self, other):
-        if other == None:
+        if other is None:
             retVal = 1
             return retVal
         elif isinstance(other, str):  # supports string and unicode
@@ -273,7 +273,7 @@ class LocalID:
         """
         Create displayable (string) version of LocalID object
         """
-        if self.localIDStr == None:
+        if self.localIDStr is None:
             return ""
         else:
             return str(self.localIDStr)
@@ -322,7 +322,7 @@ class LocalID:
 
         retVal = None
 
-        if self.localIDStr == None:
+        if self.localIDStr is None:
             retVal = None
         elif self.localIDType in ["A", "B", "F", "G", "H", "N", "T", "O", "FN"]:
             if self.localIDType == "A":		# Author ID
@@ -334,8 +334,7 @@ class LocalID:
                     self.localIDSuffix = "Z"
                     self.localIDVal = self.localIDVal[1:]
             elif self.localIDType == "B":
-                #idLen = len(self.localIDVal)
-                idLen = 4
+                idLen = 3                           # opas uses 3 digit biblio local ids
             elif self.localIDType in ["F", "FN"]:
                 idLen = 5                           # 3 doesn't work, because T&F had 4 digit (not 0) IDs.  So make it 5, then it won't clash with graphics.
             elif self.localIDType == "H":
@@ -354,7 +353,7 @@ class LocalID:
 
             idStd = "%0" + str(idLen) + "d"
             self.localIDVal = idStd % idVal
-            if self.localIDSuffix == None:
+            if self.localIDSuffix is None:
                 localIDSuffix = ""
             else:
                 localIDSuffix = self.localIDSuffix
@@ -381,7 +380,7 @@ class LocalID:
             Check for the old format of IDRef
 			"""
             m = re.search("[ _]", idString)
-            if m != None:
+            if m is not None:
                 if idString[0] == "B":
                     return False
                 else:
@@ -477,7 +476,7 @@ def splitLocalID(idString):
         idString = str(idString)
 
     m = opasLocator.Locator.rgxLocator.match(idString)
-    if m != None:
+    if m is not None:
         localIDRef = m.group("localID")
         locatorRef = m.group("articleID")
     else:
@@ -526,8 +525,8 @@ def isLocalID(idString):
             retVal = True
         else:
             m = opasLocator.Locator.rgxLocator.match(idString)
-            if m != None:
-                if m.group("localID") != None:
+            if m is not None:
+                if m.group("localID") is not None:
                     #if 1: print m.group("localID")
                     # that just grabs the last part.  Now check it!	   20071101
                     if isShortIDRef(m.group("localID")):
@@ -549,10 +548,10 @@ def isShortIDRef(idString):
 
     retVal = False
     #print "ShortIDRef: ", idString
-    if idString != None:
+    if idString is not None:
         m = LocalID.rgxShortID.match(idString)
-        if m != None:
-            if m.group("pepshortID") != None:
+        if m is not None:
+            if m.group("pepshortID") is not None:
                 retVal = True
 
     return retVal
@@ -579,10 +578,10 @@ def isValidShortIDRef(idString):
 
     retVal = False
     #print "ShortIDRef: ", idString
-    if idString != None:
+    if idString is not None:
         m = LocalID.rgxValidShortID.match(idString)
-        if m != None:
-            if m.group("pepshortID") != None:
+        if m is not None:
+            if m.group("pepshortID") is not None:
                 retVal = True
 
     return retVal

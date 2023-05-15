@@ -5,9 +5,9 @@
 # yes, in my Solr code I'm caught between two worlds of snake_case and camelCase.
 
 __author__      = "Neil R. Shapiro"
-__copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
+__copyright__   = "Copyright 2019-2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.0906/v1.0.0" 
+__version__     = "2023.0322/v1.0.3" 
 __status__      = "Development"
 
 programNameShort = "opasGoogleMetadataExport"
@@ -34,9 +34,10 @@ print(
 
 import os
 import re
-import codecs
+# import codecs
 import time
 import logging
+from datetime import datetime
 
 from lxml import objectify
 
@@ -45,7 +46,7 @@ sys.path.append('../config')
 sys.path.append('../libs/configLib')
 import localsecrets
 import opasFileSupport
-import opasAPISupportLib
+from opasAPISupportLib import metadata_get_source_info  
 import opasPySolrLib
 from configGoogleMeta import googleMetadataConfig
 
@@ -55,6 +56,7 @@ from configGoogleMeta import googleMetadataConfig
 logger = logging.getLogger(programNameShort)
 
 from optparse import OptionParser
+
 class REFCONSTANTS:
     # Article Info Constants - Field Names for article info and biblioentry dictionary
     CONFIDENCELEVEL     = "ConfidenceLevel"             # if this was a heuristic search from the DB, how good of a match was it?
@@ -168,7 +170,6 @@ class REFCONSTANTS:
     SIMILARITYRATIOS    = "SimilarityRatios"           # a dictionary after a similarity compare
 
 gConst = REFCONSTANTS()
-
 
 tplBookChapter = """
             <article>
@@ -294,7 +295,7 @@ def find_or_emptystr(elem, find_target: str, default=""):
     return ret_val
 
 #--------------------------------------------------------------------------------
-def writePublisherFile(path=None, fs=None, online_link_location="http://peparchive.org/links/pepwebmeta/%s.xml", publisher_file_name = r"publisher-info.xml", doValidate=False, path_is_root_bucket=False):
+def writePublisherFile(path=None, fs=None, online_link_location="https://pep-web-google-metadata.s3.amazonaws.com/", publisher_file_name = r"publisher-info.xml", doValidate=False, path_is_root_bucket=False):
     pat = ".*\.xml"
     metadata_files_names = fs.get_matching_filelist(filespec_regex=pat, path=path)
     #fileInfo = {}
@@ -322,8 +323,6 @@ def writePublisherFile(path=None, fs=None, online_link_location="http://peparchi
         #fileTime = filename.create_time
             
         year, month, day, hour, minute, second, weekday, day360, dst = time.localtime(filename.timestamp.timestamp())
-        #print "File Date/Time: ", fileTime, fileTimeAlt
-        #print year, month, day, hour, minute, second, weekday, day, dst
         filenameplusloc = online_link_location + filename.basename
         tplPublisherFile = f"""
                             <!-- Information about one file. -->
@@ -386,6 +385,7 @@ def writePublisherFile(path=None, fs=None, online_link_location="http://peparchi
         if success:
             if options.display_verbose: # Exporting! Writing publisher XML file
                 print (msg)
+                print ("\t"+60*"-")
         else:
             print (f"\t...There was a problem writing {publisher_file_name}.")
     else:
@@ -395,173 +395,197 @@ def writePublisherFile(path=None, fs=None, online_link_location="http://peparchi
 
     return
 
-def google_metadata_generator(path=None, source_type="journal", fs=None, size=None, max_records=None, clear_sitemap=None, path_is_root_bucket=False):
-    journal_info = opasAPISupportLib.metadata_get_source_info(src_type=source_type)
+def google_metadata_generator(path=None,
+                              source_type="journal",
+                              fs=None, size=None, max_records=None, clear_sitemap=None,
+                              path_is_root_bucket=False,
+                              this_journal_code_only=None):
+    journal_info = metadata_get_source_info(src_type=source_type, src_code=this_journal_code_only)
     #journal_codes = [doc.PEPCode for doc in journal_info.sourceInfo.responseSet]
     jinfo = [(doc.PEPCode, doc) for doc in journal_info.sourceInfo.responseSet]
     journal_info_dict = dict(sorted(jinfo, key=lambda PEPCode: PEPCode[0]))
     for journal_code in journal_info_dict.keys():
+        if this_journal_code_only is not None:
+            if journal_code != this_journal_code_only:
+                continue
         print (f"Writing metadata for {journal_code}")
         volume_info = opasPySolrLib.metadata_get_volumes(source_code=journal_code)
+        year_info = opasPySolrLib.metadata_get_years(source_code=journal_code)
         volumes = [(vol.year, vol.vol, vol) for vol in volume_info.volumeList.responseSet]
-        vol_metadata_text = ""
-        for volume in volumes:
+        years = [(year.vol, year.year, year) for year in year_info.yearList.responseSet]
+        for year_tuple in years:
+            vol_metadata_text = ""
+            year = year_tuple[1]
             try:
-                print (f"\tWriting metadata for {journal_code}.{volume[0]}")
-                header = f"""<?xml version="1.0" encoding="utf-8" ?>\n{googleMetadataConfig.GOOGLE_METADATA_ARTICLE_DOCTYPE}\n<articles>"""
-                vol_metadata_text += header
-                
-                contents = opasPySolrLib.metadata_get_contents(pep_code=journal_code, year=volume[0], vol=volume[1])
-                contents = contents.documentList.responseSet
-                #  SOURCETITLEFULL, SOURCETITLESERIES, ISSN, PUBLISHER, KEY, TITLE, AUTHORMARKUP, YEAR, VOL, ISSUE, PGSTART, PGEND
-                # walk through the articles for the source code.
-                for artinfo in contents:
-                    try:
-                        doclistitem = artinfo
-                        # root = etree.fromstring(doclistitem.documentInfoXML)
-                        artinfo = objectify.fromstring(doclistitem.documentInfoXML)
-                        attrib = artinfo.attrib
-                        artTitle = artinfo.arttitle
-                        art_title_text = find_or_emptystr(artinfo, "arttitle")
-                        if art_title_text == "":
-                            print (doclistitem.documentID, " - No title text")
-                        else:
-                            art_subtitle = find_or_emptystr(artinfo, "artsub")
-                            if art_subtitle != "":
-                                art_title_text += f": {art_subtitle}"
-                        
-                        art_vol = artinfo.artvol
-                        art_year = artinfo.artyear
-                        auts = artinfo.artauth
-                        publisher = journal_info_dict[journal_code].publisher
-                        issn = journal_info_dict[journal_code].ISSN
-                        contribs = ""
-                        aut_count = 0
+                vols = year_tuple[2].vols
+                for vol in vols:
+                    volume_nbr_str = vol
+                    header = f"""<?xml version="1.0" encoding="utf-8" ?>\n{googleMetadataConfig.GOOGLE_METADATA_ARTICLE_DOCTYPE}\n<articles>"""
+                    vol_metadata_text += header
+                    contents = opasPySolrLib.metadata_get_contents(pep_code=journal_code, year=year, vol=volume_nbr_str)
+                    contents = contents.documentList.responseSet
+                    article_count = len(contents)
+                    if options.display_verbose:
+                        print (f"\tWriting metadata for {journal_code}.{year} (Volume {volume_nbr_str}, Article Count: {article_count})")
+                    a = 1
+                    #  SOURCETITLEFULL, SOURCETITLESERIES, ISSN, PUBLISHER, KEY, TITLE, AUTHORMARKUP, YEAR, VOL, ISSUE, PGSTART, PGEND
+                    # walk through the articles for the source code.
+                    for artinfo in contents:
                         try:
-                            aut_count += 1
-                            for a in auts.aut:
-                                given_names = find_or_emptystr(a, "nfirst")
-                                given_middle_name = find_or_emptystr(a, "nmid")
-                                if given_names != "" and given_middle_name != "":
-                                    given_names += f", {given_middle_name}"
-                                nsuffix = find_or_emptystr(a, "nsuffix")
-                                if nsuffix != "":
-                                    suffix_add = """
-                                         \t\t\t\t\t<!-- Suffix for the author - Jr/Sr/III etc. (OPTIONAL; no more than 8 chars) -->
-                                         \t\t\t\t\t<suffix>{find_or_emptystr(a, "nsuffix")}</suffix>
-                                    """
-                                else:
-                                    suffix_add = ""
-                                
-                                contribs += f"""
-                                    \t\t\t\t\t<!-- Author names. (REQUIRED; No more than 1024 entries) -->
-                                    \t\t\t\t\t<contrib contrib-type="{a.attrib.get('role', '')}">
-                                        \t\t\t\t<name>
-                                        \t\t\t\t\t<!-- Last name of an author. (REQUIRED; No more than 32 characters -->
-                                        \t\t\t\t\t<surname>{find_or_emptystr(a, "nlast")}</surname>
-                                        \t\t\t\t\t<!-- Given names of an author - includes first and middle names if -->
-                                        \t\t\t\t\t<!-- any. (REQUIRED; no more than 48 characters -->
-                                        \t\t\t\t\t<given-names>{given_names}</given-names>
-                                        \t\t\t\t</name>
-                                        {suffix_add}
-                                    \t\t\t\t\t</contrib>
-                                    """
-                                # clean up empty tags
-                                # contribs = contribs.replace("<suffix></suffix>", "")
-                                
-                        except Exception as e:
-                            contribs += """
-                                    \t\t\t\t\t<!-- Author name Template used when there are no authors because its REQUIRED -->
-                                    \t\t\t\t\t<contrib contrib-type="">
-                                        \t\t\t\t\t<name>
-                                        \t\t\t\t\t\t<surname></surname>
-                                        \t\t\t\t\t\t<given-names></given-names>
-                                        \t\t\t\t\t</name>
-                                    \t\t\t\t\t</contrib>
+                            doclistitem = artinfo
+                            # root = etree.fromstring(doclistitem.documentInfoXML)
+                            artinfo = objectify.fromstring(doclistitem.documentInfoXML)
+                            attrib = artinfo.attrib
+                            artTitle = artinfo.arttitle
+                            art_title_text = find_or_emptystr(artinfo, "arttitle")
+                            if art_title_text == "":
+                                print (doclistitem.documentID, " - No title text")
+                            else:
+                                art_subtitle = find_or_emptystr(artinfo, "artsub")
+                                if art_subtitle != "":
+                                    art_title_text += f": {art_subtitle}"
+
+                            art_title_text = art_title_text
+                            art_vol = artinfo.artvol
+                            art_year = artinfo.artyear
+                            if options.display_verbose:
+                                print (f"\t\t{art_year}.{art_vol}:{art_title_text}")
+                            auts = artinfo.artauth
+                            publisher = journal_info_dict[journal_code].publisher
+                            issn = journal_info_dict[journal_code].ISSN
+                            contribs = ""
+                            aut_count = 0
+                            # last page is required
+                            if doclistitem.pgEnd == "" or doclistitem.pgEnd is None:
+                                doclistitem.pgEnd = doclistitem.pgStart
+                            
+                            try:
+                                aut_count += 1
+                                for a in auts.aut:
+                                    given_names = find_or_emptystr(a, "nfirst")
+                                    given_middle_name = find_or_emptystr(a, "nmid")
+                                    if given_names != "" and given_middle_name != "":
+                                        given_names += f", {given_middle_name}"
+                                    nsuffix = find_or_emptystr(a, "nsuffix")
+                                    if nsuffix != "":
+                                        suffix_add = """
+                                             \t\t\t\t\t<!-- Suffix for the author - Jr/Sr/III etc. (OPTIONAL; no more than 8 chars) -->
+                                             \t\t\t\t\t<suffix>{find_or_emptystr(a, "nsuffix")}</suffix>
                                         """
-                           
-                        #print (doclistitem )
-                        #print ("----")
-                        #  SOURCETITLEFULL, SOURCETITLESERIES, ISSN, PUBLISHER, KEY, TITLE, AUTHORMARKUP, YEAR, VOL, ISSUE, PGSTART, PGEND
-                        article_meta = f"""
-                            \t<article> <!-- {doclistitem.documentID} -->
-                            \t\t<front>
-                            \t\t\t<!-- Information about the journal. (REQUIRED) -->
-                            \t\t\t<journal-meta>
-                            \t\t\t\t<!-- Journal title. (REQUIRED; no more than 128 chars) -->
-                            \t\t\t\t<journal-title>{val_or_emptystr(doclistitem.sourceTitle)}</journal-title>
-                            \t\t\t\t<!-- Abbreviated Journal title. This can be repeated. (OPTIONAL; no more than 32 chars) -->
-                            \t\t\t\t<abbrev-journal-title>{val_or_emptystr(doclistitem.sourceTitleAbbr)}</abbrev-journal-title>
-                            \t\t\t\t<!-- ISSN for the journal. This can be repeated (REQUIRED; no more than 128 characters) -->
-                            \t\t\t\t<issn>{val_or_emptystr(issn)}</issn>
-                            \t\t\t\t<!-- Metadata for the publisher. (OPTIONAL) -->
-                            \t\t\t\t<publisher>
-                            \t\t\t\t\t<!-- Name of publisher. (REQUIRED; no more than 128 characters) -->
-                            \t\t\t\t\t<publisher-name>{publisher}
-                            \t\t\t\t\t</publisher-name>
-                            \t\t\t\t</publisher>
-                            \t\t\t</journal-meta>
-                            \t\t\t<!-- Information about the article. (REQUIRED) -->
-                            \t\t\t<article-meta>
-                            \t\t\t\t<!-- Various identifiers associated with the article. Currently, we use -->
-                            \t\t\t\t<!-- doi, pmid, pmcid, sici, publisher-id. Others are allowed but ignored.  -->
-                            \t\t\t\t<!-- (OPTIONAL; at most five entries) -->
-                            \t\t\t\t<article-id pub-id-type="publisher-id">{doclistitem.documentID}</article-id>
-                            \t\t\t\t<!-- Title of the article. (REQUIRED) -->
-                            \t\t\t\t<title-group>
-                            \t\t\t\t\t<!-- Title of the article. (REQUIRED; no more than 512 chars) -->
-                            \t\t\t\t\t<article-title>{art_title_text}</article-title>
-                            \t\t\t\t</title-group>
-                            \t\t\t\t<!-- Information about the contributors. (REQUIRED) -->
-                            \t\t\t\t\t<contrib-group>
-                            \t\t\t\t\t{contribs}
-                            \t\t\t\t\t</contrib-group>
-                            \t\t\t\t\t<!-- Date of publication. (REQUIRED; Gregorian calendar) -->
-                            \t\t\t\t\t<pub-date pub-type="pub">
-                            \t\t\t\t\t\t<!-- Year of publication. Full four digit. (REQUIRED) -->
-                            \t\t\t\t\t\t<year>{val_or_emptystr(doclistitem.year)}</year>
-                            \t\t\t\t\t</pub-date>
-                            \t\t\t\t\t<!-- Volume. (REQUIRED) -->
-                            \t\t\t\t\t<volume>{val_or_emptystr(doclistitem.vol)}</volume>
-                            \t\t\t\t\t<!-- Issue number. (REQUIRED) -->
-                            \t\t\t\t\t<issue>{val_or_emptystr(doclistitem.issue)}</issue>
-                            \t\t\t\t\t<!-- First page. (REQUIRED) -->
-                            \t\t\t\t\t<fpage>{val_or_emptystr(doclistitem.pgStart)}</fpage>
-                            \t\t\t\t\t<!-- Last page. (REQUIRED) -->
-                            \t\t\t\t\t<lpage>{val_or_emptystr(doclistitem.pgEnd)}</lpage>
-                            \t\t\t\t\t<!-- URLs for the article (REQUIRED; no more than 1024 characters).  -->
-                            \t\t\t\t\t<!-- Multiple entries are allowed and can refer to multiple formats  -->
-                            \t\t\t\t\t<!-- It is CRUCIAL that at least one instance of this field be present -->
-                            \t\t\t\t\t<self-uri xlink:href="https://pep-web.org/browse/document/{doclistitem.documentID}"/>
-                            \t\t\t</article-meta>
-                            \t\t</front>
-                         
-                            \t\t<!-- Type of article. (OPTIONAL. acceptable values:  research-article -->
-                            \t\t<!--  book, phd-thesis, ms-thesis, bs-thesis, technical-report, unpublished, -->
-                            \t\t<!-- review-article, patent, other -->
-                            \t\t<article-type>research-article</article-type>
-                            \t</article>
-                            """
-            
-                    except Exception as e:
-                        try:
-                            logger.error (f"Error: {e} for {doclistitem.documentID}")
+                                    else:
+                                        suffix_add = ""
+                                    
+                                    contribs += f"""
+                                        \t\t\t\t\t<!-- Author names. (REQUIRED; No more than 1024 entries) -->
+                                        \t\t\t\t\t<contrib contrib-type="{a.attrib.get('role', '')}">
+                                            \t\t\t\t<name>
+                                            \t\t\t\t\t<!-- Last name of an author. (REQUIRED; No more than 32 characters -->
+                                            \t\t\t\t\t<surname>{find_or_emptystr(a, "nlast")}</surname>
+                                            \t\t\t\t\t<!-- Given names of an author - includes first and middle names if -->
+                                            \t\t\t\t\t<!-- any. (REQUIRED; no more than 48 characters -->
+                                            \t\t\t\t\t<given-names>{given_names}</given-names>
+                                            \t\t\t\t</name>
+                                            {suffix_add}
+                                        \t\t\t\t\t</contrib>
+                                        """
+                                    # clean up empty tags
+                                    # contribs = contribs.replace("<suffix></suffix>", "")
+                                    
+                            except Exception as e:
+                                contribs += """
+                                        \t\t\t\t\t<!-- Author name Template used when there are no authors because its REQUIRED -->
+                                        \t\t\t\t\t<contrib contrib-type="">
+                                            \t\t\t\t\t<name>
+                                            \t\t\t\t\t\t<surname></surname>
+                                            \t\t\t\t\t\t<given-names></given-names>
+                                            \t\t\t\t\t</name>
+                                        \t\t\t\t\t</contrib>
+                                            """
+                               
+                            #print (doclistitem )
+                            #print ("----")
+                            #  SOURCETITLEFULL, SOURCETITLESERIES, ISSN, PUBLISHER, KEY, TITLE, AUTHORMARKUP, YEAR, VOL, ISSUE, PGSTART, PGEND
+                            article_meta = f"""
+                                \t<article> <!-- {doclistitem.documentID} -->
+                                \t\t<front>
+                                \t\t\t<!-- Information about the journal. (REQUIRED) -->
+                                \t\t\t<journal-meta>
+                                \t\t\t\t<!-- Journal title. (REQUIRED; no more than 128 chars) -->
+                                \t\t\t\t<journal-title>{val_or_emptystr(doclistitem.sourceTitle)}</journal-title>
+                                \t\t\t\t<!-- Abbreviated Journal title. This can be repeated. (OPTIONAL; no more than 32 chars) -->
+                                \t\t\t\t<abbrev-journal-title>{val_or_emptystr(doclistitem.sourceTitleAbbr)}</abbrev-journal-title>
+                                \t\t\t\t<!-- ISSN for the journal. This can be repeated (REQUIRED; no more than 128 characters) -->
+                                \t\t\t\t<issn>{val_or_emptystr(issn)}</issn>
+                                \t\t\t\t<!-- Metadata for the publisher. (OPTIONAL) -->
+                                \t\t\t\t<publisher>
+                                \t\t\t\t\t<!-- Name of publisher. (REQUIRED; no more than 128 characters) -->
+                                \t\t\t\t\t<publisher-name>{publisher}
+                                \t\t\t\t\t</publisher-name>
+                                \t\t\t\t</publisher>
+                                \t\t\t</journal-meta>
+                                \t\t\t<!-- Information about the article. (REQUIRED) -->
+                                \t\t\t<article-meta>
+                                \t\t\t\t<!-- Various identifiers associated with the article. Currently, we use -->
+                                \t\t\t\t<!-- doi, pmid, pmcid, sici, publisher-id. Others are allowed but ignored.  -->
+                                \t\t\t\t<!-- (OPTIONAL; at most five entries) -->
+                                \t\t\t\t<article-id pub-id-type="publisher-id">{doclistitem.documentID}</article-id>
+                                \t\t\t\t<!-- Title of the article. (REQUIRED) -->
+                                \t\t\t\t<title-group>
+                                \t\t\t\t\t<!-- Title of the article. (REQUIRED; no more than 512 chars) -->
+                                \t\t\t\t\t<article-title>{art_title_text}</article-title>
+                                \t\t\t\t</title-group>
+                                \t\t\t\t<!-- Information about the contributors. (REQUIRED) -->
+                                \t\t\t\t\t<contrib-group>
+                                \t\t\t\t\t{contribs}
+                                \t\t\t\t\t</contrib-group>
+                                \t\t\t\t\t<!-- Date of publication. (REQUIRED; Gregorian calendar) -->
+                                \t\t\t\t\t<pub-date pub-type="pub">
+                                \t\t\t\t\t\t<!-- Year of publication. Full four digit. (REQUIRED) -->
+                                \t\t\t\t\t\t<year>{val_or_emptystr(doclistitem.year)}</year>
+                                \t\t\t\t\t</pub-date>
+                                \t\t\t\t\t<!-- Volume. (REQUIRED) -->
+                                \t\t\t\t\t<volume>{val_or_emptystr(doclistitem.vol)}</volume>
+                                \t\t\t\t\t<!-- Issue number. (REQUIRED) -->
+                                \t\t\t\t\t<issue>{val_or_emptystr(doclistitem.issue)}</issue>
+                                \t\t\t\t\t<!-- First page. (REQUIRED) -->
+                                \t\t\t\t\t<fpage>{val_or_emptystr(doclistitem.pgStart)}</fpage>
+                                \t\t\t\t\t<!-- Last page. (REQUIRED) -->
+                                \t\t\t\t\t<lpage>{val_or_emptystr(doclistitem.pgEnd)}</lpage>
+                                \t\t\t\t\t<!-- URLs for the article (REQUIRED; no more than 1024 characters).  -->
+                                \t\t\t\t\t<!-- Multiple entries are allowed and can refer to multiple formats  -->
+                                \t\t\t\t\t<!-- It is CRUCIAL that at least one instance of this field be present -->
+                                \t\t\t\t\t<self-uri xlink:href="https://pep-web.org/browse/document/{doclistitem.documentID}"/>
+                                \t\t\t</article-meta>
+                                \t\t</front>
+                             
+                                \t\t<!-- Type of article. (OPTIONAL. acceptable values:  research-article -->
+                                \t\t<!--  book, phd-thesis, ms-thesis, bs-thesis, technical-report, unpublished, -->
+                                \t\t<!-- review-article, patent, other -->
+                                \t\t<article-type>research-article</article-type>
+                                \t</article>
+                                """
+                
+                        except Exception as e:
+                            try:
+                                logger.error (f"Error: {e} for {doclistitem.documentID}")
+                                vol_metadata_text += article_meta
+                            except:
+                                pass # ok, skip article
+                        else:
+                            # print (article_meta)
                             vol_metadata_text += article_meta
-                        except:
-                            pass # ok, skip article
-                    else:
-                        # print (article_meta)
-                        vol_metadata_text += article_meta
-                    # article info end
+                        
+                    # articles end, close tag
+                    vol_metadata_text += "</articles>"
             
-                vol_metadata_text += "</articles>"
-                    
             except Exception as e:
                 logger.error(f"Error: {e}")
-                
-            # vol is done...write output file for journal vol
-            outputFileName = f"{journal_code}.{volume[0]}.xml"
+
+            # single year is done...write output file for journal vol
+            outputFileName = f"{journal_code}.{year}.xml"
             if fs is not None:
+                # watch out for & that's not escaped as an entity
+                vol_metadata_text = vol_metadata_text.replace("& ", "&amp; ")
                 success = fs.create_text_file(outputFileName, data=vol_metadata_text, path=path, path_is_root_bucket=path_is_root_bucket)
                 if success:
                     if options.display_verbose: # vol is done...write output file for journal vol
@@ -573,9 +597,12 @@ def google_metadata_generator(path=None, source_type="journal", fs=None, size=No
                     logger.error(msg)
                     print (msg)
             else:
-                msg = f"\t...There was a problem writing {outputFileName}. Filesystem not supplied")
+                msg = f"\t...There was a problem writing {outputFileName}. Filesystem not supplied"
                 logger.error(msg)
                 print (msg)
+                        
+                    
+
             
 # -------------------------------------------------------------------------------------------------------
 if __name__ == "__main__":
@@ -594,13 +621,16 @@ if __name__ == "__main__":
     parser.add_option("-m", "--maxrecords", dest="maxrecords", type="int", default=200000,
                       help="Max total records to be exported")
     parser.add_option("-b", "--bucket", "--path", dest="bucket", type="string", default=localsecrets.GOOGLE_METADATA_PATH,
-                      help="Bucket or Local Path to write sitemap files on local system or S3 (on AWS must be a bucket)")
-    parser.add_option("--rb", "--isrootbucket", dest="isrootbucket", action="store_false", 
-                      help="True if the pathspecified is the bucketname on AWS")
+                      help="Bucket or Local Path to write files on local system or S3 (on AWS must be a bucket)")
+    parser.add_option("--rb", "--isrootbucket", dest="isrootbucket", action="store_false",                       
+                      help="True if the path specified is the bucketname (hence root) on AWS")
+    parser.add_option("--only", "--thiscodeonly", dest="this_journal_code_only", type="string", default=None,
+                      help="Process only this journal code (used for manual testing)")
     parser.add_option("--awsbucket", dest="aws_bucket", type="string", default=localsecrets.GOOGLE_METADATA_PATH, 
-                      help="The name of the root (bucket) on AWS")
+                      help="The name of the output root (bucket) on AWS")
 
     (options, args) = parser.parse_args()
+    print (f"Metadata is being written to: {options.aws_bucket}")
     if options.testmode:
         import doctest
         doctest.testmod()
@@ -608,13 +638,23 @@ if __name__ == "__main__":
     else:
         fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root=options.aws_bucket)
         path_is_root_bucket = options.bucket == options.aws_bucket
-        writePublisherFile(path=options.bucket,
-                           fs=fs,
-                           online_link_location="https://pep-web-google-metadata.s3.amazonaws.com/",
-                           path_is_root_bucket=path_is_root_bucket
-                           )
-        ret_val = google_metadata_generator(path=options.bucket, fs=fs, source_type="video", path_is_root_bucket=path_is_root_bucket) # path=options.bucket, size=options.recordsperfile, max_records=options.maxrecords, clear_sitemap=options.clearsitemap)
-        ret_val = google_metadata_generator(path=options.bucket, fs=fs, source_type="journal", path_is_root_bucket=path_is_root_bucket) # path=options.bucket, size=options.recordsperfile, max_records=options.maxrecords, clear_sitemap=options.clearsitemap)
+        if options.this_journal_code_only is not None:
+            ret_val = google_metadata_generator(path=options.bucket,
+                                                fs=fs,
+                                                source_type="journal",
+                                                path_is_root_bucket=path_is_root_bucket,
+                                                this_journal_code_only=options.this_journal_code_only) 
+        else:
+            writePublisherFile(path=options.bucket,
+                               fs=fs,
+                               online_link_location="https://pep-web-google-metadata.s3.amazonaws.com/",
+                               path_is_root_bucket=path_is_root_bucket
+                               )
+            ret_val = google_metadata_generator(path=options.bucket, fs=fs, source_type="video",
+                                                path_is_root_bucket=path_is_root_bucket) # path=options.bucket, size=options.recordsperfile, max_records=options.maxrecords, clear_sitemap=options.clearsitemap)
+            ret_val = google_metadata_generator(path=options.bucket, fs=fs, source_type="journal",
+                                                path_is_root_bucket=path_is_root_bucket) # path=options.bucket, size=options.recordsperfile, max_records=options.maxrecords, clear_sitemap=options.clearsitemap)
+
         print ("============================================")
         print ("  TBD: Still need to add book processing!")
         print ("============================================")

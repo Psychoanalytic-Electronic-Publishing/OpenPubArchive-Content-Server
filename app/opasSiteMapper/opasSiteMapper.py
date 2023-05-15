@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2021.0721/v1.0.1" 
+__version__     = "2021.1118/v1.0.2" 
 __status__      = "Development"
 
 programNameShort = "opasSiteMapper"
@@ -134,7 +134,7 @@ if __name__ == "__main__":
                       help="Clear prior sitemap files (delete files in path/bucket matching sitemap.*)")
     parser.add_option("-t", "--test", dest="testmode", action="store_true", default=False,
                       help="Run Doctests.  Will run a small sample of records and total output")
-    parser.add_option("-r", "--recordsperfile", dest="recordsperfile", type="int", default=8000,
+    parser.add_option("-r", "--recordsperfile", dest="recordsperfile", type="int", default=4000,
                       help="Max Number of records per file")
     parser.add_option("-m", "--maxrecords", dest="maxrecords", type="int", default=200000,
                       help="Max total records to be exported")
@@ -145,11 +145,14 @@ if __name__ == "__main__":
     if options.testmode:
         import doctest
         doctest.testmod()
+        print ("Finished Doctests!")
+        #try new addition
         print ("Fini. Tests complete.")
     else:
         ret_val = sitemapper(path=options.bucket, size=options.recordsperfile, max_records=options.maxrecords, clear_sitemap=options.clearsitemap)
         print (ret_val["siteMapIndexFile"])
         print (ret_val["siteMapList"])
+        print ("Sitemap Finished!")
         print ("Finished!")
 
     sys.exit()

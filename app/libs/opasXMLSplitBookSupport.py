@@ -11,12 +11,13 @@ import opasGenSupportLib as opasgenlib
 import opasLocator
 import opasDocuments
 import opasFileSupport
-import loggingDebugStream
+from loggingDebugStream import log_everywhere_if
 import opasCentralDBLib
+import datetime
 
 DBGSTDOUT = False
 
-SPLIT_BOOK_TABLE = "vw_opasloader_splitbookpages"
+SPLIT_BOOK_TABLE = "opasloader_splitbookpages"
 
 #----------------------------------------------------------------------------------------
 # CLASS DEF: SplitBookData
@@ -47,7 +48,7 @@ class SplitBookData:
         self.dbName = None
 
     #--------------------------------------------------------------------------------
-    def get_splitbook_page_instance(self, book_code, vol, page_id, has_biblio=0, has_toc=0):
+    def get_splitbook_page_instance(self, book_code, vol, page_id, vol_suffix=None, has_biblio=0, has_toc=0):
         """
         Return the instance locator containing the pageID for the journalCode and volume.
 
@@ -57,7 +58,7 @@ class SplitBookData:
         'ZBK.027.0168A'
         """
         ret_val = None
-        vol_number_obj = opasDocuments.VolumeNumber(vol)
+        vol_number_obj = opasDocuments.VolumeNumber(vol, volSuffix=vol_suffix)
         vol_number_int = vol_number_obj.volNumber
         vol_number_suffix = vol_number_obj.volSuffix
         if isinstance(page_id, opasDocuments.PageNumber):
@@ -88,7 +89,7 @@ class SplitBookData:
         else:
             toc_query =  ""
 
-        # loggingDebugStream.log_everywhere_if(DBGSTDOUT, level="debug", msg=f"GetSplitBookInstance: {art_base} {page_id_str}")
+        # log_everywhere_if(DBGSTDOUT, level="debug", msg=f"GetSplitBookInstance: {art_base} {page_id_str}")
 
         page_qry = fr"""select articleID,
                         bibliopage,
@@ -133,7 +134,7 @@ class SplitBookData:
         """
         count = 0
         fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root=localsecrets.IMAGE_SOURCE_PATH)
-        loggingDebugStream.log_everywhere_if(DBGSTDOUT, level="debug", msg=f"Garbage Collect. Deleting records {SPLIT_BOOK_TABLE} where the XML file no longer exists.")
+        log_everywhere_if(DBGSTDOUT, level="debug", msg=f"Garbage Collect. Deleting records {SPLIT_BOOK_TABLE} where the XML file no longer exists.")
         
         art_id_addon = ""
         if art_id_pattern is not None:
@@ -155,14 +156,15 @@ class SplitBookData:
                         # delete this article record, the file was consolidated or removed
                         count = count + 1
                         delqry = f"delete from {SPLIT_BOOK_TABLE} where articleID = '{articleID}'"
+                        # commit automatically handled by do_action_query
                         self.ocd.do_action_query(delqry, queryparams=None, contextStr=f"({SPLIT_BOOK_TABLE} %s)" % articleID)
-                        loggingDebugStream.log_everywhere_if(DBGSTDOUT, level="debug", msg=f"Deleted from {SPLIT_BOOK_TABLE} ArticleID: {articleID}")
+                        log_everywhere_if(DBGSTDOUT, level="debug", msg=f"Deleted from {SPLIT_BOOK_TABLE} ArticleID: {articleID}")
                         
         except Exception as e:
-            loggingDebugStream.log_everywhere_if(DBGSTDOUT, level="error", msg=f"Error: {articleID} {e}")
+            log_everywhere_if(DBGSTDOUT, level="error", msg=f"Error: {articleID} {e}")
             ret_val = False
         else:
-            loggingDebugStream.log_everywhere_if(DBGSTDOUT, level="info", msg=f"Finished cleaning records.  {count} records deleted.")
+            log_everywhere_if(DBGSTDOUT, level="info", msg=f"Finished cleaning records.  {count} records deleted.")
             ret_val = True
             
         return ret_val
@@ -199,8 +201,9 @@ class SplitBookData:
             add_filename_pattern = ""
             
         prequery = f"delete from {SPLIT_BOOK_TABLE} where articleID = '{art_id}' {add_page_pattern} {add_filename_pattern}"
-        loggingDebugStream.log_everywhere_if(DBGSTDOUT, level="debug", msg=prequery)
+        log_everywhere_if(DBGSTDOUT, level="debug", msg=prequery)
         
+        # commit automatically handled by do_action_query
         ret_val = self.ocd.do_action_query(prequery, queryparams=None, contextStr=f"(SplitBookPages Removed for {art_id})")
         return ret_val
 
@@ -219,7 +222,7 @@ class SplitBookData:
         """
 
         ret_val = None
-        insert_splitbook_qry = fr'replace into {SPLIT_BOOK_TABLE} values ("%s"' + (5*', "%s"') + ")"
+        insert_splitbook_qry = fr'replace into {SPLIT_BOOK_TABLE} values ("%s"' + (6*', "%s"') + ")"
 
         if isinstance(art_locator, str):  
             art_id = opasLocator.Locator(art_locator, noStartingPageException=True)
@@ -229,6 +232,7 @@ class SplitBookData:
             art_id_base = art_locator.baseCode()
 
         safeFilename = opasgenlib.do_escapes(full_filename)
+        current_time = datetime.datetime.now()
         
         pn = opasDocuments.PageNumber(page_id)
         page_num = pn.format(keyword=pn.NUMERICSTRING)
@@ -239,10 +243,12 @@ class SplitBookData:
                                            page_num, 
                                            has_biblio,
                                            has_toc,
-                                           safeFilename
+                                           safeFilename, 
+                                           current_time
                                            )
         
         # now add the row
+        # commit automatically handled by do_action_query
         ret_val = self.ocd.do_action_query(querytxt,
                                            queryparams=None,
                                            contextStr="(SPLITBOOKS %s/%s)" % (art_id_base, page_id))

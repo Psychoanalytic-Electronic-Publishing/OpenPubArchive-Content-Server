@@ -482,12 +482,6 @@ DROP VIEW IF EXISTS `vw_active_sessions`;
 CREATE ALGORITHM = UNDEFINED SQL SECURITY DEFINER VIEW `vw_active_sessions` AS select `api_sessions`.`session_id` AS `session_id`,`api_sessions`.`user_id` AS `user_id`,`api_sessions`.`username` AS `username`,`api_sessions`.`session_start` AS `session_start`,`api_sessions`.`session_end` AS `session_end`,`api_sessions`.`session_expires_time` AS `session_expires_time`,`api_sessions`.`authenticated` AS `authenticated`,`api_sessions`.`api_client_id` AS `api_client_id`,`api_sessions`.`last_update` AS `last_update` from `api_sessions` where ((`api_sessions`.`user_id` <> 0) and (`api_sessions`.`session_end` is null)) order by `api_sessions`.`session_start` desc;
 
 -- ----------------------------
--- View structure for vw_api_absviews_from_endpoint_log
--- ----------------------------
-DROP VIEW IF EXISTS `vw_api_absviews_from_endpoint_log`;
-CREATE ALGORITHM = UNDEFINED SQL SECURITY DEFINER VIEW `vw_api_absviews_from_endpoint_log` AS select `api_sessions`.`user_id` AS `user_id`,`api_session_endpoints`.`session_id` AS `session_id`,`api_session_endpoints`.`item_of_interest` AS `document_id`,'Abstract' AS `type`,`api_session_endpoints`.`last_update` AS `datetimechar`,`api_session_endpoints`.`last_update` AS `last_update` from (`api_session_endpoints` join `api_sessions` on((`api_session_endpoints`.`session_id` = `api_sessions`.`session_id`))) where ((`api_session_endpoints`.`return_added_status_message` like '%(Abstract Only)%') or (`api_session_endpoints`.`api_endpoint_id` = 30));
-
--- ----------------------------
 -- View structure for vw_api_messages
 -- ----------------------------
 DROP VIEW IF EXISTS `vw_api_messages`;
@@ -498,6 +492,12 @@ CREATE ALGORITHM = UNDEFINED SQL SECURITY DEFINER VIEW `vw_api_messages` AS sele
 -- ----------------------------
 DROP VIEW IF EXISTS `vw_api_productbase`;
 CREATE ALGORITHM = UNDEFINED SQL SECURITY DEFINER VIEW `vw_api_productbase` AS select `api_productbase`.`basecode` AS `basecode`,`api_productbase`.`articleID` AS `articleID`,`api_productbase`.`active` AS `active`,`api_productbase`.`pep_class` AS `product_type`,`api_productbase`.`pep_class_qualifier` AS `product_type_qualifier`,`api_productbase`.`accessClassification` AS `accessClassification`,`api_productbase`.`wall` AS `embargo`,`api_productbase`.`mainTOC` AS `mainTOC`,`api_productbase`.`first_author` AS `first_author`,`api_productbase`.`author` AS `author`,`api_productbase`.`title` AS `title`,`api_productbase`.`bibabbrev` AS `bibabbrev`,`api_productbase`.`ISSN` AS `ISSN`,`api_productbase`.`ISBN-10` AS `ISBN-10`,`api_productbase`.`ISBN-13` AS `ISBN-13`,`api_productbase`.`pages` AS `pages`,`api_productbase`.`Comment` AS `Comment`,`api_productbase`.`pepcode` AS `pepcode`,`api_productbase`.`publisher` AS `publisher`,`api_productbase`.`jrnl` AS `jrnl`,`api_productbase`.`pub_year` AS `pub_year`,`api_productbase`.`start_year` AS `start_year`,`api_productbase`.`end_year` AS `end_year`,`api_productbase`.`pep_url` AS `pep_url`,`api_productbase`.`language` AS `language`,`api_productbase`.`updated` AS `updated`,`api_productbase`.`pepversion` AS `pepversion`,`api_productbase`.`duplicate` AS `duplicate`,`api_productbase`.`landing_page` AS `landing_page`,`api_productbase`.`coverage_notes` AS `coverage_notes`,`api_productbase`.`landing_page_intro_html` AS `landing_page_intro_html`,`api_productbase`.`landing_page_end_html` AS `landing_page_end_html`,`api_productbase`.`google_books_link` AS `google_books_link` from `api_productbase`;
+
+-- ----------------------------
+-- View structure for vw_instance_counts_books
+-- ----------------------------
+DROP VIEW IF EXISTS `vw_instance_counts_books`;
+CREATE ALGORITHM = UNDEFINED SQL SECURITY DEFINER VIEW `vw_instance_counts_books` AS select concat(`api_articles`.`src_code`,convert(lpad(`api_articles`.`art_vol`,3,'0') using latin1)) AS `basecode`,`api_articles`.`src_code` AS `src_code`,`api_articles`.`art_vol` AS `art_vol`,count(0) AS `instances` from `api_articles` where (`api_articles`.`src_code` in ('ZBK','IPL','NLP','GW','SE')) group by `api_articles`.`src_code`,`api_articles`.`art_vol`;
 
 -- ----------------------------
 -- View structure for vw_api_productbase_instance_counts
@@ -518,22 +518,16 @@ DROP VIEW IF EXISTS `vw_api_volume_limits`;
 CREATE ALGORITHM = UNDEFINED SQL SECURITY DEFINER VIEW `vw_api_volume_limits` AS select `api_articles`.`src_code` AS `src_code`,min(`api_articles`.`art_vol`) AS `min(art_vol)`,max(`api_articles`.`art_vol`) AS `max(art_vol)` from `api_articles` group by `api_articles`.`src_code`;
 
 -- ----------------------------
--- View structure for vw_article_firstsectnames
--- ----------------------------
-DROP VIEW IF EXISTS `vw_article_firstsectnames`;
-CREATE ALGORITHM = UNDEFINED SQL SECURITY DEFINER VIEW `vw_article_firstsectnames` AS select `vw_article_sectnames`.`art_id` AS `art_id`,`vw_article_sectnames`.`start_sectname` AS `start_sectname` from `vw_article_sectnames` where (`vw_article_sectnames`.`start_sectname` is not null) group by `vw_article_sectnames`.`src_code`,`vw_article_sectnames`.`art_vol`,`vw_article_sectnames`.`art_issue`,`vw_article_sectnames`.`start_sectname` order by `vw_article_sectnames`.`art_id`;
-
--- ----------------------------
 -- View structure for vw_article_sectnames
 -- ----------------------------
 DROP VIEW IF EXISTS `vw_article_sectnames`;
 CREATE ALGORITHM = UNDEFINED SQL SECURITY DEFINER VIEW `vw_article_sectnames` AS select `api_articles`.`src_code` AS `src_code`,`api_articles`.`art_vol` AS `art_vol`,`api_articles`.`art_issue` AS `art_issue`,`api_articles`.`art_id` AS `art_id`,trim(`api_articles`.`start_sectname`) AS `start_sectname` from `api_articles` order by `api_articles`.`art_id`;
 
 -- ----------------------------
--- View structure for vw_instance_counts_books
+-- View structure for vw_article_firstsectnames
 -- ----------------------------
-DROP VIEW IF EXISTS `vw_instance_counts_books`;
-CREATE ALGORITHM = UNDEFINED SQL SECURITY DEFINER VIEW `vw_instance_counts_books` AS select concat(`api_articles`.`src_code`,convert(lpad(`api_articles`.`art_vol`,3,'0') using latin1)) AS `basecode`,`api_articles`.`src_code` AS `src_code`,`api_articles`.`art_vol` AS `art_vol`,count(0) AS `instances` from `api_articles` where (`api_articles`.`src_code` in ('ZBK','IPL','NLP','GW','SE')) group by `api_articles`.`src_code`,`api_articles`.`art_vol`;
+DROP VIEW IF EXISTS `vw_article_firstsectnames`;
+CREATE ALGORITHM = UNDEFINED SQL SECURITY DEFINER VIEW `vw_article_firstsectnames` AS select `vw_article_sectnames`.`art_id` AS `art_id`,`vw_article_sectnames`.`start_sectname` AS `start_sectname` from `vw_article_sectnames` where (`vw_article_sectnames`.`start_sectname` is not null) group by `vw_article_sectnames`.`src_code`,`vw_article_sectnames`.`art_vol`,`vw_article_sectnames`.`art_issue`,`vw_article_sectnames`.`start_sectname` order by `vw_article_sectnames`.`art_id`;
 
 -- ----------------------------
 -- View structure for vw_instance_counts_src
@@ -572,10 +566,28 @@ DROP VIEW IF EXISTS `vw_opasloader_splitbookpages`;
 CREATE ALGORITHM = UNDEFINED SQL SECURITY DEFINER VIEW `vw_opasloader_splitbookpages` AS select `opasloader_splitbookpages`.`articleIDbase` AS `articleIDbase`,`opasloader_splitbookpages`.`articleID` AS `articleID`,`opasloader_splitbookpages`.`pagenumber` AS `pagenumber`,`opasloader_splitbookpages`.`bibliopage` AS `bibliopage`,`opasloader_splitbookpages`.`tocpage` AS `tocpage`,`opasloader_splitbookpages`.`filename` AS `filename` from `opasloader_splitbookpages`;
 
 -- ----------------------------
+-- View structure for vw_api_absviews_from_endpoint_log
+-- ----------------------------
+DROP VIEW IF EXISTS `vw_api_absviews_from_endpoint_log`;
+CREATE ALGORITHM = UNDEFINED SQL SECURITY DEFINER VIEW `vw_api_absviews_from_endpoint_log` AS select `api_sessions`.`user_id` AS `user_id`,`api_session_endpoints`.`session_id` AS `session_id`,`api_session_endpoints`.`item_of_interest` AS `document_id`,'Abstract' AS `type`,`api_session_endpoints`.`last_update` AS `datetimechar`,`api_session_endpoints`.`last_update` AS `last_update` from (`api_session_endpoints` join `api_sessions` on((`api_session_endpoints`.`session_id` = `api_sessions`.`session_id`))) where ((`api_session_endpoints`.`return_added_status_message` like '%(Abstract Only)%') or (`api_session_endpoints`.`api_endpoint_id` = 30));
+
+-- ----------------------------
 -- View structure for vw_reports_abstract_views_from_endpoint_log
 -- ----------------------------
 DROP VIEW IF EXISTS `vw_reports_abstract_views_from_endpoint_log`;
 CREATE ALGORITHM = UNDEFINED SQL SECURITY DEFINER VIEW `vw_reports_abstract_views_from_endpoint_log` AS select `vw_api_absviews_from_endpoint_log`.`document_id` AS `abstract_id`,any_value(`vw_api_absviews_from_endpoint_log`.`type`) AS `view_type`,count(0) AS `views`,min(`vw_api_absviews_from_endpoint_log`.`datetimechar`) AS `mindate`,max(`vw_api_absviews_from_endpoint_log`.`datetimechar`) AS `maxdate` from `vw_api_absviews_from_endpoint_log` where (`vw_api_absviews_from_endpoint_log`.`type` = 'Abstract') group by `vw_api_absviews_from_endpoint_log`.`document_id`;
+
+-- ----------------------------
+-- View structure for vw_reports_charcounts_sub_jrnlgroups
+-- ----------------------------
+DROP VIEW IF EXISTS `vw_reports_charcounts_sub_jrnlgroups`;
+CREATE ALGORITHM = UNDEFINED SQL SECURITY DEFINER VIEW `vw_reports_charcounts_sub_jrnlgroups` AS select `vw_reports_charcounts_sub_jrnl_selectioncriteria`.`jrnlgrpname` AS `jrnlgrpname`,`vw_reports_charcounts_sub_jrnl_selectioncriteria`.`jrnlcode` AS `jrnlcode`,`vw_reports_charcounts_sub_jrnl_selectioncriteria`.`jrnlgrp` AS `jrnlgrp`,`vw_reports_charcounts_sub_jrnl_selectioncriteria`.`jrnlgrpstartyear` AS `jrnlgrpstartyear`,`vw_reports_charcounts_sub_jrnl_selectioncriteria`.`jrnlstartyear` AS `jrnlstartyear`,count(`vw_reports_charcounts_sub_jrnl_selectioncriteria`.`year`) AS `yearsincluded`,lpad(convert(format((sum(`vw_reports_charcounts_sub_jrnl_selectioncriteria`.`CharCount`) / `vw_reports_charcounts_sub_jrnl_selectioncriteria`.`jrnlgrpmembercount`),0) using utf8mb4),(32 - char_length(cast(sum(`vw_reports_charcounts_sub_jrnl_selectioncriteria`.`CharCount`) as char charset utf8mb4))),' ') AS `CharCount`,lpad(convert(format((sum(`vw_reports_charcounts_sub_jrnl_selectioncriteria`.`NoSpaceCharCount`) / `vw_reports_charcounts_sub_jrnl_selectioncriteria`.`jrnlgrpmembercount`),0) using utf8mb4),(32 - char_length(cast(sum(`vw_reports_charcounts_sub_jrnl_selectioncriteria`.`NoSpaceCharCount`) as char charset utf8mb4))),' ') AS `NoSpaceCharCount`,max(`vw_reports_charcounts_sub_jrnl_selectioncriteria`.`uptoyear`) AS `max(uptoyear)`,`vw_reports_charcounts_sub_jrnl_selectioncriteria`.`Earliest` AS `Earliest`,`vw_reports_charcounts_sub_jrnl_selectioncriteria`.`Latest` AS `Latest` from `vw_reports_charcounts_sub_jrnl_selectioncriteria` where ((`vw_reports_charcounts_sub_jrnl_selectioncriteria`.`year` <= `vw_reports_charcounts_sub_jrnl_selectioncriteria`.`uptoyear`) and (`vw_reports_charcounts_sub_jrnl_selectioncriteria`.`year` >= `vw_reports_charcounts_sub_jrnl_selectioncriteria`.`jrnlgrpstartyear`)) group by `vw_reports_charcounts_sub_jrnl_selectioncriteria`.`jrnlgrp` order by `vw_reports_charcounts_sub_jrnl_selectioncriteria`.`jrnlgrpname`;
+
+-- ----------------------------
+-- View structure for vw_reports_charcounts_sub_booksall
+-- ----------------------------
+DROP VIEW IF EXISTS `vw_reports_charcounts_sub_booksall`;
+CREATE ALGORITHM = UNDEFINED SQL SECURITY DEFINER VIEW `vw_reports_charcounts_sub_booksall` AS select cast('Books (All)' as char charset latin1) AS `jrnlgrpname`,cast('All' as char charset latin1) AS `jrnlcode`,`vw_reports_charcounts_sub_books_selectioncriteria`.`jrnlgrp` AS `jrnlgrp`,`vw_reports_charcounts_sub_books_selectioncriteria`.`jrnlgrpstartyear` AS `jrnlgrpstartyear`,`vw_reports_charcounts_sub_books_selectioncriteria`.`jrnlstartyear` AS `jrnlstartyear`,count(`vw_reports_charcounts_sub_books_selectioncriteria`.`year`) AS `yearsincluded`,lpad(convert(format(sum(`vw_reports_charcounts_sub_books_selectioncriteria`.`CharCount`),0) using utf8mb4),(32 - char_length(cast(sum(`vw_reports_charcounts_sub_books_selectioncriteria`.`CharCount`) as char charset utf8mb4))),' ') AS `CharCount`,lpad(convert(format(sum(`vw_reports_charcounts_sub_books_selectioncriteria`.`NoSpaceCharCount`),0) using utf8mb4),(32 - char_length(cast(sum(`vw_reports_charcounts_sub_books_selectioncriteria`.`NoSpaceCharCount`) as char charset utf8mb4))),' ') AS `NoSpaceCharCount`,max(`vw_reports_charcounts_sub_books_selectioncriteria`.`uptoyear`) AS `max(uptoyear)`,`vw_reports_charcounts_sub_books_selectioncriteria`.`Earliest` AS `Earliest`,`vw_reports_charcounts_sub_books_selectioncriteria`.`Latest` AS `Latest` from `vw_reports_charcounts_sub_books_selectioncriteria`;
 
 -- ----------------------------
 -- View structure for vw_reports_charcounts
@@ -602,12 +614,6 @@ DROP VIEW IF EXISTS `vw_reports_charcounts_sub_books_selectioncriteria`;
 CREATE ALGORITHM = UNDEFINED SQL SECURITY DEFINER VIEW `vw_reports_charcounts_sub_books_selectioncriteria` AS select `vw_reports_charcounts_sub_books_byvol`.`jrnlcode` AS `jrnlcode`,`vw_reports_charcounts_sub_books_byvol`.`year` AS `year`,`api_productbase`.`wall` AS `wall`,`api_productbase`.`active` AS `active`,`api_productbase`.`pep_class` AS `pep_class`,`api_productbase`.`start_year` AS `jrnlstartyear`,`api_productbase`.`end_year` AS `jrnlendyear`,`api_productbase`.`charcount_stat_start_year` AS `jrnlgrpstartyear`,`api_productbase`.`charcount_stat_group_str` AS `jrnlgrp`,`api_productbase`.`charcount_stat_name` AS `jrnlgrpname`,`api_productbase`.`charcount_stat_group_count` AS `jrnlgrpmembercount`,year(now()) AS `year(now())`,((year(now()) - `api_productbase`.`wall`) - 1) AS `uptoyear`,`vw_reports_charcounts_sub_books_byvol`.`CharCount` AS `CharCount`,`vw_reports_charcounts_sub_books_byvol`.`NoSpaceCharCount` AS `NoSpaceCharCount`,`vw_reports_charcounts_sub_books_byvol`.`Earliest` AS `Earliest`,`vw_reports_charcounts_sub_books_byvol`.`Latest` AS `Latest` from (`vw_reports_charcounts_sub_books_byvol` join `api_productbase`) where (convert(`vw_reports_charcounts_sub_books_byvol`.`jrnlcode` using utf8) = convert(`api_productbase`.`basecode` using utf8));
 
 -- ----------------------------
--- View structure for vw_reports_charcounts_sub_booksall
--- ----------------------------
-DROP VIEW IF EXISTS `vw_reports_charcounts_sub_booksall`;
-CREATE ALGORITHM = UNDEFINED SQL SECURITY DEFINER VIEW `vw_reports_charcounts_sub_booksall` AS select cast('Books (All)' as char charset latin1) AS `jrnlgrpname`,cast('All' as char charset latin1) AS `jrnlcode`,`vw_reports_charcounts_sub_books_selectioncriteria`.`jrnlgrp` AS `jrnlgrp`,`vw_reports_charcounts_sub_books_selectioncriteria`.`jrnlgrpstartyear` AS `jrnlgrpstartyear`,`vw_reports_charcounts_sub_books_selectioncriteria`.`jrnlstartyear` AS `jrnlstartyear`,count(`vw_reports_charcounts_sub_books_selectioncriteria`.`year`) AS `yearsincluded`,lpad(convert(format(sum(`vw_reports_charcounts_sub_books_selectioncriteria`.`CharCount`),0) using utf8mb4),(32 - char_length(cast(sum(`vw_reports_charcounts_sub_books_selectioncriteria`.`CharCount`) as char charset utf8mb4))),' ') AS `CharCount`,lpad(convert(format(sum(`vw_reports_charcounts_sub_books_selectioncriteria`.`NoSpaceCharCount`),0) using utf8mb4),(32 - char_length(cast(sum(`vw_reports_charcounts_sub_books_selectioncriteria`.`NoSpaceCharCount`) as char charset utf8mb4))),' ') AS `NoSpaceCharCount`,max(`vw_reports_charcounts_sub_books_selectioncriteria`.`uptoyear`) AS `max(uptoyear)`,`vw_reports_charcounts_sub_books_selectioncriteria`.`Earliest` AS `Earliest`,`vw_reports_charcounts_sub_books_selectioncriteria`.`Latest` AS `Latest` from `vw_reports_charcounts_sub_books_selectioncriteria`;
-
--- ----------------------------
 -- View structure for vw_reports_charcounts_sub_byjournalyear
 -- ----------------------------
 DROP VIEW IF EXISTS `vw_reports_charcounts_sub_byjournalyear`;
@@ -618,12 +624,6 @@ CREATE ALGORITHM = UNDEFINED SQL SECURITY DEFINER VIEW `vw_reports_charcounts_su
 -- ----------------------------
 DROP VIEW IF EXISTS `vw_reports_charcounts_sub_jrnl_selectioncriteria`;
 CREATE ALGORITHM = UNDEFINED SQL SECURITY DEFINER VIEW `vw_reports_charcounts_sub_jrnl_selectioncriteria` AS select `vw_reports_charcounts_sub_byjournalyear`.`jrnlcode` AS `jrnlcode`,`vw_reports_charcounts_sub_byjournalyear`.`year` AS `year`,`api_productbase`.`wall` AS `wall`,`api_productbase`.`start_year` AS `jrnlstartyear`,`api_productbase`.`end_year` AS `jrnlendyear`,`api_productbase`.`charcount_stat_start_year` AS `jrnlgrpstartyear`,`api_productbase`.`charcount_stat_group_str` AS `jrnlgrp`,`api_productbase`.`charcount_stat_name` AS `jrnlgrpname`,`api_productbase`.`charcount_stat_group_count` AS `jrnlgrpmembercount`,year(now()) AS `year(now())`,((year(now()) - `api_productbase`.`wall`) - 1) AS `uptoyear`,`vw_reports_charcounts_sub_byjournalyear`.`CharCount` AS `CharCount`,`vw_reports_charcounts_sub_byjournalyear`.`NoSpaceCharCount` AS `NoSpaceCharCount`,`vw_reports_charcounts_sub_byjournalyear`.`Earliest` AS `Earliest`,`vw_reports_charcounts_sub_byjournalyear`.`Latest` AS `Latest` from (`vw_reports_charcounts_sub_byjournalyear` join `api_productbase`) where (((`api_productbase`.`pep_class` like 'journal') or (`api_productbase`.`pep_class` like 'bookseriessub')) and (convert(`api_productbase`.`charcount_stat_group_str` using utf8) like concat('%/',convert(`vw_reports_charcounts_sub_byjournalyear`.`jrnlcode` using utf8),'/%')));
-
--- ----------------------------
--- View structure for vw_reports_charcounts_sub_jrnlgroups
--- ----------------------------
-DROP VIEW IF EXISTS `vw_reports_charcounts_sub_jrnlgroups`;
-CREATE ALGORITHM = UNDEFINED SQL SECURITY DEFINER VIEW `vw_reports_charcounts_sub_jrnlgroups` AS select `vw_reports_charcounts_sub_jrnl_selectioncriteria`.`jrnlgrpname` AS `jrnlgrpname`,`vw_reports_charcounts_sub_jrnl_selectioncriteria`.`jrnlcode` AS `jrnlcode`,`vw_reports_charcounts_sub_jrnl_selectioncriteria`.`jrnlgrp` AS `jrnlgrp`,`vw_reports_charcounts_sub_jrnl_selectioncriteria`.`jrnlgrpstartyear` AS `jrnlgrpstartyear`,`vw_reports_charcounts_sub_jrnl_selectioncriteria`.`jrnlstartyear` AS `jrnlstartyear`,count(`vw_reports_charcounts_sub_jrnl_selectioncriteria`.`year`) AS `yearsincluded`,lpad(convert(format((sum(`vw_reports_charcounts_sub_jrnl_selectioncriteria`.`CharCount`) / `vw_reports_charcounts_sub_jrnl_selectioncriteria`.`jrnlgrpmembercount`),0) using utf8mb4),(32 - char_length(cast(sum(`vw_reports_charcounts_sub_jrnl_selectioncriteria`.`CharCount`) as char charset utf8mb4))),' ') AS `CharCount`,lpad(convert(format((sum(`vw_reports_charcounts_sub_jrnl_selectioncriteria`.`NoSpaceCharCount`) / `vw_reports_charcounts_sub_jrnl_selectioncriteria`.`jrnlgrpmembercount`),0) using utf8mb4),(32 - char_length(cast(sum(`vw_reports_charcounts_sub_jrnl_selectioncriteria`.`NoSpaceCharCount`) as char charset utf8mb4))),' ') AS `NoSpaceCharCount`,max(`vw_reports_charcounts_sub_jrnl_selectioncriteria`.`uptoyear`) AS `max(uptoyear)`,`vw_reports_charcounts_sub_jrnl_selectioncriteria`.`Earliest` AS `Earliest`,`vw_reports_charcounts_sub_jrnl_selectioncriteria`.`Latest` AS `Latest` from `vw_reports_charcounts_sub_jrnl_selectioncriteria` where ((`vw_reports_charcounts_sub_jrnl_selectioncriteria`.`year` <= `vw_reports_charcounts_sub_jrnl_selectioncriteria`.`uptoyear`) and (`vw_reports_charcounts_sub_jrnl_selectioncriteria`.`year` >= `vw_reports_charcounts_sub_jrnl_selectioncriteria`.`jrnlgrpstartyear`)) group by `vw_reports_charcounts_sub_jrnl_selectioncriteria`.`jrnlgrp` order by `vw_reports_charcounts_sub_jrnl_selectioncriteria`.`jrnlgrpname`;
 
 -- ----------------------------
 -- View structure for vw_reports_charsub_books_by_srccode

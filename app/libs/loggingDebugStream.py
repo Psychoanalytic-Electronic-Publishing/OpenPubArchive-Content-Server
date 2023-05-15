@@ -6,20 +6,27 @@
 import logging
 logger = logging.getLogger(__name__)
 
-def log_everywhere_if(condition, level, msg):
-    if condition:
-        print (msg)
-
-    if level == "debug":
+def log_everywhere_if(condition, level, msg, end=None):
+    if level == "debug":    
         logger.debug(msg)
+        level_int = 10
     elif level == "info":
         logger.info(msg)
+        level_int = 20
     elif level == "warning":
         logger.warning(msg)
-    elif level == "error":
+        level_int = 30
+    elif level == "error" or level == "severe":
         logger.error(msg)
+        level_int = 40
     elif level == "fatal":
         logger.fatal(msg)
-            
+        level_int = 50
         
+    if condition and (logger.parent.level <= level_int or level_int == 20): # want to see info msgs if condition
+        if end:
+            print (msg, end)
+        else:
+            print (msg)
+
     
