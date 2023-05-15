@@ -81,7 +81,8 @@ class ReportTypeEnum(str, Enum):
     userSearches = "User-Searches"
     documentViews = "Document-View-Stat"
     documentViewLog = "Document-View-Log"
-    characterCounts = "Character Count Report"
+    characterCounts = "Character-Count-Report"
+    characterCountsDetails = "Character-Count-Details-Report"
     #opasLogs = "Opas-Error-Logs"
     
 class TermTypeIDEnum(str, ExtendedEnum):

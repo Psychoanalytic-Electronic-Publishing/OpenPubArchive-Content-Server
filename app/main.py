@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2023, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2023.0424/v2.3.019"   # removed v3 ExtendedSearch endpoint so new 2.3 compatibility bump
+__version__     = "2023.0515/v2.3.020"   # new admin char details report
 __status__      = "Development/Libs/Loader"  
 
 """
@@ -804,6 +804,7 @@ async def admin_reports(response: Response,
         header = ["document id",
                   "view type",
                   "view count"]
+        
     elif report == models.ReportTypeEnum.characterCounts:
         report_view = "vw_reports_charcounts"
         orderby_clause = f"ORDER BY jrnlgrpname {sortorder}"
@@ -816,6 +817,18 @@ async def admin_reports(response: Response,
                   "char count",
                   "no space char count", 
                   "up to year"
+                  ]
+    elif report == models.ReportTypeEnum.characterCountsDetails:
+        report_view = "vw_reports_charcounts_details"
+        orderby_clause = f"ORDER BY jrnlcode, year {sortorder}"
+        header = ["jrnlcode",
+                  "year",
+                  "vol",
+                  "char count",
+                  "no space char count",
+                  "article count",
+                  "earliest year", 
+                  "latest year"
                   ]
     else:
         report_view = None
