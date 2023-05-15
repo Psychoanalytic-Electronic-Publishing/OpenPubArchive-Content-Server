@@ -53,6 +53,10 @@ module "test_lambda" {
   timeout     = 900
   memory_size = 1024
 
+  vpc_subnet_ids         = data.aws_subnets.vpc.ids
+  vpc_security_group_ids = var.security_group_ids
+  attach_network_policy  = true
+
   environment_variables = {
     BUCKET = "pep-configuration"
   }
