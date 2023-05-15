@@ -13,7 +13,7 @@ locals {
 }
 
 
-resource "null_resource" "build_test_lambda_image" {
+resource "null_resource" "build_data_lambda_image" {
   triggers = {
     config_sha1                   = local.config_sha1
     libs_sha1                     = local.libs_sha1
@@ -38,8 +38,8 @@ resource "null_resource" "build_test_lambda_image" {
   }
 }
 
-module "test_lambda" {
-  depends_on = [null_resource.build_test_lambda_image]
+module "data_lambda" {
+  depends_on = [null_resource.build_data_lambda_image]
 
   source = "terraform-aws-modules/lambda/aws"
 
@@ -68,7 +68,7 @@ module "test_lambda" {
 }
 
 resource "aws_iam_role_policy" "s3_policy" {
-  role = module.test_lambda.lambda_role_name
+  role = module.data_lambda.lambda_role_name
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -86,8 +86,8 @@ resource "aws_iam_role_policy" "s3_policy" {
 
 resource "null_resource" "deploy_lambda_package" {
   depends_on = [
-    null_resource.build_test_lambda_image,
-    module.test_lambda
+    null_resource.build_data_lambda_image,
+    module.data_lambda
   ]
 
   triggers = {
@@ -104,6 +104,6 @@ resource "null_resource" "deploy_lambda_package" {
   }
 
   provisioner "local-exec" {
-    command = "aws lambda update-function-code --function-name ${module.test_lambda.lambda_function_name} --image-uri ${aws_ecr_repository.opas_repository.repository_url}:${local.name}-latest"
+    command = "aws lambda update-function-code --function-name ${module.data_lambda.lambda_function_name} --image-uri ${aws_ecr_repository.opas_repository.repository_url}:${local.name}-latest"
   }
 }
