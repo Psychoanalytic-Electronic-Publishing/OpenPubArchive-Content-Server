@@ -10,7 +10,6 @@ variable "aws_region" {
 
 variable "account_id" {
   description = "AWS account ID"
-  default     = "547758924192"
 }
 
 variable "stack_name" {
