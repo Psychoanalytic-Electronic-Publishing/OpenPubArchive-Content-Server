@@ -57,6 +57,8 @@ module "data_lambda" {
   vpc_security_group_ids = var.security_group_ids
   attach_network_policy  = true
 
+  ignore_source_code_hash = true
+
   environment_variables = {
     BUCKET = "pep-configuration"
   }
