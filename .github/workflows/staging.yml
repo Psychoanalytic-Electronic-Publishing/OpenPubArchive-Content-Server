@@ -3,7 +3,7 @@ name: Plan and deploy OPAS to staging
 on:
   pull_request:
     branches:
-      - main
+      - Stage
 
 concurrency:
   group: ${{ github.ref }}-deploy
