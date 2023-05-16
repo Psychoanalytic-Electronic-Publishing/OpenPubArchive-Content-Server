@@ -14,6 +14,8 @@ locals {
 
 
 resource "null_resource" "build_data_lambda_image" {
+  depends_on = [local_sensitive_file.localsecrets]
+
   triggers = {
     config_sha1                   = local.config_sha1
     libs_sha1                     = local.libs_sha1
