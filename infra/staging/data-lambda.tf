@@ -9,7 +9,8 @@ locals {
   opasSiteMapper_sha1           = sha1(join("", [for f in fileset(path.cwd, "../../app/opasSiteMapper/*") : filesha1(f)]))
   lambda_sha1                   = sha1(join("", [for f in fileset(path.cwd, "../../lambda/data-utility/*") : filesha1(f)]))
   dockerfile_sha1               = filesha1("../../lambda/Dockerfile")
-  name                          = "${var.stack_name}-data-utility-${var.env}"
+  name                          = "${var.stack_name}-data-lambda-${var.env}"
+  container_name                = "${local.name}-${formatdate("YYYYMMDDhhmmss", timestamp())}"
 }
 
 
@@ -33,9 +34,9 @@ resource "null_resource" "build_data_lambda_image" {
     working_dir = "../../"
     command     = <<-EOT
       aws ecr get-login-password --region ${var.aws_region} | docker login --username AWS --password-stdin ${var.account_id}.dkr.ecr.${var.aws_region}.amazonaws.com
-      docker build --platform linux/amd64 -t ${local.name}-latest -f lambda/Dockerfile --build-arg LAMBDA_HANDLER_PATH=lambda/data-utility/index.py .
-      docker tag ${local.name}-latest ${aws_ecr_repository.opas_repository.repository_url}:${local.name}-latest
-      docker push ${aws_ecr_repository.opas_repository.repository_url}:${local.name}-latest
+      docker build --platform linux/amd64 -t ${local.container_name} -f lambda/Dockerfile --build-arg LAMBDA_HANDLER_PATH=lambda/data-utility/index.py .
+      docker tag ${local.container_name} ${aws_ecr_repository.opas_repository.repository_url}:${local.container_name}
+      docker push ${aws_ecr_repository.opas_repository.repository_url}:${local.container_name}
     EOT
   }
 }
@@ -49,7 +50,7 @@ module "data_lambda" {
   description    = "Execute OPAS data tools with configurable options"
   create_package = false
 
-  image_uri    = "${aws_ecr_repository.opas_repository.repository_url}:${local.name}-latest"
+  image_uri    = "${aws_ecr_repository.opas_repository.repository_url}:${local.container_name}"
   package_type = "Image"
 
   timeout     = 900
@@ -108,6 +109,6 @@ resource "null_resource" "deploy_lambda_package" {
   }
 
   provisioner "local-exec" {
-    command = "aws lambda update-function-code --function-name ${module.data_lambda.lambda_function_name} --image-uri ${aws_ecr_repository.opas_repository.repository_url}:${local.name}-latest"
+    command = "aws lambda update-function-code --function-name ${module.data_lambda.lambda_function_name} --image-uri ${aws_ecr_repository.opas_repository.repository_url}:${local.container_name}"
   }
 }
