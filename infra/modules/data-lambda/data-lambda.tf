@@ -1,40 +1,8 @@
-resource "time_static" "timestamp" {
-  triggers = {
-    config_sha1                   = local.config_sha1
-    libs_sha1                     = local.libs_sha1
-    opasDataLoader_sha1           = local.opasDataLoader_sha1
-    opasDataUpdateStat_sha1       = local.opasDataUpdateStat_sha1
-    opasEndnoteExport_sha1        = local.opasEndnoteExport_sha1
-    opasGoogleMetadataExport_sha1 = local.opasGoogleMetadataExport_sha1
-    opasPushSettings_sha1         = local.opasPushSettings_sha1
-    opasSiteMapper_sha1           = local.opasSiteMapper_sha1
-    lambda_sha1                   = local.lambda_sha1
-    dockerfile_sha1               = local.dockerfile_sha1
-  }
-}
-
-locals {
-  depends_on = [local_sensitive_file.localsecrets]
-
-  config_sha1                   = sha1(join("", [for f in fileset(path.cwd, "../../app/config/*") : filesha1(f)]))
-  libs_sha1                     = sha1(join("", [for f in fileset(path.cwd, "../../app/libs/*") : filesha1(f)]))
-  opasDataLoader_sha1           = sha1(join("", [for f in fileset(path.cwd, "../../app/opasDataLoader/*") : filesha1(f)]))
-  opasDataUpdateStat_sha1       = sha1(join("", [for f in fileset(path.cwd, "../../app/opasDataUpdateStat/*") : filesha1(f)]))
-  opasEndnoteExport_sha1        = sha1(join("", [for f in fileset(path.cwd, "../../app/opasEndnoteExport/*") : filesha1(f)]))
-  opasGoogleMetadataExport_sha1 = sha1(join("", [for f in fileset(path.cwd, "../../app/opasGoogleMetadataExport/*") : filesha1(f)]))
-  opasPushSettings_sha1         = sha1(join("", [for f in fileset(path.cwd, "../../app/opasPushSettings/*") : filesha1(f)]))
-  opasSiteMapper_sha1           = sha1(join("", [for f in fileset(path.cwd, "../../app/opasSiteMapper/*") : filesha1(f)]))
-  lambda_sha1                   = sha1(join("", [for f in fileset(path.cwd, "../../lambda/data-utility/*") : filesha1(f)]))
-  dockerfile_sha1               = filesha1("../../lambda/Dockerfile")
-  name                          = "${var.stack_name}-data-lambda-${var.env}"
-  container_name                = "${local.name}-${formatdate("YYYYMMDDhhmmss", time_static.timestamp.rfc3339)}"
-}
-
-
 resource "null_resource" "build_data_lambda_image" {
-  depends_on = [local_sensitive_file.localsecrets]
+  depends_on = [random_uuid.container]
 
   triggers = {
+    localsecrets_etag             = data.aws_s3_object.localsecrets.etag
     config_sha1                   = local.config_sha1
     libs_sha1                     = local.libs_sha1
     opasDataLoader_sha1           = local.opasDataLoader_sha1
@@ -50,10 +18,12 @@ resource "null_resource" "build_data_lambda_image" {
   provisioner "local-exec" {
     working_dir = "../../"
     command     = <<-EOT
+      aws s3 cp s3://pep-configuration/${var.env}/localsecrets.py app/config/localsecrets.py
       aws ecr get-login-password --region ${var.aws_region} | docker login --username AWS --password-stdin ${var.account_id}.dkr.ecr.${var.aws_region}.amazonaws.com
       docker build --platform linux/amd64 -t ${local.container_name} -f lambda/Dockerfile --build-arg LAMBDA_HANDLER_PATH=lambda/data-utility/index.py .
       docker tag ${local.container_name} ${var.repository_url}:${local.container_name}
       docker push ${var.repository_url}:${local.container_name}
+      rm -rf app/config/localsecrets.py
     EOT
   }
 }
@@ -76,8 +46,6 @@ module "data_lambda" {
   vpc_subnet_ids         = data.aws_subnets.vpc.ids
   vpc_security_group_ids = var.security_group_ids
   attach_network_policy  = true
-
-  ignore_source_code_hash = true
 
   environment_variables = {
     BUCKET = "pep-configuration"
@@ -104,28 +72,4 @@ resource "aws_iam_role_policy" "s3_policy" {
       },
     ]
   })
-}
-
-resource "null_resource" "deploy_lambda_package" {
-  depends_on = [
-    null_resource.build_data_lambda_image,
-    module.data_lambda
-  ]
-
-  triggers = {
-    config_sha1                   = local.config_sha1
-    libs_sha1                     = local.libs_sha1
-    opasDataLoader_sha1           = local.opasDataLoader_sha1
-    opasDataUpdateStat_sha1       = local.opasDataUpdateStat_sha1
-    opasEndnoteExport_sha1        = local.opasEndnoteExport_sha1
-    opasGoogleMetadataExport_sha1 = local.opasGoogleMetadataExport_sha1
-    opasPushSettings_sha1         = local.opasPushSettings_sha1
-    opasSiteMapper_sha1           = local.opasSiteMapper_sha1
-    lambda_sha1                   = local.lambda_sha1
-    dockerfile_sha1               = local.dockerfile_sha1
-  }
-
-  provisioner "local-exec" {
-    command = "aws lambda update-function-code --function-name ${module.data_lambda.lambda_function_name} --image-uri ${var.repository_url}:${local.container_name}"
-  }
 }
