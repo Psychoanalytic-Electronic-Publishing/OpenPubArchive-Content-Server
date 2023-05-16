@@ -50,8 +50,8 @@ resource "null_resource" "build_data_lambda_image" {
     command     = <<-EOT
       aws ecr get-login-password --region ${var.aws_region} | docker login --username AWS --password-stdin ${var.account_id}.dkr.ecr.${var.aws_region}.amazonaws.com
       docker build --platform linux/amd64 -t ${local.container_name} -f lambda/Dockerfile --build-arg LAMBDA_HANDLER_PATH=lambda/data-utility/index.py .
-      docker tag ${local.container_name} ${module.ecr.repository_url}:${local.container_name}
-      docker push ${module.ecr.repository_url}:${local.container_name}
+      docker tag ${local.container_name} ${var.repository_url}:${local.container_name}
+      docker push ${var.repository_url}:${local.container_name}
     EOT
   }
 }
@@ -65,7 +65,7 @@ module "data_lambda" {
   description    = "Execute OPAS data tools with configurable options"
   create_package = false
 
-  image_uri    = "${module.ecr.repository_url}:${local.container_name}"
+  image_uri    = "${var.repository_url}:${local.container_name}"
   package_type = "Image"
 
   timeout     = 900
@@ -124,6 +124,6 @@ resource "null_resource" "deploy_lambda_package" {
   }
 
   provisioner "local-exec" {
-    command = "aws lambda update-function-code --function-name ${module.data_lambda.lambda_function_name} --image-uri ${module.ecr.repository_url}:${local.container_name}"
+    command = "aws lambda update-function-code --function-name ${module.data_lambda.lambda_function_name} --image-uri ${var.repository_url}:${local.container_name}"
   }
 }
