@@ -4,15 +4,17 @@ import boto3
 
 s3 = boto3.client("s3")
 
+
 def execute(cmd, cwd=None):
-    popen = subprocess.Popen(cmd, stdout=subprocess.PIPE, universal_newlines=True, cwd=cwd)
+    popen = subprocess.Popen(
+        cmd, stdout=subprocess.PIPE, universal_newlines=True, cwd=cwd
+    )
     for stdout_line in iter(popen.stdout.readline, ""):
-        yield stdout_line 
+        yield stdout_line
     popen.stdout.close()
     return_code = popen.wait()
     if return_code:
         raise subprocess.CalledProcessError(return_code, cmd)
-
 
 
 def handler(event, context):
