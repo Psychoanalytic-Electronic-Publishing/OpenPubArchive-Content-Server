@@ -1,3 +1,18 @@
+resource "time_static" "timestamp" {
+  triggers = {
+    config_sha1                   = local.config_sha1
+    libs_sha1                     = local.libs_sha1
+    opasDataLoader_sha1           = local.opasDataLoader_sha1
+    opasDataUpdateStat_sha1       = local.opasDataUpdateStat_sha1
+    opasEndnoteExport_sha1        = local.opasEndnoteExport_sha1
+    opasGoogleMetadataExport_sha1 = local.opasGoogleMetadataExport_sha1
+    opasPushSettings_sha1         = local.opasPushSettings_sha1
+    opasSiteMapper_sha1           = local.opasSiteMapper_sha1
+    lambda_sha1                   = local.lambda_sha1
+    dockerfile_sha1               = local.dockerfile_sha1
+  }
+}
+
 locals {
   config_sha1                   = sha1(join("", [for f in fileset(path.cwd, "../../app/config/*") : filesha1(f)]))
   libs_sha1                     = sha1(join("", [for f in fileset(path.cwd, "../../app/libs/*") : filesha1(f)]))
@@ -10,7 +25,7 @@ locals {
   lambda_sha1                   = sha1(join("", [for f in fileset(path.cwd, "../../lambda/data-utility/*") : filesha1(f)]))
   dockerfile_sha1               = filesha1("../../lambda/Dockerfile")
   name                          = "${var.stack_name}-data-lambda-${var.env}"
-  container_name                = "${local.name}-${formatdate("YYYYMMDDhhmmss", timestamp())}"
+  container_name                = "${local.name}-${formatdate("YYYYMMDDhhmmss", time_static.timestamp.rfc3339)}"
 }
 
 
@@ -35,8 +50,8 @@ resource "null_resource" "build_data_lambda_image" {
     command     = <<-EOT
       aws ecr get-login-password --region ${var.aws_region} | docker login --username AWS --password-stdin ${var.account_id}.dkr.ecr.${var.aws_region}.amazonaws.com
       docker build --platform linux/amd64 -t ${local.container_name} -f lambda/Dockerfile --build-arg LAMBDA_HANDLER_PATH=lambda/data-utility/index.py .
-      docker tag ${local.container_name} ${aws_ecr_repository.opas_repository.repository_url}:${local.container_name}
-      docker push ${aws_ecr_repository.opas_repository.repository_url}:${local.container_name}
+      docker tag ${local.container_name} ${module.ecr.repository_url}:${local.container_name}
+      docker push ${module.ecr.repository_url}:${local.container_name}
     EOT
   }
 }
@@ -50,7 +65,7 @@ module "data_lambda" {
   description    = "Execute OPAS data tools with configurable options"
   create_package = false
 
-  image_uri    = "${aws_ecr_repository.opas_repository.repository_url}:${local.container_name}"
+  image_uri    = "${module.ecr.repository_url}:${local.container_name}"
   package_type = "Image"
 
   timeout     = 900
@@ -109,6 +124,6 @@ resource "null_resource" "deploy_lambda_package" {
   }
 
   provisioner "local-exec" {
-    command = "aws lambda update-function-code --function-name ${module.data_lambda.lambda_function_name} --image-uri ${aws_ecr_repository.opas_repository.repository_url}:${local.container_name}"
+    command = "aws lambda update-function-code --function-name ${module.data_lambda.lambda_function_name} --image-uri ${module.ecr.repository_url}:${local.container_name}"
   }
 }

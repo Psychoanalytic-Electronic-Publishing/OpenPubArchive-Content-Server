@@ -15,3 +15,10 @@ terraform {
 provider "aws" {
   region = var.aws_region
 }
+
+module "ecr" {
+  source = "../modules/ecr"
+
+  stack_name = var.stack_name
+  env        = var.env
+}
