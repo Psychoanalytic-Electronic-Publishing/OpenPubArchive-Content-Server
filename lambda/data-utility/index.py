@@ -20,9 +20,6 @@ def handler(event, context):
     if "utility" not in event:
         raise TypeError("utility param not provided")
 
-    if "environment" not in event:
-        raise TypeError("environment param not provided")
-
     if "commands" not in event:
         raise TypeError("command param not provided")
 
