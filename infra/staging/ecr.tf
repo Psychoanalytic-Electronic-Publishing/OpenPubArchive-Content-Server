@@ -1,5 +1,5 @@
 resource "aws_ecr_repository" "opas_repository" {
-  name                 = "opas"
+  name                 = "${var.stack}-repository-${var.env}"
   image_tag_mutability = "MUTABLE"
 
   image_scanning_configuration {
