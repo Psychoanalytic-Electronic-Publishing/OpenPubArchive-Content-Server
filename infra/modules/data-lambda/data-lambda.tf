@@ -14,6 +14,8 @@ resource "time_static" "timestamp" {
 }
 
 locals {
+  depends_on = [local_sensitive_file.localsecrets]
+
   config_sha1                   = sha1(join("", [for f in fileset(path.cwd, "../../app/config/*") : filesha1(f)]))
   libs_sha1                     = sha1(join("", [for f in fileset(path.cwd, "../../app/libs/*") : filesha1(f)]))
   opasDataLoader_sha1           = sha1(join("", [for f in fileset(path.cwd, "../../app/opasDataLoader/*") : filesha1(f)]))
