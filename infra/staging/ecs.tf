@@ -98,3 +98,95 @@ resource "null_resource" "build_data_utility_image" {
     EOT
   }
 }
+
+# ECR execution role
+resource "aws_iam_role" "ecr_execution_role" {
+  name = "${var.stack_name}-ecr-execution-role-${var.env}"
+
+  assume_role_policy = jsonencode({
+    "Version" : "2012-10-17",
+    "Statement" : [
+      {
+        "Sid" : "",
+        "Effect" : "Allow",
+        "Principal" : {
+          "Service" : "ecs-tasks.amazonaws.com"
+        },
+        "Action" : "sts:AssumeRole"
+      }
+    ]
+    }
+  )
+}
+
+resource "aws_iam_role_policy" "ecr_execution_policy" {
+  role = aws_iam_role.ecr_execution_role.name
+
+  policy = jsonencode({
+    "Version" : "2012-10-17",
+    "Statement" : [
+      {
+        "Effect" : "Allow",
+        "Action" : [
+          "ecr:GetAuthorizationToken",
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:GetDownloadUrlForLayer",
+          "ecr:BatchGetImage",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+        ],
+        "Resource" : "*"
+      }
+    ]
+  })
+}
+
+resource "aws_cloudwatch_log_group" "data_utility" {
+  name = "${var.stack_name}-data-utility-${var.env}"
+
+  tags = {
+    stack = var.stack_name
+    env   = var.env
+  }
+}
+
+
+resource "aws_ecs_task_definition" "data_utility" {
+  depends_on = [null_resource.build_data_utility_image]
+
+  family = "${var.stack_name}-data-utility-${var.env}"
+
+  requires_compatibilities = ["FARGATE"]
+  network_mode             = "awsvpc"
+  execution_role_arn       = aws_iam_role.ecr_execution_role.arn
+
+  cpu    = ".5 vCPU"
+  memory = "1 GB"
+
+  container_definitions = jsonencode([
+    {
+      name      = "main"
+      image     = "${module.ecr.repository_url}:${local.container_name}"
+      essential = true
+      portMappings = [
+        {
+          containerPort = 80
+          hostPort      = 80
+        }
+      ]
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          awslogs-group         = aws_cloudwatch_log_group.data_utility.name
+          awslogs-region        = var.aws_region
+          awslogs-stream-prefix = "ecs"
+        }
+      }
+    },
+  ])
+
+  tags = {
+    stack = var.stack_name
+    env   = var.env
+  }
+}
