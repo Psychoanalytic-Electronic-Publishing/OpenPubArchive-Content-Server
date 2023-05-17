@@ -14,16 +14,27 @@ The server exposes a interactive OpenAPI interface at /docs/ which, besides test
 
 All references to the distribution below use the main folder, openpubarchive, as the root (.)
 
-## Primary Components
+## Primary Components (all Python 3)
 
 1. Server with Restful API written in Python 3 using FastAPI - this is the main component, it provides an API to do queries against the journal, books, and videos stored
    `./app/main.py`
-2. An app (Python 3) for a clean full load of PEP XML text (KBD3 DTD) into Solr with some metadata loaded into the MySQL compatible database
+2. Data import and management
+   1. An app for a clean full load of PEP XML text (KBD3 DTD) into Solr with some metadata loaded into the MySQL compatible database
    `./app/opasDataLoader/opasDataLoader.py`
-3. An app (Python 3) for updating MySQL and Solr with metadata about documents and statistical data about document usage, to be run each time after a clean load of data using opasDataLoader, and weekly or more often to update the data.
+   2. An app for updating MySQL and Solr with metadata about documents and statistical data about document usage, to be run each time after a clean load of data using opasDataLoader, and weekly or more often to update the data.
    `./app/opasDataUpdateStat/opasDataUpdateStat.py`
-4. A Python 3 app for copying the api_client_configs table from a staging DB (MySQL) to the Production DB (MySQL) to transfer settings when "pushing" admin configurations from Stage to Production
+   3. An app for heuristicly matching bibliographic references against the article database including probablistic links.  The app works against a single MySQL table where all references are stored by the opasDataLoader app. During runs of opasDataLoader, this table is not only updated with new references, but any articles with references which have been newly linked are reprocessed to include those links in the article source as returned by the server. 
+    `./app/opasDataLoader/opasDataLinker.py` 
+   4. An app for copying the api_client_configs table from a staging DB (MySQL) to the Production DB (MySQL) to transfer settings when "pushing" admin configurations from Stage to Production
    `./app/opasPushSettings/opasPushSettingsToProduction.py`
+   5. An app for "garbage collection" to occasionally remove articles from the database for articles which have been removed from the source folder. This is useful during long periods where many incremental updates have been performed but not full database rebuilds (refreshes). 
+    `./app/opasDataLoader/opasDataCleaner.py` 
+
+## Companion Modules
+The OpenPubArchive-Content-Server provides the backend data source.  There are two other essential components to a complete system.  Psychoanalytic Electronic Publishing has also developed these and provides them as open source.
+
+1. Client - PEP-Web-User-Interface https://github.com/Psychoanalytic-Electronic-Publishing/PEP-Web-User-Interface
+2. Authentication - PaDS https://github.com/Psychoanalytic-Electronic-Publishing/PaDS
 
 ## Getting Started
 
