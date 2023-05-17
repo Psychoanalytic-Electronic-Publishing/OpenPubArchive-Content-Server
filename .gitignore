@@ -73,3 +73,4 @@ app/opasDataLoader/quicktest2.bat
 app/opasDataLoader/quicktest.bat
 app/opasDataLoader/scratch.bat
 app/opasDataLoader/runlinker.bat
+.DS_Store
