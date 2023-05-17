@@ -1,7 +1,7 @@
-name: Plan and deploy OPAS to staging
+name: Plan and deploy OPAS to production
 
 on:
-  pull_request:
+  push:
     branches:
       - Stage
 
@@ -13,7 +13,7 @@ jobs:
   env:
     name: "Setup dynamic environment variables"
     runs-on: ubuntu-latest
-    environment: staging-vars
+    environment: production-vars
     outputs:
       aws_account_id: ${{ steps.set-outputs.outputs.aws_account_id}}
     steps:
@@ -26,8 +26,8 @@ jobs:
     needs: [env]
     uses: jordanallen-dev/reusable-terraform-workflow/.github/workflows/terraform.yml@main
     with:
-      module-path: infra/staging
-      apply-environment: staging
+      module-path: infra/production
+      apply-environment: production
       s3-cache-bucket: pep-terraform-build-cache
     secrets:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
