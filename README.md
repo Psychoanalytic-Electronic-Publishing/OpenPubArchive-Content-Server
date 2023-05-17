@@ -27,7 +27,7 @@ All references to the distribution below use the main folder, openpubarchive, as
     `./app/opasDataLoader/opasDataLinker.py` 
    4. An app for copying the api_client_configs table from a staging DB (MySQL) to the Production DB (MySQL) to transfer settings when "pushing" admin configurations from Stage to Production
    `./app/opasPushSettings/opasPushSettingsToProduction.py`
-   5. An app for "garbage collection" to occaisionally remove articles from the database for articles which have been removed from the source folder. This is useful during long periods where many incremental updates have been performed but not full database rebuilds (refreshes). 
+   5. An app for "garbage collection" to occasionally remove articles from the database for articles which have been removed from the source folder. This is useful during long periods where many incremental updates have been performed but not full database rebuilds (refreshes). 
     `./app/opasDataLoader/opasDataCleaner.py` 
 
 ## Companion Modules
