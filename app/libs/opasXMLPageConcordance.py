@@ -69,7 +69,7 @@ class PageConcordance:
                 pg_num = pg_numbers[0]
                 if pg_num is not None:
                     pgLocator = self.get_page_locator(art_id, pg_num.text)  #look it up in the concordance table
-                    if pgLocator is not None:
+                    if pgLocator is not None and pgLocator.pgStart != 0:
                         pg_num_tgt = pgLocator.splitArticleID(includeLocalID=1)[-1][1:]
                         pg_num_tgt = opasDocuments.PageNumber(pg_num_tgt)
                         if aLoc.jrnlCode == "SE":

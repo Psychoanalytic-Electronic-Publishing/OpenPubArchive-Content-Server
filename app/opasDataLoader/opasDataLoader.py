@@ -709,7 +709,7 @@ def main():
             # Changed from opasDataLoader (reading in bKBD3 files rather than EXP_ARCH1)
             pat = fr"({options.file_key})\({input_build_pattern}\)\.(xml|XML)$"
             print (f"Reading {pat} files")
-            filenames = fs.get_matching_filelist(filespec_regex=pat, path=start_folder, max_items=1000)
+            filenames = fs.get_matching_filelist(filespec_regex=pat, path=start_folder, max_items=25000)
             if len(filenames) is None:
                 msg = f"File {pat} not found.  Exiting."
                 logger.warning(msg)
