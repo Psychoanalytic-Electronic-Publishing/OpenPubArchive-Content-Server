@@ -17,11 +17,6 @@ variable "stack_name" {
   default     = "opas"
 }
 
-variable "vpc_ids" {
-  description = "VPC ID"
-  default     = ["vpc-0476e4a5a983d1193"]
-}
-
 variable "security_group_ids" {
   description = "Security group ID"
   default     = ["sg-0a97fbfa3e8ac6431"]
