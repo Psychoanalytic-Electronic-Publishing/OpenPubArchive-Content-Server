@@ -46,7 +46,7 @@ locals {
   opasGoogleMetadataExport_sha1 = sha1(join("", [for f in fileset(path.cwd, "../../app/opasGoogleMetadataExport/*") : filesha1(f)]))
   opasPushSettings_sha1         = sha1(join("", [for f in fileset(path.cwd, "../../app/opasPushSettings/*") : filesha1(f)]))
   opasSiteMapper_sha1           = sha1(join("", [for f in fileset(path.cwd, "../../app/opasSiteMapper/*") : filesha1(f)]))
-  dockerfile_sha1               = filesha1("../../fargate/Dockerfile")
+  fargate_sha1                  = sha1(join("", [for f in fileset(path.cwd, "../../fargate/*") : filesha1(f)]))
   name                          = "${var.stack_name}-data-lambda-${var.env}"
 }
 
@@ -61,7 +61,7 @@ resource "random_uuid" "container" {
     opasGoogleMetadataExport_sha1 = local.opasGoogleMetadataExport_sha1
     opasPushSettings_sha1         = local.opasPushSettings_sha1
     opasSiteMapper_sha1           = local.opasSiteMapper_sha1
-    dockerfile_sha1               = local.dockerfile_sha1
+    fargate_sha1                  = local.fargate_sha1
   }
 }
 
@@ -83,7 +83,7 @@ resource "null_resource" "build_data_utility_image" {
     opasGoogleMetadataExport_sha1 = local.opasGoogleMetadataExport_sha1
     opasPushSettings_sha1         = local.opasPushSettings_sha1
     opasSiteMapper_sha1           = local.opasSiteMapper_sha1
-    dockerfile_sha1               = local.dockerfile_sha1
+    fargate_sha1                  = local.fargate_sha1
   }
 
   provisioner "local-exec" {
