@@ -31,6 +31,13 @@ module "ecr" {
   env        = var.env
 }
 
+module "ecs" {
+  source = "../modules/ecs"
+
+  stack_name = var.stack_name
+  env        = var.env
+}
+
 module "data-lambda" {
   source = "../modules/data-lambda"
 
