@@ -31,6 +31,23 @@ module "ecr" {
   env        = var.env
 }
 
+module "ecs" {
+  source = "../modules/ecs"
+
+  stack_name = var.stack_name
+  env        = var.env
+}
+
+module "data_utility" {
+  source = "../modules/data-utility"
+
+  stack_name     = var.stack_name
+  env            = var.env
+  account_id     = var.account_id
+  aws_region     = var.aws_region
+  repository_url = module.ecr.repository_url
+}
+
 module "data-lambda" {
   source = "../modules/data-lambda"
 
