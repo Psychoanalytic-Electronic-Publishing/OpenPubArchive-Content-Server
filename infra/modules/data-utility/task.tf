@@ -7,8 +7,8 @@ resource "aws_ecs_task_definition" "data_utility" {
   network_mode             = "awsvpc"
   execution_role_arn       = aws_iam_role.ecr_execution_role.arn
 
-  cpu    = ".5 vCPU"
-  memory = "1 GB"
+  cpu    = "512"
+  memory = "1024"
 
   container_definitions = jsonencode([
     {
