@@ -6,7 +6,7 @@ on:
       - Stage
 
 concurrency:
-  group: ${{ github.ref }}-deploy
+  group: ${{ github.ref }}-deploy-dev
   cancel-in-progress: true
 
 jobs:
