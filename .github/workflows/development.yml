@@ -1,0 +1,35 @@
+name: Plan and deploy OPAS to development
+
+on:
+  pull_request:
+    branches:
+      - Stage
+
+concurrency:
+  group: ${{ github.ref }}-deploy-dev
+  cancel-in-progress: true
+
+jobs:
+  env:
+    name: "Setup dynamic environment variables"
+    runs-on: ubuntu-latest
+    environment: development-vars
+    outputs:
+      aws_account_id: ${{ steps.set-outputs.outputs.aws_account_id}}
+    steps:
+      - name: Set output
+        id: set-outputs
+        run: |
+          echo "aws_account_id=${{ vars.AWS_ACCOUNT_ID }}" >> $GITHUB_OUTPUT
+
+  infrastructure:
+    needs: [env]
+    uses: jordanallen-dev/reusable-terraform-workflow/.github/workflows/terraform.yml@main
+    with:
+      module-path: infra/development
+      apply-environment: development
+      s3-cache-bucket: pep-terraform-build-cache
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      ENV_VARS: "TF_VAR_account_id=${{ needs.env.outputs.aws_account_id }}"
