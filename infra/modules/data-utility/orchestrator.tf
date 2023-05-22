@@ -26,7 +26,28 @@ locals {
                   "Parameters": {
                     "LaunchType": "FARGATE",
                     "Cluster": "${var.cluster_arn}",
-                    "TaskDefinition": "${aws_ecs_task_definition.data_utility.arn}"
+                    "TaskDefinition": "${aws_ecs_task_definition.data_utility.arn}",
+                    "Overrides": {
+                      "ContainerOverrides": [
+                        {
+                          "Name": "main",
+                          "Environment": [    
+                            {
+                              "Name": "UTILITY_DIRECTORY",
+                              "Value": "$.directory"
+                            },
+                            {
+                              "Name": "UTILITY_NAME",
+                              "Value": "$.name"
+                            },
+                            {
+                              "Name": "UTILITY_ARGS",
+                              "Value": "$.args"
+                            }
+                          ]
+                        }
+                      ]
+                    }
                   },
                   "End": true
                 }
@@ -42,6 +63,41 @@ locals {
   }
 }
 EOF
+
+  dynamic_task_policy = <<EOF
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "ecs:RunTask",
+                "ecs:StopTask",
+                "ecs:DescribeTasks"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "events:PutTargets",
+                "events:PutRule",
+                "events:DescribeRule"
+            ],
+            "Resource": [
+              "arn:aws:events:${var.aws_region}:${var.account_id}:rule/StepFunctionsGetEventsForECSTaskRule"
+            ]
+        },
+        {
+            "Action": [
+                "iam:PassRole"
+            ],
+            "Resource": "*",
+            "Effect": "Allow"
+        }
+    ]
+}
+EOF
 }
 
 module "step_function" {
@@ -49,6 +105,10 @@ module "step_function" {
 
   name       = "${var.stack_name}-orchestrator-${var.env}"
   definition = local.definition_template
+
+  attach_policy_json = true
+  policy_json        = local.dynamic_task_policy
+
 
   type = "STANDARD"
 
