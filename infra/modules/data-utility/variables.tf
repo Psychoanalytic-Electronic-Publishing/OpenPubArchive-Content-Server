@@ -17,3 +17,7 @@ variable "stack_name" {
 variable "repository_url" {
   description = "ECR repository URL"
 }
+
+variable "cluster_arn" {
+  description = "ECS cluster ARN"
+}

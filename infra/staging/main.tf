@@ -46,4 +46,5 @@ module "data_utility" {
   account_id     = var.account_id
   aws_region     = var.aws_region
   repository_url = module.ecr.repository_url
+  cluster_arn    = module.ecs.cluster_arn
 }
