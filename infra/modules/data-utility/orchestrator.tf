@@ -1,3 +1,10 @@
+data "aws_subnets" "private" {
+  filter {
+    name   = "vpc-id"
+    values = [var.vpc_id]
+  }
+}
+
 locals {
   definition_template = <<EOF
 {
@@ -27,6 +34,13 @@ locals {
                     "LaunchType": "FARGATE",
                     "Cluster": "${var.cluster_arn}",
                     "TaskDefinition": "${aws_ecs_task_definition.data_utility.arn}",
+                    "NetworkConfiguration": {
+                      "AwsvpcConfiguration": {
+                        "Subnets": ${jsonencode(data.aws_subnets.private.ids)},
+                        "SecurityGroups": ${jsonencode(var.security_group_ids)},
+                        "AssignPublicIp": "ENABLED"
+                      }
+                    },
                     "Overrides": {
                       "ContainerOverrides": [
                         {
@@ -34,15 +48,15 @@ locals {
                           "Environment": [    
                             {
                               "Name": "UTILITY_DIRECTORY",
-                              "Value": "$.directory"
+                              "Value.$": "$.directory"
                             },
                             {
                               "Name": "UTILITY_NAME",
-                              "Value": "$.name"
+                              "Value.$": "$.utility"
                             },
                             {
                               "Name": "UTILITY_ARGS",
-                              "Value": "$.args"
+                              "Value.$": "$.args"
                             }
                           ]
                         }
