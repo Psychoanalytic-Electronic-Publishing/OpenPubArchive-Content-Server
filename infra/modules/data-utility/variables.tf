@@ -17,3 +17,16 @@ variable "stack_name" {
 variable "repository_url" {
   description = "ECR repository URL"
 }
+
+variable "cluster_arn" {
+  description = "ECS cluster ARN"
+}
+
+variable "security_group_ids" {
+  description = "Security group IDs"
+  type        = list(string)
+}
+
+variable "vpc_id" {
+  description = "VPC ID"
+}

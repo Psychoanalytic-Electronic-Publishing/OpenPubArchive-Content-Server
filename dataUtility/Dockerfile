@@ -28,6 +28,6 @@ COPY ./requirements.txt .
 RUN  pip install -r requirements.txt
 
 # Copy runner
-COPY ./fargate/runner.sh ${ROOT_DIRECTORY}/runner.sh
+COPY ./dataUtility/runner.sh ${ROOT_DIRECTORY}/runner.sh
 
 CMD ["bash", "runner.sh"]
