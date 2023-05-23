@@ -50,3 +50,11 @@ module "data_utility" {
   security_group_ids = var.security_group_ids
   vpc_id             = module.vpc.vpc_id
 }
+
+module "data_utility_api" {
+  source = "../modules/data-utility-api"
+
+  stack_name  = var.stack_name
+  env         = var.env
+  cors_origin = var.cors_origin
+}
