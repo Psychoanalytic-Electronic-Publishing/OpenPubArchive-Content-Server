@@ -47,15 +47,3 @@ module "data_utility" {
   aws_region     = var.aws_region
   repository_url = module.ecr.repository_url
 }
-
-module "data-lambda" {
-  source = "../modules/data-lambda"
-
-  stack_name         = var.stack_name
-  env                = var.env
-  account_id         = var.account_id
-  aws_region         = var.aws_region
-  vpc_ids            = [module.vpc.vpc_id]
-  security_group_ids = var.security_group_ids
-  repository_url     = module.ecr.repository_url
-}
