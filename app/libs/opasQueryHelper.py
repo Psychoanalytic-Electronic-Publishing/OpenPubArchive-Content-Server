@@ -26,11 +26,11 @@ import re
 import logging
 logger = logging.getLogger(__name__)
 
-import lxml
+# import lxml
 
 import opasConfig 
-from opasConfig import KEY_SEARCH_FIELD, KEY_SEARCH_SMARTSEARCH, KEY_SEARCH_VALUE
-from configLib.opasCoreConfig import EXTENDED_CORES
+# from opasConfig import KEY_SEARCH_FIELD, KEY_SEARCH_SMARTSEARCH, KEY_SEARCH_VALUE
+# from configLib.opasCoreConfig import EXTENDED_CORES
 
 import models
 import opasCentralDBLib

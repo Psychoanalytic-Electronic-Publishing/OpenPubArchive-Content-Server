@@ -741,7 +741,7 @@ class StrReferenceParser(object):
         retVal = (None, None)
         found = 0
 
-        if self.biblioDB!=None:
+        if self.biblioDB is not None:
             self.__load_journal_set_from_db()
             if bJournalName is None:
                 # find the journal name

@@ -17,9 +17,10 @@ import localsecrets
 from opasConfig import TIME_FORMAT_STR
 
 import starlette.status as httpCodes
-from configLib.opasCoreConfig import solr_docs2, solr_authors2, solr_gloss2
+from configLib.opasCoreConfig import solr_docs2 #  , solr_authors2, solr_gloss2
 import opasConfig 
 from configLib.opasCoreConfig import EXTENDED_CORES
+from opasPySolrLib import remove_nuisance_word_hits
 
 from xml.sax import SAXParseException
 

@@ -13,9 +13,9 @@ import sys
 sys.path.append("..") # Adds higher directory to python modules path.
 
 import requests
-import datetime
+# import datetime
 from datetime import datetime as dt # to avoid python's confusion with datetime.timedelta
-import datetime as dtime 
+# import datetime as dtime 
 import time
 import opasConfig
 import models
@@ -239,7 +239,7 @@ def get_authserver_session_info(session_id,
     
     
     """
-    ts = time.time()
+    # ts = time.time()
     caller_name = "get_authserver_session_info"
     
     #make sure it's ok, this is causing problems on production

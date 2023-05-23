@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 # import fnmatch
 
 # import os.path
-from contextlib import closing
+# from contextlib import closing
 import opasCentralDBLib
 
 class SourceInfoDB(object):

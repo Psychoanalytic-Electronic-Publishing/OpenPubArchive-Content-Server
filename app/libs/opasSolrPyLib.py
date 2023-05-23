@@ -34,15 +34,15 @@ sys.path.append('./configLib')
 import re
 
 import opasConfig
-import localsecrets
+# import localsecrets
 
 # import opasFileSupport
-from localsecrets import BASEURL, SOLRURL, SOLRUSER, SOLRPW, DEBUG_DOCUMENTS, SOLR_DEBUG, CONFIG, COOKIE_DOMAIN
-from opasConfig import TIME_FORMAT_STR
+from localsecrets import BASEURL, SOLRURL, SOLRUSER, SOLRPW # , DEBUG_DOCUMENTS, SOLR_DEBUG, CONFIG, COOKIE_DOMAIN
+# from opasConfig import TIME_FORMAT_STR
 
 # Removed support for Py2, only Py3 supported now
 pyVer = 3
-from io import StringIO
+# from io import StringIO
 
 import solrpy as solr
 from configLib.opasCoreConfig import SOLR_DOCS, SOLR_AUTHORS

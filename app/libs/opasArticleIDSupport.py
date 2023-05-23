@@ -13,14 +13,14 @@ from loggingDebugStream import log_everywhere_if
 import string
 import opasGenSupportLib as opasgenlib
 import time
-from typing import List, Generic, TypeVar, Optional
+from typing import Optional # List, Generic, TypeVar
 from datetime import datetime
 import opasXMLHelper as opasxmllib
 import opasLocator
 import html
 import json
 # The following four functions moved from opasConfig - 2022-06-05
-from pydantic import BaseModel, Field, ValidationError, validator, Extra
+from pydantic import BaseModel, Field # ValidationError, validator, Extra
 
 import lxml
 from lxml import etree

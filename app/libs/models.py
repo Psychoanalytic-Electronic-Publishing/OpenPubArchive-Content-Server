@@ -27,15 +27,15 @@ sys.path.append('../libs')
 # import re
 # import os.path
 
-import time
+#import time
 import datetime
 from datetime import datetime
-from typing import List, Generic, TypeVar, Optional
+from typing import List, TypeVar, Optional # Generic
 import opasConfig
 # from pysolr import Results
 
 from enum import Enum
-from lxml import etree
+#from lxml import etree
 
 class ExtendedEnum(Enum):
     @classmethod

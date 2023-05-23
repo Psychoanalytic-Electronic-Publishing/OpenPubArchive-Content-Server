@@ -19,7 +19,7 @@ import requests
 from requests.auth import HTTPBasicAuth 
 from localsecrets import SOLRUSER, SOLRPW, SOLRURL
 
-import models
+# import models
 # import opasCentralDBLib
 
 import logging

@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2023, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2023.0515/v2.3.021"   # new admin char details report
+__version__     = "2023.0522/v2.3.022"   # new admin char details report
 __status__      = "Development/Libs/Loader"  
 
 """
@@ -107,7 +107,7 @@ import random
 from urllib import parse
 
 import uvicorn
-from fastapi import FastAPI, Query, Body, Path, Header, Security, Depends, HTTPException, File #Form, UploadFile, Cookie
+from fastapi import FastAPI, Query, Body, Path, Header, Security, Depends, HTTPException # File, Form, UploadFile, Cookie
 from fastapi.openapi.utils import get_openapi
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.security.api_key import APIKeyQuery, APIKeyCookie, APIKeyHeader, APIKey
@@ -124,14 +124,14 @@ from requests.auth import HTTPBasicAuth
 # TIME_FORMAT_STR = '%Y-%m-%dT%H:%M:%SZ' # moved to opasConfig
 
 from pydantic import ValidationError
-import solrpy as solr # needed for extended search
+# import solrpy as solr # needed for extended search
 import config.opasConfig as opasConfig
 import logging
 logger = logging.getLogger(__name__)
 
 import localsecrets
 import libs.opasAPISupportLib as opasAPISupportLib
-from configLib.opasCoreConfig import EXTENDED_CORES_DEFAULTS, SOLR_DOCS # , EXTENDED_CORES, SOLR_AUTHORS, SOLR_GLOSSARY, SOLR_DEFAULT_CORE 
+from configLib.opasCoreConfig import SOLR_DOCS # , EXTENDED_CORES_DEFAULTS, EXTENDED_CORES, SOLR_AUTHORS, SOLR_GLOSSARY, SOLR_DEFAULT_CORE 
 
 from errorMessages import *
 import models
@@ -268,9 +268,9 @@ app.add_middleware(
     allow_headers = ["*"],
 )
 
-from config import whatsnewdb
-from config import mostviewedcache
-from config import mostcitedcache
+#from config import whatsnewdb
+#from config import mostviewedcache
+#from config import mostcitedcache
 
 # load this separately in individual modules, so mostviewedcache and mostcitedcache are not loaded when only msgdb is needed
 # from config import msgdb
@@ -1003,7 +1003,7 @@ async def admin_sitemap(response: Response,
             try:
                 # returns a list of the sitemap files (since split)
                 sitemap_list = opasSiteMap.metadata_export(SITEMAP_OUTPUT_FILE, total_records=max_records, records_per_file=size)
-                sitemap_index = opasSiteMap.opas_sitemap_index(output_file=SITEMAP_INDEX_FILE, sitemap_list=sitemap_list)
+                # sitemap_index = opasSiteMap.opas_sitemap_index(output_file=SITEMAP_INDEX_FILE, sitemap_list=sitemap_list)
                 ret_val = models.SiteMapInfo(siteMapIndex=SITEMAP_INDEX_FILE, siteMapList=sitemap_list)
         
             except Exception as e:
@@ -4107,8 +4107,8 @@ def metadata_contents_sourcecode(response: Response,
             detail=status_message
         )
     else:
-        status_message = opasCentralDBLib.API_STATUS_SUCCESS
-        status_code = httpCodes.HTTP_200_OK
+        # status_message = opasCentralDBLib.API_STATUS_SUCCESS
+        # status_code = httpCodes.HTTP_200_OK
         ret_val.documentList.responseInfo.request = request.url._url
 
     #ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_METADATA_CONTENTS,
@@ -4183,7 +4183,7 @@ def metadata_contents(SourceCode: str,
         )
     else:
         status_message = opasCentralDBLib.API_STATUS_SUCCESS
-        status_code = httpCodes.HTTP_200_OK
+        # status_code = httpCodes.HTTP_200_OK
         ret_val.documentList.responseInfo.request = request.url._url
 
     # 2020-07-23 No need to log success for these, can be excessive.
@@ -4546,7 +4546,7 @@ def authors_publications(response: Response,
     if opasConfig.DEBUG_TRACE:
         print(f"{datetime.now().time().isoformat()}: {caller_name} {client_session}: ")
     
-    ocd, session_info = opasDocPermissions.get_session_info(request, response, session_id=client_session, client_id=client_id, caller_name=caller_name)
+    # ocd, session_info = opasDocPermissions.get_session_info(request, response, session_id=client_session, client_id=client_id, caller_name=caller_name)
     log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
 
     try:
@@ -5062,7 +5062,6 @@ def documents_archival_fetch(response: Response,
         print(f"{datetime.now().time().isoformat()}: {caller_name} {client_session}: ")
 
     session_id = client_session
-    document_id = documentID
     opasDocPermissions.verify_header(request, "archival_fetch") # for debugging client call
     log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
     ocd, session_info = opasDocPermissions.get_session_info(request, response, session_id=client_session, client_id=client_id, caller_name=caller_name)
@@ -5073,7 +5072,7 @@ def documents_archival_fetch(response: Response,
         try:
             # documents_get_document handles the view authorization and returns abstract if not authenticated.
             req_url=urllib.parse.unquote(request.url._url)
-            req_url_params = dict(parse.parse_qsl(parse.urlsplit(req_url).query))
+            # req_url_params = dict(parse.parse_qsl(parse.urlsplit(req_url).query))
             # param_search = req_url_params.get("search", None)
             
             # let's see about loading it directly.

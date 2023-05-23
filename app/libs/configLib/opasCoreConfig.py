@@ -9,7 +9,7 @@
 # This is the old way -- should switch to class Solr per https://pythonhosted.org/solrpy/reference.html
 #
 #from solrq import Q
-import solrpy as solr
+# import solrpy as solr
 import pysolr
 from localsecrets import SOLRUSER, SOLRPW, SOLRURL
 import opasConfig

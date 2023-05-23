@@ -20,7 +20,7 @@ sys.path.append('../libs/configLib')
 import re
 import copy
 # import time
-import mysql
+# import mysql
 # import dateutil
 # from datetime import datetime
 from pathlib import Path
@@ -40,7 +40,7 @@ parser = ET.XMLParser(encoding='utf-8', recover=True, resolve_entities=False)
 import opasXMLHelper as opasxmllib
 
 # new for processing code
-import opasCentralDBLib
+# import opasCentralDBLib
 import opasArticleIDSupport
 
 # ocd =  opasCentralDBLib.opasCentralDB()
@@ -246,60 +246,6 @@ def version_history_processing(ocd,
 
     # Return None, or the new ET_Val unit to be appended
     return ret_val
-
-def add_removed_article_xml(ocd, artInfo, verbose=False):
-    """
-    Adds the XML data from the file to the articles_removed table
-    """
-    ret_val = False
-    caller_name = "add_removed_article_xml"
-    msg = f"\t...Adding api_articles record to api_articles_removed."
-    logger.info(msg)
-    if verbose:
-        print (msg)
-    
-    insert_if_not_exists = r"""REPLACE
-                               INTO api_articles (
-                                    art_id,
-                                    fullfilename,
-                                    manuscript_date_str,
-                                    filename,
-                                    filedatetime
-                                    )
-                                values (
-                                        %(art_id)s,
-                                        %(fullfilename)s,
-                                        %(manuscript_date_str)s,
-                                        %(filename)s,
-                                        %(filedatetime)s
-                                        );
-                            """
-
-    query_params = {
-        "art_id": artInfo.art_id,
-        "fullfilename" : artInfo.fullfilename,
-        "filename":  artInfo.filename,
-        "manuscript_date_str" : artInfo.manuscript_date_str,
-        "filedatetime": artInfo.filedatetime
-    }
-
-    # string entries above must match an attr of the art_info instance.
-    #query_param_dict = art_info.__dict__.copy()
-    # the element objects in the author_xml_list cause an error in the action query 
-    # even though that dict entry is not used.  So removed in a copy.
-    #query_param_dict["author_xml_list"] = None
-        
-    try:
-        # commit automatically handled by do_action_query
-        res = ocd.do_action_query(querytxt=insert_if_not_exists, queryparams=query_params)
-    except Exception as e:
-        errStr = f"AddToArticlesDBError: insert error {e}"
-        logger.error(errStr)
-        if opasConfig.LOCAL_TRACE: print (errStr)
-    else:
-        ret_val = True
-        
-    return ret_val  # return True for success
 
 def add_to_articles_removed_table_fullinfo(ocd, artInfo, verbose=None):
     """

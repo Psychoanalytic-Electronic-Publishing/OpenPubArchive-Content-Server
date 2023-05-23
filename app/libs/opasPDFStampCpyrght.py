@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 from pdfrw import PdfReader, PdfWriter, PageMerge
 from fpdf import FPDF, HTMLMixin
 #from xhtml2pdf import pisa             # for HTML 2 PDF conversion
-import opasXMLHelper as opasxmllib
+# import opasXMLHelper as opasxmllib
 import stdMessageLib
 import opasConfig
 import localsecrets

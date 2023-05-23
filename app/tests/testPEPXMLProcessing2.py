@@ -22,7 +22,6 @@ import opasCentralDBLib
 #import opasPySolrLib
 #from opasPySolrLib import search_text
 
-from lxml import etree
 from pathlib import Path
 
 ocd = opasCentralDBLib.opasCentralDB()

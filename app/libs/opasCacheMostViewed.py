@@ -127,7 +127,6 @@ class mostViewedCache(object):
 if __name__ == "__main__":
     print (40*"*", "MostViewedCache Tests", 40*"*")
     print (f"Running in Python {sys.version_info[0]}.{sys.version_info[1]}")
-    import opasAPISupportLib
     logger = logging.getLogger(__name__)
     # extra logging for standalong mode 
     # logger.setLevel(logging.DEBUG)

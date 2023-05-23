@@ -74,3 +74,5 @@ app/opasDataLoader/quicktest.bat
 app/opasDataLoader/scratch.bat
 app/opasDataLoader/runlinker.bat
 .DS_Store
+sql/schemas/opascentral5.7 backup.sql
+sql/schemas/opascentral20230522.sql

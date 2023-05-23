@@ -40,7 +40,7 @@ import opasXMLHelper as opasxmllib
 
 #from opasFileSupport import FileInfo
 import opasXMLPEPAuthorID
-import models
+# import models
 import opasLocator
 from opasLocator import Locator
 import opasGenSupportLib as opasgenlib
@@ -506,11 +506,11 @@ def update_bincs(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
                 if verbose: print (f"\t\tSkipping attempted link of {ET.tostring(parsed_ref)}")
                 continue # no id, minor instance, skip
             # see if it's already in table
-            bib_saved_entry_tuple = ocd.get_references_from_biblioxml_table(article_id=artInfo.art_id, ref_local_id=ref_id)
-            if bib_saved_entry_tuple is not None and bib_saved_entry_tuple != []:
-                bib_saved_entry = bib_saved_entry_tuple[0]
-            else:
-                bib_saved_entry = models.Biblioxml()
+            #bib_saved_entry_tuple = ocd.get_references_from_biblioxml_table(article_id=artInfo.art_id, ref_local_id=ref_id)
+            #if bib_saved_entry_tuple is not None and bib_saved_entry_tuple != []:
+                #bib_saved_entry = bib_saved_entry_tuple[0]
+            #else:
+                #bib_saved_entry = models.Biblioxml()
             
             # merge record info
             bib_total_reference_count += 1

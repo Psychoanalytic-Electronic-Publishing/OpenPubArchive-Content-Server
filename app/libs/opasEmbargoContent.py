@@ -21,8 +21,8 @@ import logging
 logger = logging.getLogger(__name__)
 from loggingDebugStream import log_everywhere_if
 
-import lxml
-from lxml import etree
+# import lxml
+# from lxml import etree
 import lxml.etree as ET
 
 def embargo_check(artInfo, parsed_xml, verbose=False):
@@ -56,9 +56,9 @@ def embargo_check(artInfo, parsed_xml, verbose=False):
             PUBMESSAGE = "<body><p>This article has been %s by the publisher.<pb><n>%s</n></pb></p></body>"
             if embargotype == "withdrawn":
                 # message different
-                newNode = etree.fromstring(PUBMESSAGE % ("withdrawn", artInfo.art_pgstart))
+                newNode = ET.fromstring(PUBMESSAGE % ("withdrawn", artInfo.art_pgstart))
             else:
-                newNode = etree.fromstring(PUBMESSAGE % ("embargoed", artInfo.art_pgstart))
+                newNode = ET.fromstring(PUBMESSAGE % ("embargoed", artInfo.art_pgstart))
     
             node = parsed_xml.xpath("//body")
             if node:

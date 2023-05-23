@@ -13,7 +13,7 @@ __license__     = "Apache 2.0"
 __version__     = "2019.0620.1"
 __status__      = "Development"
 
-from datetime import datetime, timedelta
+# from datetime import datetime, timedelta
 from pydantic import BaseModel
 
 #class User(BaseModel):  # snake_case names to match DB

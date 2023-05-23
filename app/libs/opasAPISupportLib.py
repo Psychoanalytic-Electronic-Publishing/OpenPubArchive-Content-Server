@@ -28,14 +28,14 @@ import os
 import os.path
 import sys
 # import shlex
-import json
-import copy
-import string
+#import json
+#import copy
+#import string
 
 sys.path.append('./solrpy')
 sys.path.append('./libs/configLib')
 
-import http.cookies
+# import http.cookies
 import re
 # import secrets
 # import socket, struct
@@ -56,7 +56,7 @@ import time
 #  of the import from datetime.
 import datetime as dtime 
 from datetime import datetime
-from datetime import datetime as dt # to avoid python's confusion with datetime.timedelta
+# from datetime import datetime as dt # to avoid python's confusion with datetime.timedelta
 
 import opasConfig
 import localsecrets

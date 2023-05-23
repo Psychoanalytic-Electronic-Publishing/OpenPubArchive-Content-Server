@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 import time
 from datetime import datetime
-import datetime as dtime
+# import datetime as dtime
 from dateutil import parser
 import calendar
 import email.utils
@@ -1481,7 +1481,7 @@ def convRomanToArabic(romnumStr):
     revromnumStr = list(romnumStr)
     revromnumStr.reverse()
 
-    lastVal = None
+    # lastVal = None
     cumList = [0]
     val = 0
     for a in list(revromnumStr):

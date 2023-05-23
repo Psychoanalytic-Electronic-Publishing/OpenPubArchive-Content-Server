@@ -1739,9 +1739,9 @@ class PEPJournalData:
             if type(volList) == type([]):
                 # then this journal has a list of volumes for that year.
                 isAList = True
-                volToCompare = volList
+                #volToCompare = volList
             else:
-                volToCompare = vol
+                #volToCompare = vol
                 isAList = False
 
             if isAList:

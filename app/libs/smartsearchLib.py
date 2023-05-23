@@ -1,10 +1,10 @@
 
 import re
 import sys
-from datetime import datetime
+# from datetime import datetime
 from optparse import OptionParser
 import logging
-import opasGenSupportLib as opasgenlib
+# import opasGenSupportLib as opasgenlib
 from configLib.opasCoreConfig import SOLRURL, SOLR_DOCS, CORES # solr_authors2, solr_gloss2, solr_docs_term_search, solr_authors_term_search
 import opasConfig
 
@@ -305,7 +305,7 @@ def is_value_in_field(value,
             solr_core = cores[core]
         except Exception as e:
             logger.debug(f"Core selection: {core}. 'docs' is default {e}")
-            solr_core  = solr_docs2    
+            solr_core  = cores['docs']    
         
         if match_type == "exact":
             q = f'{field}:"{value}"'

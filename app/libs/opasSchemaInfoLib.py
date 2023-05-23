@@ -25,7 +25,7 @@ import json
 
 # from localsecrets import BASEURL, SOLRURL, SOLRUSER, SOLRPW, DEBUG_DOCUMENTS, SOLR_DEBUG, CONFIG, COOKIE_DOMAIN  
 # import starlette.status as httpCodes
-from configLib.opasCoreConfig import solr_call, SOLR_DOCS, SOLR_GLOSSARY, SOLR_AUTHORS
+from configLib.opasCoreConfig import solr_call, SOLR_DOCS # , SOLR_GLOSSARY, SOLR_AUTHORS
 
 def get_field_names(core=SOLR_DOCS):
     """

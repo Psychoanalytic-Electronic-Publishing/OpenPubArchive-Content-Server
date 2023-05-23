@@ -14,7 +14,7 @@ sys.path.append('../libs/configLib')
 #ocd = opasCentralDBLib.opasCentralDB()
 
 import opasXMLHelper as opasxmllib
-import opasDocuments
+# import opasDocuments
 
 gDbg1 = 1 # details
 gDbg2 = 1 # big picture, status
@@ -40,11 +40,11 @@ class PEPGWSEParaConcordance:
         Add the related IDS from GWSEparaconcordance to each paragraph, right now used only for GW and SE.
 
         """
-        aInfo = artInfo
+        # aInfo = artInfo
         # This section adds IDs by paragraph to GW and SE.
         if artInfo.src_code in ["GW", "SE"]:
-            lang = artInfo.art_lang
-            vol = artInfo.art_vol_str
+            # lang = artInfo.art_lang
+            # vol = artInfo.art_vol_str
             lgIDCount = 0
             nodes = parsed_xml.xpath("//p2|//p|//arttitle|//n|//artsub|//h1|//h2|//h3|//h4|//h5|//h6|//h7")
             lastPXLink = ""
@@ -54,7 +54,7 @@ class PEPGWSEParaConcordance:
                 lgrLink = node.attrib.get("lgrpid", None)
                 if lgrLink is not None:
                     raise ValueError("lgrpid should not be in use.")
-                lgrX = node.attrib.get("lgrx", None)
+                # lgrX = node.attrib.get("lgrx", None)
                 lgrID = node.attrib.get("lgrid", None)
                 lgrLinkType = node.attrib.get("lgrtype", None)
                 lgIDCount += 1

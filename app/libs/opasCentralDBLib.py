@@ -413,7 +413,7 @@ class opasCentralDB(object):
         True
         
         """
-        fname = "article_exists"
+        # fname = "article_exists"
         record = self.get_article_records(rx_locator)
         ret_val = len(record) == 1
         return ret_val
@@ -429,7 +429,7 @@ class opasCentralDB(object):
         True
         
         """
-        fname = "get_api_article_record"
+        # fname = "get_api_article_record"
         ret_val = []
         # try to get it from the artstat table
         sql_select = f"SELECT * from api_articles where art_id LIKE '{art_id}';"
@@ -800,6 +800,7 @@ class opasCentralDB(object):
                       {title_clause}
                       {journal_clause}
                       {pub_year_clause}
+                      {source_code_clause}
                       {sort_by_clause}
                       {limit_clause}
                     """

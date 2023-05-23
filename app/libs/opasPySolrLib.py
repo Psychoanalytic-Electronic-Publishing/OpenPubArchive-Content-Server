@@ -53,7 +53,7 @@ import opasXMLHelper as opasxmllib
 import opasDocPermissions as opasDocPerm
 # import smartsearch
 import opasQueryHelper
-from weasyprint import HTML, CSS
+from weasyprint import HTML # , CSS
 from weasyprint.text.fonts import FontConfiguration
 from xhtml2pdf import pisa             # alt conversion when weasyprint fails
 loggerw = logging.getLogger('weasyprint')
@@ -2111,7 +2111,7 @@ def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
     roman_section = []
     for result in results.docs[::-1]:
         document_id = result.get("art_id", None) # everything should have an ID
-        issue = result.get("art_issue_int", 0)
+        # issue = result.get("art_issue_int", 0)
         year = result.get("art_year_int", 0)
         art_id = ArticleID(art_id=document_id)
         if art_id.is_roman:
@@ -2763,11 +2763,11 @@ def metadata_get_years(source_code=None,
             journal_code = m1["value"] # pepcode
             seclevel = m1["pivot"]
             for m2 in seclevel:
-                secfield = m2["field"] # year
+                # secfield = m2["field"] # year
                 secval = m2["value"]
                 thirdlevel = m2["pivot"]
                 for m3 in thirdlevel:
-                    thirdfield = m3["field"] # vol
+                    # thirdfield = m3["field"] # vol
                     thirdval = m3["value"]
                     PEPCode = journal_code
                     year = secval
@@ -2838,7 +2838,7 @@ def metadata_get_volumes(source_code=None,
                                 #)
     
     distinct_return = "art_sourcecode, art_vol, art_year, art_sourcetype"
-    row_limit = 6 # small number, since we don't care about the rows, we care about the facet limit.
+    row_limit = 20 # small number, since we don't care about the rows, we care about the facet limit.
     facet_limit = limit, 
     count = 0
     ret_val = None
@@ -2864,7 +2864,7 @@ def metadata_get_volumes(source_code=None,
                 "facet.mincount":1,
                 "facet.sort":"art_year asc",
                 "facet.limit": facet_limit,
-                "rows":20 # row_limit, 
+                "rows":row_limit, 
                 #"start":offset
               }
 
@@ -2890,11 +2890,11 @@ def metadata_get_volumes(source_code=None,
             journal_code = m1["value"] # pepcode
             seclevel = m1["pivot"]
             for m2 in seclevel:
-                secfield = m2["field"] # year
+                # secfield = m2["field"] # year
                 secval = m2["value"]
                 thirdlevel = m2["pivot"]
                 for m3 in thirdlevel:
-                    thirdfield = m3["field"] # vol
+                    # thirdfield = m3["field"] # vol
                     thirdval = m3["value"]
                     PEPCode = journal_code
                     year = secval

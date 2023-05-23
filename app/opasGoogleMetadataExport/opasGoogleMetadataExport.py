@@ -4,11 +4,11 @@
 # Disable many annoying pylint messages, warning me about variable naming for example.
 # yes, in my Solr code I'm caught between two worlds of snake_case and camelCase.
 
-__author__      = "Neil R. Shapiro"
-__copyright__   = "Copyright 2019-2022, Psychoanalytic Electronic Publishing"
-__license__     = "Apache 2.0"
-__version__     = "2023.0322/v1.0.3" 
-__status__      = "Development"
+__author__ = "Neil R. Shapiro"
+__copyright__ = "Copyright 2019-2022, Psychoanalytic Electronic Publishing"
+__license__ = "Apache 2.0"
+__version__ = "2023.0322/v1.0.3"
+__status__ = "Development"
 
 programNameShort = "opasGoogleMetadataExport"
 
@@ -16,8 +16,7 @@ import sys
 if sys.version_info[0] < 3:
     raise Exception("Must be using Python 3")
 
-print(
-    f""" 
+print(f""" 
     {programNameShort} - Open Publications-Archive Server (OPAS) - Google Metadata Exporter
     
         Create Google Metadata from the OPAS Database
@@ -29,15 +28,14 @@ print(
                 
         Help for option choices:
          -h, --help  List all help options
-    """
-)
+    """)
 
-import os
-import re
+#import os
+# import re
 # import codecs
 import time
 import logging
-from datetime import datetime
+# from datetime import datetime
 
 from lxml import objectify
 
@@ -46,7 +44,7 @@ sys.path.append('../config')
 sys.path.append('../libs/configLib')
 import localsecrets
 import opasFileSupport
-from opasAPISupportLib import metadata_get_source_info  
+from opasAPISupportLib import metadata_get_source_info
 import opasPySolrLib
 from configGoogleMeta import googleMetadataConfig
 
@@ -57,117 +55,119 @@ logger = logging.getLogger(programNameShort)
 
 from optparse import OptionParser
 
+
 class REFCONSTANTS:
     # Article Info Constants - Field Names for article info and biblioentry dictionary
-    CONFIDENCELEVEL     = "ConfidenceLevel"             # if this was a heuristic search from the DB, how good of a match was it?
-    CONFIDENCETHRESH    = "ConfidenceThresh"            # if this was a heuristic search from the DB, how good of a match was it?
-    CONFIDENCEBOOL      = "ConfidenceBoolean"           # If 1, sure enough to replace, if 0, not sure!
-    EXACTMATCH          = "ExactMatch"                  # if an exact match, this is 1
-    PEPREFVALID         = "Validated"                   # PEP Reference has been validated as existing in PEP
-    DBUPDATESRATIO      = "DBUpdateSRatio"              # If data is taken from another reference, how similar is it?
-    FULLTEXT            = "ReferenceText"               # Full text of reference
-    XMLREF              = "XMLRef"                      # Full XML of the reference
-                                                        # This field may not always be populated
-    TITLE               = "Title"                       # Title of article, article in book, or book if not edited
-    SUBTITLE            = "SubTitle"                    # SubTitle of article, article in book, or book if not edited A1v6
-    SOURCETITLESERIES   = "SourceTitleSeries"           # Title of source: Journal name or series book title, such as International Psychoanalytic Library;
-    SOURCETITLEFULL     = "SourceTitleFull"             # Full title of journal/series, not abbreviated
-    SOURCETITLEABBR     = "SourceTitleAbbr"             # Official abbreviation for SOURCETITLESERIES (journal name or Book) in bibliographies
-    SOURCETITLECITED    = "SourceTitleCited"            # Title of Source as originally cited in a reference
-    BKALSOKNOWNAS       = "BookAlsoKnownAs"             # List of alternate names for the book
-                                                            #
-                                                            # Regular Book or Non Series Entire Book Name:
-                                                            #   Title:              Book Name
-                                                            #   SourceTitleCited:   None
-                                                            #   SourceTitleSeries:  None
-                                                            #
-                                                            # Series Book:
-                                                            #   Title:              Book Name
-                                                            #   SourceTitleCited:   None
-                                                            #   SourceTitleSeries:  Series Name (Abbr)
-                                                            #   SourceTitleAbbr:    Series Name Abbreviation
-                                                            #
-                                                            # Article in Edited Book:
-                                                            #   Title:              Article
-                                                            #   SourceTitleCited:   Book Name
-                                                            #   SourceTitleSeries:  None
-                                                            #
-                                                            # Article in Edited Book Part of Series:
-                                                            #   Title:              Article
-                                                            #   SourceTitleCited:   Book Name
-                                                            #   SourceTitleSeries:  Series Name Abbr
-                                                            #   SourceTitleAbbr:    Series Name Abbreviation
+    CONFIDENCELEVEL = "ConfidenceLevel"  # if this was a heuristic search from the DB, how good of a match was it?
+    CONFIDENCETHRESH = "ConfidenceThresh"  # if this was a heuristic search from the DB, how good of a match was it?
+    CONFIDENCEBOOL = "ConfidenceBoolean"  # If 1, sure enough to replace, if 0, not sure!
+    EXACTMATCH = "ExactMatch"  # if an exact match, this is 1
+    PEPREFVALID = "Validated"  # PEP Reference has been validated as existing in PEP
+    DBUPDATESRATIO = "DBUpdateSRatio"  # If data is taken from another reference, how similar is it?
+    FULLTEXT = "ReferenceText"  # Full text of reference
+    XMLREF = "XMLRef"  # Full XML of the reference
+    # This field may not always be populated
+    TITLE = "Title"  # Title of article, article in book, or book if not edited
+    SUBTITLE = "SubTitle"  # SubTitle of article, article in book, or book if not edited A1v6
+    SOURCETITLESERIES = "SourceTitleSeries"  # Title of source: Journal name or series book title, such as International Psychoanalytic Library;
+    SOURCETITLEFULL = "SourceTitleFull"  # Full title of journal/series, not abbreviated
+    SOURCETITLEABBR = "SourceTitleAbbr"  # Official abbreviation for SOURCETITLESERIES (journal name or Book) in bibliographies
+    SOURCETITLECITED = "SourceTitleCited"  # Title of Source as originally cited in a reference
+    BKALSOKNOWNAS = "BookAlsoKnownAs"  # List of alternate names for the book
+    #
+    # Regular Book or Non Series Entire Book Name:
+    #   Title:              Book Name
+    #   SourceTitleCited:   None
+    #   SourceTitleSeries:  None
+    #
+    # Series Book:
+    #   Title:              Book Name
+    #   SourceTitleCited:   None
+    #   SourceTitleSeries:  Series Name (Abbr)
+    #   SourceTitleAbbr:    Series Name Abbreviation
+    #
+    # Article in Edited Book:
+    #   Title:              Article
+    #   SourceTitleCited:   Book Name
+    #   SourceTitleSeries:  None
+    #
+    # Article in Edited Book Part of Series:
+    #   Title:              Article
+    #   SourceTitleCited:   Book Name
+    #   SourceTitleSeries:  Series Name Abbr
+    #   SourceTitleAbbr:    Series Name Abbreviation
 
-    SOURCEPEPCODE       = "JournalCode"                 # PEP Journal Abbreviation or "OTH" for other nonPEP journals or books
-    ARTTYPE             = "ArticleType"                 # Decoded type of reference
-    ARTDOI              = "ArticleDOI"                  # DOI for the reference or the article.
-    ARTLANG             = "ArticleLanguage"             # New A1v8r2
-    ARTQUAL             = "artqual"                     # Link to "common" article this one comments on
-    ARTKWDS             = "artkwds"                     # Store article Keywords
-    REFTYPE             = "RefType"                     # Decoded type of reference
-                                                            #   1 = REFBOOK
-                                                            #   2 = REFBOOKSERIES
-                                                            #   3 = REFJOURNALARTICLE
-                                                            #   4 = REFBOOKARTICLE
-    REFINPEP            = "RefInPEP"                    # Set to 1 if source is PEP, 0 or None otherwise
-    AUTHORS             = "Authors"                     #
-    AUTHLIST            = "AuthList"                    #
-    BAUTHORS            = "BookAuthors"                 # Added 20071206 to accomodate the book authors/editors in an edited book
-    BAUTHLIST           = "BookAuthList"                # Added 20071206 to accomodate the book authors/editors in an edited book
-    TYPEREASON          = "TypeReason"                  # Reason it was classified this way
-    REASON              = "Reason"                      #
-    PROBABLESOURCE      = "ProbableSource"              # Callers declaration of journal name or book title
-    PUBLISHER           = "publisher"                   # Publisher, mainly used for books.  Note this must match the "publisher" column name in articles and issn
-    PUBLISHERNAME       = "publisherName"               # Publisher, mainly used for books.  Note this must match the "publisher" column name in articles and issn
-    PUBLISHERLOC        = "publisherLocation"           # Publisher, mainly used for books.  Note this must match the "publisher" column name in articles and issn
-    YEAR                = "Year"                        # Official Publication year
-    BOOKYEAR            = "BookYear"                    # Book Publication year
-    VOL                 = "Vol"                         # Volume of journal or book series
-    PEPVOL              = "PEPVol"                      # Used for templates, to allow a volume for articleID when it's made up and we blank "Vol"
-    VOLSUFFIX           = "VolSuffix"                   # Volume suffix (for supplements)
-    VOLNUMBER           = "volNumber"                   # Volume, numeric only
-    VOLLIST             = "VolList"                     # Used to hold the list of volumes when more than one matches the year.  New for A1v6
-    ISSUE               = "Issue"                       # Issue of journal
-    ORIGRX              = "Origrx"                      # The ID of the original aritcle/book
-    PGRG                = "PgRg"                        # Hyphenated Page range, e.g., 1-14
-    PGSTART             = "PgStart"                     # Starting page number, arabic numbers
-    PGVAR               = "PgVar"                       # Page Variant, assigned when more than one article per page
-    PGEND               = "PgEnd"                       # Ending page number, arabic numbers
-    PAGECOUNT           = "Pagecount"                   # Page count used on output of books
-    NEWSECNAME          = "NewSecName"                  # Article begins a new section with this name
-    NEWSECLEVEL         = "NewSecLevel"                 # Add on (2019) to indent articles and section names
-    KEY                 = "Key"                         # PEP Locator or non-pep derived key
-    LOCALID             = "LocalID"                     # Used to specify a local ID to be added to the key for a given location reference
-    REFINTID            = "RefIntID"                    # XML Internal ID, unique only within the instance
-    #ARTICLEID          = "ArticleID"                   # used to store a locator when passing around the reference
+    SOURCEPEPCODE = "JournalCode"  # PEP Journal Abbreviation or "OTH" for other nonPEP journals or books
+    ARTTYPE = "ArticleType"  # Decoded type of reference
+    ARTDOI = "ArticleDOI"  # DOI for the reference or the article.
+    ARTLANG = "ArticleLanguage"  # New A1v8r2
+    ARTQUAL = "artqual"  # Link to "common" article this one comments on
+    ARTKWDS = "artkwds"  # Store article Keywords
+    REFTYPE = "RefType"  # Decoded type of reference
+    #   1 = REFBOOK
+    #   2 = REFBOOKSERIES
+    #   3 = REFJOURNALARTICLE
+    #   4 = REFBOOKARTICLE
+    REFINPEP = "RefInPEP"  # Set to 1 if source is PEP, 0 or None otherwise
+    AUTHORS = "Authors"  #
+    AUTHLIST = "AuthList"  #
+    BAUTHORS = "BookAuthors"  # Added 20071206 to accomodate the book authors/editors in an edited book
+    BAUTHLIST = "BookAuthList"  # Added 20071206 to accomodate the book authors/editors in an edited book
+    TYPEREASON = "TypeReason"  # Reason it was classified this way
+    REASON = "Reason"  #
+    PROBABLESOURCE = "ProbableSource"  # Callers declaration of journal name or book title
+    PUBLISHER = "publisher"  # Publisher, mainly used for books.  Note this must match the "publisher" column name in articles and issn
+    PUBLISHERNAME = "publisherName"  # Publisher, mainly used for books.  Note this must match the "publisher" column name in articles and issn
+    PUBLISHERLOC = "publisherLocation"  # Publisher, mainly used for books.  Note this must match the "publisher" column name in articles and issn
+    YEAR = "Year"  # Official Publication year
+    BOOKYEAR = "BookYear"  # Book Publication year
+    VOL = "Vol"  # Volume of journal or book series
+    PEPVOL = "PEPVol"  # Used for templates, to allow a volume for articleID when it's made up and we blank "Vol"
+    VOLSUFFIX = "VolSuffix"  # Volume suffix (for supplements)
+    VOLNUMBER = "volNumber"  # Volume, numeric only
+    VOLLIST = "VolList"  # Used to hold the list of volumes when more than one matches the year.  New for A1v6
+    ISSUE = "Issue"  # Issue of journal
+    ORIGRX = "Origrx"  # The ID of the original aritcle/book
+    PGRG = "PgRg"  # Hyphenated Page range, e.g., 1-14
+    PGSTART = "PgStart"  # Starting page number, arabic numbers
+    PGVAR = "PgVar"  # Page Variant, assigned when more than one article per page
+    PGEND = "PgEnd"  # Ending page number, arabic numbers
+    PAGECOUNT = "Pagecount"  # Page count used on output of books
+    NEWSECNAME = "NewSecName"  # Article begins a new section with this name
+    NEWSECLEVEL = "NewSecLevel"  # Add on (2019) to indent articles and section names
+    KEY = "Key"  # PEP Locator or non-pep derived key
+    LOCALID = "LocalID"  # Used to specify a local ID to be added to the key for a given location reference
+    REFINTID = "RefIntID"  # XML Internal ID, unique only within the instance
+    # ARTICLEID          = "ArticleID"                   # used to store a locator when passing around the reference
     # defined but not currently (A1v4) used
-    JOURNALISS          = "JournalIssue"
-    JOURNALVOLSUFFIX    = "jrnlVolSuffix"
+    JOURNALISS = "JournalIssue"
+    JOURNALVOLSUFFIX = "jrnlVolSuffix"
     # added for A1v5
-    PARTNEXT            = "partNext"                    # Next article in broken up book
-    PARTPREV            = "partPrev"                    # prev article in broken up book
-    PARTEXTRACT         = "partExtract"                 # this is an extract; titles should have book title appended
+    PARTNEXT = "partNext"  # Next article in broken up book
+    PARTPREV = "partPrev"  # prev article in broken up book
+    PARTEXTRACT = "partExtract"  # this is an extract; titles should have book title appended
     # author dict names (match XML KBD3)
-    AUTHORNAMEPREFIX    = "nprefx"
-    AUTHORNAMEFIRST     = "nfirst"
-    AUTHORNAMEFIRSTMID  = "nfirstmid"                   #First name, middle name
-    AUTHORNAMEMID       = "nmid"
-    AUTHORNAMELAST      = "nlast"
-    AUTHORNAMESUFX      = "nsufx"
-    AUTHORNAMENDEG      = "ndeg"
-    AUTHORNAMENBIO      = "nbio"
-    AUTHORNAMENTI       = "nti"
-    AUTHORNAMEROLE      = "role"
-    AUTHORNAMELISTED    = "listed"                     # if false, this author not part of biblio listing...still shown in title area
-    AUTHORNAMEPOS       = "authorpos"                  # 1 for first author, 2 for second, etc.
-    AUTHORNAMEPTITLE    = "ptitle"
-    ISSN                = "ISSN"
-    ISBN                = "ISBN-10"                    # Note: the DB column is ISBN-10 (or 13), but the attrib is ISBN
-    ISBN13              = "ISBN-13"                    # Note: the DB column is ISBN-13
-    ISUN                = "ISUN"
-    MAINTOCID           = "MAINTOCID"
-    DOWNLOAD            = "download"                   # Added 2021-10-05 to allow general prohibition of downloads
-    SIMILARITYRATIOS    = "SimilarityRatios"           # a dictionary after a similarity compare
+    AUTHORNAMEPREFIX = "nprefx"
+    AUTHORNAMEFIRST = "nfirst"
+    AUTHORNAMEFIRSTMID = "nfirstmid"  # First name, middle name
+    AUTHORNAMEMID = "nmid"
+    AUTHORNAMELAST = "nlast"
+    AUTHORNAMESUFX = "nsufx"
+    AUTHORNAMENDEG = "ndeg"
+    AUTHORNAMENBIO = "nbio"
+    AUTHORNAMENTI = "nti"
+    AUTHORNAMEROLE = "role"
+    AUTHORNAMELISTED = "listed"  # if false, this author not part of biblio listing...still shown in title area
+    AUTHORNAMEPOS = "authorpos"  # 1 for first author, 2 for second, etc.
+    AUTHORNAMEPTITLE = "ptitle"
+    ISSN = "ISSN"
+    ISBN = "ISBN-10"  # Note: the DB column is ISBN-10 (or 13), but the attrib is ISBN
+    ISBN13 = "ISBN-13"  # Note: the DB column is ISBN-13
+    ISUN = "ISUN"
+    MAINTOCID = "MAINTOCID"
+    DOWNLOAD = "download"  # Added 2021-10-05 to allow general prohibition of downloads
+    SIMILARITYRATIOS = "SimilarityRatios"  # a dictionary after a similarity compare
+
 
 gConst = REFCONSTANTS()
 
@@ -270,15 +270,17 @@ tplNoAuth = """
                  </contrib>
                   """
 
+
 def val_or_emptystr(obj, default=""):
     ret_val = ""
     try:
         if obj is not None:
             ret_val = f"{obj}"
     except Exception as e:
-        print (f"Exception: {e}")
+        print(f"Exception: {e}")
 
     return ret_val
+
 
 def find_or_emptystr(elem, find_target: str, default=""):
     ret_val = ""
@@ -287,42 +289,53 @@ def find_or_emptystr(elem, find_target: str, default=""):
         if node is not None:
             ret_val = ''.join(node.itertext())
     except Exception as e:
-        print (f"Exception: {e}")
+        print(f"Exception: {e}")
     else:
         if ret_val is None:
             ret_val = ""
 
     return ret_val
 
-#--------------------------------------------------------------------------------
-def writePublisherFile(path=None, fs=None, online_link_location="https://pep-web-google-metadata.s3.amazonaws.com/", publisher_file_name = r"publisher-info.xml", doValidate=False, path_is_root_bucket=False):
+
+# --------------------------------------------------------------------------------
+
+
+def writePublisherFile(
+        path=None,
+        fs=None,
+        online_link_location="https://pep-web-google-metadata.s3.amazonaws.com/",
+        publisher_file_name=r"publisher-info.xml",
+        doValidate=False,
+        path_is_root_bucket=False):
     pat = ".*\.xml"
-    metadata_files_names = fs.get_matching_filelist(filespec_regex=pat, path=path)
+    metadata_files_names = fs.get_matching_filelist(filespec_regex=pat,
+                                                    path=path)
     #fileInfo = {}
     publisher_file_cumulated_text = ""
     count = 0
     for filename in metadata_files_names:
-       
+
         count += 1
-        #if count == 5: break
-        #if fs is None:
-            #basename, ext = os.path.splitext(filename)
-            #full_filename = os.path.join(path, filename)
-            #fstatout = os.stat(full_filename)
-            #fileTime = fstatout[stat.ST_MTIME]
-        #else:
-        basename, ext = os.path.splitext(filename.basename)
+        # if count == 5: break
+        # if fs is None:
+        #basename, ext = os.path.splitext(filename)
+        #full_filename = os.path.join(path, filename)
+        #fstatout = os.stat(full_filename)
+        #fileTime = fstatout[stat.ST_MTIME]
+        # else:
+        #basename, ext = os.path.splitext(filename.basename)
         if filename.basename == publisher_file_name:
             continue
-        
-        #if fs.key is not None:
-            #full_filename = filename.fileinfo["name"]
-        #else:
-            #full_filename = filename.filespec
-            
+
+        # if fs.key is not None:
+        #full_filename = filename.fileinfo["name"]
+        # else:
+        #full_filename = filename.filespec
+
         #fileTime = filename.create_time
-            
-        year, month, day, hour, minute, second, weekday, day360, dst = time.localtime(filename.timestamp.timestamp())
+
+        year, month, day, hour, minute, second, weekday, day360, dst = time.localtime(
+            filename.timestamp.timestamp())
         filenameplusloc = online_link_location + filename.basename
         tplPublisherFile = f"""
                             <!-- Information about one file. -->
@@ -344,7 +357,7 @@ def writePublisherFile(path=None, fs=None, online_link_location="https://pep-web
                                </change-date>
                             </file>
                             """
-        
+
         publisher_file_cumulated_text += tplPublisherFile
 
     tplPublisher = f"""<?xml version="1.0" encoding="UTF-8"?>  <!-- encoding must be UTF-8 -->
@@ -377,30 +390,40 @@ def writePublisherFile(path=None, fs=None, online_link_location="https://pep-web
 </publisher>
 """
 
-    #enf.write(tplPublisher)
+    # enf.write(tplPublisher)
     # this is required if running on S3
     msg = f"\t...Exporting! Writing publisher XML file to {publisher_file_name}"
     if fs is not None:
-        success = fs.create_text_file(path=path, filespec=publisher_file_name, data=tplPublisher, path_is_root_bucket=True)
+        success = fs.create_text_file(path=path,
+                                      filespec=publisher_file_name,
+                                      data=tplPublisher,
+                                      path_is_root_bucket=True)
         if success:
-            if options.display_verbose: # Exporting! Writing publisher XML file
-                print (msg)
-                print ("\t"+60*"-")
+            if options.display_verbose:  # Exporting! Writing publisher XML file
+                print(msg)
+                print("\t" + 60 * "-")
         else:
-            print (f"\t...There was a problem writing {publisher_file_name}.")
+            print(f"\t...There was a problem writing {publisher_file_name}.")
     else:
-        print (f"\t...There was a problem writing {publisher_file_name}. Filesystem not supplied")
+        print(
+            f"\t...There was a problem writing {publisher_file_name}. Filesystem not supplied"
+        )
 
     print("%s files found; written to publisher record." % count)
 
     return
 
+
 def google_metadata_generator(path=None,
                               source_type="journal",
-                              fs=None, size=None, max_records=None, clear_sitemap=None,
+                              fs=None,
+                              size=None,
+                              max_records=None,
+                              clear_sitemap=None,
                               path_is_root_bucket=False,
                               this_journal_code_only=None):
-    journal_info = metadata_get_source_info(src_type=source_type, src_code=this_journal_code_only)
+    journal_info = metadata_get_source_info(src_type=source_type,
+                                            src_code=this_journal_code_only)
     #journal_codes = [doc.PEPCode for doc in journal_info.sourceInfo.responseSet]
     jinfo = [(doc.PEPCode, doc) for doc in journal_info.sourceInfo.responseSet]
     journal_info_dict = dict(sorted(jinfo, key=lambda PEPCode: PEPCode[0]))
@@ -408,11 +431,14 @@ def google_metadata_generator(path=None,
         if this_journal_code_only is not None:
             if journal_code != this_journal_code_only:
                 continue
-        print (f"Writing metadata for {journal_code}")
-        volume_info = opasPySolrLib.metadata_get_volumes(source_code=journal_code)
+        print(f"Writing metadata for {journal_code}")
+        volume_info = opasPySolrLib.metadata_get_volumes(
+            source_code=journal_code)
         year_info = opasPySolrLib.metadata_get_years(source_code=journal_code)
-        volumes = [(vol.year, vol.vol, vol) for vol in volume_info.volumeList.responseSet]
-        years = [(year.vol, year.year, year) for year in year_info.yearList.responseSet]
+        volumes = [(vol.year, vol.vol, vol)
+                   for vol in volume_info.volumeList.responseSet]
+        years = [(year.vol, year.year, year)
+                 for year in year_info.yearList.responseSet]
         for year_tuple in years:
             vol_metadata_text = ""
             year = year_tuple[1]
@@ -422,11 +448,14 @@ def google_metadata_generator(path=None,
                     volume_nbr_str = vol
                     header = f"""<?xml version="1.0" encoding="utf-8" ?>\n{googleMetadataConfig.GOOGLE_METADATA_ARTICLE_DOCTYPE}\n<articles>"""
                     vol_metadata_text += header
-                    contents = opasPySolrLib.metadata_get_contents(pep_code=journal_code, year=year, vol=volume_nbr_str)
+                    contents = opasPySolrLib.metadata_get_contents(
+                        pep_code=journal_code, year=year, vol=volume_nbr_str)
                     contents = contents.documentList.responseSet
                     article_count = len(contents)
                     if options.display_verbose:
-                        print (f"\tWriting metadata for {journal_code}.{year} (Volume {volume_nbr_str}, Article Count: {article_count})")
+                        print(
+                            f"\tWriting metadata for {journal_code}.{year} (Volume {volume_nbr_str}, Article Count: {article_count})"
+                        )
                     a = 1
                     #  SOURCETITLEFULL, SOURCETITLESERIES, ISSN, PUBLISHER, KEY, TITLE, AUTHORMARKUP, YEAR, VOL, ISSUE, PGSTART, PGEND
                     # walk through the articles for the source code.
@@ -434,14 +463,18 @@ def google_metadata_generator(path=None,
                         try:
                             doclistitem = artinfo
                             # root = etree.fromstring(doclistitem.documentInfoXML)
-                            artinfo = objectify.fromstring(doclistitem.documentInfoXML)
-                            attrib = artinfo.attrib
-                            artTitle = artinfo.arttitle
-                            art_title_text = find_or_emptystr(artinfo, "arttitle")
+                            artinfo = objectify.fromstring(
+                                doclistitem.documentInfoXML)
+                            #attrib = artinfo.attrib
+                            #artTitle = artinfo.arttitle
+                            art_title_text = find_or_emptystr(
+                                artinfo, "arttitle")
                             if art_title_text == "":
-                                print (doclistitem.documentID, " - No title text")
+                                print(doclistitem.documentID,
+                                      " - No title text")
                             else:
-                                art_subtitle = find_or_emptystr(artinfo, "artsub")
+                                art_subtitle = find_or_emptystr(
+                                    artinfo, "artsub")
                                 if art_subtitle != "":
                                     art_title_text += f": {art_subtitle}"
 
@@ -449,21 +482,25 @@ def google_metadata_generator(path=None,
                             art_vol = artinfo.artvol
                             art_year = artinfo.artyear
                             if options.display_verbose:
-                                print (f"\t\t{art_year}.{art_vol}:{art_title_text}")
+                                print(
+                                    f"\t\t{art_year}.{art_vol}:{art_title_text}"
+                                )
                             auts = artinfo.artauth
-                            publisher = journal_info_dict[journal_code].publisher
+                            publisher = journal_info_dict[
+                                journal_code].publisher
                             issn = journal_info_dict[journal_code].ISSN
                             contribs = ""
                             aut_count = 0
                             # last page is required
                             if doclistitem.pgEnd == "" or doclistitem.pgEnd is None:
                                 doclistitem.pgEnd = doclistitem.pgStart
-                            
+
                             try:
                                 aut_count += 1
                                 for a in auts.aut:
                                     given_names = find_or_emptystr(a, "nfirst")
-                                    given_middle_name = find_or_emptystr(a, "nmid")
+                                    given_middle_name = find_or_emptystr(
+                                        a, "nmid")
                                     if given_names != "" and given_middle_name != "":
                                         given_names += f", {given_middle_name}"
                                     nsuffix = find_or_emptystr(a, "nsuffix")
@@ -474,7 +511,7 @@ def google_metadata_generator(path=None,
                                         """
                                     else:
                                         suffix_add = ""
-                                    
+
                                     contribs += f"""
                                         \t\t\t\t\t<!-- Author names. (REQUIRED; No more than 1024 entries) -->
                                         \t\t\t\t\t<contrib contrib-type="{a.attrib.get('role', '')}">
@@ -490,7 +527,7 @@ def google_metadata_generator(path=None,
                                         """
                                     # clean up empty tags
                                     # contribs = contribs.replace("<suffix></suffix>", "")
-                                    
+
                             except Exception as e:
                                 contribs += """
                                         \t\t\t\t\t<!-- Author name Template used when there are no authors because its REQUIRED -->
@@ -501,7 +538,7 @@ def google_metadata_generator(path=None,
                                             \t\t\t\t\t</name>
                                         \t\t\t\t\t</contrib>
                                             """
-                               
+
                             #print (doclistitem )
                             #print ("----")
                             #  SOURCETITLEFULL, SOURCETITLESERIES, ISSN, PUBLISHER, KEY, TITLE, AUTHORMARKUP, YEAR, VOL, ISSUE, PGSTART, PGEND
@@ -564,20 +601,21 @@ def google_metadata_generator(path=None,
                                 \t\t<article-type>research-article</article-type>
                                 \t</article>
                                 """
-                
+
                         except Exception as e:
                             try:
-                                logger.error (f"Error: {e} for {doclistitem.documentID}")
+                                logger.error(
+                                    f"Error: {e} for {doclistitem.documentID}")
                                 vol_metadata_text += article_meta
                             except:
-                                pass # ok, skip article
+                                pass  # ok, skip article
                         else:
                             # print (article_meta)
                             vol_metadata_text += article_meta
-                        
+
                     # articles end, close tag
                     vol_metadata_text += "</articles>"
-            
+
             except Exception as e:
                 logger.error(f"Error: {e}")
 
@@ -586,78 +624,145 @@ def google_metadata_generator(path=None,
             if fs is not None:
                 # watch out for & that's not escaped as an entity
                 vol_metadata_text = vol_metadata_text.replace("& ", "&amp; ")
-                success = fs.create_text_file(outputFileName, data=vol_metadata_text, path=path, path_is_root_bucket=path_is_root_bucket)
+                success = fs.create_text_file(
+                    outputFileName,
+                    data=vol_metadata_text,
+                    path=path,
+                    path_is_root_bucket=path_is_root_bucket)
                 if success:
-                    if options.display_verbose: # vol is done...write output file for journal vol
+                    if options.display_verbose:  # vol is done...write output file for journal vol
                         msg = f"\t...Writing volume XML file to {outputFileName}"
                         logger.info(msg)
-                        print (msg)
+                        print(msg)
                 else:
-                    msg =f"\t...There was a problem writing {outputFileName}."
+                    msg = f"\t...There was a problem writing {outputFileName}."
                     logger.error(msg)
-                    print (msg)
+                    print(msg)
             else:
                 msg = f"\t...There was a problem writing {outputFileName}. Filesystem not supplied"
                 logger.error(msg)
-                print (msg)
-                        
-                    
+                print(msg)
 
-            
+
 # -------------------------------------------------------------------------------------------------------
 if __name__ == "__main__":
     options = None
-    parser = OptionParser(usage="%prog [options] - PEP Google Metadata Generator", version=f"%prog ver. {__version__}")
-    parser.add_option("-l", "--loglevel", dest="logLevel", default=logging.ERROR,
-                      help="Level at which events should be logged (DEBUG, INFO, WARNING, ERROR")
-    parser.add_option("-c", "--clear", dest="clearmetadata", action="store_true", default=False,
-                      help="Clear prior metadata files (delete files in path/bucket matching metadata.*)")
-    parser.add_option("--verbose", action="store_true", dest="display_verbose", default=False,
-                      help="Display status and operational timing info as load progresses.")
-    parser.add_option("-t", "--test", dest="testmode", action="store_true", default=False,
-                      help="Run Doctests.  Will run a small sample of records and total output")
-    parser.add_option("-r", "--recordsperfile", dest="recordsperfile", type="int", default=8000,
+    parser = OptionParser(
+        usage="%prog [options] - PEP Google Metadata Generator",
+        version=f"%prog ver. {__version__}")
+    parser.add_option(
+        "-l",
+        "--loglevel",
+        dest="logLevel",
+        default=logging.ERROR,
+        help=
+        "Level at which events should be logged (DEBUG, INFO, WARNING, ERROR")
+    parser.add_option(
+        "-c",
+        "--clear",
+        dest="clearmetadata",
+        action="store_true",
+        default=False,
+        help=
+        "Clear prior metadata files (delete files in path/bucket matching metadata.*)"
+    )
+    parser.add_option(
+        "--verbose",
+        action="store_true",
+        dest="display_verbose",
+        default=False,
+        help="Display status and operational timing info as load progresses.")
+    parser.add_option(
+        "-t",
+        "--test",
+        dest="testmode",
+        action="store_true",
+        default=False,
+        help=
+        "Run Doctests.  Will run a small sample of records and total output")
+    parser.add_option("-r",
+                      "--recordsperfile",
+                      dest="recordsperfile",
+                      type="int",
+                      default=8000,
                       help="Max Number of records per file")
-    parser.add_option("-m", "--maxrecords", dest="maxrecords", type="int", default=200000,
+    parser.add_option("-m",
+                      "--maxrecords",
+                      dest="maxrecords",
+                      type="int",
+                      default=200000,
                       help="Max total records to be exported")
-    parser.add_option("-b", "--bucket", "--path", dest="bucket", type="string", default=localsecrets.GOOGLE_METADATA_PATH,
-                      help="Bucket or Local Path to write files on local system or S3 (on AWS must be a bucket)")
-    parser.add_option("--rb", "--isrootbucket", dest="isrootbucket", action="store_false",                       
-                      help="True if the path specified is the bucketname (hence root) on AWS")
-    parser.add_option("--only", "--thiscodeonly", dest="this_journal_code_only", type="string", default=None,
-                      help="Process only this journal code (used for manual testing)")
-    parser.add_option("--awsbucket", dest="aws_bucket", type="string", default=localsecrets.GOOGLE_METADATA_PATH, 
+    parser.add_option(
+        "-b",
+        "--bucket",
+        "--path",
+        dest="bucket",
+        type="string",
+        default=localsecrets.GOOGLE_METADATA_PATH,
+        help=
+        "Bucket or Local Path to write files on local system or S3 (on AWS must be a bucket)"
+    )
+    parser.add_option(
+        "--rb",
+        "--isrootbucket",
+        dest="isrootbucket",
+        action="store_false",
+        help="True if the path specified is the bucketname (hence root) on AWS"
+    )
+    parser.add_option(
+        "--only",
+        "--thiscodeonly",
+        dest="this_journal_code_only",
+        type="string",
+        default=None,
+        help="Process only this journal code (used for manual testing)")
+    parser.add_option("--awsbucket",
+                      dest="aws_bucket",
+                      type="string",
+                      default=localsecrets.GOOGLE_METADATA_PATH,
                       help="The name of the output root (bucket) on AWS")
 
     (options, args) = parser.parse_args()
-    print (f"Metadata is being written to: {options.aws_bucket}")
+    print(f"Metadata is being written to: {options.aws_bucket}")
     if options.testmode:
         import doctest
         doctest.testmod()
-        print ("Fini. Tests complete.")
+        print("Fini. Tests complete.")
     else:
-        fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root=options.aws_bucket)
+        fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY,
+                                            secret=localsecrets.S3_SECRET,
+                                            root=options.aws_bucket)
         path_is_root_bucket = options.bucket == options.aws_bucket
         if options.this_journal_code_only is not None:
-            ret_val = google_metadata_generator(path=options.bucket,
-                                                fs=fs,
-                                                source_type="journal",
-                                                path_is_root_bucket=path_is_root_bucket,
-                                                this_journal_code_only=options.this_journal_code_only) 
+            ret_val = google_metadata_generator(
+                path=options.bucket,
+                fs=fs,
+                source_type="journal",
+                path_is_root_bucket=path_is_root_bucket,
+                this_journal_code_only=options.this_journal_code_only)
         else:
-            writePublisherFile(path=options.bucket,
-                               fs=fs,
-                               online_link_location="https://pep-web-google-metadata.s3.amazonaws.com/",
-                               path_is_root_bucket=path_is_root_bucket
-                               )
-            ret_val = google_metadata_generator(path=options.bucket, fs=fs, source_type="video",
-                                                path_is_root_bucket=path_is_root_bucket) # path=options.bucket, size=options.recordsperfile, max_records=options.maxrecords, clear_sitemap=options.clearsitemap)
-            ret_val = google_metadata_generator(path=options.bucket, fs=fs, source_type="journal",
-                                                path_is_root_bucket=path_is_root_bucket) # path=options.bucket, size=options.recordsperfile, max_records=options.maxrecords, clear_sitemap=options.clearsitemap)
+            writePublisherFile(
+                path=options.bucket,
+                fs=fs,
+                online_link_location=
+                "https://pep-web-google-metadata.s3.amazonaws.com/",
+                path_is_root_bucket=path_is_root_bucket)
+            ret_val = google_metadata_generator(
+                path=options.bucket,
+                fs=fs,
+                source_type="video",
+                path_is_root_bucket=path_is_root_bucket
+            )  # path=options.bucket, size=options.recordsperfile, max_records=options.maxrecords, clear_sitemap=options.clearsitemap)
+            ret_val = google_metadata_generator(
+                path=options.bucket,
+                fs=fs,
+                source_type="journal",
+                path_is_root_bucket=path_is_root_bucket
+            )  # path=options.bucket, size=options.recordsperfile, max_records=options.maxrecords, clear_sitemap=options.clearsitemap)
 
-        print ("============================================")
-        print ("  TBD: Still need to add book processing!")
-        print ("============================================")
-        print ("Finished!")
+        print("============================================")
+        print("  TBD: Still need to add book processing!")
+        print("============================================")
+        print("Finished!")
 
     sys.exit()

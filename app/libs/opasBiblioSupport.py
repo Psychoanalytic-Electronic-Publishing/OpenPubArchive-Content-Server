@@ -33,12 +33,12 @@ sys.path.append('../libs')
 sys.path.append('../config')
 sys.path.append('../libs/configLib')
 
-import os
+#import os
 from datetime import datetime
-import string
+#import string
 import re
-import statistics
-from typing import List, Generic, TypeVar, Optional
+#import statistics
+#from typing import List, Generic, TypeVar, Optional
 import models
 import time
 
@@ -743,7 +743,7 @@ class BiblioEntry(models.Biblioxml):
 
         """
     
-        pep_ref = False
+        #pep_ref = False
         ref_id = self.ref_local_id
         ret_val = None, None
         link_updated = False
@@ -789,7 +789,7 @@ class BiblioEntry(models.Biblioxml):
                                       )
                     
                     if locator.valid:
-                        pep_ref = True
+                        #pep_ref = True
                         loc_str = str(locator)
                         if ocd.article_exists(loc_str):
                             msg = f"\t\t...Locator verified {loc_str}"
@@ -874,7 +874,7 @@ class BiblioEntry(models.Biblioxml):
         title_distance = "~1"
         min_words = 3
         query = "art_id:*"
-        time1 = time.time()
+        #time1 = time.time()
         #if self.ref_sourcetitle:
             #source_title = self.ref_sourcetitle
             #query += f" AND art_sourcetitlefull:({self.ref_sourcetitle})"
@@ -1035,10 +1035,10 @@ class BiblioEntry(models.Biblioxml):
                         article_is_book = True
                     else:
                         article_is_book = False
-                    if self.ref_is_book and article_is_book or pub_type_match_required == False:
-                        pub_type_match = True
-                    else:
-                        pub_type_match = False
+                    #if self.ref_is_book and article_is_book or pub_type_match_required == False:
+                        #pub_type_match = True
+                    #else:
+                        #pub_type_match = False
                     
                     art_title = result[5]
                     art_title = opasgenlib.remove_all_punct(art_title)
