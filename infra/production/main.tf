@@ -41,9 +41,12 @@ module "ecs" {
 module "data_utility" {
   source = "../modules/data-utility"
 
-  stack_name     = var.stack_name
-  env            = var.env
-  account_id     = var.account_id
-  aws_region     = var.aws_region
-  repository_url = module.ecr.repository_url
+  stack_name         = var.stack_name
+  env                = var.env
+  account_id         = var.account_id
+  aws_region         = var.aws_region
+  repository_url     = module.ecr.repository_url
+  cluster_arn        = module.ecs.cluster_arn
+  security_group_ids = var.security_group_ids
+  vpc_id             = module.vpc.vpc_id
 }
