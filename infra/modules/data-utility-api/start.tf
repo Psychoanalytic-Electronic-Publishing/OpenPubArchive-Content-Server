@@ -8,6 +8,10 @@ module "start_task_lambda" {
   runtime                 = "python3.8"
   ignore_source_code_hash = true
 
+  environment_variables = {
+    STATE_MACHINE_ARN = var.state_machine_arn
+  }
+
   tags = {
     stage = var.env
     stack = var.stack_name
@@ -21,6 +25,25 @@ resource "aws_lambda_permission" "allow_start_task" {
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_api_gateway_rest_api.api_gateway.execution_arn}/*/*/*"
 }
+
+resource "aws_iam_role_policy" "start_task_lambda_policy" {
+  role = module.start_task_lambda.lambda_role_name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = [
+          "states:StartExecution",
+        ]
+        Effect   = "Allow"
+        Resource = "*"
+      },
+    ]
+  })
+}
+
+
 
 locals {
   start_task_integration = {

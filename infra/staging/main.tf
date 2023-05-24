@@ -54,7 +54,8 @@ module "data_utility" {
 module "data_utility_api" {
   source = "../modules/data-utility-api"
 
-  stack_name  = var.stack_name
-  env         = var.env
-  cors_origin = var.cors_origin
+  stack_name        = var.stack_name
+  env               = var.env
+  cors_origin       = var.cors_origin
+  state_machine_arn = module.data_utility.state_machine_arn
 }

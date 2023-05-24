@@ -9,3 +9,7 @@ variable "stack_name" {
 variable "cors_origin" {
   description = "CORS origin"
 }
+
+variable "state_machine_arn" {
+  description = "ARN of the state machine to start"
+}
