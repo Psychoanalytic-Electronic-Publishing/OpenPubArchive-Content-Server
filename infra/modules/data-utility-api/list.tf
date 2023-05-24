@@ -3,8 +3,8 @@ module "list_tasks_lambda" {
   version = "4.9.0"
 
   function_name           = "${var.stack_name}-list-tasks-handler-${var.env}"
-  source_path             = "../../dataUtility/api"
-  handler                 = "listTasks.handler"
+  source_path             = "../../dataUtility/api/listTasks"
+  handler                 = "index.handler"
   runtime                 = "python3.8"
   ignore_source_code_hash = true
 

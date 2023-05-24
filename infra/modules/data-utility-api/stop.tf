@@ -3,8 +3,8 @@ module "stop_task_lambda" {
   version = "4.9.0"
 
   function_name           = "${var.stack_name}-stop-task-handler-${var.env}"
-  source_path             = "../../dataUtility/api"
-  handler                 = "stopTask.handler"
+  source_path             = "../../dataUtility/api/stopTask"
+  handler                 = "index.handler"
   runtime                 = "python3.8"
   ignore_source_code_hash = true
 

@@ -3,8 +3,8 @@ module "start_task_lambda" {
   version = "4.9.0"
 
   function_name           = "${var.stack_name}-start-task-handler-${var.env}"
-  source_path             = "../../dataUtility/api"
-  handler                 = "startTask.handler"
+  source_path             = "../../dataUtility/api/startTask"
+  handler                 = "index.handler"
   runtime                 = "python3.8"
   ignore_source_code_hash = true
 
