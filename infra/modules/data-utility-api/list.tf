@@ -8,10 +8,31 @@ module "list_tasks_lambda" {
   runtime                 = "python3.8"
   ignore_source_code_hash = true
 
+  environment_variables = {
+    STATE_MACHINE_ARN = var.state_machine_arn
+  }
+
   tags = {
     stage = var.env
     stack = var.stack_name
   }
+}
+
+resource "aws_iam_role_policy" "list_tasks_lambda_policy" {
+  role = module.list_tasks_lambda.lambda_role_name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = [
+          "states:ListExecutions",
+        ]
+        Effect   = "Allow"
+        Resource = "*"
+      },
+    ]
+  })
 }
 
 resource "aws_lambda_permission" "allow_list_tasks" {
