@@ -219,7 +219,7 @@ class opasCentralDB(object):
         self.reuse_db_connection = opasConfig.DB_REUSE_CONNECTION
         # try connection right away
         try:
-            self.db = mysql.connector.connect(user=self.user, password=self.password, database=self.database, host=self.host)
+            self.db = mysql.connector.connect(user=self.user, password=self.password, database=self.database, host=self.host, port=port)
         except Exception as e:
             logger.fatal("Connection not available")
         else:
