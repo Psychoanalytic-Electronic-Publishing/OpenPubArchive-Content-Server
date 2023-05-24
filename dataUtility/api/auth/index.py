@@ -1,4 +1,6 @@
 import re
+from urllib import request
+import json
 
 def handler(event, context):
     print("Client token: " + event['authorizationToken'])
@@ -27,7 +29,13 @@ def handler(event, context):
     return authResponse
 
 def session_is_admin(session_id):
-    return session_id == 'admin'
+    try:
+        response = request.urlopen(f'https://pads.pep-web.org/PEPSecure/api/v1/Users/?SessionId={session_id}')
+        data = json.load(response)
+        return data["UserType"] == "Admin"
+    except Exception as e:
+        print(e)
+        return False
 
 
 class HttpVerb:
