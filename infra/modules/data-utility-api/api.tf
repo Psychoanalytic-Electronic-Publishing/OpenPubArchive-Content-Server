@@ -14,6 +14,7 @@ resource "aws_api_gateway_rest_api" "api_gateway" {
     paths = {
       "/create" = local.create_task_integration
       "/list"   = local.list_tasks_integration
+      "/stop"   = local.stop_task_integration
     }
   })
 }
