@@ -16,7 +16,7 @@
 *.tmp
 *.wpr
 *.wpu
-*.xml
+#*.xml
 *.zip
 *Hold*
 *Sample*
@@ -76,3 +76,10 @@ app/opasDataLoader/runlinker.bat
 .DS_Store
 sql/schemas/opascentral5.7 backup.sql
 sql/schemas/opascentral20230522.sql
+sql/schemas/bootstrap.sql
+app/opasDataLoader/data_update_logs
+app/tests/testdatasource/
+!app/tests/testxml/*.*
+app/libs/tstfiles
+app/libs/styles/*.xml
+sitemap example

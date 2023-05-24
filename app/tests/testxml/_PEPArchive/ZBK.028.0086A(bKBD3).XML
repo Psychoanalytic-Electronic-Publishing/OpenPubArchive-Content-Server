@@ -1,0 +1,18 @@
+<!DOCTYPE pepkbd3 PUBLIC "-//PEP/DTD PEP KBD V3.0//EN" "pepkbd3.dtd">
+<pepkbd3>
+<artinfo arttype="ART" j="ZBK">
+<artyear>1911</artyear>
+<artbkinfo extract="ZBK.028.0000" prev="ZBK.028.0084" next="ZBK.028.0086B"/>
+<artvol>28</artvol>
+<artpgrg>86</artpgrg>
+<arttitle id="H0050">Letter from Sigmund Freud to Ernest Jones, February 7, 1911</arttitle>
+<artauth>
+<aut><nfirst>Sigmund</nfirst> <nlast>Freud</nlast></aut>
+</artauth>
+</artinfo>
+<body>
+<h1 class="ltr" align="center">50</h1><p align="center">[telegram from Jones]</p>
+<p align="right">7 February 1911<cr/>Toronto<cr/>: not professor &equals;</p>
+<pb><n>86</n></pb>
+</body>
+</pepkbd3>

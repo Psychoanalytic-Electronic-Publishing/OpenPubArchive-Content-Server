@@ -1,0 +1,19 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE pepkbd3 SYSTEM "https://pep-web-includes.s3.amazonaws.com/pepkbd3.dtd">
+<pepkbd3 procby="opasXMLProcessor.2023.0420/v.1.0.110">
+<artinfo arttype="ART" j="ZBK" ISBN="0674154231" id="ZBK.028.0086A">
+<artyear>1911</artyear>
+<artbkinfo extract="ZBK.028.0000A" prev="ZBK.028.0084A" next="ZBK.028.0086B"/>
+<artvol actual="28">28</artvol>
+<artpgrg>86</artpgrg>
+<arttitle id="H0050">Letter from Sigmund Freud to Ernest Jones, February 7, 1911</arttitle>
+<artauth hidden="false">
+<aut authindexid="Freud, Sigmund" listed="true" role="author"><nfirst>Sigmund</nfirst> <nlast>Freud</nlast></aut>
+</artauth>
+</artinfo>
+<body>
+<h1 class="ltr" align="center">50</h1><p align="center">[telegram from Jones]</p>
+<p align="right">7 February 1911<cr/>Toronto<cr/>: not professor &equals;</p>
+<pb><n>86</n></pb>
+</body>
+<unit type="glossary_term_dict"><!-- {} --></unit></pepkbd3>

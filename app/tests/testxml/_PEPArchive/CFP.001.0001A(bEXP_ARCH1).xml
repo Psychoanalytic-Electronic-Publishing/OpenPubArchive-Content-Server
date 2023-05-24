@@ -1,0 +1,31 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE pepkbd3 SYSTEM "https://pep-web-includes.s3.amazonaws.com/pepkbd3.dtd">
+<pepkbd3 procby="opasXMLProcessor.2023.0420/v.1.0.110">
+<artinfo arttype="ART" j="CFP" newsecnm="Articles" ISSN="2044-4133 " id="CFP.001.0001A">
+<artyear>2011</artyear>
+<artvol actual="1">1</artvol>
+<artiss>1</artiss>
+<artpgrg>1-19</artpgrg>
+<arttitle>Couple Psychoanalysis and Couple Therapy: Context and Challenge</arttitle>
+<artqual rx="CFP.001.0001A"/><artauth hidden="false">
+<aut authindexid="Clulow, Christopher" listed="true" role="author"><nfirst>Christopher</nfirst> <nlast>Clulow</nlast> <nbio>Senior Fellow of TCCR, where he practises as a visiting lecturer and researcher. He has published extensively on marriage, partnerships, parenthood, and couple psychotherapy, most recently from an attachment perspective. His most recent edited publication, <i>Sex, Attachment, and Couple Psychotherapy: Psychoanalytic Perspectives</i>, was published by Karnac in 2009. He is Vice Chair of BSCPC, past Therapies Editor for the international journal <i>Sexual and Relationship Therapy</i>, and a member of the Editorial Board for <i>Couple and Family Psychoanalysis</i>. He is a Fellow of the Centre for Social Policy, Dartington, and a registrant of the British Psychoanalytic Council. He maintains a private clinical and training practice from his home in St Albans.</nbio></aut>
+</artauth>
+<artkwds><impx type="KEYWORD">couple psychoanalysis</impx><impx type="KEYWORD">family psychoanalysis</impx><impx type="KEYWORD">couple therapy</impx><impx type="KEYWORD">relationship counselling</impx><impx type="KEYWORD">relational psychoanalysis.</impx></artkwds></artinfo>
+<abs><p>Couple and family psychoanalysis are disciplines in search of definition. This paper offers a definition of couple psychoanalysis and considers its relationship to couple therapy. It reflects on Oedipal dimensions of the couple therapist's role, and explores contextual aspects of four clinical challenges intrinsic to that role: (1) looking in and looking out; (2) relating to sex and gender; (3) engaging with difference; (4) conserving and changing. The paper concludes with the assertion that three is a community, not a crowd, and that couple therapy, like couple psychoanalysis, is about building communities.</p></abs>
+<body>
+        <h1 c="u" align="center" id="H0001">Introduction</h1>
+        <p>‘Despite its long history of struggles against marginalisation and professional
+            disempowerment, couple therapy at the millennium has emerged as one of the most vibrant
+            forces in the entire domain of family therapy and of psychotherapy in general … no other
+            collective methods of psychosocial intervention have demonstrated a superior capacity to
+            effect clinically meaningful change in as many spheres of human experience as the couple
+            therapies.’ (Gurman &amp; Fraenkel, <bx r="B019">2002</bx>, p. <pgx r="B019">199</pgx>)</p>
+        <p>...Sample article, Truncated.</p>
+        <h2 align="center" id="H0002">What is Couple Psychoanalysis?</h2>
+    </body>
+<bib>
+        <pb>
+            <n>1</n>
+        </pb>
+    </bib>
+<unit type="glossary_term_dict"><!-- {"psychotherapy": 1, "intervention": 1} --></unit></pepkbd3>

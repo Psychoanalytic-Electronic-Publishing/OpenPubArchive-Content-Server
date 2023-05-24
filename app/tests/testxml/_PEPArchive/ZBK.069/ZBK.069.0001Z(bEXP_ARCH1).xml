@@ -1,0 +1,33 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE pepkbd3 SYSTEM "http://peparchive.org/pepa1dtd/pepkbd3.dtd">
+<pepkbd3><artinfo arttype="ART" j="ZBK" newsecnm="Z">
+							<artyear>2016</artyear>
+							<artbkinfo extract="ZBK.069.0000A" prev="ZBK.069.0001Y" next="ZBK.069.0000A"/>
+							<artvol>69</artvol>
+							<artpgrg style="arabic">1</artpgrg>
+							<artvar>Z</artvar>
+							<arttitle id="H1090">PEP Consolidated Psychoanalytic Glossary</arttitle>
+							 <artsub>Z</artsub>
+							 
+                                <artauth hidden="false">
+                                    <aut role="produced-by" alias="true" listed="false" asis="false">
+                                        <nlast>Psychoanayltic Electronic Publishing</nlast>
+                                    </aut>
+                                </artauth>
+							
+							</artinfo>
+							<body>
+							<p>This glossary is a compilation of terms, definitions, and discussion from major published psychoanalytic glossaries.  The source of each entry is indicated at the start of each entry.  The entries include the complete text of the original source, reused with permission, with added links provided by Psychoanalytic Electronic Publishing (PEP)</p><p>The glossary is intended to bring the psychoanalytic concepts defined by the leading psychoanalytic glossaries together, so that researchers and practitoners can quickly compare and understand historical perspectives and definitions.   While it is presented here as a more traditional, linear, book of alphabetized terms, this is only one of the views provided by the PEP-Archive.  Each group of terms is linked from numerous points in the PEP archive--wherever the term is referenced and it would be handy to see definitions and discussion.</p>
+						
+                                    <h1 c="u" class="sect">Index</h1>
+                                    <tbl align="center" ewide="false">
+                                    <table>
+                                    <tgroup cols="1">
+                                    <colspec colnum="1" colname="c1" colwidth="1*" align="left"/>
+                                    <tbody><row><entry><hdix r="YN0018002918610">ZEIGARNIK</hdix></entry></row>
+                                    </tbody>
+                                    </tgroup>
+                                    </table>
+                                    </tbl>
+
+                                <dictentrygrp id="YN0018002918610"><term>ZEIGARNIK</term><dictentry><src>Skelton, R. (Ed.). (2006). The Edinburgh International Encyclopaedia of Psychoanalysis.</src><dictalso><impx type="TERM2" rx="ZBK.069.0001i.YN0003576847720" grpname="Interpretation">interpretation</impx><impx type="TERM2" rx="ZBK.069.0001p.YP0003432615570" grpname="PUNCTUATION">punctuation</impx></dictalso><def><p>Bluma Zeigarnik, a researcher working with Kurt Lewin in the 1920s, discovered that interrupted tasks are remembered significantly better than ones that are allowed to be completed. The importance of this effect for <impx type="TERM2" rx="ZBK.069.0001p.YN0004507089640" grpname="Psycho-Analysis; PSYCHOANALYSIS">psychoanalysis</impx> has been investigated by Heinz *Hartmann, by Daniel Lagache, and by Jacques *Lacan. One of the aims of <impx type="TERM2" rx="ZBK.069.0001p.YN0004507089640" grpname="Psycho-Analysis; PSYCHOANALYSIS">psychoanalysis</impx> is to augment <impx type="TERM2" rx="ZBK.069.0001m.YP0016195201530" grpname="MEMORY">memory</impx>, and this effect indicates that introducing a break into the sessions can achieve this. Lacan's <impx type="TERM2" rx="ZBK.069.0001t.YN0012766571790" grpname="Technique">technique</impx> of varying the length of the session aims to produce such a Zeigarnik effect: as a result more <impx type="TERM2" rx="ZBK.069.0001m.YN0018787855710" grpname="Material">material</impx> will be remembered in the following sessions, and more will be worked on between sessions as well.</p><p>B. B.</p></def></dictentry></dictentrygrp></body></pepkbd3>

@@ -1,0 +1,202 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE pepkbd3 SYSTEM "http://peparchive.org/pepa1dtd/pepkbd3.dtd">
+<pepkbd3><meta>
+		<revisions>
+			<revbld>2016-01-29</revbld>
+			<revdesc>Updated biblio per Athena's comments and some of my own- nrs</revdesc>
+		</revisions>
+		<revisions>
+			<revbld>2016-01-26</revbld>
+			<revdesc>Updated for 2016, and added biblio entries and links to the biblio which were
+				missing- nrs</revdesc>
+		</revisions>
+	</meta>
+<artinfo arttype="TOC" j="ZBK" id="ZBK.069.0000A">
+		<artyear>2016</artyear>
+		<artbkinfo extract="ZBK.069.0000A" next="ZBK.069.0001A">
+			<bktitle>PEP Consolidated Psychoanalytic Glossary</bktitle>
+			<bkpubandloc>Psychoanalytic Electronic Publishing: London</bkpubandloc>
+		</artbkinfo>
+		<artvol>69</artvol>
+		<artpgrg style="arabic" prefixused="">i</artpgrg>
+		<artvar>A</artvar>
+		<arttitle>PEP Consolidated Psychoanalytic Glossary</arttitle>
+		<artsub>2016 Edition</artsub>
+		<artauth hidden="false">
+			<aut role="produced-by" alias="true" listed="false" asis="false">
+				<nlast>Psychoanayltic Electronic Publishing</nlast>
+			</aut>
+		</artauth>
+	</artinfo>
+<body>
+
+<h1 id="ZBK.069.0000A.H00001" c="t">Introduction</h1>
+<p>This PEP Consolidated Psychoanalytic Glossary is a compilation of terms, definitions, and
+			discussion from major published psychoanalytic glossaries. With the Glossary Features,
+			PEP has integrated several of the key Psychoanalytic Glossaries into a new consolidated
+			document. In this initial implementation, in addition to the <impx type="TERM2" rx="ZBK.069.0001l.YP0019468699420" grpname="LANGUAGE">Language</impx> of
+				<impx type="TERM2" rx="ZBK.069.0001p.YN0004507089640" grpname="Psycho-Analysis; PSYCHOANALYSIS">Psychoanalysis</impx><bx r="B002"> (Laplanche and Pontalis)</bx>, PEP has integrated three
+			additional glossaries: the <i>Edinburgh International Encyclopaedia of
+				Psychoanalysis</i>
+			<bx r="B006">(Skelton)</bx>, <i>Glossary of Psychoanalytic Terms and Concepts</i>
+			<bx r="B003">(Moore and Fine),</bx> the <i>Dictionary of Kleinian Thought</i>
+			<bx r="B001">(Hinshelwood),</bx> and <i>Psychoanalytic Terms and Concepts</i>
+			<bx r="B005">(Auchincloss and Samberg, 2012)</bx> . PEP has also integrated the <i>EPF
+				Glossary of Psychoanalysis in Europe</i>
+			<bx r="B007">(Junkers),</bx> which provides a mapping of each psychoanalytic term across
+			several languages</p>
+<p> The source  for each entry is indicated at the start of each entry. The entries include the complete text of the original source, reused with permission, with added links provided by Psychoanalytic Electronic Publishing (PEP).</p>
+<p>The PEP Psychoanalytic Glossary is intended to bring the psychoanalytic concepts defined by the leading psychoanalytic glossaries together, so that researchers and practitioners can quickly compare and understand historical perspectives and definitions. While the glossary is shown here as a more traditional, linear, book of alphabetized terms, this presentation is only one of the views provided by the PEP-Archive.</p>
+<p>Terms from the glossary are hyperlinked from within articles in PEP. As you move your cursor over the text in any article terms will change colour. When they do  a simple click brings up a pop-up window and the user will be able to see the definitions and discussion from each of the glossaries together, providing all the relevant information from multiple sources in a single view.</p>
+<p>Historically, prior to moving to the PEP-Web platform on the internet, the PEP CD-ROM Search Engine had a thesaurus function which was adapted from a glossary terms database provided by George Klempner. The new and enhanced PEP Consolidated Psychoanalytic Glossary was first described by  the PEP Scholars, a group of psychoanalytic scholars, chaired by Robert Michels, MD and enthusiastically supported and advised by Peter Fonagy. They formulated how best to upgrade the PEP Search Engine. The enhancement proposed took into account the sophisticated needs of the psychoanalytic researcher, alongside the needs of the traditional University indexing system. It was noted that there are many glossaries, each with subtleties of definition, depending upon the frame of reference or psychoanalytical school of the author.
+
+</p>
+<p>More glossaries are anticipated to be integrated as PEP obtains the rights.</p>
+<grp name="TOC">
+			<h1 c="u" align="left" class="sect" id="ZBK.069.0000A.H00000">Contents</h1>
+			<tbl id="T001" type="toc" align="center" ewide="false">
+				<table>
+					<tgroup cols="2" align="center">
+						<colspec colnum="1" colname="title" colwidth="3*" align="left"/>
+						<colspec colnum="2" colname="pgnum" colwidth="1*" align="right"/>
+						<tbody>
+							<row>
+								<entry>Introduction</entry>
+								<entry>i</entry>
+							</row>
+							<row>
+								<entry><b> Entries</b></entry>
+								<entry/>
+							</row>
+							<row>
+								<entry><pgx rx="zbk.069.0001A.P0001">A</pgx></entry>
+								<entry><pgx rx="zbk.069.0001A.P0001">A1 </pgx></entry>
+							</row>
+							<row>
+								<entry><pgx rx="zbk.069.0001B.P0001">B</pgx></entry>
+								<entry><pgx rx="zbk.069.0001B.P0001">B1</pgx></entry>
+							</row>
+							<row>
+								<entry><pgx rx="zbk.069.0001C.P0001">C</pgx></entry>
+								<entry><pgx rx="zbk.069.0001C.P0001">C1</pgx></entry>
+							</row>
+							<row>
+								<entry><pgx rx="zbk.069.0001D.P0001">D</pgx></entry>
+								<entry><pgx rx="zbk.069.0001D.P0001">D1</pgx></entry>
+							</row>
+							<row>
+								<entry><pgx rx="zbk.069.0001E.P0001">E</pgx></entry>
+								<entry><pgx rx="zbk.069.0001E.P0001">E1</pgx></entry>
+							</row>
+							<row>
+								<entry><pgx rx="zbk.069.0001F.P0001">F</pgx></entry>
+								<entry><pgx rx="zbk.069.0001F.P0001">F1</pgx></entry>
+							</row>
+							<row>
+								<entry><pgx rx="zbk.069.0001G.P0001">G</pgx></entry>
+								<entry><pgx rx="zbk.069.0001G.P0001">G1</pgx></entry>
+							</row>
+							<row>
+								<entry><pgx rx="zbk.069.0001H.P0001">H</pgx></entry>
+								<entry><pgx rx="zbk.069.0001H.P0001">H1</pgx></entry>
+							</row>
+							<row>
+								<entry><pgx rx="zbk.069.0001I.P0001">I</pgx></entry>
+								<entry><pgx rx="zbk.069.0001I.P0001">I1</pgx></entry>
+							</row>
+							<row>
+								<entry><pgx rx="zbk.069.0001J.P0001">J</pgx></entry>
+								<entry><pgx rx="zbk.069.0001J.P0001">J1</pgx></entry>
+							</row>
+							<row>
+								<entry><pgx rx="zbk.069.0001K.P0001">K</pgx></entry>
+								<entry><pgx rx="zbk.069.0001K.P0001">K1</pgx></entry>
+							</row>
+							<row>
+								<entry><pgx rx="zbk.069.0001L.P0001">L</pgx></entry>
+								<entry><pgx rx="zbk.069.0001L.P0001">L1</pgx></entry>
+							</row>
+							<row>
+								<entry><pgx rx="zbk.069.0001M.P0001">M</pgx></entry>
+								<entry><pgx rx="zbk.069.0001M.P0001">M1</pgx></entry>
+							</row>
+							<row>
+								<entry><pgx rx="zbk.069.0001N.P0001">N</pgx></entry>
+								<entry><pgx rx="zbk.069.0001N.P0001">N1</pgx></entry>
+							</row>
+							<row>
+								<entry><pgx rx="zbk.069.0001O.P0001">O</pgx></entry>
+								<entry><pgx rx="zbk.069.0001O.P0001">O1</pgx></entry>
+							</row>
+							<row>
+								<entry><pgx rx="zbk.069.0001P.P0001">P</pgx></entry>
+								<entry><pgx rx="zbk.069.0001P.P0001">P1</pgx></entry>
+							</row>
+							<row>
+								<entry><pgx rx="zbk.069.0001Q.P0001">Q</pgx></entry>
+								<entry><pgx rx="zbk.069.0001Q.P0001">Q1</pgx></entry>
+							</row>
+							<row>
+								<entry><pgx rx="zbk.069.0001R.P0001">R</pgx></entry>
+								<entry><pgx rx="zbk.069.0001R.P0001">R1</pgx></entry>
+							</row>
+							<row>
+								<entry><pgx rx="zbk.069.0001S.P0001">S</pgx></entry>
+								<entry><pgx rx="zbk.069.0001S.P0001">S1</pgx></entry>
+							</row>
+							<row>
+								<entry><pgx rx="zbk.069.0001T.P0001">T</pgx></entry>
+								<entry><pgx rx="zbk.069.0001T.P0001"> T1</pgx></entry>
+							</row>
+							<row>
+								<entry><pgx rx="zbk.069.0001U.P0001">U</pgx></entry>
+								<entry><pgx rx="zbk.069.0001U.P0001"> U1</pgx></entry>
+							</row>
+							<row>
+								<entry><pgx rx="zbk.069.0001V.P0001">V</pgx></entry>
+								<entry><pgx rx="zbk.069.0001V.P0001"> V1</pgx></entry>
+							</row>
+							<row>
+								<entry><pgx rx="zbk.069.0001W.P0001">W</pgx></entry>
+								<entry><pgx rx="zbk.069.0001W.P0001"> W1</pgx></entry>
+							</row>
+							<row>
+								<entry><pgx rx="zbk.069.0001X.P0001">X</pgx></entry>
+								<entry><pgx rx="zbk.069.0001X.P0001"> X1</pgx></entry>
+							</row>
+							<row>
+								<entry><pgx rx="zbk.069.0001Y.P0001">Y</pgx></entry>
+								<entry><pgx rx="zbk.069.0001Y.P0001"> Y1</pgx></entry>
+							</row>
+							<row>
+								<entry><pgx rx="zbk.069.0001Z.P0001">Z</pgx></entry>
+								<entry><pgx rx="zbk.069.0001Z.P0001"> Z1</pgx></entry>
+							</row>
+						</tbody>
+					</tgroup>
+				</table>
+			</tbl>
+		</grp><h1 c="t">References</h1>
+		<p>PEP will continue to add sources to this consolidated glossary: curerntly, the sources
+			include:</p>
+		<be id="B005"><a><l>Auchincloss </l>, E. L.</a>, &amp; <a><l>Samberg, </l>, E.</a>
+				(<y>2012</y>).<bst>Psychoanalytic Terms and Concepts.</bst>. <bp>New Haven: Yale
+				University Press</bp>.</be>
+<be id="B001"><a><l>Hinshelwood</l>, R. D.</a>  (<y>1989</y>).<bst>A Dictionary of Kleinian
+				Thought.</bst>. <bp>London: Free Association Books</bp>.</be>
+		<be id="B007"><a><l>Junkers</l>, G. </a><bst>EPF Glossary of Psychoanalysis in
+				Europe.</bst><bp>Karnac Books</bp>
+		</be>
+<be id="B002" rx="IPL.094.0001A"><a><l>Laplanche</l>, J.</a>, &amp; <a><l>Pontalis</l>, J. B.</a>
+				(<y>1973</y>).<bst>The Language of Psychoanalysis.</bst> New York/London: <bp>W. W.
+				Norton</bp>.</be>
+<be id="B003"><a><l>Moore</l>, B.</a>, &amp; <a><l>Fine</l>, B. D.</a> (<y>1968</y>). <bst>A
+				Glossary of Psychoanalytic Terms and Concepts.</bst>
+			<bp>New York: American Psychoanalytic Association.</bp>
+		</be>
+		<be id="B006"><a><l>Skelton</l>, R.</a>(Ed.). (<y>2006</y>). <bst>The Edinburgh International
+				Encyclopaedia of Psychoanalysis.</bst><bp>Edinburgh: Edinburgh University
+			Press</bp></be>
+<pb><n prefixused="R">i</n></pb>
+</body>
+</pepkbd3>

@@ -344,7 +344,7 @@ def add_to_articles_removed_table_fullinfo(ocd, artInfo, verbose=None):
         "art_title":  artInfo.art_title,
         "src_title_abbr":  artInfo.src_title_abbr,  
         "src_code":  artInfo.src_code,  
-        "art_year":  artInfo.art_year,
+        "art_year":  artInfo.art_year_int,
         "art_vol_int":  artInfo.art_vol_int,
         "art_vol_str":  artInfo.art_vol_str,
         "art_vol_suffix":  artInfo.art_vol_suffix,

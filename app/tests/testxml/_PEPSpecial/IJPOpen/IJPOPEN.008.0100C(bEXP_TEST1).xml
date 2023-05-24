@@ -1,0 +1,77 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE pepkbd3 SYSTEM "https://pep-web-includes.s3.amazonaws.com/pepkbd3.dtd">
+<pepkbd3 lang="pt" procby="opasXMLProcessor.2023.0420/v.1.0.110">
+    <meta>
+        <adldata>
+            <adlfield>submission-date</adlfield>
+            <adlval>2022-12-12</adlval>
+        </adldata>
+        <adldata>
+            <adlfield>region</adlfield>
+            <adlval>Europe</adlval>
+        </adldata>
+        <adldata>
+            <adlfield>assigned-editor</adlfield>
+            <adlval>Beatriz de Leon de Bernardi</adlval>
+        </adldata>
+        <adldata>
+            <adlfield>author-country</adlfield>
+            <adlval>Portugal</adlval>
+        </adldata>
+        <adldata>
+            <adlfield>submitting-language</adlfield>
+            <adlval>Portuguese</adlval>
+        </adldata>
+        <adldata>
+            <adlfield>manuscript-id</adlfield>
+            <adlval>IJP-22-211.r2</adlval>
+        </adldata>
+    </meta>
+    <artinfo arttype="ART" j="IJPOPEN" issuetitle="Original Articles" id="IJPOPEN.008.0100C">
+        <artyear>2021</artyear>
+        <artvol actual="8">8</artvol>
+        <artpgrg>1-2</artpgrg>
+        <arttitle lang="en">Love and Idealization: A Test Sample File</arttitle>
+        <artqual rx="IJPOPEN.008.0100C"/><artsub lang="en">For Consideration by The International Journal of Psychoanalysis</artsub>
+        <artauth hidden="false">
+            <aut affid="A01" authindexid="Revista, Fred" listed="true" role="author">
+                <nfirst>Fred</nfirst>
+                <nlast>Revista</nlast>
+            </aut>
+            <autaff affid="A01">
+                <instit>The Institute</instit>
+                <addr>
+                    <ln>4345432</ln>
+                    <ln><webx url="mailto:frevista@gmail.com" type="email">frevista@gmail.com</webx></ln>
+                </addr>
+            </autaff>
+        </artauth>
+        <artkwds><impx type="KEYWORD">Love</impx><impx type="KEYWORD">Idealization</impx><impx type="KEYWORD">Testing</impx></artkwds></artinfo>
+    <abs><p lang="en">This article is a test file. The third version.  Still a few more minutes later.</p></abs>
+    <body>
+        <pb>
+            <n nextpgnum="P0002" prefixused="">1</n>
+        </pb>
+        <p><i>Nineteen Eighty-Four</i> is an emblematic book of the 20th century, standing as one of
+            the most read and quoted today. Nevertheless, it has been the dystopian universe of
+            Oceania that have been the object of our testing</p>
+        <h2 id="H0022">Conclusion</h2>
+        <p>Love, Hate for testing only.</p>
+        <pb>
+            <n nextpgnum="P0043" prefixused="">2</n>
+        </pb>
+    </body>
+    <bib>
+        <h1 id="H0023">References</h1>
+        <be id="B001">The reference from the author's master's thesis is missing as instructed in the instructions for authors.</be>
+        <pb><n>43</n></pb>
+    </bib>
+<unit type="glossary_term_dict"><!-- {"object": 1} --></unit><unit type="previousversions">
+                <h1>PEP-Web Manuscript Version History</h1>
+                <list type="BUL1">
+                	<li><p><impx type="RVDOC" rx="IJPOPEN.008.0100A">2021-10-01</impx></p></li>
+	<li><p><impx type="RVDOC" rx="IJPOPEN.008.0100B">2021-10-01</impx></p></li>
+	<li><p><impx type="RVDOC" rx="IJPOPEN.008.0100C">2022-12-12</impx></p></li>
+
+                </list>
+            </unit></pepkbd3>

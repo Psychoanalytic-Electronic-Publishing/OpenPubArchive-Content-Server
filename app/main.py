@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2023, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2023.0522/v2.3.022"   # new admin char details report
+__version__     = "2023.0524/v2.3.023"   # new admin char details report
 __status__      = "Development/Libs/Loader"  
 
 """
@@ -755,15 +755,14 @@ async def admin_reports(response: Response,
         if not loggedinrecords:
             report_view = "vw_reports_session_activity_not_logged_in"
             orderby_clause = ""
-            if sortorder == "DESC":
-                report_view = "vw_reports_session_activity_not_logged_in_desc"
+            #if sortorder == "DESC":
+                #report_view = "vw_reports_session_activity_not_logged_in_desc"
         else:
             report_view = "vw_reports_session_activity" # default built in sort, ASC
             orderby_clause = ""
-            if sortorder == "DESC":
-                report_view = "vw_reports_session_activity_desc"
+            #if sortorder == "DESC":
+                #report_view = "vw_reports_session_activity_desc"
                 
-
         if matchstr is not None:
             extra_condition = f" AND params RLIKE '{matchstr}'"
         orderby_clause = f"ORDER BY last_update {sortorder}"
@@ -5785,10 +5784,11 @@ async def documents_image_fetch(response: Response,
 
 
 if __name__ == "__main__":
-    from localsecrets import CONFIG
+    from localsecrets import CONFIG, DBNAME
     print(f"Server Running: ({localsecrets.BASEURL}:{localsecrets.API_PORT_MAIN})")
     print (f"Running in Python: {sys.version_info[0]}.{sys.version_info[1]}")
     print (f"Configuration used: {CONFIG}")
+    print (f"Database Name: {DBNAME}")
     print (f"Version: {__version__}")
     import fastapi
     import pydantic

@@ -1,0 +1,39 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE pepkbd3 PUBLIC "-//PEP/DTD PEP KBD V3.0//EN" "pepkbd3.dtd">
+<pepkbd3>
+<artinfo arttype="ART" j="IFP">
+<artyear>2008</artyear>
+<artvol>17</artvol>
+<artiss>3</artiss>
+<artpgrg>158-168</artpgrg>
+<arttitle>The Vicissitudes of Affect in Horney's Theory</arttitle>
+<artauth>
+<aut><nfirst>Mario</nfirst> <nlast>Rendón</nlast> <ndeg dgr="MD"/> <nbio>Past Editor, The American Journal of Psychoanalysis; Past Dean, The American Institute of Psychoanalysis; and Past President, The Association for the Advancement of Psychoanalysis.</nbio></aut>
+<autaff>
+<addr>
+<ln>333 East 30th Street Ap. 8L, New York, NY 10016, USA. Tel: +1-212-532-6840. E-mail: <url>mrendon@pol.net</url></ln>
+</addr>
+</autaff>
+</artauth>
+<artkwds>Psychoanalysis, real self, actual self, alienation, imagination, value, Hegel</artkwds>
+</artinfo>
+<abs>
+<p>Karen Horney, a Neo-Freudian analyst who immigrated from Germany to the USA, undertook the difficult task of developing a theory that remained concrete psychology without resorting to biology or to metapsychological entelechies. Although her basic construct, as in Freud, is a conflict between nature and culture, nature for her is the naturally endowed <i>real self,</i> which the neurotic abandons bowing to cultural pressures. This process of desertion is teleological and based on imagination, and is also creative. It entails the pursuit of a god-like <i>idealized image</i> of the self shaped according to narrow and despoiled values. Being interpersonal, Horney's theory avoids third-person objectification which creates a false distance; it thus remains (inter)subjective. A theory of interpersonal affect, it is dramatic before being dynamic. It also abandons claims to universality as it does to the “objectivity” of the natural sciences. Horney's focus on <i>alienation</i> brings her close to Hegel and Marx, a neglected fact, and she pioneered feminist and self-help theories. The difficulty in reading Horney is not her abstruseness, since her theory refuses technicism. It resides rather in that resistance created by what Althusser called <i>interpellation:</i> one feels her finger pointed at oneself as one reads.</p>
+</abs>
+<body>
+        <p>It is only during the Romantic Revolution that affect really achieves a place in
+            philosophy. The Romantics protest the arid hegemony that reason has exerted up to Kant.
+            They advocate for a new approach to embrace the totality of man in a scientific
+            equation. Feeling, language, art, passion, dreaming, even madness must be included <bx
+                r="B023">(Taylor, 1975)</bx>.</p>
+        <p>...Sample article, Truncated.</p>
+    </body>
+    <bib>
+        <h1 id="H0014">References</h1>
+        <be id="B023"><a><l>Taylor</l>, C.</a> (<y>1975</y>). <bst>Hegel</bst>. Cambridge:
+                <bp>Cambridge University Press</bp>.</be>
+        <pb>
+            <n>168</n>
+        </pb>
+    </bib>
+</pepkbd3>

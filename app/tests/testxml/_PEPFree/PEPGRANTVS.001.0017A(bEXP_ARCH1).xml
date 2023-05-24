@@ -1,0 +1,107 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE pepkbd3 SYSTEM "https://pep-web-includes.s3.amazonaws.com/pepkbd3.dtd">
+<pepkbd3 procby="opasXMLProcessor.2023.0420/v.1.0.110">
+<meta>
+        <adldata>
+            <adlfield>submission-date</adlfield>
+            <adlval>2022-04-12</adlval>
+        </adldata>
+        <adldata>
+            <adlfield>Publisher</adlfield>
+            <adlval>Psychoanalytic Electronic Publishing</adlval>
+        </adldata>
+    </meta>
+<artinfo arttype="VID" j="PEPGRANTVS" preview="pepgrantvs.001.0017a.preview" vidcat="interviews" ISSN="2472-6982" id="PEPGRANTVS.001.0017A">
+        <artyear>2022</artyear>
+        <artvol actual="1">1</artvol>
+        <artiss>4</artiss>
+        <artissinfo>
+            <isstitle>PEP Video Grants Project Winners 2021</isstitle>
+        </artissinfo>
+        <artpgrg style="arabic">17</artpgrg>
+        <arttitle>Uninvited Guests</arttitle>
+        <artqual rx="PEPGRANTVS.001.0017A"/><artauth hidden="false">
+                <aut role="produced-by" listed="true" authindexid="Allison, Liz">
+                <nfirst>Liz</nfirst>
+                <nlast> Allison</nlast>
+                </aut>
+                <aut role="produced-by" listed="true" authindexid="Barrett, Angela">
+                <nfirst>Angela</nfirst>
+                <nlast>Barrett</nlast>
+                </aut>
+                <aut role="produced-by" listed="true" authindexid="Haghpanah-Shirwan, Zara">
+                <nfirst>Zara</nfirst>
+                <nlast>Haghpanah-Shirwan</nlast>
+                </aut>
+                <aut role="produced-by" listed="true" authindexid="Savla, Vanshikaa">
+                <nfirst>Vanshikaa</nfirst>
+                <nlast>Savla</nlast>
+                </aut>
+                <aut role="narrated-by" listed="false" authindexid="Allison, Liz">
+                <nfirst>Liz</nfirst>
+                <nlast>Allison</nlast>
+            </aut>
+            <aut role="interviewee" listed="false" authindexid="Ferro, Antonino">
+                <nfirst>Antonino</nfirst>
+                <nlast> Ferro</nlast>
+            </aut>
+            <aut role="interviewee" listed="false" authindexid="Gauthier, Martin">
+            <nfirst>Martin</nfirst>
+                <nlast>Gauthier</nlast>
+                </aut>
+                <aut role="interviewee" listed="false" authindexid="Pick, Daniel">
+            <nfirst>Daniel</nfirst>
+                <nlast>Pick</nlast>
+                </aut>
+                 <aut role="interviewee" listed="false" authindexid="Vermote, Rudi">
+            <nfirst>Rudi </nfirst>
+                <nlast>Vermote</nlast>
+                </aut>
+                <aut role="interviewee" listed="false" authindexid="Zeavin, Lynne">
+            <nfirst>Lynne</nfirst>
+                <nlast>Zeavin</nlast>
+                </aut>                     
+                </artauth>
+        <artkwds><impx type="KEYWORD">Pandemic</impx><impx type="KEYWORD">Covid-19</impx><impx type="KEYWORD">Lockdown</impx><impx type="KEYWORD">Dreams</impx></artkwds></artinfo>
+<abs>
+        <p>Inspired by reports of unusually vivid dreaming during the first Covid-19 lockdown, a small group of postgraduate students at the UCL Psychoanalysis Unit were inspired to start collecting Lockdown Dreams, forming the basis for this series of films. In this third instalment, we asked an international group of psychoanalysts to reflect on their experience of dreams during the pandemic.</p>
+    </abs><body>
+        <p/>
+        <p>[Video Removed from Sample Article]</p>
+        <p/>
+        <p>[MUSIC PLAYING]</p>
+        <p>MARTIN GAUTHIER: Here, the lockdown was certainly a shock. It was a narcissistic blow,
+            putting the ego in crisis. </p>
+        <p>LIZ ALLISON: Freud thought that psychoanalysis was responsible for dealing the third of
+            three major blows to human narcissism. After Copernicus had shown that the sun does not
+            revolve around the Earth, and Darwin had revealed our descent from the apes, our dreams
+            serve as constant reminders of the third painful blow, perhaps the hardest of the three,
+            that the ego is not master in its own house. During the pandemic, the disturbances
+            caused by these night visitors became more frequent, more vivid, and often more
+            upsetting. However, when we decided to start collecting specimens of lockdown dreams, we
+            discovered that many people were very pleased to be offered an opportunity to share
+            them. </p>
+        <p>RUDI VERMOTE: As analysts, we are used to listening to dreams as part of a process over
+            time, reflecting the inner world of a patient. This project, however, is unique. It
+            presents many dreams without any background of the patient, but all the dreams are
+            related to COVID. </p>
+        <p>LIZ ALLISON: There have been other examples of collections of dreams, both before and
+            after Freud. </p>
+        <p>DANIEL PICK: I think Jesuits in the 17th century collected dreams from various far-flung
+            parts of the world. And there's a long history of collecting dreams, I think, in the
+            hope that it would tell the researcher something important. So, there's something, I
+            think, that is interesting to just think about the timing of when researchers and
+            academics as well as psychoanalysts return to the fundamental question of our dream
+            life. </p>
+        <p>LIZ ALLISON: In the past, collections of dreams have often been motivated by deeply
+            unwelcome and disturbing experiences that feel impossible to process. </p>
+        <p>DANIEL PICK: These kinds of collective dream projects often seem to come out of periods
+            of conflict and obvious political and social disturbance. So, in the aftermath of the
+            Second World War and in the early Cold War, there seemed to be, also, this interest in
+            gathering collective experiences of dreams. </p>
+        <p>Sample Article Truncated</p>
+        <pb>
+            <n>17</n>
+        </pb>
+    </body>
+<unit type="glossary_term_dict"><!-- {"dreams": 15, "ego": 2, "dream": 2, "crisis": 1, "psychoanalysis": 1, "narcissism": 1, "conflict": 1} --></unit></pepkbd3>

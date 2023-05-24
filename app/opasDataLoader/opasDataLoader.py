@@ -544,6 +544,7 @@ def main():
             print("Messaging verbose: ", options.display_verbose)
             print("Input data Root: ", start_folder)
             print("Input data Subfolder: ", options.subFolder)
+            print(f"Database: {localsecrets.DBNAME}")
 
             selected_output_build = opasConfig.DEFAULT_OUTPUT_BUILD
 
