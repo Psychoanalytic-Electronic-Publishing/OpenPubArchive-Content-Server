@@ -10,7 +10,6 @@ def handler(event, context):
     response = client.list_executions(
         stateMachineArn=os.environ["STATE_MACHINE_ARN"],
         statusFilter='RUNNING',
-        maxResults=1000
     )
     
     return {
