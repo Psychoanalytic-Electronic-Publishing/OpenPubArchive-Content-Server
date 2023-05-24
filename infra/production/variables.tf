@@ -21,3 +21,8 @@ variable "security_group_ids" {
   description = "Security group ID"
   default     = ["sg-0b6da54293d1ad2e1"]
 }
+
+variable "cors_origin" {
+  description = "CORS origin"
+  default     = "https://pep-web.org"
+}
