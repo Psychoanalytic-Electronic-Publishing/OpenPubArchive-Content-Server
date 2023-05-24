@@ -22,6 +22,23 @@ resource "aws_lambda_permission" "allow_stop_task" {
   source_arn    = "${aws_api_gateway_rest_api.api_gateway.execution_arn}/*/*/*"
 }
 
+resource "aws_iam_role_policy" "stop_task_lambda_policy" {
+  role = module.stop_task_lambda.lambda_role_name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = [
+          "states:StopExecution",
+        ]
+        Effect   = "Allow"
+        Resource = "*"
+      },
+    ]
+  })
+}
+
 locals {
   stop_task_integration = {
     post = {
