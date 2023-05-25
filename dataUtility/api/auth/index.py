@@ -1,6 +1,7 @@
 import re
 from urllib import request
 import json
+import os
 
 def handler(event, context):
     print("Client token: " + event['authorizationToken'])
@@ -30,7 +31,7 @@ def handler(event, context):
 
 def session_is_admin(session_id):
     try:
-        response = request.urlopen(f'https://pads.pep-web.org/PEPSecure/api/v1/Users/?SessionId={session_id}')
+        response = request.urlopen(f'{os.environ["PADS_ROOT"]}/PEPSecure/api/v1/Users/?SessionId={session_id}')
         data = json.load(response)
         return data["UserType"] == "Admin"
     except Exception as e:

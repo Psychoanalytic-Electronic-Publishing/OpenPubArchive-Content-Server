@@ -8,6 +8,9 @@ module "admin_auth_lambda" {
   runtime                 = "python3.8"
   ignore_source_code_hash = true
 
+  environment_variables = {
+    PADS_ROOT = var.pads_root
+  }
 
   tags = {
     stage = var.env

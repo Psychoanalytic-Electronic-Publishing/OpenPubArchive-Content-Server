@@ -58,4 +58,5 @@ module "data_utility_api" {
   env               = var.env
   cors_origin       = var.cors_origin
   state_machine_arn = module.data_utility.state_machine_arn
+  pads_root         = var.pads_root
 }
