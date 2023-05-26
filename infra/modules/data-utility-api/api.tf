@@ -15,7 +15,24 @@ resource "aws_api_gateway_rest_api" "api_gateway" {
       "/start" = local.start_task_integration
       "/list"  = local.list_tasks_integration
       "/stop"  = local.stop_task_integration
-    }
+    },
+    components = {
+      securitySchemes = {
+        admin-auth = {
+          type = "apiKey",
+          name = "Authorization",
+          in   = "header",
+          x-amazon-apigateway-authorizer = {
+            identitySource               = "method.request.header.Authorization",
+            authorizerUri                = module.admin_auth_lambda.lambda_function_invoke_arn,
+            authorizerResultTtlInSeconds = 300,
+            type                         = "token",
+            enableSimpleResponses        = false
+          },
+          x-amazon-apigateway-authtype = "Custom scheme with corporate claims"
+        }
+      }
+    },
   })
 }
 

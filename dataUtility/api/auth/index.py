@@ -17,12 +17,13 @@ def handler(event, context):
     policy.restApiId = apiGatewayArnTmp[0]
     policy.region = tmp[3]
     policy.stage = apiGatewayArnTmp[1]
-    policy.denyAllMethods()
 
     if session_is_admin(event['authorizationToken']):
         policy.allowMethod(HttpVerb.POST, '/start')
         policy.allowMethod(HttpVerb.POST, '/stop')
         policy.allowMethod(HttpVerb.GET, '/list')
+    else:
+        policy.denyAllMethods()
 
     # Finally, build the policy
     authResponse = policy.build()
@@ -33,6 +34,9 @@ def session_is_admin(session_id):
     try:
         response = request.urlopen(f'{os.environ["PADS_ROOT"]}/PEPSecure/api/v1/Users/?SessionId={session_id}')
         data = json.load(response)
+
+        print(data)
+
         return data["UserType"] == "Admin"
     except Exception as e:
         print(e)

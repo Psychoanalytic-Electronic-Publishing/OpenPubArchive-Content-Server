@@ -42,6 +42,10 @@ resource "aws_iam_role_policy" "stop_task_lambda_policy" {
 locals {
   stop_task_integration = {
     post = {
+      security = [{
+        admin-auth = []
+      }],
+
       x-amazon-apigateway-integration = {
         httpMethod           = "POST"
         payloadFormatVersion = "1.0"

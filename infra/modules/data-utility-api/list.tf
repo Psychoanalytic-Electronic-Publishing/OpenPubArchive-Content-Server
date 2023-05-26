@@ -46,6 +46,10 @@ resource "aws_lambda_permission" "allow_list_tasks" {
 locals {
   list_tasks_integration = {
     get = {
+      security = [{
+        admin-auth = []
+      }],
+
       x-amazon-apigateway-integration = {
         httpMethod           = "POST"
         payloadFormatVersion = "1.0"

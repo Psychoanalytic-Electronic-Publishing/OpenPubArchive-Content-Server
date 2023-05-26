@@ -46,6 +46,10 @@ resource "aws_iam_role_policy" "start_task_lambda_policy" {
 locals {
   start_task_integration = {
     post = {
+      security = [{
+        admin-auth = []
+      }],
+
       x-amazon-apigateway-integration = {
         httpMethod           = "POST"
         payloadFormatVersion = "1.0"
