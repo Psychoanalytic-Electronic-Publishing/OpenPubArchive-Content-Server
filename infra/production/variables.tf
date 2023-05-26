@@ -26,3 +26,8 @@ variable "cors_origin" {
   description = "CORS origin"
   default     = "https://pep-web.org"
 }
+
+variable "pads_root" {
+  description = "Root domain for PaDS"
+  default     = "https://pads.pep-web.org"
+}
