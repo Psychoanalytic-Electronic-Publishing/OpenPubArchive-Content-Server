@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2023, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2023.0524/v2.3.023"   # new admin char details report
+__version__     = "2023.0527/v2.3.024"   # new admin char details report
 __status__      = "Development/Libs/Loader"  
 
 """
@@ -268,11 +268,12 @@ app.add_middleware(
     allow_headers = ["*"],
 )
 
-#from config import whatsnewdb
-#from config import mostviewedcache
-#from config import mostcitedcache
-
-# load this separately in individual modules, so mostviewedcache and mostcitedcache are not loaded when only msgdb is needed
+import opasWhatsNewCache
+whatsnewdb = opasWhatsNewCache.whatsNewDB()
+import opasCacheMostViewed
+mostviewedcache = opasCacheMostViewed.mostViewedCache()
+import opasCacheMostCited
+mostcitedcache = opasCacheMostCited.mostCitedCache()
 # from config import msgdb
 import opasMessageLib
 msgdb = opasMessageLib.messageDB()
@@ -819,6 +820,18 @@ async def admin_reports(response: Response,
                   ]
     elif report == models.ReportTypeEnum.characterCountsDetails:
         report_view = "vw_reports_charcounts_details"
+        orderby_clause = f"ORDER BY jrnlcode, year {sortorder}"
+        header = ["jrnlcode",
+                  "year",
+                  "vol",
+                  "char count",
+                  "no space char count",
+                  "article count",
+                  "earliest year", 
+                  "latest year"
+                  ]
+    elif report == models.ReportTypeEnum.characterCountsBookDetails:
+        report_view = "vw_reports_charcounts_sub_books_byvol"
         orderby_clause = f"ORDER BY jrnlcode, year {sortorder}"
         header = ["jrnlcode",
                   "year",

@@ -66,7 +66,7 @@
         <be id="B001">The reference from the author's master's thesis is missing as instructed in the instructions for authors.</be>
         <pb><n>43</n></pb>
     </bib>
-<unit type="glossary_term_dict"><!-- {"object": 1} --></unit><unit type="previousversions">
+<unit type="glossary_term_dict"><!-- {} --></unit><unit type="previousversions">
                 <h1>PEP-Web Manuscript Version History</h1>
                 <list type="BUL1">
                 	<li><p><impx type="RVDOC" rx="IJPOPEN.008.0100A">2021-10-01</impx></p></li>

@@ -9,8 +9,8 @@ This library is supports the main functionality of the OPAS Central Database
 The database has use and usage information.
 
 OPASCENTRAL TABLES (and Views) CURRENTLY USED:
-   vw_stat_most_viewed (depends on vw_stat_docviews_crosstab,
-                                   table articles)
+   vw_stat_most_viewed (depends on    vw_stat_docviews_crosstab,
+                                table api_articles)
 
    vw_stat_docviews_crosstab (depends on api_docviews,
                                          vw_stat_docviews_lastmonth,
@@ -30,7 +30,7 @@ OPASCENTRAL TABLES (and Views) CURRENTLY USED:
     
     Used in generators:
     
-      vw_stat_cited_crosstab_with_details2 (depeds on vw_stat_cited_crosstab2 + articles)
+      vw_stat_cited_crosstab_with_details2 (depeds on vw_stat_cited_crosstab2 + api_articles)
       vw_stat_most_viewed
 
 """
@@ -360,7 +360,7 @@ class opasCentralDB(object):
         self.open_connection(caller_name=fname) # make sure connection is open
         if self.db is not None:
             with closing(self.db.cursor(buffered=True, dictionary=True)) as curs:
-                sql = f"SELECT * from vw_jrnl_vols {src_code_clause};"
+                sql = f"SELECT * from vw_api_jrnl_vols {src_code_clause};"
                 curs.execute(sql)
                 warnings = curs.fetchwarnings()
                 if warnings:
@@ -2448,7 +2448,7 @@ class opasCentralDB(object):
     
     def record_document_view(self, document_id, session_info=None, view_type="Abstract"):
         """
-        Add a record to the api_doc_views table for specified view_type (Abstract, Document, PDF, PDFOriginal, or EPub)
+        Add a record to the api_docviews table for specified view_type (Abstract, Document, PDF, PDFOriginal, or EPub)
 
         Tested in main instance docstring
         

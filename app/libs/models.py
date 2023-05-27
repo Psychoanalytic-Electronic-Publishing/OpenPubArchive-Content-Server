@@ -83,6 +83,8 @@ class ReportTypeEnum(str, Enum):
     documentViewLog = "Document-View-Log"
     characterCounts = "Character-Count-Report"
     characterCountsDetails = "Character-Count-Details-Report"
+    characterCountsBookDetails = "Character-Count-Details-Book-Report"
+    
     #opasLogs = "Opas-Error-Logs"
     
 class TermTypeIDEnum(str, ExtendedEnum):

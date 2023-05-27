@@ -33,7 +33,7 @@ class TestDatabase(unittest.TestCase):
         import timeit
         timing = timeit.timeit('artyear = ocd.get_article_year("CFP.007.0001A")', setup='from opasCentralDBLib import opasCentralDB; ocd = opasCentralDB()', number=10)
         print (f"timing: {timing}")
-        assert(timing < 2.7) # 10 times slower running DB/Solr on AWS
+        assert(timing < 3.2) # 10 times slower running DB/Solr on AWS
     
     def test_count_open_sessions(self):
         ocd = opasCentralDB()

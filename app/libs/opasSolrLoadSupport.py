@@ -1078,7 +1078,7 @@ def check_if_start_of_section(ocd, art_id, fname=None):
     
     """
     ret_val = False
-    sql = f"select * from vw_article_firstsectnames where art_id='{art_id}'"
+    sql = f"select * from vw_opasloader_article_firstsectnames where art_id='{art_id}'"
     try:
         ocd.open_connection(caller_name=fname)
         if ocd.db is not None:

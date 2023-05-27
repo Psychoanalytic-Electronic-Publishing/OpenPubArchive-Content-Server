@@ -16,6 +16,18 @@ sessID, headers, session_info = test_login(username=PADS_TEST_ID2, password=PADS
 full_URL = base_plus_endpoint_encoded('/v2/Admin/LogLevel/?level=ERROR')
 response = requests.put(full_URL, headers=headers)
 
+def save_report(response):
+    content_disposition = response.headers['content-disposition']
+    # Split the content disposition header on the `;` delimiter.
+    content_disposition_parts = content_disposition.split(';')
+    # Get the value of the `filename` parameter.
+    filename = content_disposition_parts[1].split('=')[1]        
+    attachment = response.content
+    # Open a file to write the attachment to.
+    with open(filename, 'wb') as f:
+        # Write the attachment to the file.
+        f.write(attachment)        
+
 class TestReports(unittest.TestCase):
     """
     Note: tests are performed in alphabetical order, hence the function naming
@@ -260,23 +272,35 @@ class TestReports(unittest.TestCase):
         assert(response_info["count"] >= 1)
         assert(response_set[0]["row"]["jrnlgrpname"] == 'ADPSA')  # to validate content is in record
         
-    def test09b_document_char_counts_report_download(self):
+    def test09_document_char_counts_report_download(self):
         # note api_key is required, but already in headers
         full_URL = base_plus_endpoint_encoded(f'/v2/Admin/Reports/Character-Count-Report?getfullcount=false&download=true')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
-        content = response.headers['content-disposition']
-        print (content)
-        assert (content[0:10] == 'attachment')
+        content_disposition = response.headers['content-disposition']
+        print (content_disposition)
+        assert (content_disposition[0:10] == 'attachment')
+        save_report(response)
 
-    def test10a_document_char_counts_details_report_download(self):
+    def test10_document_char_counts_details_report_download(self):
         # note api_key is required, but already in headers
-        full_URL = base_plus_endpoint_encoded(f'/v2/Admin/Reports/Character-Count-Details-Report?getfullcount=false&download=true')
+        full_URL = base_plus_endpoint_encoded(f'/v2/Admin/Reports/Character-Count-Details-Report?getfullcount=false&download=true&limit=10000')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
-        content = response.headers['content-disposition']
-        print (content)
-        assert (content[0:10] == 'attachment')
+        content_disposition = response.headers['content-disposition']
+        print (content_disposition)
+        assert (content_disposition[0:10] == 'attachment')
+        save_report(response)
+
+    def test11_document_char_counts_book_details_report_download(self):
+        # note api_key is required, but already in headers
+        full_URL = base_plus_endpoint_encoded(f'/v2/Admin/Reports/Character-Count-Details-Book-Report?getfullcount=false&download=true&limit=10000')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        content_disposition = response.headers['content-disposition']
+        print (content_disposition)
+        assert (content_disposition[0:10] == 'attachment')
+        save_report(response)
         
 if __name__ == '__main__':
     unittest.main()

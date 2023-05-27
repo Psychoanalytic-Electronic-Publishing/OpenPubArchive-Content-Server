@@ -27,19 +27,19 @@
                         <tbody>
                             <row>
                                 <entry>Preface</entry>
-                                <entry><pgx rx="ZBK.028.R0007A.PR0007" type="INDEX">vii</pgx></entry>
+                                <entry><pgx rx="ZBK.028.0001A.PR0007" type="INDEX">vii</pgx></entry>
                             </row>
                             <row>
                                 <entry>Note on Editorial Method</entry>
-                                <entry><pgx rx="ZBK.028.R0013A.PR0013" type="INDEX">xiii</pgx></entry>
+                                <entry><pgx rx="ZBK.028.0001A.PR0013" type="INDEX">xiii</pgx></entry>
                             </row>
                             <row>
                                 <entry>Abbreviations of Works Cited</entry>
-                                <entry><pgx rx="ZBK.028.R0017A.PR0017" type="INDEX">xvii</pgx></entry>
+                                <entry><pgx rx="ZBK.028.0001A.PR0017" type="INDEX">xvii</pgx></entry>
                             </row>
                             <row>
                                 <entry>Introduction by Riccardo Steiner</entry>
-                                <entry><pgx rx="ZBK.028.R0021A.PR0021" type="INDEX">xxi</pgx></entry>
+                                <entry><pgx rx="ZBK.028.0001A.PR0021" type="INDEX">xxi</pgx></entry>
                             </row>
                             <row>
                                 <entry>Correspondence</entry>
@@ -47,15 +47,15 @@
                             </row>
                             <row>
                                 <entry>List of Correspondence</entry>
-                                <entry><pgx rx="ZBK.028.0773A.P0773" type="INDEX">773</pgx></entry>
+                                <entry><pgx rx="ZBK.028.0001A.P0773" type="INDEX">773</pgx></entry>
                             </row>
                             <row>
                                 <entry>References</entry>
-                                <entry><pgx rx="ZBK.028.0000A.P0795" type="INDEX">795</pgx></entry>
+                                <entry><pgx rx="ZBK.028.0001A.P0795" type="INDEX">795</pgx></entry>
                             </row>
                             <row>
                                 <entry>Glossary</entry>
-                                <entry><pgx rx="ZBK.028.0821A.P0821" type="INDEX">821</pgx></entry>
+                                <entry><pgx rx="ZBK.028.0001A.P0821" type="INDEX">821</pgx></entry>
                             </row>
                         </tbody>
                     </tgroup>
