@@ -513,7 +513,7 @@ def main():
     ocd =  opasCentralDBLib.opasCentralDB()
     # options.rootFolder defaults to localsecrets.FILESYSTEM_ROOT, unless option is specified otherwise
     # this allows relative paths, by specifying dataroot="", example:
-    #       --dataroot="" --only "./../tests/testdatasource/_PEPSpecial/IJPOpen/IJPOPEN.008.0100A(bKBD3).xml"
+    #       --dataroot="" --only "./../tests/testxml/_PEPSpecial/IJPOpen/IJPOPEN.008.0100A(bKBD3).xml"
     fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root=options.rootFolder)
 
     # set toplevel logger to specified loglevel
@@ -544,6 +544,7 @@ def main():
             print("Messaging verbose: ", options.display_verbose)
             print("Input data Root: ", start_folder)
             print("Input data Subfolder: ", options.subFolder)
+            print(f"Database: {localsecrets.DBNAME}")
 
             selected_output_build = opasConfig.DEFAULT_OUTPUT_BUILD
 
@@ -1077,7 +1078,7 @@ def main():
                     # 2022-04-22 New Section Name Workaround - This works but it means at least for new data, you can't run the load backwards as we currently do
                     #  on a full build.  Should be put into the client instead, really, during table gen.
                     # -----
-                    # Uses new views: vw_article_firstsectnames which is based on the new view vw_article_sectnames
+                    # Uses new views: vw_opasloader_article_firstsectnames which is based on the new view vw_opasloader_article_sectnames
                     #  if an article id is found in that view, it's the first in the section, otherwise it isn't
                     # check database to see if this is the first in the section
                     if 0: # make it switchable for now (newsecnm workaround) in case the workaround needs to stick around a while

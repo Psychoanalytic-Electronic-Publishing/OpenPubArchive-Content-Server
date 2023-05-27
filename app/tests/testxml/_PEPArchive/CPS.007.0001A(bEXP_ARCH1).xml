@@ -1,0 +1,36 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE pepkbd3 SYSTEM "https://pep-web-includes.s3.amazonaws.com/pepkbd3.dtd">
+<pepkbd3 procby="opasXMLProcessor.2023.0420/v.1.0.110"><meta><revisions><revbld>20030207</revbld><revdesc>Corrected typo seepp</revdesc></revisions></meta><artinfo lang="en" artsubtype="ART" j="CPS" artsource="A1V2" arttype="ART" id="CPS.007.0001A" ISSN="0010-7530"><artyear>1970</artyear><artvol actual="7">7</artvol><artiss>1</artiss><artpgrg style="arabic">1-20</artpgrg><arttitle lang="en">Autism and the Phase of Transition to Therapeutic Symbiosis</arttitle><artqual rx="CPS.007.0001A"/><artauth hidden="false"><aut authindexid="Searles, Harold F." listed="true" role="author"><nfirst>Harold</nfirst><nmid>F.</nmid><nlast>Searles</nlast><ndeg dgr="OTHER" other="M.D."/></aut>
+<autaff><addr><ln><cs lang="en" style="AuthorName">Harold F. Searles, M.D.</cs></ln><ln>5401 Westbard Avenue</ln><ln>Washington, D.C. 20016</ln></addr></autaff></artauth></artinfo>
+<body lang="en">
+        <p>THIS IS THE SECOND in a series of papers reporting my current concepts about autism,
+            symbiosis, and individuation. I am concerned, here, not only with patients suffering
+            from schizophrenia of whatever degree of severity, but with, for example, the
+            subtly-present autism that emerges in the course of the neurotic patient's analysis.</p>
+        <p>In the first paper, which dealt with pathologic symbiosis and autism, I mentioned
+            that</p>
+        <quote>
+            <p>As the months and years of the analyst's work with the autistic patient wear on, the
+                analyst is given to feel unneeded, incompetent, useless, callous, and, essentially,
+                    <i>non-human</i> in relation to his so troubled and beseeching and reproachful,
+                but so persistently autistic, patient. It is essential that the analyst be able to
+                endure this long period—a period in which, despite perhaps abundant data from the
+                patient, transference-interpretations are rarely feasible—in order that the
+                patient's transference-regression can reach the early level of ego-development at
+                which, in the patient's infancy or very early childhood, his potentialities for a
+                healthy mother-infant symbiosis became distorted into a defensively autistic mode of
+                ego functioning. At that level of ego-development the infant or young child had not
+                yet come to achieve a perceptual and experiential differentiation between himself
+                and his mother, <i>nor between his mother and the surrounding non-human world</i>.
+                When in the evolution of the transference that early level of ego-functioning
+                becomes accessible, then it is possible for therapeutically symbiotic processes to
+                occur between patient and analyst, and be interpretable as such. … patient and
+                analyst … experience one another and themselves in a manner analogous to that in
+                which a healthy mother and a healthy infant are immersed, as being far more than
+                merely human in the adult sense, but as forming confluently a whole growth-world."
+                    <bx r="B005">5</bx></p>
+        </quote>
+        <p>...Sample article, Truncated.</p>
+    </body>
+<pb><n>19</n></pb>
+<unit type="glossary_term_dict"><!-- {} --></unit></pepkbd3>

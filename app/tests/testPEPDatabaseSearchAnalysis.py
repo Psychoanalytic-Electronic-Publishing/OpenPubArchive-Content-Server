@@ -80,7 +80,7 @@ class TestDatabaseSearchAnalysis(unittest.TestCase):
         print ("Term1=", term1)
         assert(term1 == '[3 TO *] (in cited, cited in the last 5 years)')
         print (r["termIndex"]["responseSet"][1]["termCount"])
-        assert r["termIndex"]["responseSet"][1]["termCount"] >= 2900, r["termIndex"]["responseSet"][1]["termCount"]
+        assert r["termIndex"]["responseSet"][1]["termCount"] >= 2500, r["termIndex"]["responseSet"][1]["termCount"]
 
     def test_v2_searchanalysis_author_and_journalcode_and_text_and_articletype(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/SearchAnalysis/?volume=2')

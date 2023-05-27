@@ -1,7 +1,3 @@
 source opasCentralTables.sql
-
 source opasCentralViews.sql
-
 source opasCentralPEPSpecificBootstrap.sql
-
-source opasCentralPEPSpecificTestArticles.sql

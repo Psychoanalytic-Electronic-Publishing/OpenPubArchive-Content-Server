@@ -1,0 +1,22 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE pepkbd3 SYSTEM "https://pep-web-includes.s3.amazonaws.com/pepkbd3.dtd">
+<pepkbd3 procby="opasXMLProcessor.2023.0420/v.1.0.110"><artinfo lang="en" artsubtype="ART" j="CPS" artsource="A1V2" arttype="ART" id="CPS.001.0001A" ISSN="0010-7530"><artyear>1964</artyear><artvol actual="1">1</artvol><artiss>1</artiss><artpgrg style="arabic">1-29</artpgrg><arttitle lang="en">Schizophrenia and the Psychotherapeutic Field</arttitle><artqual rx="CPS.001.0001A"/><artauth hidden="false"><aut authindexid="Will, Otto A." listed="true" role="author"><nfirst>Otto</nfirst><nmid>Allen</nmid><nlast>Will</nlast><nsufx>Jr.</nsufx><ndeg dgr="OTHER" other="M.D."/></aut>
+</artauth></artinfo>
+<body lang="en">
+        <p>AS USED HERE, the term schizophrenia does not refer to a disease within a person, or to
+            an entity somehow apart from the involvement of man with his surroundings. For the
+            purposes of this presentation the word indicates a process of behavioral patterns,
+            reflecting to an as yet imprecisely determined extent previous, present, and anticipated
+            interpersonal, social, and cultural experience. "Schizophrenia" gains meaning as we
+            consider the uniqueness of the patient (whose behavior is schizophrenic), his associates
+            (those with whom he is more or less schizophrenic), the people of his past (with whom he
+            learned how to live and began to manifest schizophrenic behavior), his expectations of
+            the future (which may seem to require the perpetuation of psychosis), and situations in
+            which variations of the disorder appear. In brief, the term may be used to describe a
+            complex of operations in a social field.</p>
+        <p>...Sample article, Truncated.</p>
+        <pb>
+            <n>1</n>
+        </pb>
+    </body>
+<unit type="glossary_term_dict"><!-- {"schizophrenia": 2, "psychosis": 1} --></unit></pepkbd3>

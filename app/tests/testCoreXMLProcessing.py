@@ -171,7 +171,7 @@ class TestXMLProcessing(unittest.TestCase):
     def test_1_bld_from_kbd3(self):       
         command_lines = [
             # Force build via REBUILD option (or RELOAD) forces the build
-            ("Finished!", "loaded 10 documents", fr"{self.pycmd} {self.data_file3} --nocheck --nohelp --rebuild --inputbuild=bKBD3 --outputbuild=bEXP_TEST1"),
+            ("Finished!", "loaded 27 documents", fr"{self.pycmd} {self.data_file3} --nocheck --nohelp --rebuild --inputbuild=bKBD3 --outputbuild=bEXP_ARCH1"),
         ]
         
         test_counter = 1
@@ -199,8 +199,8 @@ class TestXMLProcessing(unittest.TestCase):
                     assert test_text in lin, (test_text, lin)
                     print (f"Test {test_counter} passed.")
                     if "bEXP_ARCH1" in lin:
-                        print (f"Deleting temporary test files: {delete_exp_arch1_files}")
-                        file_list = glob.glob(str(f"{delete_exp_arch1_files}"))
+                        print (f"Deleting temporary test files: {self.delete_exp_arch1_files}")
+                        file_list = glob.glob(str(f"{self.delete_exp_arch1_files}"))
                         count = 0
                         for file_path in file_list:
                             try:
@@ -213,7 +213,7 @@ class TestXMLProcessing(unittest.TestCase):
     def test_2_bld_from_kbd3(self):
                
         command_lines = [
-            ("Finished!", "loaded 0 documents (bEXP_TEST1)", fr"{self.pycmd} {self.data_file3} --nocheck --nohelp --verbose --smartload --inputbuild=bKBD3 --outputbuild=bEXP_TEST1"),
+            ("Finished!", "loaded 0 documents (bEXP_ARCH1)", fr"{self.pycmd} {self.data_file3} --nocheck --nohelp --verbose --smartload --inputbuild=bKBD3"),
             # The parens () around builds now optional, they will be added if missing
         ]
         
@@ -242,8 +242,8 @@ class TestXMLProcessing(unittest.TestCase):
                     assert test_text in lin, (test_text, lin)
                     print (f"Test {test_counter} passed.")
                     if "bEXP_ARCH1" in lin:
-                        print (f"Deleting temporary test files: {delete_exp_arch1_files}")
-                        file_list = glob.glob(str(f"{delete_exp_arch1_files}"))
+                        print (f"Deleting temporary test files: {self.delete_exp_arch1_files}")
+                        file_list = glob.glob(str(f"{self.delete_exp_arch1_files}"))
                         count = 0
                         for file_path in file_list:
                             try:
@@ -255,7 +255,7 @@ class TestXMLProcessing(unittest.TestCase):
 
     def test_3_bld_from_kbd3(self):
         command_lines = [
-            ("Finished!", "loaded 10 documents (bEXP_ARCH1)", fr"{self.pycmd} {self.data_file3} --nocheck --nohelp --verbose --rebuild --inputbuild=(bKBD3) --outputbuild=(bEXP_ARCH1)"),
+            ("Finished!", "loaded 27 documents", fr"{self.pycmd} {self.data_file3} --nocheck --nohelp --verbose --rebuild --inputbuild=(bKBD3) --outputbuild=(bEXP_ARCH1)"),
             # bEXP_ARCH1 files deleted automatically after above command
         ]
         
@@ -297,8 +297,8 @@ class TestXMLProcessing(unittest.TestCase):
 
     def test_4_bld_from_kbd3(self):
         command_lines = [
-            # bEXP_TEST1 files still in place
-            ("references for links", "56 references", fr"{self.pycmd} {self.data_file1} --nocheck --nohelp --verbose --smartload --outputbuild=(bEXP_TEST1)"),
+            # bEXP_ARCH1 files still in place
+            ("references for links", "56 references", fr"{self.pycmd} {self.data_file1} --nocheck --nohelp --verbose --smartload --outputbuild=(bEXP_ARCH1)"),
         ]
         
         test_counter = 4
@@ -326,8 +326,8 @@ class TestXMLProcessing(unittest.TestCase):
                     assert test_text in lin, (test_text, lin)
                     print (f"Test {test_counter} passed.")
                     if "bEXP_ARCH1" in lin:
-                        print (f"Deleting temporary test files: {delete_exp_arch1_files}")
-                        file_list = glob.glob(str(f"{delete_exp_arch1_files}"))
+                        print (f"Deleting temporary test files: {self.delete_exp_arch1_files}")
+                        file_list = glob.glob(str(f"{self.delete_exp_arch1_files}"))
                         count = 0
                         for file_path in file_list:
                             try:
@@ -340,7 +340,7 @@ class TestXMLProcessing(unittest.TestCase):
     def test_5_bld_from_kbd3(self):
         command_lines = [
             #  note it always builds when there's only one file specified.
-            ("Exporting!", "Writing precompiled XML file", fr"{self.pycmd} {self.data_file1} --nocheck --nohelp --verbose --smartload --outputbuild=(bEXP_TEST1)"),
+            ("Exporting!", "Writing precompiled XML file", fr"{self.pycmd} {self.data_file1} --nocheck --nohelp --verbose --smartload --outputbuild=(bEXP_ARCH1)"),
         ]
         
         test_counter = 5
@@ -368,8 +368,8 @@ class TestXMLProcessing(unittest.TestCase):
                     assert test_text in lin, (test_text, lin)
                     print (f"Test {test_counter} passed.")
                     if "bEXP_ARCH1" in lin:
-                        print (f"Deleting temporary test files: {delete_exp_arch1_files}")
-                        file_list = glob.glob(str(f"{delete_exp_arch1_files}"))
+                        print (f"Deleting temporary test files: {self.delete_exp_arch1_files}")
+                        file_list = glob.glob(str(f"{self.delete_exp_arch1_files}"))
                         count = 0
                         for file_path in file_list:
                             try:
@@ -409,8 +409,8 @@ class TestXMLProcessing(unittest.TestCase):
                     assert test_text in lin, (test_text, lin)
                     print (f"Test {test_counter} passed.")
                     if "bEXP_ARCH1" in lin:
-                        print (f"Deleting temporary test files: {delete_exp_arch1_files}")
-                        file_list = glob.glob(str(f"{delete_exp_arch1_files}"))
+                        print (f"Deleting temporary test files: {self.delete_exp_arch1_files}")
+                        file_list = glob.glob(str(f"{self.delete_exp_arch1_files}"))
                         count = 0
                         for file_path in file_list:
                             try:
@@ -423,7 +423,7 @@ class TestXMLProcessing(unittest.TestCase):
     def test_7_bld_from_kbd3(self):
         command_lines = [
             # Already built, should not load any
-            ("Finished!", "saved and loaded 10 documents (bEXP_ARCH1)", fr"{self.pycmd} {self.data_file3} --nocheck --nohelp --verbose --smartload"),
+            ("Finished!", "saved and loaded 0 documents (bEXP_ARCH1)", fr"{self.pycmd} {self.data_file3} --nocheck --nohelp --verbose --smartload"),
         ]
         
         test_counter = 7
@@ -465,7 +465,7 @@ class TestXMLProcessing(unittest.TestCase):
     def test_8_bld_from_kbd3(self):
         command_lines = [
             # Already built, should not load any
-            ("Finished!", "saved and loaded 0 documents (bEXP_TEST1)", fr"{self.pycmd} {self.data_file3} --nocheck --nohelp --verbose --smartload --inputbuild=(bKBD3) --outputbuild=(bEXP_TEST1)"),
+            ("Finished!", "saved and loaded 0 documents (bEXP_ARCH1)", fr"{self.pycmd} {self.data_file3} --nocheck --nohelp --verbose --smartload --inputbuild=(bKBD3) --outputbuild=(bEXP_ARCH1)"),
         ]
         
         test_counter = 8
@@ -493,8 +493,8 @@ class TestXMLProcessing(unittest.TestCase):
                     assert test_text in lin, (test_text, lin)
                     print (f"Test {test_counter} passed.")
                     if "bEXP_ARCH1" in lin:
-                        print (f"Deleting temporary test files: {delete_exp_arch1_files}")
-                        file_list = glob.glob(str(f"{delete_exp_arch1_files}"))
+                        print (f"Deleting temporary test files: {self.delete_exp_arch1_files}")
+                        file_list = glob.glob(str(f"{self.delete_exp_arch1_files}"))
                         count = 0
                         for file_path in file_list:
                             try:
@@ -507,8 +507,8 @@ class TestXMLProcessing(unittest.TestCase):
     def test_9_bld_from_kbd3(self):
         command_lines = [
             # Already built, should not load any
-            ## bEXP_TEST1 files still in place
-            ("Finished!", "loaded 0 documents (bEXP_TEST1)", fr"{self.pycmd} {self.data_file3} --nocheck --nohelp --verbose --smartload --outputbuild=(bEXP_TEST1)"), # should not reprocess if not changed
+            ## bEXP_ARCH1 files still in place
+            ("Finished!", "loaded 0 documents (bEXP_ARCH1)", fr"{self.pycmd} {self.data_file3} --nocheck --nohelp --verbose --smartload --outputbuild=(bEXP_ARCH1)"), # should not reprocess if not changed
         ]
         
         test_counter = 9
@@ -536,8 +536,8 @@ class TestXMLProcessing(unittest.TestCase):
                     assert test_text in lin, (test_text, lin)
                     print (f"Test {test_counter} passed.")
                     if "bEXP_ARCH1" in lin:
-                        print (f"Deleting temporary test files: {delete_exp_arch1_files}")
-                        file_list = glob.glob(str(f"{delete_exp_arch1_files}"))
+                        print (f"Deleting temporary test files: {self.delete_exp_arch1_files}")
+                        file_list = glob.glob(str(f"{self.delete_exp_arch1_files}"))
                         count = 0
                         for file_path in file_list:
                             try:
@@ -549,7 +549,7 @@ class TestXMLProcessing(unittest.TestCase):
 
     def test_10_bld_from_kbd3(self):
         command_lines = [
-            ("Finished!", "loaded 10 documents (bEXP_TEST1)", fr"{self.pycmd} {self.data_file3} --nocheck --nohelp --reload --verbose --inputbuild=(bEXP_TEST1) --outputbuild=(bEXP_TEST1)"), # force rebuild, implied bKBD3 input
+            ("Finished!", "loaded 27 documents", fr"{self.pycmd} {self.data_file3} --nocheck --nohelp --reload --verbose --inputbuild=(bEXP_ARCH1) --outputbuild=(bEXP_ARCH1)"), # force rebuild, implied bKBD3 input
         ]
         
         test_counter = 10
@@ -577,8 +577,8 @@ class TestXMLProcessing(unittest.TestCase):
                     assert test_text in lin, (test_text, lin)
                     print (f"Test {test_counter} passed.")
                     if "bEXP_ARCH1" in lin:
-                        print (f"Deleting temporary test files: {delete_exp_arch1_files}")
-                        file_list = glob.glob(str(f"{delete_exp_arch1_files}"))
+                        print (f"Deleting temporary test files: {self.delete_exp_arch1_files}")
+                        file_list = glob.glob(str(f"{self.delete_exp_arch1_files}"))
                         count = 0
                         for file_path in file_list:
                             try:

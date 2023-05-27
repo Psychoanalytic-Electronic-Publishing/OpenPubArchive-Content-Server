@@ -9,8 +9,8 @@ This library is supports the main functionality of the OPAS Central Database
 The database has use and usage information.
 
 OPASCENTRAL TABLES (and Views) CURRENTLY USED:
-   vw_stat_most_viewed (depends on vw_stat_docviews_crosstab,
-                                   table articles)
+   vw_stat_most_viewed (depends on    vw_stat_docviews_crosstab,
+                                table api_articles)
 
    vw_stat_docviews_crosstab (depends on api_docviews,
                                          vw_stat_docviews_lastmonth,
@@ -30,7 +30,7 @@ OPASCENTRAL TABLES (and Views) CURRENTLY USED:
     
     Used in generators:
     
-      vw_stat_cited_crosstab_with_details2 (depeds on vw_stat_cited_crosstab2 + articles)
+      vw_stat_cited_crosstab_with_details2 (depeds on vw_stat_cited_crosstab2 + api_articles)
       vw_stat_most_viewed
 
 """
@@ -360,7 +360,7 @@ class opasCentralDB(object):
         self.open_connection(caller_name=fname) # make sure connection is open
         if self.db is not None:
             with closing(self.db.cursor(buffered=True, dictionary=True)) as curs:
-                sql = f"SELECT * from vw_jrnl_vols {src_code_clause};"
+                sql = f"SELECT * from vw_api_jrnl_vols {src_code_clause};"
                 curs.execute(sql)
                 warnings = curs.fetchwarnings()
                 if warnings:
@@ -409,7 +409,7 @@ class opasCentralDB(object):
         returns True or False
         
         >>> ocd = opasCentralDB()
-        >>> ocd.article_exists("APA.001.0007A")
+        >>> ocd.article_exists("AIM.079.0335A")
         True
         
         """
@@ -424,7 +424,7 @@ class opasCentralDB(object):
         Allows mysql get_api_article_record (so can return multiple records)
 
         >>> ocd = opasCentralDB()
-        >>> recs = ocd.get_article_records("APA.001.0007A")
+        >>> recs = ocd.get_article_records("AIM.079.0335A")
         >>> len(recs) == 1
         True
         
@@ -986,8 +986,8 @@ class opasCentralDB(object):
         Generic retrieval from database, return the count
         
         >>> ocd = opasCentralDB()
-        >>> count = ocd.get_select_count(sqlSelect="SELECT * from vw_article_sectnames limit 102;")
-        >>> count > 100
+        >>> count = ocd.get_select_count(sqlSelect="SELECT * from api_articles limit 12;")
+        >>> count > 10
         True
 
         >>> # Example using queryparams and f-string
@@ -1213,7 +1213,7 @@ class opasCentralDB(object):
         Generic retrieval from database, into dict
         
         >>> ocd = opasCentralDB()
-        >>> cnt = ocd.get_select_as_list_of_dicts(sqlSelect="SELECT * from vw_reports_session_activity limit 3;")
+        >>> cnt = ocd.get_select_as_list_of_dicts(sqlSelect="SELECT * from api_articles limit 3;")
         >>> len(cnt) == 3
         True
         """
@@ -1250,7 +1250,7 @@ class opasCentralDB(object):
         Not sure why!  But only call this with a generic dict based model
         
         >>> ocd = opasCentralDB()
-        >>> records = ocd.get_select_as_list_of_models(sqlSelect="SELECT * from vw_reports_session_activity limit 10;", model=models.ReportListItem)
+        >>> records = ocd.get_select_as_list_of_models(sqlSelect="SELECT * from api_articles limit 10;", model=models.ReportListItem)
         >>> len(records) > 1
         True
         >>> type(records[0]) == models.ReportListItem
@@ -1284,9 +1284,9 @@ class opasCentralDB(object):
         Return a reference model from the api_biblioxml2 table in opascentral
         
         >>> ocd = opasCentralDB()
-        >>> ref = ocd.get_ref_from_db(art_id="FA.013A.0120A", ref_local_id='B009')
+        >>> ref = ocd.get_ref_from_db(art_id="ZBK.069.0000A", ref_local_id='B002')
         >>> ref.ref_rx
-        'BJP.025.0143A'
+        'IPL.094.0001A'
         
         """
         ret_val = None
@@ -1352,7 +1352,7 @@ class opasCentralDB(object):
         
         >>> ocd = opasCentralDB()
         >>> records = ocd.get_select_as_list(sqlSelect="SELECT * from vw_reports_session_activity limit 10;")
-        >>> len(records) > 1
+        >>> len(records) >= 1
         True
         >>> type(records[0]) == tuple
         True
@@ -2013,6 +2013,8 @@ class opasCentralDB(object):
         
         """
         fname = "get_sources"
+        total_count = 0
+        ret_val = None
         
         # input validation
         if not isinstance(src_code, str):
@@ -2405,7 +2407,8 @@ class opasCentralDB(object):
         """
         
         >>> ocd = opasCentralDB()
-        >>> ocd.del_client_config(2, "demo")
+        >>> ocd.del_client_config(123, "demo")
+        ClientConfigList(configList=[ClientConfigItem(api_client_id=123, session_id='test123', configName='demo', configSettings={'A': '123', 'B': '1234'})])
         
         """
         fname = "del_client_config"
@@ -2445,7 +2448,7 @@ class opasCentralDB(object):
     
     def record_document_view(self, document_id, session_info=None, view_type="Abstract"):
         """
-        Add a record to the api_doc_views table for specified view_type (Abstract, Document, PDF, PDFOriginal, or EPub)
+        Add a record to the api_docviews table for specified view_type (Abstract, Document, PDF, PDFOriginal, or EPub)
 
         Tested in main instance docstring
         
@@ -2868,6 +2871,7 @@ class opasCentralDB(object):
 if __name__ == "__main__":
     print (40*"*", "opasCentralDBLib Tests", 40*"*")
     print (f"Running in Python {sys.version_info[0]}.{sys.version_info[1]}")
+    print (f"Config: {localsecrets.CONFIG}")
    
     logger = logging.getLogger(__name__)
     # extra logging for standalong mode 

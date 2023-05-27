@@ -1,0 +1,177 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE pepkbd3 PUBLIC "-//PEP/DTD PEP KBD V3.0//EN" "pepkbd3.dtd">
+<pepkbd3><meta><revisions><revbld>A1v5</revbld><revdesc>Fixed table headings and table footnotes</revdesc></revisions></meta><artinfo arttype="ART" artsource="A1V2" j="BAP" artsubtype="ART" id="BAP.018.0821A"><artyear>1962</artyear><artvol>18</artvol><artpgrg style="arabic">821-825</artpgrg><arttitle> American Psychoanalytic Association—<i>Information Sheets on Education</i></arttitle><artauth><none/></artauth></artinfo>
+<body><h1 c="t">Information Sheet XXVII</h1>
+<tbl id="T001"><caption><ctitle>TRAINING ANALYSTS Number, Training Hours, "Training Load, " and Number of Students March 1, 1962</ctitle></caption><table frame="topbot"><tgroup colsep="0" cols="5" rowsep="0"><colspec colnum="1" colwidth="1in" colname="c1" align="left"/>
+<colspec colnum="2" colwidth="1.5in" colname="c2" align="left"/>
+<colspec colnum="3" colwidth="2in" colname="c3" align="left"/>
+<colspec colnum="4" colwidth="2in" colname="c4" align="left"/>
+<colspec colnum="5" colwidth="2in" colname="c5" align="left"/>
+<tbody><row><entry colsep="0" rowsep="0"/><entry align="center" colsep="0" rowsep="0"><i>No. of Active Training Analysts</i></entry><entry colsep="0" rowsep="0"><i>Total No. of Hours of Training Analyses Per Week</i></entry><entry align="center" colsep="0" rowsep="0"><i>Mean No. of Hours Per Training Analyst Per Week ("Load")</i></entry><entry align="center" colsep="0" rowsep="0"><i>No. of Students in Training Analysis</i></entry></row>
+<row><entry colsep="0" rowsep="0">Baltimore</entry><entry align="right" colsep="0" rowsep="0">10</entry><entry align="right" colsep="0" rowsep="0">96</entry><entry align="right" colsep="0" rowsep="0">9.6</entry><entry align="right" colsep="0" rowsep="0">22</entry></row>
+<row><entry colsep="0" rowsep="0">Boston</entry><entry align="right" colsep="0" rowsep="0">20</entry><entry align="right" colsep="0" rowsep="0">280</entry><entry align="right" colsep="0" rowsep="0">14.0</entry><entry align="right" colsep="0" rowsep="0">66</entry></row>
+<row><entry colsep="0" rowsep="0">Chicago</entry><entry align="right" colsep="0" rowsep="0">34</entry><entry align="right" colsep="0" rowsep="0">262</entry><entry align="right" colsep="0" rowsep="0">7.7</entry><entry align="right" colsep="0" rowsep="0">64</entry></row>
+<row><entry colsep="0" rowsep="0">Cleveland</entry><entry align="right" colsep="0" rowsep="0">5</entry><entry align="right" colsep="0" rowsep="0">40</entry><entry align="right" colsep="0" rowsep="0">8.0</entry><entry align="right" colsep="0" rowsep="0">8</entry></row>
+<row><entry colsep="0" rowsep="0">Columbia</entry><entry align="right" colsep="0" rowsep="0">20</entry><entry align="right" colsep="0" rowsep="0">138</entry><entry align="right" colsep="0" rowsep="0">6.9</entry><entry align="right" colsep="0" rowsep="0">36</entry></row>
+<row><entry colsep="0" rowsep="0">Phila. Assn.</entry><entry align="right" colsep="0" rowsep="0">10</entry><entry align="right" colsep="0" rowsep="0">79</entry><entry align="right" colsep="0" rowsep="0">7.9</entry><entry align="right" colsep="0" rowsep="0">20</entry></row>
+<row><entry colsep="0" rowsep="0">So. Calif.</entry><entry align="right" colsep="0" rowsep="0">12</entry><entry align="right" colsep="0" rowsep="0">153</entry><entry align="right" colsep="0" rowsep="0">12.8</entry><entry align="right" colsep="0" rowsep="0">45</entry></row>
+<row><entry colsep="0" rowsep="0">Los Angeles</entry><entry align="right" colsep="0" rowsep="0">13</entry><entry align="right" colsep="0" rowsep="0">178</entry><entry align="right" colsep="0" rowsep="0">13.7</entry><entry align="right" colsep="0" rowsep="0">36</entry></row>
+<row><entry colsep="0" rowsep="0">New Orleans</entry><entry align="right" colsep="0" rowsep="0">3</entry><entry align="right" colsep="0" rowsep="0">21</entry><entry align="right" colsep="0" rowsep="0">7.0</entry><entry align="right" colsep="0" rowsep="0">6</entry></row>
+<row><entry colsep="0" rowsep="0">New York</entry><entry align="right" colsep="0" rowsep="0">41</entry><entry align="right" colsep="0" rowsep="0">333</entry><entry align="right" colsep="0" rowsep="0">8.1</entry><entry align="right" colsep="0" rowsep="0">70</entry></row>
+<row><entry colsep="0" rowsep="0">Phila. Soc.</entry><entry align="right" colsep="0" rowsep="0">9</entry><entry align="right" colsep="0" rowsep="0">119</entry><entry align="right" colsep="0" rowsep="0">13.2</entry><entry align="right" colsep="0" rowsep="0">33</entry></row>
+<row><entry colsep="0" rowsep="0">Pittsburgh</entry><entry align="right" colsep="0" rowsep="0">6</entry><entry align="right" colsep="0" rowsep="0">95</entry><entry align="right" colsep="0" rowsep="0">15.8</entry><entry align="right" colsep="0" rowsep="0">20</entry></row>
+<row><entry colsep="0" rowsep="0">San Francisco</entry><entry align="right" colsep="0" rowsep="0">10</entry><entry align="right" colsep="0" rowsep="0">120</entry><entry align="right" colsep="0" rowsep="0">12.0</entry><entry align="right" colsep="0" rowsep="0">31</entry></row>
+<row><entry colsep="0" rowsep="0">State of N. Y.</entry><entry align="right" colsep="0" rowsep="0">18</entry><entry align="right" colsep="0" rowsep="0">103</entry><entry align="right" colsep="0" rowsep="0">5.7</entry><entry align="right" colsep="0" rowsep="0">22</entry></row>
+<row><entry colsep="0" rowsep="0">Topeka</entry><entry align="right" colsep="0" rowsep="0">7</entry><entry align="right" colsep="0" rowsep="0">60</entry><entry align="right" colsep="0" rowsep="0">8.6</entry><entry align="right" colsep="0" rowsep="0">13</entry></row>
+<row><entry colsep="0" rowsep="0">Washington</entry><entry align="right" colsep="0" rowsep="0">21</entry><entry align="right" colsep="0" rowsep="0">225</entry><entry align="right" colsep="0" rowsep="0">10.7</entry><entry align="right" colsep="0" rowsep="0">61</entry></row>
+<row><entry colsep="0" rowsep="0">W. New England</entry><entry align="right" colsep="0" rowsep="0">5</entry><entry align="right" colsep="0" rowsep="0">36</entry><entry align="right" colsep="0" rowsep="0">5.2</entry><entry align="right" colsep="0" rowsep="0">9</entry></row>
+<row><entry colsep="0" rowsep="0">Detroit T.C.</entry><entry align="right" colsep="0" rowsep="0">5</entry><entry align="right" colsep="0" rowsep="0">39</entry><entry align="right" colsep="0" rowsep="0">7.5</entry><entry align="right" colsep="0" rowsep="0">8</entry></row>
+<row><entry colsep="0" rowsep="0">Seattle T.C.</entry><entry align="right" colsep="0" rowsep="0">3</entry><entry align="right" colsep="0" rowsep="0">20</entry><entry align="right" colsep="0" rowsep="0">6.6</entry><entry align="right" colsep="0" rowsep="0">5</entry></row>
+<row><entry colsep="0" rowsep="0">National</entry><entry align="right" colsep="0" rowsep="0">252</entry><entry align="right" colsep="0" rowsep="0">2397</entry><entry align="right" colsep="0" rowsep="0">9.5</entry><entry align="right" colsep="0" rowsep="0">575</entry></row>
+<row><entry colsep="0" rowsep="0"><i>For comparison:</i></entry><entry colsep="0" rowsep="0"/><entry colsep="0" rowsep="0"/><entry colsep="0" rowsep="0"/><entry colsep="0" rowsep="0"/></row>
+<row><entry colsep="0" rowsep="0">March 1958</entry><entry colsep="0" rowsep="0">228</entry><entry colsep="0" rowsep="0">2292</entry><entry align="right" colsep="0" rowsep="0">10.0</entry><entry colsep="0" rowsep="0">545</entry></row>
+<row><entry colsep="0" rowsep="0">March 1960</entry><entry colsep="0" rowsep="0">238</entry><entry colsep="0" rowsep="0">2246</entry><entry align="right" colsep="0" rowsep="0">9.4</entry><entry colsep="0" rowsep="0">546</entry></row>
+<row><entry colsep="0" rowsep="0">March 1961</entry><entry colsep="0" rowsep="0">239</entry><entry colsep="0" rowsep="0">2369</entry><entry align="right" colsep="0" rowsep="0">9.9</entry><entry colsep="0" rowsep="0">579</entry></row>
+</tbody>
+</tgroup>
+</table>
+<ftn type="TBL" id="O900"><p>Source:  Institute records as of March 1, 1962</p>
+<p>Note:  When one person served as training analyst or supervisor in more than one organization or city he was counted twice, as if he was two people.  There were twelve such instances.</p></ftn></tbl>
+
+<pb><n>821</n></pb>
+<h1 c="t">Information Sheet XXVII</h1>
+<tbl id="T002"><caption><ctitle>SUPERVISORS Number, Supervision Hours, "Supervision Load, " and Numbers of Cases and Students March 1, 1962</ctitle></caption><table frame="topbot"><tgroup colsep="0" cols="7" rowsep="0"><colspec colnum="1" colwidth="1in" colname="c1" align="left"/>
+<colspec colnum="2" colwidth="1.5in" colname="c2" align="left"/>
+<colspec colnum="3" colwidth="2in" colname="c3" align="left"/>
+<colspec colnum="4" colwidth="2.2in" colname="c4" align="left"/>
+<colspec colnum="5" colwidth="1in" colname="c5" align="left"/>
+<colspec colnum="6" colwidth="1.5in" colname="c6" align="left"/>
+<colspec colnum="7" colwidth="2in" colname="c7" align="left"/>
+<tbody><row><entry colsep="0" rowsep="0"/><entry align="center" colsep="0" rowsep="0"><i>No. of Active Supervisors</i></entry><entry colsep="0" rowsep="0"><i>Total Hours of Supervision per Month</i></entry><entry align="center" colsep="0" rowsep="0"><i>Mean No. of Hours Per Month Per Supervisor ("Load")</i></entry><entry colsep="0" rowsep="0"><i>No. of Cases</i></entry><entry align="center" colsep="0" rowsep="0"><i>Cases Per Supervisor</i></entry><entry align="center" colsep="0" rowsep="0"><i>No. of Students in Supervision</i></entry></row>
+<row><entry colsep="0" rowsep="0">Baltimore</entry><entry align="right" colsep="0" rowsep="0">9</entry><entry align="right" colsep="0" rowsep="0">76</entry><entry align="right" colsep="0" rowsep="0">8.9</entry><entry align="right" colsep="0" rowsep="0">19</entry><entry align="right" colsep="0" rowsep="0">2.1</entry><entry align="right" colsep="0" rowsep="0">12</entry></row>
+<row><entry colsep="0" rowsep="0">Boston</entry><entry align="right" colsep="0" rowsep="0">16</entry><entry align="right" colsep="0" rowsep="0">141</entry><entry align="right" colsep="0" rowsep="0">8.8</entry><entry align="right" colsep="0" rowsep="0">50</entry><entry align="right" colsep="0" rowsep="0">3.1</entry><entry align="right" colsep="0" rowsep="0">28</entry></row>
+<row><entry colsep="0" rowsep="0">Chicago</entry><entry align="right" colsep="0" rowsep="0">29</entry><entry align="right" colsep="0" rowsep="0">368</entry><entry align="right" colsep="0" rowsep="0">12.6</entry><entry align="right" colsep="0" rowsep="0">144</entry><entry align="right" colsep="0" rowsep="0">5.0</entry><entry align="right" colsep="0" rowsep="0">69</entry></row>
+<row><entry colsep="0" rowsep="0">Cleveland</entry><entry align="right" colsep="0" rowsep="0">4</entry><entry align="right" colsep="0" rowsep="0">44</entry><entry align="right" colsep="0" rowsep="0">11.0</entry><entry align="right" colsep="0" rowsep="0">12</entry><entry align="right" colsep="0" rowsep="0">3.0</entry><entry align="right" colsep="0" rowsep="0">4</entry></row>
+<row><entry colsep="0" rowsep="0">Columbia</entry><entry align="right" colsep="0" rowsep="0">20</entry><entry align="right" colsep="0" rowsep="0">145</entry><entry align="right" colsep="0" rowsep="0">7.3</entry><entry align="right" colsep="0" rowsep="0">37</entry><entry align="right" colsep="0" rowsep="0">1.8</entry><entry align="right" colsep="0" rowsep="0">23</entry></row>
+<row><entry colsep="0" rowsep="0">Phila. Assn.</entry><entry align="right" colsep="0" rowsep="0">10</entry><entry align="right" colsep="0" rowsep="0">172</entry><entry align="right" colsep="0" rowsep="0">17.2</entry><entry align="right" colsep="0" rowsep="0">59</entry><entry align="right" colsep="0" rowsep="0">5.9</entry><entry align="right" colsep="0" rowsep="0">28</entry></row>
+<row><entry colsep="0" rowsep="0">So. Calif.</entry><entry align="right" colsep="0" rowsep="0">14</entry><entry align="right" colsep="0" rowsep="0">164</entry><entry align="right" colsep="0" rowsep="0">11.7</entry><entry align="right" colsep="0" rowsep="0">53</entry><entry align="right" colsep="0" rowsep="0">3.8</entry><entry align="right" colsep="0" rowsep="0">39</entry></row>
+<row><entry colsep="0" rowsep="0">Los Angeles</entry><entry align="right" colsep="0" rowsep="0">12</entry><entry align="right" colsep="0" rowsep="0">149</entry><entry align="right" colsep="0" rowsep="0">12.4</entry><entry align="right" colsep="0" rowsep="0">42</entry><entry align="right" colsep="0" rowsep="0">3.5</entry><entry align="right" colsep="0" rowsep="0">24</entry></row>
+<row><entry colsep="0" rowsep="0">New Orleans</entry><entry align="right" colsep="0" rowsep="0">5</entry><entry align="right" colsep="0" rowsep="0">66</entry><entry align="right" colsep="0" rowsep="0">13.2</entry><entry align="right" colsep="0" rowsep="0">17</entry><entry align="right" colsep="0" rowsep="0">3.4</entry><entry align="right" colsep="0" rowsep="0">11</entry></row>
+<row><entry colsep="0" rowsep="0">New York</entry><entry align="right" colsep="0" rowsep="0">42</entry><entry align="right" colsep="0" rowsep="0">322</entry><entry align="right" colsep="0" rowsep="0">7.7</entry><entry align="right" colsep="0" rowsep="0">84</entry><entry align="right" colsep="0" rowsep="0">2.0</entry><entry align="right" colsep="0" rowsep="0">42</entry></row>
+<row><entry colsep="0" rowsep="0">Phila. Soc.</entry><entry align="right" colsep="0" rowsep="0">11</entry><entry align="right" colsep="0" rowsep="0">190</entry><entry align="right" colsep="0" rowsep="0">17.3</entry><entry align="right" colsep="0" rowsep="0">57</entry><entry align="right" colsep="0" rowsep="0">5.2</entry><entry align="right" colsep="0" rowsep="0">39</entry></row>
+<row><entry colsep="0" rowsep="0">Pittsburgh</entry><entry align="right" colsep="0" rowsep="0">6</entry><entry align="right" colsep="0" rowsep="0">109</entry><entry align="right" colsep="0" rowsep="0">18.2</entry><entry align="right" colsep="0" rowsep="0">36</entry><entry align="right" colsep="0" rowsep="0">6.0</entry><entry align="right" colsep="0" rowsep="0">15</entry></row>
+<row><entry colsep="0" rowsep="0">San Francisco</entry><entry align="right" colsep="0" rowsep="0">11</entry><entry align="right" colsep="0" rowsep="0">141</entry><entry align="right" colsep="0" rowsep="0">12.8</entry><entry align="right" colsep="0" rowsep="0">46</entry><entry align="right" colsep="0" rowsep="0">4.2</entry><entry align="right" colsep="0" rowsep="0">28</entry></row>
+<row><entry colsep="0" rowsep="0">State of N. Y.</entry><entry align="right" colsep="0" rowsep="0">16</entry><entry align="right" colsep="0" rowsep="0">112</entry><entry align="right" colsep="0" rowsep="0">7.0</entry><entry align="right" colsep="0" rowsep="0">29</entry><entry align="right" colsep="0" rowsep="0">1.8</entry><entry align="right" colsep="0" rowsep="0">16</entry></row>
+<row><entry colsep="0" rowsep="0">Topeka</entry><entry align="right" colsep="0" rowsep="0">6</entry><entry align="right" colsep="0" rowsep="0">88</entry><entry align="right" colsep="0" rowsep="0">14.7</entry><entry align="right" colsep="0" rowsep="0">27</entry><entry align="right" colsep="0" rowsep="0">4.5</entry><entry align="right" colsep="0" rowsep="0">13</entry></row>
+<row><entry colsep="0" rowsep="0">Washington</entry><entry align="right" colsep="0" rowsep="0">24</entry><entry align="right" colsep="0" rowsep="0">520</entry><entry align="right" colsep="0" rowsep="0">21.7</entry><entry align="right" colsep="0" rowsep="0">157</entry><entry align="right" colsep="0" rowsep="0">6.5</entry><entry align="right" colsep="0" rowsep="0">86</entry></row>
+<row><entry colsep="0" rowsep="0">W. New England</entry><entry align="right" colsep="0" rowsep="0">8</entry><entry align="right" colsep="0" rowsep="0">103</entry><entry align="right" colsep="0" rowsep="0">12.9</entry><entry align="right" colsep="0" rowsep="0">31</entry><entry align="right" colsep="0" rowsep="0">3.9</entry><entry align="right" colsep="0" rowsep="0">19</entry></row>
+<row><entry colsep="0" rowsep="0">Detroit T.C.</entry><entry align="right" colsep="0" rowsep="0">7</entry><entry align="right" colsep="0" rowsep="0">70</entry><entry align="right" colsep="0" rowsep="0">10.0</entry><entry align="right" colsep="0" rowsep="0">20</entry><entry align="right" colsep="0" rowsep="0">2.9</entry><entry align="right" colsep="0" rowsep="0">11</entry></row>
+<row><entry colsep="0" rowsep="0">Seattle T.C.</entry><entry align="right" colsep="0" rowsep="0">5</entry><entry align="right" colsep="0" rowsep="0">36</entry><entry align="right" colsep="0" rowsep="0">7.2</entry><entry align="right" colsep="0" rowsep="0">11</entry><entry align="right" colsep="0" rowsep="0">2.2</entry><entry align="right" colsep="0" rowsep="0">6</entry></row>
+<row><entry colsep="0" rowsep="0">National</entry><entry align="right" colsep="0" rowsep="0">255</entry><entry align="right" colsep="0" rowsep="0">3016</entry><entry align="right" colsep="0" rowsep="0">11.8</entry><entry align="right" colsep="0" rowsep="0">931</entry><entry align="right" colsep="0" rowsep="0">3.7</entry><entry align="right" colsep="0" rowsep="0">513</entry></row>
+<row><entry colsep="0" rowsep="0"><i>For comparison:</i></entry><entry colsep="0" rowsep="0"/><entry colsep="0" rowsep="0"/><entry colsep="0" rowsep="0"/><entry colsep="0" rowsep="0"/><entry colsep="0" rowsep="0"/><entry colsep="0" rowsep="0"/></row>
+<row><entry colsep="0" rowsep="0">March 1958</entry><entry align="right" colsep="0" rowsep="0">221</entry><entry align="right" colsep="0" rowsep="0">2965</entry><entry align="right" colsep="0" rowsep="0">13.4</entry><entry align="right" colsep="0" rowsep="0">901</entry><entry align="right" colsep="0" rowsep="0">4.2</entry><entry align="right" colsep="0" rowsep="0">484</entry></row>
+<row><entry colsep="0" rowsep="0">March 1960</entry><entry align="right" colsep="0" rowsep="0">240</entry><entry align="right" colsep="0" rowsep="0">2998</entry><entry align="right" colsep="0" rowsep="0">12.5</entry><entry align="right" colsep="0" rowsep="0">965</entry><entry align="right" colsep="0" rowsep="0">4.0</entry><entry align="right" colsep="0" rowsep="0">512</entry></row>
+<row><entry colsep="0" rowsep="0">March 1961</entry><entry align="right" colsep="0" rowsep="0">257</entry><entry align="right" colsep="0" rowsep="0">2919</entry><entry align="right" colsep="0" rowsep="0">11.4</entry><entry align="right" colsep="0" rowsep="0">935</entry><entry align="right" colsep="0" rowsep="0">3.8</entry><entry align="right" colsep="0" rowsep="0">518</entry></row>
+</tbody>
+</tgroup>
+</table>
+<ftn type="TBL" id="O901"><p>Source:  Institute records as of March 1, 1962</p>
+<p>Note:  When one person served as training analyst or supervisor in more than one organization or city he was counted twice, as if he was two people.  There were twelve such instances.</p>
+</ftn></tbl>
+<pb><n>822</n></pb>
+<h1 c="t">Information Sheet XXVII</h1>
+<tbl id="T003"><caption><ctitle>TRAINING ANALYSTS:  HOURS PER WEEK SPENT IN ANALYZING STUDENTS</ctitle></caption><table frame="topbot"><tgroup colsep="0" cols="5" rowsep="0"><colspec colnum="1" colwidth="1.2in" colname="c1" align="left"/>
+<colspec colnum="2" colwidth="0.8in" colname="c2" align="left"/>
+<colspec colnum="3" colwidth="1in" colname="c3" align="left"/>
+<colspec colnum="4" colwidth="1in" colname="c4" align="left"/>
+<colspec colnum="5" colwidth="0.7in" colname="c5" align="left"/>
+<tbody><row><entry colsep="0" rowsep="0"/><entry colsep="0" rowsep="0"/><entry namest="c3" colsep="0" align="center" rowsep="0" nameend="c5"><cs style="TblHd"/><i>Number Working at these Rates</i></entry></row>
+<row><entry colsep="0" rowsep="0"><cs style="TblHd"/></entry><entry colsep="0" rowsep="0"><i>Hours per Week</i></entry><entry align="center" colsep="0" rowsep="0"><cs style="TblHd"/></entry><entry colsep="0" rowsep="0"><i>March 1962</i></entry><entry align="center" colsep="0" rowsep="0"><cs style="TblHd"/><i>March 1961<cs style="TblHd"/></i><i>March 1960<cs style="TblHd"/></i><i>March 1958</i></entry></row>
+<row><entry align="right" colsep="0" rowsep="0">1-5</entry><entry align="right" colsep="0" rowsep="0">101</entry><entry align="right" colsep="0" rowsep="0">85</entry><entry align="right" colsep="0" rowsep="0">87</entry><entry align="right" colsep="0" rowsep="0">78</entry></row>
+<row><entry align="right" colsep="0" rowsep="0">6-10</entry><entry align="right" colsep="0" rowsep="0">73</entry><entry align="right" colsep="0" rowsep="0">75</entry><entry align="right" colsep="0" rowsep="0">78</entry><entry align="right" colsep="0" rowsep="0">67</entry></row>
+<row><entry align="right" colsep="0" rowsep="0">11-15</entry><entry align="right" colsep="0" rowsep="0">41</entry><entry align="right" colsep="0" rowsep="0">36</entry><entry align="right" colsep="0" rowsep="0">40</entry><entry align="right" colsep="0" rowsep="0">48</entry></row>
+<row><entry colsep="0" rowsep="0">|CHAR|-||</entry><entry colsep="0" rowsep="0">16-20</entry><entry align="right" colsep="0" rowsep="0">23</entry><entry align="right" colsep="0" rowsep="0">26</entry><entry align="right" colsep="0" rowsep="0">21 21</entry></row>
+<row><entry align="right" colsep="0" rowsep="0">21-25</entry><entry align="right" colsep="0" rowsep="0">9</entry><entry align="right" colsep="0" rowsep="0">14</entry><entry align="right" colsep="0" rowsep="0">9</entry><entry align="right" colsep="0" rowsep="0">6</entry></row>
+<row><entry align="right" colsep="0" rowsep="0">26-30</entry><entry align="right" colsep="0" rowsep="0">4</entry><entry align="right" colsep="0" rowsep="0">1</entry><entry align="right" colsep="0" rowsep="0">1</entry><entry align="right" colsep="0" rowsep="0">6</entry></row>
+<row><entry align="right" colsep="0" rowsep="0">31-35</entry><entry align="right" colsep="0" rowsep="0">1</entry><entry align="right" colsep="0" rowsep="0">2</entry><entry align="right" colsep="0" rowsep="0">1</entry><entry align="right" colsep="0" rowsep="0">2</entry></row>
+<row><entry align="right" colsep="0" rowsep="0">36-40</entry><entry align="right" colsep="0" rowsep="0">—</entry><entry align="right" colsep="0" rowsep="0">—</entry><entry align="right" colsep="0" rowsep="0">1</entry><entry align="right" colsep="0" rowsep="0">—</entry></row>
+<row><entry colsep="0" rowsep="0"/><entry align="right" colsep="0" rowsep="0">___</entry><entry align="right" colsep="0" rowsep="0">___</entry><entry align="right" colsep="0" rowsep="0">___</entry><entry align="right" colsep="0" rowsep="0">___</entry></row>
+<row><entry colsep="0" rowsep="0"/><entry align="right" colsep="0" rowsep="0">252</entry><entry align="right" colsep="0" rowsep="0">239</entry><entry align="right" colsep="0" rowsep="0">238</entry><entry align="right" colsep="0" rowsep="0">228</entry></row>
+<row><entry colsep="0" rowsep="0">Mean national hrs. per wk.</entry><entry colsep="0" rowsep="0">9.5</entry><entry colsep="0" rowsep="0">9.0</entry><entry colsep="0" rowsep="0">9.4</entry><entry colsep="0" rowsep="0">10.0</entry></row>
+</tbody>
+</tgroup>
+</table>
+<ftn type="TBL" id="O902"><p>(Hours per week spent by the average training analyst in analyzing students.)</p>
+</ftn></tbl>
+<pb><n>823</n></pb>
+<tbl id="T004"><caption><ctitle>SUPERVISING ANALYSTS:  HOURS PER MONTH SPENT IN SUPERVISION</ctitle></caption><table frame="topbot"><tgroup colsep="0" cols="5" rowsep="0"><colspec colnum="1" colwidth="1in" colname="c1" align="left"/>
+<colspec colnum="2" colwidth="0.8in" colname="c2" align="left"/>
+<colspec colnum="3" colwidth="0.8in" colname="c3" align="left"/>
+<colspec colnum="4" colwidth="0.8in" colname="c4" align="left"/>
+<colspec colnum="5" colwidth="0.8in" colname="c5" align="left"/>
+<tbody><row><entry colsep="0" rowsep="0"/><entry namest="c2" colsep="0" align="center" rowsep="0" nameend="c5"><cs style="TblHd"/><i>Number Working at these Rates</i></entry></row>
+<row><entry colsep="0" rowsep="0"><cs style="TblHd"/></entry><entry colsep="0" rowsep="0"><i>Hours Per Month</i></entry><entry align="center" colsep="0" rowsep="0"><cs style="TblHd"/></entry><entry colsep="0" rowsep="0"><i>March 1962</i></entry><entry align="center" colsep="0" rowsep="0"><cs style="TblHd"/><i>March 1961<cs style="TblHd"/></i><i>March 1960<cs style="TblHd"/></i><i>March 1958</i></entry></row>
+<row><entry align="right" colsep="0" rowsep="0">1-4</entry><entry align="right" colsep="0" rowsep="0">51</entry><entry align="right" colsep="0" rowsep="0">78</entry><entry align="right" colsep="0" rowsep="0">54</entry><entry align="right" colsep="0" rowsep="0">43</entry></row>
+<row><entry align="right" colsep="0" rowsep="0">5-8</entry><entry align="right" colsep="0" rowsep="0">78</entry><entry align="right" colsep="0" rowsep="0">74</entry><entry align="right" colsep="0" rowsep="0">58</entry><entry align="right" colsep="0" rowsep="0">57</entry></row>
+<row><entry align="right" colsep="0" rowsep="0">9-12</entry><entry align="right" colsep="0" rowsep="0">45</entry><entry align="right" colsep="0" rowsep="0">46</entry><entry align="right" colsep="0" rowsep="0">39</entry><entry align="right" colsep="0" rowsep="0">38</entry></row>
+<row><entry align="right" colsep="0" rowsep="0">13-16</entry><entry align="right" colsep="0" rowsep="0">24</entry><entry align="right" colsep="0" rowsep="0">32</entry><entry align="right" colsep="0" rowsep="0">27</entry><entry align="right" colsep="0" rowsep="0">21</entry></row>
+<row><entry align="right" colsep="0" rowsep="0">17-20</entry><entry align="right" colsep="0" rowsep="0">20</entry><entry align="right" colsep="0" rowsep="0">17</entry><entry align="right" colsep="0" rowsep="0">25</entry><entry align="right" colsep="0" rowsep="0">22</entry></row>
+<row><entry align="right" colsep="0" rowsep="0">21-24</entry><entry align="right" colsep="0" rowsep="0">19</entry><entry align="right" colsep="0" rowsep="0">14</entry><entry align="right" colsep="0" rowsep="0">11</entry><entry align="right" colsep="0" rowsep="0">11</entry></row>
+<row><entry align="right" colsep="0" rowsep="0">25-28</entry><entry align="right" colsep="0" rowsep="0">8</entry><entry align="right" colsep="0" rowsep="0">9</entry><entry align="right" colsep="0" rowsep="0">10</entry><entry align="right" colsep="0" rowsep="0">8</entry></row>
+<row><entry align="right" colsep="0" rowsep="0">29-32</entry><entry align="right" colsep="0" rowsep="0">6</entry><entry align="right" colsep="0" rowsep="0">3</entry><entry align="right" colsep="0" rowsep="0">7</entry><entry align="right" colsep="0" rowsep="0">9</entry></row>
+<row><entry align="right" colsep="0" rowsep="0">33-36</entry><entry align="right" colsep="0" rowsep="0">3</entry><entry align="right" colsep="0" rowsep="0">1</entry><entry align="right" colsep="0" rowsep="0">5</entry><entry align="right" colsep="0" rowsep="0">5</entry></row>
+<row><entry align="right" colsep="0" rowsep="0">37-40</entry><entry align="right" colsep="0" rowsep="0">—</entry><entry align="right" colsep="0" rowsep="0">2</entry><entry align="right" colsep="0" rowsep="0">2</entry><entry align="right" colsep="0" rowsep="0">3</entry></row>
+<row><entry align="right" colsep="0" rowsep="0">41-44</entry><entry align="right" colsep="0" rowsep="0">—</entry><entry align="right" colsep="0" rowsep="0">1</entry><entry align="right" colsep="0" rowsep="0">1</entry><entry align="right" colsep="0" rowsep="0">1</entry></row>
+<row><entry align="right" colsep="0" rowsep="0">45-48</entry><entry align="right" colsep="0" rowsep="0">—</entry><entry align="right" colsep="0" rowsep="0">—</entry><entry align="right" colsep="0" rowsep="0">—</entry><entry align="right" colsep="0" rowsep="0">1</entry></row>
+<row><entry align="right" colsep="0" rowsep="0">49-52</entry><entry align="right" colsep="0" rowsep="0">—</entry><entry align="right" colsep="0" rowsep="0">—</entry><entry align="right" colsep="0" rowsep="0">—</entry><entry align="right" colsep="0" rowsep="0">1</entry></row>
+<row><entry align="right" colsep="0" rowsep="0">53-56</entry><entry align="right" colsep="0" rowsep="0">—</entry><entry align="right" colsep="0" rowsep="0">—</entry><entry align="right" colsep="0" rowsep="0">1</entry><entry align="right" colsep="0" rowsep="0">—</entry></row>
+<row><entry align="right" colsep="0" rowsep="0">57-60</entry><entry align="right" colsep="0" rowsep="0">—</entry><entry align="right" colsep="0" rowsep="0">—</entry><entry align="right" colsep="0" rowsep="0">—</entry><entry align="right" colsep="0" rowsep="0">—</entry></row>
+<row><entry align="right" colsep="0" rowsep="0">61-64</entry><entry align="right" colsep="0" rowsep="0">1</entry><entry align="right" colsep="0" rowsep="0">—</entry><entry align="right" colsep="0" rowsep="0">—</entry><entry align="right" colsep="0" rowsep="0">1</entry></row>
+<row><entry colsep="0" rowsep="0"/><entry align="right" colsep="0" rowsep="0">___</entry><entry align="right" colsep="0" rowsep="0">___</entry><entry align="right" colsep="0" rowsep="0">___</entry><entry align="right" colsep="0" rowsep="0">___</entry></row>
+<row><entry colsep="0" rowsep="0"/><entry align="right" colsep="0" rowsep="0">255</entry><entry align="right" colsep="0" rowsep="0">257</entry><entry align="right" colsep="0" rowsep="0">240</entry><entry align="right" colsep="0" rowsep="0">221</entry></row>
+<row><entry colsep="0" rowsep="0">Mean national hrs. per mo.</entry><entry colsep="0" rowsep="0">11.8</entry><entry colsep="0" rowsep="0">11.4</entry><entry colsep="0" rowsep="0">12.5</entry><entry colsep="0" rowsep="0">13.4</entry></row>
+</tbody>
+</tgroup>
+</table>
+<ftn type="TBL" id="O903"><p>(Hours per month, spent by the average supervisor in supervising students' cases.)</p>
+<p>Source:  Institute records as of March 1, 1962</p>
+<p>Note:  When one person served as training analyst or supervisor in more than one organization or city he was counted twice, as if he was two people.  There were twelve such instances.</p>
+</ftn></tbl>
+<pb><n>824</n></pb>
+<h1 c="t">Information Sheet XXVII</h1>
+<tbl id="T005"><caption><ctitle>TRAINING ANALYSIS, STUDENTS IN March 1, 1962</ctitle></caption><table frame="topbot"><tgroup colsep="0" cols="2" rowsep="0"><colspec colnum="1" colwidth="1in" colname="c1" align="left"/>
+<colspec colnum="2" colwidth="1.5in" colname="c2" align="left"/>
+<tbody><row><entry align="center" colsep="0" rowsep="0"><cs style="TblHd"/></entry><entry align="center" colsep="0" rowsep="0"><i>Hours Per Week<cs style="TblHd"/></i><i>Number of Students in Training Analysis at these Rates</i></entry></row>
+<row><entry colsep="0" rowsep="0">1</entry><entry align="right" colsep="0" rowsep="0">10</entry></row>
+<row><entry colsep="0" rowsep="0">2</entry><entry align="right" colsep="0" rowsep="0">15</entry></row>
+<row><entry colsep="0" rowsep="0">3</entry><entry align="right" colsep="0" rowsep="0">50</entry></row>
+<row><entry colsep="0" rowsep="0">4</entry><entry align="right" colsep="0" rowsep="0">294</entry></row>
+<row><entry colsep="0" rowsep="0">5</entry><entry align="right" colsep="0" rowsep="0">205</entry></row>
+<row><entry colsep="0" rowsep="0">6</entry><entry align="right" colsep="0" rowsep="0">1</entry></row>
+<row><entry colsep="0" rowsep="0"/><entry align="right" colsep="0" rowsep="0">___</entry></row>
+<row><entry colsep="0" rowsep="0"/><entry align="right" colsep="0" rowsep="0">575</entry></row>
+</tbody>
+</tgroup>
+</table>
+<ftn type="TBL" id="O904"><p>Mean national rate in hours per week:  4.2</p>
+</ftn></tbl>
+<tbl id="T006"><caption><ctitle>SUPERVISION, NUMBER OF CASES IN March 1, 1962</ctitle></caption><table frame="topbot"><tgroup colsep="0" cols="2" rowsep="0"><colspec colnum="1" colwidth="1in" colname="c1" align="left"/>
+<colspec colnum="2" colwidth="1.5in" colname="c2" align="left"/>
+<tbody><row><entry align="center" colsep="0" rowsep="0"><cs style="TblHd"/></entry><entry align="center" colsep="0" rowsep="0"><i>Hours Per Month<cs style="TblHd"/></i><i>Number of Cases in Supervision at these Rates</i></entry></row>
+<row><entry colsep="0" rowsep="0">1</entry><entry align="right" colsep="0" rowsep="0">46</entry></row>
+<row><entry colsep="0" rowsep="0">2</entry><entry align="right" colsep="0" rowsep="0">277</entry></row>
+<row><entry colsep="0" rowsep="0">3</entry><entry align="right" colsep="0" rowsep="0">19</entry></row>
+<row><entry colsep="0" rowsep="0">4</entry><entry align="right" colsep="0" rowsep="0">587</entry></row>
+<row><entry colsep="0" rowsep="0">5</entry><entry align="right" colsep="0" rowsep="0">1</entry></row>
+<row><entry colsep="0" rowsep="0">6</entry><entry align="right" colsep="0" rowsep="0">1</entry></row>
+<row><entry colsep="0" rowsep="0"/><entry align="right" colsep="0" rowsep="0">___</entry></row>
+<row><entry colsep="0" rowsep="0"/><entry align="right" colsep="0" rowsep="0">931</entry></row>
+</tbody>
+</tgroup>
+</table>
+<ftn type="TBL" id="O905"><p>Mean national rate in hours per month:  3.2</p>
+<p>Source:  Institute records as of March 1, 1962</p>
+<p>Note:  When one person served as training analyst or supervisor in more than one organization or city he was counted twice as if he was two people.  There were twelve such instances.</p>
+</ftn></tbl>
+<pb><n>825</n></pb>
+</body></pepkbd3>

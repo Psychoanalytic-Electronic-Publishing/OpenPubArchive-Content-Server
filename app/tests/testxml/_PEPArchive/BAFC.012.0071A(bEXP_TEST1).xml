@@ -1,0 +1,50 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE pepkbd3 SYSTEM "https://pep-web-includes.s3.amazonaws.com/pepkbd3.dtd">
+<pepkbd3 procby="opasXMLProcessor.2023.0420/v.1.0.110">
+<artinfo arttype="REV" j="BAFC" newsecnm="Book Reviews and Notices" ISSN="0267-3061" id="BAFC.012.0071A">
+<artyear>1989</artyear>
+<artvol actual="12">12</artvol>
+<artiss>1</artiss>
+<artpgrg>71-77</artpgrg>
+<arttitle><binc id="B001"><bst>Freud: A Life for Our Time</bst> by <a>Peter <l>Gay</l></a>. London: <bp>Dent</bp>. <bpd>1988</bpd>. pp. <pp>810</pp>. £16.95</binc>
+<binc id="B002"><t>When Spring Comes: Awakenings in Clinical Psychoanalysis</t> by <a>M. <l>Masud Khan</l></a>. London: <bp>Chatto &amp; Windus</bp>. <bpd>1988</bpd>. pp. <pp>212</pp>. £16.95</binc>
+<binc id="B003"><t>Freud in Exile: Psychoanalysis and Its Vicissitudes.</t> <a>E. <l>Timms</l></a> &amp; <a>N. <l>Segal</l></a> (eds.). New Haven &amp; London: <bp>Yale Univ. Press</bp>. pp. <pp>310</pp>. £25</binc></arttitle>
+<artqual rx="BAFC.012.0071A"/><artauth hidden="false">
+<aut authindexid="Yorke, Clifford" listed="true" role="author"><nfirst>Clifford</nfirst> <nlast>Yorke</nlast></aut>
+</artauth>
+</artinfo>
+<body>
+        <p>In a recent radio talk<ftnx r="F001">1</ftnx>, I reflected on the following points: that
+            Freud was one of the most talked about and least read figures of all time; that the
+            interest in him far exceeds the interest in what he wrote; that what Freud thought and
+            said has influenced the twentieth century incomparably less than the misconceptions by
+            which discovery gives way to demotic notion; and that this transmogrification is matched
+            only by the failure to understand what psychoanalytic therapy really amounts to.</p>
+        <p>The assertions underlying these reflections cannot be expected to stand without
+            supporting argument, but they were prompted by the appearance of three recent books. The
+            first of these is yet another biography, this time by Peter Gay. The plethora of source
+            material is fully acknowledged in a bibliographical essay that forms an indispensable
+            appendix to Gay's biography. There he observes that ‘the secondary literature on Freud
+            is vast, rapidly growing, almost out of control. Some of the avalanche is revealing,
+            much of it is useful, more of it provocative; an astonishing share is malicious or
+            downright absurd.’ Like others before him, Gay was seriously handicapped in his
+            endeavour. Freud deliberately set out to make the lot of any future biographer as
+            difficult as possible. He destroyed papers, letters and notes, saying, after one such
+            instance: ‘Let the biographers labour and toil, we won't make it easy for them’: and
+            when, following the Anschluss, he was about to leave Vienna, he threw away valuable
+            material rescued only through the diligence of Anna Freud and Princess Marie Bonaparte.
+            In a letter to Arnold Zweig, quoted by Gay, Freud declared: ‘Anyone who writes a
+            biography is committed to lies, concealments, hypocrisy, flattery and even to hiding his
+            own lack of understanding, for biographical truth does not exist, and if it did we could
+            not use it.’</p>
+        <p>...Sample article, Truncated.</p>
+        <pb>
+            <ftr>
+                <ftn id="F001" label="1">
+                    <p>‘Perceptions of Freud’, to appear in a forthcoming issue of this journal</p>
+                </ftn>
+            </ftr>
+            <n>71</n>
+        </pb>
+    </body>
+<unit type="glossary_term_dict"><!-- {"anna freud": 2, "material": 2, "secondary": 1} --></unit></pepkbd3>

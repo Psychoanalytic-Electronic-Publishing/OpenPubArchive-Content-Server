@@ -1,0 +1,31 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE pepkbd3 SYSTEM "https://pep-web-includes.s3.amazonaws.com/pepkbd3.dtd">
+<pepkbd3 srcdate="2023-02-11" cvtby="aptara" procby="opasXMLProcessor.2023.0420/v.1.0.110">
+<artinfo arttype="ART" j="AIM" ISSN="0065-860X" doi="10.1353/aim.2022.0017" id="AIM.079.0335A">
+<artyear>2022</artyear>
+<artvol actual="79">79</artvol>
+<artiss>2</artiss>
+<artpgrg>335-363</artpgrg>
+<arttitle>Central Organizing Fantasies and Their Relationship to the Signature Style and Masterworks of Two Artists</arttitle>
+<artqual rx="AIM.079.0335A"/><artauth hidden="false">
+<aut authindexid="Wilson, Laurie" listed="true" role="author"><nfirst>Laurie</nfirst> <nlast>Wilson</nlast> <nbio>Psychoanalyst, art historian, and art therapist. She earned her B.A. and Ph.D. degrees in Art History from Wellesley College and City University of New York. She received psychoanalytic training at the NYU Psychoanalytic Institute and is on the faculty at the Psychoanalytic Association of New York. She is chair of the ApsaA Committee on Psychoanalysis and the Arts. She has published extensively in three fields. Her book <i>Alberto Giacometti: Myth, Magic and the Man</i> was published by Yale University Press in 2003 and her biography <i>Louise Nevelson: Light and Shadow</i> was published by Thames &amp; Hudson in 2016.</nbio></aut>
+</artauth>
+</artinfo>
+<body>
+<p>Why do artists become known for their original contributions? Rembrandt's powerful portraits, Van Gogh's starry nights and Giacometti's gaunt men and women are all examples of masterworks that convey messages unlike those of other artists of their era. To arrive at such unique images and styles, artists must be impelled by powerful internal forces. Personal psychological issues are at the core of such originality and are usually encoded in what used to be called central organizing fantasies.</p>
+<p>As both a clinician and a researcher in art history, I have found that most individuals have a wide variety of internal unconscious fantasies often overlapping and equally often coalescing into predominating and cohesive motivational forces. I am not referring to a single fantasy or to a single unconscious or conscious motivating factor. To impel an artist to create a new mode or formal invention, the fantasies, wishes, or fears must be multiple. And though they may flicker and sometimes appear as separate entities they must be capable of cohesive integration. It is for the purpose of explanation that I will be parsing and separating what should be understood as interrelated elements that dominate the direction of the artistic movement of each artist.</p>
+        <p><b>Sample Article Truncated</b></p>
+<p><pb>
+                <n nextpgnum="P0362">337</n>
+            </pb>to pursue a line of exploration that is congruent with his or her main
+            preoccupation.</p>
+</body>
+<bib>
+<h1 id="H0004" align="center">References</h1>
+<be id="B003"><a><l>Arlow</l>, J. A.</a> (<y>1985</y>). <t>The Concept of Psychic Reality and Related Problems.</t> <j>Journal of the American Psychoanalytic Association</j>, <v>33</v>(<bs>3</bs>), <pp>521-535</pp>.</be>
+<be id="B004"><a><l>Bissell</l>, R. W.</a> (<y>1999</y>). <bst>Artemisia Gentileschi and the Authority of Art</bst>. University Park, Pennsylvania: <bp>The Pennsylvania University Press</bp></be>
+<pb><n nextpgnum="P0363" prefixused="">362</n></pb>
+<be id="B005"><a><l>Erreich</l>, A.</a> (<y>2003</y>). <t>A Modest Proposal: (Re)Defining Unconscious Fantasy.</t> <j>Journal of the American Psychoanalytic Association</j>, <v>72</v>(<bs>3</bs>), <pp>541-574</pp>.</be>
+<pb><n>363</n></pb>
+</bib>
+<unit type="glossary_term_dict"><!-- {} --></unit></pepkbd3>

@@ -1,0 +1,68 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE pepkbd3 PUBLIC "-//PEP/DTD PEP KBD V3.0//EN" "pepkbd3.dtd">
+<pepkbd3>
+<meta><revisions><revbld>a1v8</revbld><revdate>2008-09-03</revdate><revdesc>updated publisher info to better match scanned page</revdesc></revisions><revisions><revbld>a1v6</revbld><revdesc>update to aut attributes for new display - nrs</revdesc></revisions><revisions><revbld>A1v5</revbld><revdesc>Unlisted Steiner as an author, fixed duplicate row in TOC, and changed page reference from I to 1 in TOC, fixed  locator to NLP.011.0001 to King and Steiner ref.</revdesc></revisions></meta><artinfo arttype="TOC" j="ZBK">
+<artyear>1993</artyear>
+<artbkinfo extract="ZBK.028.0000" next="ZBK.028.R0007">
+<bktitle>The Complete Correspondence of Sigmund Freud and Ernest Jones 1908-1939</bktitle>
+<bkseriestitle/>
+<bkpubandloc><bkpdet><bkploc>Cambridge, MA / London</bkploc><bkpname>The Belknap Press of Harvard Univ. Press</bkpname></bkpdet></bkpubandloc>
+</artbkinfo>
+<artvol>28</artvol>
+<artpgrg>1-822</artpgrg>
+<arttitle>The Complete Correspondence of Sigmund Freud and Ernest Jones 1908-1939</arttitle>
+<artauth>
+<aut role="edited-by"><nfirst>R.</nfirst> <nmid>Andrew</nmid> <nlast>Paskauskas</nlast></aut>
+<aut role="intro" listed="false" style="block2"><nfirst>Riccardo</nfirst> <nlast>Steiner</nlast></aut>
+</artauth>
+</artinfo>
+<body>
+<grp name="TOC">
+            <h1 class="sect" id="H0001">Contents</h1>
+            <tbl id="T001" type="TOC">
+                <table>
+                    <tgroup cols="2">
+                        <colspec colnum="1" colname="title" colwidth="2*" align="left"/>
+                        <colspec colnum="2" colname="pgnum" colwidth="1*" align="right"/>
+                        <tbody>
+                            <row>
+                                <entry>Preface</entry>
+                                <entry><pgx>vii</pgx></entry>
+                            </row>
+                            <row>
+                                <entry>Note on Editorial Method</entry>
+                                <entry><pgx>xiii</pgx></entry>
+                            </row>
+                            <row>
+                                <entry>Abbreviations of Works Cited</entry>
+                                <entry><pgx>xvii</pgx></entry>
+                            </row>
+                            <row>
+                                <entry>Introduction by Riccardo Steiner</entry>
+                                <entry><pgx>xxi</pgx></entry>
+                            </row>
+                            <row>
+                                <entry>Correspondence</entry>
+                                <entry><pgx>1</pgx></entry>
+                            </row>
+                            <row>
+                                <entry>List of Correspondence</entry>
+                                <entry><pgx>773</pgx></entry>
+                            </row>
+                            <row>
+                                <entry>References</entry>
+                                <entry><pgx>795</pgx></entry>
+                            </row>
+                            <row>
+                                <entry>Glossary</entry>
+                                <entry><pgx>821</pgx></entry>
+                            </row>
+                        </tbody>
+                    </tgroup>
+                </table>
+            </tbl>
+            <p>...Sample article, Truncated.</p>
+        </grp>
+<pb><n>v</n></pb>
+</body>
+</pepkbd3>

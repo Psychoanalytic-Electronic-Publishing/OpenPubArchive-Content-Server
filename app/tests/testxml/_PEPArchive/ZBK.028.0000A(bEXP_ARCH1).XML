@@ -1,0 +1,68 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE pepkbd3 SYSTEM "https://pep-web-includes.s3.amazonaws.com/pepkbd3.dtd">
+<pepkbd3 procby="opasXMLProcessor.2023.0420/v.1.0.110">
+<meta><revisions><revbld>a1v8</revbld><revdate>2008-09-03</revdate><revdesc>updated publisher info to better match scanned page</revdesc></revisions><revisions><revbld>a1v6</revbld><revdesc>update to aut attributes for new display - nrs</revdesc></revisions><revisions><revbld>A1v5</revbld><revdesc>Unlisted Steiner as an author, fixed duplicate row in TOC, and changed page reference from I to 1 in TOC, fixed  locator to NLP.011.0001 to King and Steiner ref.</revdesc></revisions></meta><artinfo arttype="TOC" j="ZBK" ISBN="0674154231" id="ZBK.028.0000A">
+<artyear>1993</artyear>
+<artbkinfo extract="ZBK.028.0000A" next="ZBK.028.R0007A">
+<bktitle>The Complete Correspondence of Sigmund Freud and Ernest Jones 1908-1939</bktitle>
+<bkseriestitle/>
+<bkpubandloc><bkpdet><bkploc>Cambridge, MA / London</bkploc><bkpname>The Belknap Press of Harvard Univ. Press</bkpname></bkpdet></bkpubandloc>
+</artbkinfo>
+<artvol actual="28">28</artvol>
+<artpgrg>1-822</artpgrg>
+<arttitle>The Complete Correspondence of Sigmund Freud and Ernest Jones 1908-1939</arttitle>
+<artauth hidden="false">
+<aut role="edited-by" authindexid="Paskauskas, R. A." listed="true"><nfirst>R.</nfirst> <nmid>Andrew</nmid> <nlast>Paskauskas</nlast></aut>
+<aut role="intro" listed="false" style="block2" authindexid="Steiner, Riccardo"><nfirst>Riccardo</nfirst> <nlast>Steiner</nlast></aut>
+</artauth>
+</artinfo>
+<body>
+<grp name="TOC">
+            <h1 class="sect" id="H0001">Contents</h1>
+            <tbl id="T001" type="TOC">
+                <table>
+                    <tgroup cols="2">
+                        <colspec colnum="1" colname="title" colwidth="2*" align="left"/>
+                        <colspec colnum="2" colname="pgnum" colwidth="1*" align="right"/>
+                        <tbody>
+                            <row>
+                                <entry>Preface</entry>
+                                <entry><pgx rx="ZBK.028.0001A.PR0007" type="INDEX">vii</pgx></entry>
+                            </row>
+                            <row>
+                                <entry>Note on Editorial Method</entry>
+                                <entry><pgx rx="ZBK.028.0001A.PR0013" type="INDEX">xiii</pgx></entry>
+                            </row>
+                            <row>
+                                <entry>Abbreviations of Works Cited</entry>
+                                <entry><pgx rx="ZBK.028.0001A.PR0017" type="INDEX">xvii</pgx></entry>
+                            </row>
+                            <row>
+                                <entry>Introduction by Riccardo Steiner</entry>
+                                <entry><pgx rx="ZBK.028.0001A.PR0021" type="INDEX">xxi</pgx></entry>
+                            </row>
+                            <row>
+                                <entry>Correspondence</entry>
+                                <entry><pgx rx="ZBK.028.0001A.P0001" type="INDEX">1</pgx></entry>
+                            </row>
+                            <row>
+                                <entry>List of Correspondence</entry>
+                                <entry><pgx rx="ZBK.028.0001A.P0773" type="INDEX">773</pgx></entry>
+                            </row>
+                            <row>
+                                <entry>References</entry>
+                                <entry><pgx rx="ZBK.028.0001A.P0795" type="INDEX">795</pgx></entry>
+                            </row>
+                            <row>
+                                <entry>Glossary</entry>
+                                <entry><pgx rx="ZBK.028.0001A.P0821" type="INDEX">821</pgx></entry>
+                            </row>
+                        </tbody>
+                    </tgroup>
+                </table>
+            </tbl>
+            <p>...Sample article, Truncated.</p>
+        </grp>
+<pb><n>v</n></pb>
+</body>
+<unit type="glossary_term_dict"><!-- {} --></unit></pepkbd3>

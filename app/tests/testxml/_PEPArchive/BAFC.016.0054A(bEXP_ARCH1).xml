@@ -1,0 +1,229 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE pepkbd3 SYSTEM "https://pep-web-includes.s3.amazonaws.com/pepkbd3.dtd">
+<pepkbd3 procby="opasXMLProcessor.2023.0420/v.1.0.110">
+<artinfo arttype="ART" j="BAFC" ISSN="0267-3061" id="BAFC.016.0054A">
+<artyear>1993</artyear>
+<artvol actual="16">16</artvol>
+<artiss>1</artiss>
+<artpgrg>54-55</artpgrg>
+<arttitle>Young Adult Patients - Circumstances At Time Of Referral</arttitle>
+<artqual rx="BAFC.016.0054A"/><artauth hidden="false"><none/></artauth>
+</artinfo>
+<body>
+<tbl id="T001">
+<table>
+<tgroup cols="7">
+<colspec colnum="1" colname="c1" colwidth="1*" align="center"/>
+<colspec colnum="2" colname="c2" colwidth="1*" align="center"/>
+<colspec colnum="3" colname="c3" colwidth="1*" align="center"/>
+<colspec colnum="4" colname="c4" colwidth="1*" align="center"/>
+<colspec colnum="5" colname="c5" colwidth="1*" align="center"/>
+<colspec colnum="6" colname="c6" colwidth="1*" align="center"/>
+<colspec colnum="7" colname="c7" colwidth="1*" align="center"/>
+<thead>
+<row>
+<entry>Pt.</entry>
+<entry>Sex</entry>
+<entry>Age</entry>
+<entry>Living</entry>
+<entry>Education</entry>
+<entry>Work</entry>
+<entry>Sexual Rels.</entry>
+</row>
+</thead>
+<tbody>
+<row>
+<entry>A</entry>
+<entry>M</entry>
+<entry>22.6</entry>
+<entry>With mother</entry>
+<entry>Degree</entry>
+<entry>Unemployed</entry>
+<entry>None</entry>
+</row>
+<row>
+<entry>B</entry>
+<entry>F</entry>
+<entry>23</entry>
+<entry>With mother</entry>
+<entry>2 A-Levels</entry>
+<entry>Employed</entry>
+<entry>1 hetro for 1 yr - recently ended</entry>
+</row>
+<row>
+<entry>C</entry>
+<entry>F</entry>
+<entry>21.6</entry>
+<entry>With boyfriend</entry>
+<entry>At University</entry>
+<entry/>
+<entry>1 hetero. for 3 years</entry>
+</row>
+<row>
+<entry>D</entry>
+<entry>M</entry>
+<entry>24.5</entry>
+<entry>In rented flat</entry>
+<entry>Degree</entry>
+<entry>Employed</entry>
+<entry>Transient rels. with men and women</entry>
+</row>
+<row>
+<entry>E</entry>
+<entry>F</entry>
+<entry>26</entry>
+<entry>With boyfriend</entry>
+<entry>Left University</entry>
+<entry>Unemployed</entry>
+<entry>Hetero.</entry>
+</row>
+<row>
+<entry>F</entry>
+<entry>M</entry>
+<entry>22.3</entry>
+<entry>Student accom.</entry>
+<entry>At University</entry>
+<entry/>
+<entry>Several homo. rels.</entry>
+</row>
+<row>
+<entry>G</entry>
+<entry>F</entry>
+<entry>22</entry>
+<entry>In flat with friend but tied to parents</entry>
+<entry>Left University. In training</entry>
+<entry>Umemployed</entry>
+<entry>Short-term hetero. and promiscuity</entry>
+</row>
+<row>
+<entry>H</entry>
+<entry>F</entry>
+<entry>23.1</entry>
+<entry>Bedsit. Frequent visits to mother</entry>
+<entry>Degree</entry>
+<entry>Unemployed</entry>
+<entry>1 red. with older man in late teens</entry>
+</row>
+<row>
+<entry>I</entry>
+<entry>F</entry>
+<entry>20</entry>
+<entry>With mother</entry>
+<entry>Dropped out of A-levels at 16</entry>
+<entry>Unemployed</entry>
+<entry>1 boyfriend for 9 mths - just ended</entry>
+</row>
+<row>
+<entry>J</entry>
+<entry>M</entry>
+<entry>24.11</entry>
+<entry>Rented flat with girl-friend</entry>
+<entry>Degree</entry>
+<entry>Casual &amp; short-term jobs</entry>
+<entry>4 hetero. rels.</entry>
+</row>
+<row>
+<entry>K</entry>
+<entry>F</entry>
+<entry>22</entry>
+<entry>With sister (conflictual rels.)</entry>
+<entry>In further education</entry>
+<entry/>
+<entry>None</entry>
+</row>
+<row>
+<entry>L</entry>
+<entry>F</entry>
+<entry>23</entry>
+<entry>With mother</entry>
+<entry>Degree</entry>
+<entry>Short-term job</entry>
+<entry>None</entry>
+</row>
+</tbody>
+</tgroup>
+</table>
+</tbl>
+<pb><n nextpgnum="P0055" prefixused="">54</n></pb>
+<h1 c="u" id="H0001">Symptoms, Family, And Time In Analysis</h1>
+<tbl id="T002">
+<table>
+<tgroup cols="3">
+<colspec colnum="1" colname="c1" colwidth="1*" align="center"/>
+<colspec colnum="2" colname="c2" colwidth="1*" align="center"/>
+<colspec colnum="3" colname="c3" colwidth="1*" align="center"/>
+<thead>
+<row>
+<entry>Symptoms</entry>
+<entry>Parents</entry>
+<entry>Time in Anal.</entry>
+</row>
+</thead>
+<tbody>
+<row>
+<entry>Depression. Extreme self-consciousness. 3 suicide attempts since degree finals.</entry>
+<entry>Separated for a year when pt. age 12 and again 18 months ago.</entry>
+<entry>21 months</entry>
+</row>
+<row>
+<entry>Panic attacks re. lesbian anxieties. Episodes of Depression. Difficult relations with peers &amp; bosses. Jealousy</entry>
+<entry>Divorced 2 years ago. Father seen as dependent on mother.</entry>
+<entry>17 months</entry>
+</row>
+<row>
+<entry>Diff. with studies. Jealous other women &amp; of children. Feels criticised by others &amp; self. Stole fr. parents as a child.</entry>
+<entry>Parents lived abroad since pt. age 15.</entry>
+<entry>17 months</entry>
+</row>
+<row>
+<entry>Unable form rels. girls. Self consc. re. body &amp; masculinity. Feels inadequate.‘Paranoid’ view of world. Depression. Drugs. Stole fr. parents in teens.</entry>
+<entry/>
+<entry>13 months</entry>
+</row>
+<row>
+<entry>Abuse diabetic control. Chaotic life &amp; disturbed rels. Panic attacks. Stealing</entry>
+<entry/>
+<entry>13 months Terminated</entry>
+</row>
+<row>
+<entry>Insecure sexual identity.</entry>
+<entry>Parents working abroad.</entry>
+<entry>11 months</entry>
+</row>
+<row>
+<entry>Depression. Chaotic life. Drug use. Eating Disturbance.</entry>
+<entry/>
+<entry>11 months</entry>
+</row>
+<row>
+<entry>Severe depressive breakdown with suicidal ideation while at university.</entry>
+<entry>Separated when pt. age 6. Father died 1 year ago of alcoholism.</entry>
+<entry>11 months</entry>
+</row>
+<row>
+<entry>Panic &amp; depression when boyfriend withdrew from her &amp; physically attacked him. Gives up on projects.</entry>
+<entry>Father left when pt. age 5. Mother unconfident and overinvested in pt.</entry>
+<entry>9 months Terminated</entry>
+</row>
+<row>
+<entry>Diff. rels. girls. Thinks girls dependent on him, then shocked &amp; depressed when they leave. Lack of direction in life.</entry>
+<entry>Father died when pt. age 10. Mother remarried after 2 years.</entry>
+<entry>4 months</entry>
+</row>
+<row>
+<entry>Abuse of diabetic control.</entry>
+<entry>Moth, schizophrenic. Pt. 9 when Fath. left. Moth.'s later ptner. schizophrenic &amp; ctted. suicide.</entry>
+<entry>4 months</entry>
+</row>
+<row>
+<entry>Difficulties relating to men. Intrusive mother.</entry>
+<entry>Parents divorced when pt. 5. Little contact with Father.</entry>
+<entry>1 month</entry>
+</row>
+</tbody>
+</tgroup>
+</table>
+</tbl>
+<pb><n>55</n></pb>
+</body>
+<unit type="glossary_term_dict"><!-- {} --></unit></pepkbd3>

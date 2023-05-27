@@ -1,0 +1,46 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE pepkbd3 SYSTEM "https://pep-web-includes.s3.amazonaws.com/pepkbd3.dtd">
+<pepkbd3 procby="opasXMLProcessor.2023.0420/v.1.0.110">
+<artinfo arttype="ART" j="FA" newsecnm="Articles" ISSN="0267-0887" id="FA.018B.0001A">
+        <artyear>2017</artyear>
+        <artvol actual="18">18B</artvol>
+        <artiss>2</artiss>
+        <artnbr>71</artnbr>
+        <artissinfo>
+            <isstitle>No. 71</isstitle>
+        </artissinfo>
+        <artpgrg>1-17</artpgrg>
+        <arttitle>Analytical and Political Neutrality: Change, Privilege, and Responsibility</arttitle>
+        <artqual rx="FA.018B.0001A"/><artauth hidden="false">
+            <aut authindexid="Bowker, Matthew H." listed="true" role="author">
+                <nfirst>Matthew</nfirst>
+                <nmid>H.</nmid>
+                <nlast>Bowker</nlast>
+                <ndeg dgr="PHD"/>
+                <nbio>Clinical Assistant Professor of Political Science at Medaille College in
+                    Buffalo, NY. He is the author, most recently, of A Dangerous Place to Be:
+                    Identity, Trauma, and Conflict in Higher Education (with D. Levine,
+                    Karnac/Routledge, 2018), D.W. Winnicott and Political Theory: Recentering the
+                    Subject (with A. Buzby, Palgrave 2017), and Ideologies of Experience: Trauma,
+                    Failure, Deprivation, and the Abandonment of the Self (Routledge 2016). He
+                    welcomes communication at <url>mhb34@medaille.edu</url></nbio>
+            </aut>
+        </artauth>
+    </artinfo>
+<body>
+        <p>Tension between the ideal of analytic neutrality — although conceived and applied in
+            various ways — and the putative danger of political neutrality is intrinsic to
+            psychoanalytic investigations of culture and society. It presents itself with urgency in
+            times of social conflict, especially when such conflict is characterized by or framed in
+            terms of victimization, but it has not been a subject of rigorous debate. That the
+            tension between analytic and political neutrality has not been widely examined might
+            mean that when analysts engage in scholarly work outside of clinical settings (e.g.,
+            writing books or papers), we adopt a different set of norms to guide our behavior, norms
+            that do not include whatever attitude of neutrality we may observe in the consulting
+            room. But it might also mean that this tension is a site of resistance, that we are
+            unwilling to look closely at a difficult aspect of our work because we expect it to
+            yield uncomfortable experience. Of course, this resistance may be largely unconscious,
+            leading us to miss or mistake the meanings and consequences of our positions.</p>
+        <p>...Sample article, Truncated.</p>
+    </body>
+<unit type="glossary_term_dict"><!-- {} --></unit></pepkbd3>
