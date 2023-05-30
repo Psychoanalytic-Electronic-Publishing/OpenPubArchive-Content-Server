@@ -19,3 +19,5 @@ def handler(event, context):
             name=str(uuid.uuid4()),
             input=json.dumps(json.loads(str(body))),
         )
+
+        obj.delete()

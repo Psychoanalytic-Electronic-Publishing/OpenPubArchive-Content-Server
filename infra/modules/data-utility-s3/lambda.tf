@@ -35,6 +35,7 @@ resource "aws_iam_role_policy" "start_task_lambda_policy" {
       {
         Action = [
           "s3:GetObject",
+          "s3:DeleteObject"
         ]
         Effect   = "Allow"
         Resource = "${data.aws_s3_bucket.pep_web_live_data.arn}/*"
