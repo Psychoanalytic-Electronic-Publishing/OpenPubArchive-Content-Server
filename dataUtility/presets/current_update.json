@@ -1,0 +1,29 @@
+[
+    [
+        {
+            "directory": "opasDataLoader",
+            "utility": "opasDataLoader",
+            "args": "--sub _PEPFree --smartload --verbose"
+        },
+        {
+            "directory": "opasDataLoader",
+            "utility": "opasDataLoader",
+            "args": "--sub _PEPCurrent --smartload --verbose"
+        },
+        {
+            "directory": "opasDataLoader",
+            "utility": "opasDataLoader",
+            "args": "--sub _PEPSpecial --smartload --verbose"
+        },
+        {
+            "directory": "opasDataLoader",
+            "utility": "opasDataLoader",
+            "args": "--sub _PEPOffsite --smartload --verbose"
+        },
+        {
+            "directory": "opasDataLoader",
+            "utility": "opasDataLoader",
+            "args": "--sub _PEPArchive/Videostreams --smartload --verbose"
+        }
+    ]
+]

@@ -1,0 +1,39 @@
+[
+    [
+        {
+            "directory": "opasDataLoader",
+            "utility": "opasDataLoader",
+            "args": "--sub _PEPFree --smartload --rebuild --continue"
+        },
+        {
+            "directory": "opasDataLoader",
+            "utility": "opasDataLoader",
+            "args": "--sub _PEPOffsite --smartload --rebuild --continue"
+        },
+        {
+            "directory": "opasDataLoader",
+            "utility": "opasDataLoader",
+            "args": "--sub _PEPCurrent --smartload --rebuild --continue"
+        },
+        {
+            "directory": "opasDataLoader",
+            "utility": "opasDataLoader",
+            "args": "--sub _PEPArchive --smartload --rebuild --halfway --continue"
+        },
+        {
+            "directory": "opasDataLoader",
+            "utility": "opasDataLoader",
+            "args": "--sub _PEPArchive --smartload --rebuild --reverse --halfway --continue"
+        },
+        {
+            "directory": "opasDataLoader",
+            "utility": "opasDataLoader",
+            "args": "--sub _PEPFuture --smartload --rebuild --continue"
+        },
+        {
+            "directory": "opasDataLoader",
+            "utility": "opasDataLoader",
+            "args": "--sub _PEPSpecial --smartload --rebuild --continue"
+        }
+    ]
+]
