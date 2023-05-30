@@ -34,6 +34,13 @@ resource "aws_iam_role_policy" "start_task_lambda_policy" {
     Statement = [
       {
         Action = [
+          "s3:GetObject",
+        ]
+        Effect   = "Allow"
+        Resource = "${data.aws_s3_bucket.pep_web_live_data.arn}/*"
+      },
+      {
+        Action = [
           "states:StartExecution",
         ]
         Effect   = "Allow"
