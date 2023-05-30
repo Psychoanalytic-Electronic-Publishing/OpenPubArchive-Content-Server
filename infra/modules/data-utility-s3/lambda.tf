@@ -25,3 +25,20 @@ resource "aws_lambda_permission" "allow_execute_task_file" {
   principal     = "s3.amazonaws.com"
   source_arn    = data.aws_s3_bucket.pep_web_live_data.arn
 }
+
+resource "aws_iam_role_policy" "start_task_lambda_policy" {
+  role = module.execute_task_file.lambda_role_name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = [
+          "states:StartExecution",
+        ]
+        Effect   = "Allow"
+        Resource = "*"
+      },
+    ]
+  })
+}
