@@ -8,9 +8,6 @@
 import os
 import unittest
 import opasCentralDBLib
-import lxml
-from lxml import etree
-from pathlib import Path
 import opasXMLSplitBookSupport
 
 ocd = opasCentralDBLib.opasCentralDB()
@@ -23,10 +20,6 @@ class TestXMLProcessing(unittest.TestCase):
           with forced order in the names.
     
     """
-
-    DocumentID = [
-                  (r"X:\AWS_S3\AWS PEP-Web-Live-Data\_PEPArchive\ZBK\070\ZBK.070.0009A(bEXP_ARCH1).xml"), 
-                  ]
 
     def test_1_add_to_splitbook_table(self):
         """

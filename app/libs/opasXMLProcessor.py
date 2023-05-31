@@ -813,8 +813,8 @@ def update_artinfo_in_instance(parsed_xml,
         # if they do, then add this article's ID to an artqual element to show this article
         # is part of that set, so it can show the "later" articles that are related to it
         # in the related articles list.
-        related = opasPySolrLib.get_articles_related_to_current_via_artqual(artInfo.art_id)
-        if related is not None:
+        related, related_id_list = opasPySolrLib.get_articles_related_to_current_via_artqual(art_qual = artInfo.art_id)
+        if len(related) > 1:
             artInfo.art_qual = artInfo.art_id
             art_title_elem = xml_artinfo.find("arttitle")
             new_artqual = ET.Element("artqual")

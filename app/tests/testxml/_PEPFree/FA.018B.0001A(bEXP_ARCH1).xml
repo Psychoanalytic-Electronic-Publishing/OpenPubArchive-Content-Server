@@ -11,7 +11,7 @@
         </artissinfo>
         <artpgrg>1-17</artpgrg>
         <arttitle>Analytical and Political Neutrality: Change, Privilege, and Responsibility</arttitle>
-        <artqual rx="FA.018B.0001A"/><artauth hidden="false">
+        <artauth hidden="false">
             <aut authindexid="Bowker, Matthew H." listed="true" role="author">
                 <nfirst>Matthew</nfirst>
                 <nmid>H.</nmid>
@@ -43,4 +43,4 @@
             leading us to miss or mistake the meanings and consequences of our positions.</p>
         <p>...Sample article, Truncated.</p>
     </body>
-<unit type="glossary_term_dict"><!-- {} --></unit></pepkbd3>
+<unit type="glossary_term_dict"><!-- {"neutrality": 8, "conflict": 2, "resistance": 2, "unconscious": 1, "culture": 1, "look": 1} --></unit></pepkbd3>

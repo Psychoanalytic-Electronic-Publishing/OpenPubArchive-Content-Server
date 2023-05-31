@@ -1066,8 +1066,6 @@ class PEPBookInfo:
         """
         Initialize the PEPBooks class and load book patterns
         """
-        # import libPEPBiblioDB
-
         self.refBookList = None
 
         # use the class to hold this initialized global data
@@ -1103,14 +1101,6 @@ class PEPBookInfo:
                                                                 # this is the pattern length, and may not
                                                                 # truly reflect the string len!
 
-            # Take parameter at face value, init later when needed.
-            #if isinstance(biblioDB, libPEPBiblioDB.BiblioDB):
-                #self.__class__.biblioDB = biblioDB
-            #else:
-                #self.__class__.biblioDB = None
-
-            #self.HTMLParser = html.parser.HTMLParser()
-
     #--------------------------------------------------------------------------------
     def __repr__(self):
         """
@@ -1128,75 +1118,6 @@ class PEPBookInfo:
         """
         return len(self.bookRGXList)
 
-    #--------------------------------------------------------------------------------
-    def getPEPBookCodeXML(self, theReference, refText = None, sRatio = .87654321):
-        """
-        Identify the reference in the strBookReference XML and return the
-            associated bookID if there is one
-
-        This is used for XML based references (most accurate)
-
-        """
-        ## at this point, only XML falls through
-        #bookMarkup = self.LastPYXRefTree.getElementTextSingleton(SUB, E("bst|bp|bsy|bpd"))
-        #journal = self.LastPYXRefTree.getElementTextSingleton(SUB, E("j"))
-        #if not opasgenlib.is_empty(bookMarkup) and not opasgenlib.is_empty(journal):
-            ##print "This is probably a journal (skipped): ", journal
-            #return retVal
-        ##else:
-        ## this could be one of the trillion mistagged references.  Try importing journal as the fallback for bst, sourcetitlecited and see if that works.
-
-        ## see if it's already marked
-        #rxVal = self.LastPYXRefTree.getCurrAttrVal("rx|rxp")
-        #if gDbg1: print("Pyxtree Reference: ", repr(self.LastPYXRefTree))
-        ##if refText is None: # so if it's already extracted, we don't need to do it again
-            ##refText = sciPEPSupport.normalizeTextEntities(self.LastPYXRefTree.getCurrElementText(notIncludingTagRegex=("ftnref|ftnx|impx")), self.LastPYXRefTree.entityTrans)
-
-        #refObj = self.parseXMLAuthorYearTitle(self.LastPYXRefTree)
-        #authors = refObj.get(gConst.AUTHORS, refObj.get(gConst.BAUTHORS))
-        #year = refObj.get(gConst.YEAR, refObj.get(gConst.BOOKYEAR))
-        #articleTitle =  refObj[gConst.TITLE]
-        #sourceTitle =  refObj.get(gConst.SOURCETITLECITED, refObj.get(gConst.SOURCETITLESERIES))
-        #if gDbg1:
-            #print("Title: ", articleTitle)
-            #print("SourceTitle: ", sourceTitle)
-            #print("Authors: ", authors)
-            #print("SourceYear: ", year)
-            #print("RX Val: ", rxVal)
-
-        ## match the book info against the regular expressions. It either matches (100%), or not.  Returns matching ID or none
-        #if not opasgenlib.is_empty(sourceTitle):
-            #matchID = self.findBookCodeByTitleAuthorYear(strTitle=sourceTitle, strAuth=authors, strYear=year, strReference=refText)
-        #else:
-            ## there's no source title, so use title to compare
-            #matchID = self.findBookCodeByTitleAuthorYear(strTitle=articleTitle, strAuth=authors, strYear=year, strReference=refText)
-
-        ## matchID is now a tuple (9/2011) so deal with that
-        #if matchID[0] is not None:
-            ## we found that the source is a book.  So look up the article to see if we can go directly to the page.
-            #if not opasgenlib.is_empty(articleTitle):
-                #if gDbg1:
-                    #print(40*"%X")
-                    #print("Found the book as a source.  Looking for the article/section: '%s'" % articleTitle)
-                #matchPageID, sRatio2 = self.findCompilationBooks(self.biblioDB, articleTitle, targetArticleID = matchID[0])
-                #if matchPageID is not None:
-                    ## use this instead.
-                    #if gDbg1:
-                        #print("Using page match instead.")
-                    #matchID = matchPageID
-                    #sRatio = sRatio2
-                #else:
-                    #if gDbg1: print("...article page not found.  Using book reference.")
-
-            #retVal = matchID, sRatio, refObj
-
-        #else:
-            ## we didn't find a book source
-            #if gDbg1: print("Not a PEP book source.  No matches...", sourceTitle)
-
-        #return retVal
-        pass
-    
     #--------------------------------------------------------------------------------
     def getPEPBookCodeStr(self, theReference, sRatio = RX_CONFIDENCE_PROBABLE):
         """
@@ -1342,21 +1263,6 @@ class PEPBookInfo:
 
         # return book id or none
         return retVal
-
-    #--------------------------------------------------------------------------------
-    def getPEPBookCode(self, theReference, refText = None, sRatio = .87654321):
-        """
-        Identify the reference in the theReference XML and return the
-            associated bookID if there is one
-
-        This is used XML based references (most accurate
-        """
-
-        # self.LastPYXRefTree = None # reset saved tree.
-        matchID, sRatio, refobj = self.getPEPBookCodeXML(theReference=theReference, refText=refText)
-
-        return matchID, sRatio, refobj
-
 
 #==================================================================================================
 # Main Standalone (Test) Routines

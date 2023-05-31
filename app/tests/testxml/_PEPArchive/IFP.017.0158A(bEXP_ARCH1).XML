@@ -7,7 +7,7 @@
 <artiss>3</artiss>
 <artpgrg>158-168</artpgrg>
 <arttitle>The Vicissitudes of Affect in Horney's Theory</arttitle>
-<artqual rx="IFP.017.0158A"/><artauth hidden="false">
+<artauth hidden="false">
 <aut authindexid="Rendón, Mario" listed="true" role="author"><nfirst>Mario</nfirst> <nlast>Rendón</nlast> <ndeg dgr="MD"/> <nbio>Past Editor, The American Journal of Psychoanalysis; Past Dean, The American Institute of Psychoanalysis; and Past President, The Association for the Advancement of Psychoanalysis.</nbio></aut>
 <autaff>
 <addr>
@@ -34,4 +34,4 @@
             <n>168</n>
         </pb>
     </bib>
-<unit type="glossary_term_dict"><!-- {} --></unit></pepkbd3>
+<unit type="glossary_term_dict"><!-- {"dreaming": 2, "philosophy": 1, "passion": 1} --></unit></pepkbd3>

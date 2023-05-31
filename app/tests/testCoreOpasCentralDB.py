@@ -43,33 +43,33 @@ class TestDatabase(unittest.TestCase):
     def test_opasdb_getsources(self):
         ocd = opasCentralDB()
         sources = ocd.get_sources()
-        assert(sources[0] > 5)
+        assert sources[0] > 5, sources[0]
         sources = ocd.get_sources(src_code="CFP")
-        assert(sources[0] == 1)
+        assert sources[0] == 1, sources[0]
         sources = ocd.get_sources(src_type="journal")
-        assert(sources[0] >= 4)
+        assert sources[0] >= 4, sources[0] 
         sources = ocd.get_sources(src_type="videos")
-        assert(sources[0] >= 1)
+        assert sources[0] >= 1, sources[0] 
 
     def test_opasdb_getsources_abnormal(self):
         ocd = opasCentralDB()
         sources = ocd.get_sources(src_code="CFP'")
-        assert(sources[0] == 1)
+        assert sources[0] == 1, sources[0]
         sources = ocd.get_sources(src_code='CFP"')
-        assert(sources[0] == 1)
+        assert sources[0] == 1, sources[0]
 
     def test_opasdb_getsourcetypes(self):
         ocd = opasCentralDB()
         sources = ocd.get_sources()
-        assert(sources[0] >= 5)
+        assert sources[0] >= 5, sources[0]
         # unlike the API higher level function, both of these src_types--videos and stream--return streams on this direct call
         #  because the database vw_api_productbase_instance_counts view only has the stream information.
         #  see testAPIMetadata.test_3B_meta_videostreams to see the difference which is driven by
         #  query parameter streams
         sources = ocd.get_sources(src_type="videos")
-        assert(sources[0] >= 1)
+        assert sources[0] >= 1, sources[0]
         sources = ocd.get_sources(src_type="stream")
-        assert(sources[0] >= 1)
+        assert sources[0] >= 1, sources[0]
 
     # no longer applicable
     #def test_opasdb_abuse_too_many_opens(self):

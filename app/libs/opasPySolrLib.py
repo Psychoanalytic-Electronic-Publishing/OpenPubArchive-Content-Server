@@ -228,13 +228,14 @@ def facet_processing(facets):
 #-----------------------------------------------------------------------------
 def get_base_article_info_by_id(art_id):
     """
-    Not currently used.
+    Return a document list (document models) for the given article id.
     """
 
     documentList, ret_status = search_text(query=f"art_id:{art_id}", 
                                            limit=1,
                                            abstract_requested=False,
-                                           full_text_requested=False
+                                           full_text_requested=False,
+                                           req_url = opasConfig.CACHEURL # so it doesn't log missing session id
                                            )
 
     try:
@@ -270,7 +271,7 @@ def get_translated_article_info_by_origrx_id(art_id):
     return ret_val
 
 #-----------------------------------------------------------------------------
-def get_articles_related_to_current_via_artqual(art_id):
+def get_articles_related_to_current_via_artqual(art_qual = None, art_id = None):
     """
     Return a list of any articles in Solr which reference this one
       via artqual.
@@ -281,20 +282,29 @@ def get_articles_related_to_current_via_artqual(art_id):
     
     """
     ret_val = []
-    documentList, ret_status = search_text(query=f"art_qual:{art_id}", 
-                                           limit=10,
-                                           abstract_requested=False,
-                                           full_text_requested=False
-                                           )
+    related_id_list = []
+    if art_id is not None:
+        documentListItem = get_base_article_info_by_id(art_id = art_id)
+        if documentListItem.relatedrx is not None:
+            art_qual = documentListItem.relatedrx
 
-    try:
-        if documentList.documentList.responseInfo.count > 0:
-            ret_val = documentListItem = documentList.documentList.responseSet
-    except Exception as e:
-        logger.error(f"Error getting article {art_id} by id: {e}")
-        ret_val = []
+    if art_qual is not None:    
+        documentList, ret_status = search_text(query=f"art_qual:{art_qual}", 
+                                               limit=10,
+                                               abstract_requested=False,
+                                               full_text_requested=False, 
+                                               req_url = opasConfig.CACHEURL # so it doesn't log missing session id
+                                               )
+
+        try:
+            if documentList.documentList.responseInfo.count > 0:
+                ret_val = documentListItem = documentList.documentList.responseSet
+                related_id_list = list(map(lambda d: d.documentID, documentListItem))
+        except Exception as e:
+            logger.error(f"Error getting article {art_id} by id: {e}")
+            ret_val = []
         
-    return ret_val
+    return ret_val, related_id_list
 
 #-----------------------------------------------------------------------------
 def authors_get_author_info(author_partial,

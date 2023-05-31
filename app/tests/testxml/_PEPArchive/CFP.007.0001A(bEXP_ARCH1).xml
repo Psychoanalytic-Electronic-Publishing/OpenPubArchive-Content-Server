@@ -38,17 +38,17 @@
     </body>
 <bib>
 <h1 c="u" align="center" id="H0008">References</h1>
-<be id="B001"><a><l>Ahrenfeldt</l>, R. H.</a> (<y>1958</y>). <t>Psychiatry in the British Army in the Second World War.</t> London: <bp>Routledge and Kegan Paul</bp>.</be>
+<be id="B001" rxcf="FA.008C.0463A:0.47" rxcfconf="0.47"><a><l>Ahrenfeldt</l>, R. H.</a> (<y>1958</y>). <t>Psychiatry in the British Army in the Second World War.</t> London: <bp>Routledge and Kegan Paul</bp>.</be>
 <be id="B002"><a><l>Anonymous</l></a> (<y>1934</y>). A <t>“Harley Street” for the anxious poor: treatment of “frightening illnesses”.</t> Banffshire Advertiser. 17th May, n.p. Box 1. Folder 1. Tavistock Clinic Archives. Library, Tavistock Centre, Tavistock and Portman N.H.S. Trust, Belsize Park, London.</be>
 <be id="B003"><a><l>Anonymous</l></a> (n.d.). Notes: the Institute of Marital Studies, formerly the Family Discussion Bureau. The development of a non-medical path into work with marital and related family problems. Unpublished Typescript. SA/TCC/A/1/11. Tavistock Centre for Couple Relationships. Archives and Manuscripts, Rare Materials Room, Wellcome Library, Wellcome Collection, The Wellcome Building, London.</be>
-<be id="B004"><a><l>Ansbacher</l>, H. L.</a> (<y>1981</y>). Discussion of Alfred Adler's Preface to <t>The Diary of Vaslav Nijinsky.</t> <j>Archives of General Psychiatry</j>, <v>38</v>: <pp>836-841</pp>.</be>
+<be id="B004" rxcf="PSAR.033.0257A:0.67, JOAP.017.0184A:0.54, JAA.012.0341A:0.52, CFP.007.0001A:0.50" rxcfconf="0.67"><a><l>Ansbacher</l>, H. L.</a> (<y>1981</y>). Discussion of Alfred Adler's Preface to <t>The Diary of Vaslav Nijinsky.</t> <j>Archives of General Psychiatry</j>, <v>38</v>: <pp>836-841</pp>.</be>
 <be id="B005"><a><l>Attlee</l>, C. R.</a> (<y>1920</y>). <t>The Social Worker.</t> London: <bp>G. Bell and Sons</bp>.</be>
 <be id="B006"><a><l>Attlee</l>, C. R.</a> (<y>1954</y>). <t>As it Happened.</t> London: <bp>William Heinemann</bp>.</be>
 <be id="B007"><a><l>Balint</l>, E.</a> (<y>1974</y>). <t>Letter to Douglas Woodhouse.</t> 27th June. SA/TCC/B/3/1. Tavistock Centre for Couple Relationships. Archives and Manuscripts, Rare Materials Room, Wellcome Library, Wellcome Collection, The Wellcome Building, London.</be>
-<be id="B008"><a><l>Balint</l>, E.</a> (n.d.). <t>The girl on the roof, or listening to strangers (unfinished and unpublished).</t> Cited in Jennifer Johns (<y>2012</y>). The Enid files. In: <j>J. Szekacs-Weisz &amp; T. Keve (Eds.)</j>, <binc><t>Ferenczi for Our Time: Theory and Practice</t> (pp. <pp>91-99</pp>). London: Karnac.</binc></be>
+<be id="B008" rxcf="CFP.007.0001A:0.45" rxcfconf="0.45"><a><l>Balint</l>, E.</a> (n.d.). <t>The girl on the roof, or listening to strangers (unfinished and unpublished).</t> Cited in Jennifer Johns (<y>2012</y>). The Enid files. In: <j>J. Szekacs-Weisz &amp; T. Keve (Eds.)</j>, <binc><t>Ferenczi for Our Time: Theory and Practice</t> (pp. <pp>91-99</pp>). London: Karnac.</binc></be>
 <be id="B009"><a><l>Balint</l>, E.</a>, &amp; <a><l>Balint</l>, M.</a> (<y>1953</y>). <t>Letter to Family Discussion Bureau.</t> 17th January. SA/TCC/A/2/1. Tavistock Centre for Couple Relationships. Archives and Manuscripts, Rare Materials Room, Wellcome Library, Wellcome Collection, The Wellcome Building, London.</be>
-<be id="B010"><a><l>Balint</l>, M.</a> (<y>1948</y>). On genital love. <j>International Journal of Psycho-Analysis</j>, <v>29</v>: <pp>34-40</pp>.</be>
+<be id="B010" rx="IJP.029.0034A" rxconf="0.91"><a><l>Balint</l>, M.</a> (<y>1948</y>). On genital love. <j>International Journal of Psycho-Analysis</j>, <v>29</v>: <pp>34-40</pp>.</be>
 <pb><n nextpgnum="P0025" prefixused="">19</n></pb>
 <pb><n>25</n></pb>
 </bib>
-<unit type="glossary_term_dict"><!-- {} --></unit></pepkbd3>
+<unit type="glossary_term_dict"><!-- {"culture": 1} --></unit></pepkbd3>

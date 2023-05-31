@@ -7,7 +7,7 @@
 <artiss>1</artiss>
 <artpgrg>27-36</artpgrg>
 <arttitle>On Mental Pain: From Freud to Bion</arttitle>
-<artqual rx="IFP.017.0027A"/><artauth hidden="false">
+<artauth hidden="false">
 <aut authindexid="Fleming, Manuela" listed="true" role="author"><nfirst>Manuela</nfirst> <nlast>Fleming</nlast> <nbio>Clinical Psychologist and Psychoanalyst, is a full member of the Portuguese Society of Psychoanalysis (PSP) and the International Psychoanalytic Association (IPA), and is currently President of the PSP. She is Associate Professor of Psychology at the University of Porto, Portugal, and the author of seven books on Psychoanalysis. Her private practise is in Porto, Portugal.</nbio></aut>
 <autaff>
 <instit>Department of Behavioural Sciences, ICBAS (Abel Salazar Institute for the Biomedical Sciences), University of Porto</instit>
@@ -29,4 +29,4 @@
             the lack of psychoanalytic literature on the subject, led me to write this paper.</p>
         <p>...Sample article, Truncated.</p>
     </body>
-<unit type="glossary_term_dict"><!-- {} --></unit></pepkbd3>
+<unit type="glossary_term_dict"><!-- {"pain": 1} --></unit></pepkbd3>

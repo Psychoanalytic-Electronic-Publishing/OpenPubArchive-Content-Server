@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <!DOCTYPE pepkbd3 SYSTEM "https://pep-web-includes.s3.amazonaws.com/pepkbd3.dtd">
-<pepkbd3 procby="opasXMLProcessor.2023.0420/v.1.0.110"><meta><revisions><revbld>20030207</revbld><revdesc>Corrected typo seepp</revdesc></revisions></meta><artinfo lang="en" artsubtype="ART" j="CPS" artsource="A1V2" arttype="ART" id="CPS.007.0001A" ISSN="0010-7530"><artyear>1970</artyear><artvol actual="7">7</artvol><artiss>1</artiss><artpgrg style="arabic">1-20</artpgrg><arttitle lang="en">Autism and the Phase of Transition to Therapeutic Symbiosis</arttitle><artqual rx="CPS.007.0001A"/><artauth hidden="false"><aut authindexid="Searles, Harold F." listed="true" role="author"><nfirst>Harold</nfirst><nmid>F.</nmid><nlast>Searles</nlast><ndeg dgr="OTHER" other="M.D."/></aut>
+<pepkbd3 procby="opasXMLProcessor.2023.0420/v.1.0.110"><meta><revisions><revbld>20030207</revbld><revdesc>Corrected typo seepp</revdesc></revisions></meta><artinfo lang="en" artsubtype="ART" j="CPS" artsource="A1V2" arttype="ART" id="CPS.007.0001A" ISSN="0010-7530"><artyear>1970</artyear><artvol actual="7">7</artvol><artiss>1</artiss><artpgrg style="arabic">1-20</artpgrg><arttitle lang="en">Autism and the Phase of Transition to Therapeutic Symbiosis</arttitle><artauth hidden="false"><aut authindexid="Searles, Harold F." listed="true" role="author"><nfirst>Harold</nfirst><nmid>F.</nmid><nlast>Searles</nlast><ndeg dgr="OTHER" other="M.D."/></aut>
 <autaff><addr><ln><cs lang="en" style="AuthorName">Harold F. Searles, M.D.</cs></ln><ln>5401 Westbard Avenue</ln><ln>Washington, D.C. 20016</ln></addr></autaff></artauth></artinfo>
 <body lang="en">
         <p>THIS IS THE SECOND in a series of papers reporting my current concepts about autism,
@@ -33,4 +33,4 @@
         <p>...Sample article, Truncated.</p>
     </body>
 <pb><n>19</n></pb>
-<unit type="glossary_term_dict"><!-- {} --></unit></pepkbd3>
+<unit type="glossary_term_dict"><!-- {"ego": 4, "symbiosis": 3, "autism": 3, "autistic": 3, "transference": 3, "development": 2, "neurotic": 1, "individuation": 1, "schizophrenia": 1, "processes": 1, "mother-infant symbiosis": 1, "regression": 1, "childhood": 1, "evolution": 1, "relation": 1} --></unit></pepkbd3>

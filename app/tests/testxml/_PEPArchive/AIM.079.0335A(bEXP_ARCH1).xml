@@ -7,7 +7,7 @@
 <artiss>2</artiss>
 <artpgrg>335-363</artpgrg>
 <arttitle>Central Organizing Fantasies and Their Relationship to the Signature Style and Masterworks of Two Artists</arttitle>
-<artqual rx="AIM.079.0335A"/><artauth hidden="false">
+<artauth hidden="false">
 <aut authindexid="Wilson, Laurie" listed="true" role="author"><nfirst>Laurie</nfirst> <nlast>Wilson</nlast> <nbio>Psychoanalyst, art historian, and art therapist. She earned her B.A. and Ph.D. degrees in Art History from Wellesley College and City University of New York. She received psychoanalytic training at the NYU Psychoanalytic Institute and is on the faculty at the Psychoanalytic Association of New York. She is chair of the ApsaA Committee on Psychoanalysis and the Arts. She has published extensively in three fields. Her book <i>Alberto Giacometti: Myth, Magic and the Man</i> was published by Yale University Press in 2003 and her biography <i>Louise Nevelson: Light and Shadow</i> was published by Thames &amp; Hudson in 2016.</nbio></aut>
 </artauth>
 </artinfo>
@@ -22,10 +22,10 @@
 </body>
 <bib>
 <h1 id="H0004" align="center">References</h1>
-<be id="B003"><a><l>Arlow</l>, J. A.</a> (<y>1985</y>). <t>The Concept of Psychic Reality and Related Problems.</t> <j>Journal of the American Psychoanalytic Association</j>, <v>33</v>(<bs>3</bs>), <pp>521-535</pp>.</be>
-<be id="B004"><a><l>Bissell</l>, R. W.</a> (<y>1999</y>). <bst>Artemisia Gentileschi and the Authority of Art</bst>. University Park, Pennsylvania: <bp>The Pennsylvania University Press</bp></be>
+<be id="B003" rx="APA.033.0521A" rxconf="0.91"><a><l>Arlow</l>, J. A.</a> (<y>1985</y>). <t>The Concept of Psychic Reality and Related Problems.</t> <j>Journal of the American Psychoanalytic Association</j>, <v>33</v>(<bs>3</bs>), <pp>521-535</pp>.</be>
+<be id="B004" rxcf="JAA.032.0153A:0.68, PSAR.100.0717A:0.61" rxcfconf="0.68"><a><l>Bissell</l>, R. W.</a> (<y>1999</y>). <bst>Artemisia Gentileschi and the Authority of Art</bst>. University Park, Pennsylvania: <bp>The Pennsylvania University Press</bp></be>
 <pb><n nextpgnum="P0363" prefixused="">362</n></pb>
-<be id="B005"><a><l>Erreich</l>, A.</a> (<y>2003</y>). <t>A Modest Proposal: (Re)Defining Unconscious Fantasy.</t> <j>Journal of the American Psychoanalytic Association</j>, <v>72</v>(<bs>3</bs>), <pp>541-574</pp>.</be>
+<be id="B005" rx="PAQ.072.0541A" rxconf="0.8"><a><l>Erreich</l>, A.</a> (<y>2003</y>). <t>A Modest Proposal: (Re)Defining Unconscious Fantasy.</t> <j>Journal of the American Psychoanalytic Association</j>, <v>72</v>(<bs>3</bs>), <pp>541-574</pp>.</be>
 <pb><n>363</n></pb>
 </bib>
-<unit type="glossary_term_dict"><!-- {} --></unit></pepkbd3>
+<unit type="glossary_term_dict"><!-- {"integration": 2, "unconscious": 2, "fantasy": 2, "conscious": 1} --></unit></pepkbd3>

@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2023, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2023.0512/v2.1.035"
+__version__     = "2023.0531/v2.1.036"
 __status__      = "Development"
 
 # !!! IMPORTANT: Increment opasXMLProcessor version (if version chgd). It's written to the XML !!!
@@ -1027,12 +1027,24 @@ def main():
                         artInfo.art_orig_rx = art_id_from_filename
 
                 if artInfo.art_qual is None:
-                    # check if there's any new articles related to this one
-                    related = opasPySolrLib.get_articles_related_to_current_via_artqual(artInfo.art_id)
-                    if related:
-                        msg = f"\t...Article has {len(related)} later related articles. Setting artqual"
+                    # if this doesn't already have related articles...
+                    # check if there's any new articles related to this one, and if so, add this
+                    #  article's id to art_qual, so it's part of the set which references this one.
+                    related, related_id_list = opasPySolrLib.get_articles_related_to_current_via_artqual(art_qual = artInfo.art_id)
+                    if not opasgenlib.is_empty(related):
+                        if len(related) > 1 or artInfo.art_id not in related_id_list:  
+                            msg = f"\t...Other articles point to this article in a set of {len(related)} related articles {related_id_list}. Setting artqual."
+                            log_everywhere_if(options.display_verbose, level="info", msg=msg)
+                            artInfo.art_qual = artInfo.art_id
+                else:
+                    related, related_id_list = opasPySolrLib.get_articles_related_to_current_via_artqual(art_qual = artInfo.art_qual)
+                    if not opasgenlib.is_empty(related):
+                        msg = f"\t...Article is in a set of {len(related)} related articles {related_id_list} via artqual {artInfo.art_qual}"
                         log_everywhere_if(options.display_verbose, level="info", msg=msg)
-                        artInfo.art_qual = artInfo.art_id
+                    else:
+                        msg = f"\t...Article art_qual indicates related articles ({artInfo.art_qual})"
+                        log_everywhere_if(options.display_verbose, level="info", msg=msg)
+                    
                 try:
                     artInfo.file_classification = re.search("(?P<class>current|archive|future|free|special|offsite)", str(n.filespec), re.IGNORECASE).group("class")
                     # set it to lowercase for ease of matching later

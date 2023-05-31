@@ -20,7 +20,7 @@
         </artissinfo>
         <artpgrg style="arabic">17</artpgrg>
         <arttitle>Uninvited Guests</arttitle>
-        <artqual rx="PEPGRANTVS.001.0017A"/><artauth hidden="false">
+        <artauth hidden="false">
                 <aut role="produced-by" listed="true" authindexid="Allison, Liz">
                 <nfirst>Liz</nfirst>
                 <nlast> Allison</nlast>
@@ -104,4 +104,4 @@
             <n>17</n>
         </pb>
     </body>
-<unit type="glossary_term_dict"><!-- {} --></unit></pepkbd3>
+<unit type="glossary_term_dict"><!-- {"dreams": 15, "ego": 2, "dream": 2, "crisis": 1, "psychoanalysis": 1, "narcissism": 1, "conflict": 1} --></unit></pepkbd3>

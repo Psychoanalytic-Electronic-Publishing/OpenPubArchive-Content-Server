@@ -908,7 +908,8 @@ class BiblioEntry(models.Biblioxml):
                                                               similar_count=opasConfig.HEURISTIC_SEARCH_MAX_COUNT, 
                                                               offset=0,
                                                               full_text_requested=False,
-                                                              req_url=opasConfig.CACHEURL)
+                                                              req_url=opasConfig.CACHEURL # so it doesn't log missing session id
+                                                              ) 
             if return_status[0] == 200:
                 if result.documentList.responseInfo.fullCount > 100 and words <= min_words:
                     if verbose: print (f"\tToo many hits ({result.documentList.responseInfo.fullCount} and too few words in title {words}")

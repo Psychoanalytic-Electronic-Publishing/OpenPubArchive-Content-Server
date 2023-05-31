@@ -166,7 +166,7 @@ class Locator:
     #thisIsSplitBook: bool = Field(False, title="")
     #isMainTOC: bool = Field(False, title="")
     #notFatal: bool = Field(False, title="")
-    
+    #orig_locator_list: list = Field(None)   # in case the input val was not string but a list of strings    
 
     # limits
     MINJRNLABBRLEN = 2
@@ -238,6 +238,7 @@ class Locator:
         
         self.__reset()
         self.filename = filename
+        self.orig_locator_list = [] # in case original was a list
         
         self.art_info = art_info # provide full information about the xml of the article we're dealing with
 
@@ -264,6 +265,10 @@ class Locator:
                 raise Exception("Locator Init: Cannot specify arguments in addition to strLocator")
             if isinstance(strLocator, str):  # supports string and unicode Was type(strLocator) == type(""):
                 self.decompile(strLocator)
+            elif isinstance(strLocator, list):
+                self.orig_locator_list = strLocator
+                strLocator = self.orig_locator_list[0]
+                self.decompile(str(strLocator))
             elif isinstance(strLocator, Locator):
                 self.decompile(str(strLocator))
             else:

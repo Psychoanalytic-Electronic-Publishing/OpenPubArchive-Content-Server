@@ -1361,24 +1361,22 @@ class ArticleInfo(BaseModel):
             art_qual_node = parsed_xml.xpath("//artinfo/artqual")
             if art_qual_node != []:
                 self.art_qual = opasxmllib.xml_get_element_attr(art_qual_node[0], "rx", default_return=None)
+                try:
+                    self.art_qual = opasLocator.Locator(self.art_qual).articleID()
+                    # standardize for output
+                    art_qual_node[0].attrib["rx"] = self.art_qual
+                except Exception as e:
+                    log_everywhere_if(True, "warning", f"Error standardizing art_qual: {e}")
             else:
                 self.art_qual = parsed_xml.xpath("//artbkinfo/@extract")
                 if self.art_qual == []:
                     self.art_qual = None
                 else:
-                    self.art_qual = str(self.art_qual[0])
-                    #try:
-                        #self.art_qual = str(opasLocator.Locator(self.art_qual))
-                    #except Exception as e:
-                        #print (e)
+                    try:
+                        self.art_qual = opasLocator.Locator(self.art_qual[0]).articleID()
+                    except Exception as e:
+                        log_everywhere_if(True, "warning", f"Error standardizing extract based art_qual: {e}")
     
-            #self.artinfo_bkinfo_next = parsed_xml.xpath("//artbkinfo/@next")
-            #self.artinfo_bkinfo_prev = parsed_xml.xpath("//artbkinfo/@prev")
-            #if self.artinfo_bkinfo_next != []:
-                #self.artinfo_bkinfo_next = str(opasLocator.Locator(self.artinfo_bkinfo_next[0]))
-            #if self.artinfo_bkinfo_prev != []:
-                #self.artinfo_bkinfo_prev = str(opasLocator.Locator(self.artinfo_bkinfo_prev[0]))
-                
             # will be None if not a book extract
             # self.art_qual = None
             if self.art_qual is not None:

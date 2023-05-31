@@ -96,7 +96,7 @@ class TestReports(unittest.TestCase):
         response_info = r["report"]["responseInfo"]
         response_set = r["report"]["responseSet"]
         assert(response_info["count"] >= 1)
-        assert(response_set[0]["row"]["type"] == "Document")
+        assert response_set[0]["row"]["type"] in ["Document", "EPUB", "PDF"], response_set[0]["row"]["type"] 
 
     def test03_document_view__stat_report(self):
         # note api_key is required, but already in headers

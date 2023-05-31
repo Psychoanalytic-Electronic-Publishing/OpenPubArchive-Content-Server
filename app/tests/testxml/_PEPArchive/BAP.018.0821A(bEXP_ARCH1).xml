@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <!DOCTYPE pepkbd3 SYSTEM "https://pep-web-includes.s3.amazonaws.com/pepkbd3.dtd">
-<pepkbd3 procby="opasXMLProcessor.2023.0420/v.1.0.110"><meta><revisions><revbld>A1v5</revbld><revdesc>Fixed table headings and table footnotes</revdesc></revisions></meta><artinfo arttype="ART" artsource="A1V2" j="BAP" artsubtype="ART" id="BAP.018.0821A" ISSN="0003-0651"><artyear>1962</artyear><artvol actual="18">18</artvol><artpgrg style="arabic">821-825</artpgrg><arttitle> American Psychoanalytic Association—<i>Information Sheets on Education</i></arttitle><artqual rx="BAP.018.0821A"/><artauth hidden="false"><none/></artauth></artinfo>
+<pepkbd3 procby="opasXMLProcessor.2023.0420/v.1.0.110"><meta><revisions><revbld>A1v5</revbld><revdesc>Fixed table headings and table footnotes</revdesc></revisions></meta><artinfo arttype="ART" artsource="A1V2" j="BAP" artsubtype="ART" id="BAP.018.0821A" ISSN="0003-0651"><artyear>1962</artyear><artvol actual="18">18</artvol><artpgrg style="arabic">821-825</artpgrg><arttitle> American Psychoanalytic Association—<i>Information Sheets on Education</i></arttitle><artauth hidden="false"><none/></artauth></artinfo>
 <body><h1 c="t">Information Sheet XXVII</h1>
 <tbl id="T001"><caption><ctitle>TRAINING ANALYSTS Number, Training Hours, "Training Load, " and Number of Students March 1, 1962</ctitle></caption><table frame="topbot"><tgroup colsep="0" cols="5" rowsep="0"><colspec colnum="1" colwidth="1in" colname="c1" align="left"/>
 <colspec colnum="2" colwidth="1.5in" colname="c2" align="left"/>

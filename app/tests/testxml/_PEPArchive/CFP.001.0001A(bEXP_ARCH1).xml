@@ -7,7 +7,7 @@
 <artiss>1</artiss>
 <artpgrg>1-19</artpgrg>
 <arttitle>Couple Psychoanalysis and Couple Therapy: Context and Challenge</arttitle>
-<artqual rx="CFP.001.0001A"/><artauth hidden="false">
+<artauth hidden="false">
 <aut authindexid="Clulow, Christopher" listed="true" role="author"><nfirst>Christopher</nfirst> <nlast>Clulow</nlast> <nbio>Senior Fellow of TCCR, where he practises as a visiting lecturer and researcher. He has published extensively on marriage, partnerships, parenthood, and couple psychotherapy, most recently from an attachment perspective. His most recent edited publication, <i>Sex, Attachment, and Couple Psychotherapy: Psychoanalytic Perspectives</i>, was published by Karnac in 2009. He is Vice Chair of BSCPC, past Therapies Editor for the international journal <i>Sexual and Relationship Therapy</i>, and a member of the Editorial Board for <i>Couple and Family Psychoanalysis</i>. He is a Fellow of the Centre for Social Policy, Dartington, and a registrant of the British Psychoanalytic Council. He maintains a private clinical and training practice from his home in St Albans.</nbio></aut>
 </artauth>
 <artkwds><impx type="KEYWORD">couple psychoanalysis</impx><impx type="KEYWORD">family psychoanalysis</impx><impx type="KEYWORD">couple therapy</impx><impx type="KEYWORD">relationship counselling</impx><impx type="KEYWORD">relational psychoanalysis.</impx></artkwds></artinfo>
@@ -28,4 +28,4 @@
             <n>1</n>
         </pb>
     </bib>
-<unit type="glossary_term_dict"><!-- {} --></unit></pepkbd3>
+<unit type="glossary_term_dict"><!-- {"psychotherapy": 1, "intervention": 1} --></unit></pepkbd3>

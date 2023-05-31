@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <!DOCTYPE pepkbd3 SYSTEM "https://pep-web-includes.s3.amazonaws.com/pepkbd3.dtd">
-<pepkbd3 procby="opasXMLProcessor.2023.0420/v.1.0.110"><artinfo lang="en" artsubtype="ART" j="CPS" artsource="A1V2" arttype="ART" id="CPS.001.0001A" ISSN="0010-7530"><artyear>1964</artyear><artvol actual="1">1</artvol><artiss>1</artiss><artpgrg style="arabic">1-29</artpgrg><arttitle lang="en">Schizophrenia and the Psychotherapeutic Field</arttitle><artqual rx="CPS.001.0001A"/><artauth hidden="false"><aut authindexid="Will, Otto A." listed="true" role="author"><nfirst>Otto</nfirst><nmid>Allen</nmid><nlast>Will</nlast><nsufx>Jr.</nsufx><ndeg dgr="OTHER" other="M.D."/></aut>
+<pepkbd3 procby="opasXMLProcessor.2023.0420/v.1.0.110"><artinfo lang="en" artsubtype="ART" j="CPS" artsource="A1V2" arttype="ART" id="CPS.001.0001A" ISSN="0010-7530"><artyear>1964</artyear><artvol actual="1">1</artvol><artiss>1</artiss><artpgrg style="arabic">1-29</artpgrg><arttitle lang="en">Schizophrenia and the Psychotherapeutic Field</arttitle><artauth hidden="false"><aut authindexid="Will, Otto A." listed="true" role="author"><nfirst>Otto</nfirst><nmid>Allen</nmid><nlast>Will</nlast><nsufx>Jr.</nsufx><ndeg dgr="OTHER" other="M.D."/></aut>
 </artauth></artinfo>
 <body lang="en">
         <p>AS USED HERE, the term schizophrenia does not refer to a disease within a person, or to
@@ -19,4 +19,4 @@
             <n>1</n>
         </pb>
     </body>
-<unit type="glossary_term_dict"><!-- {} --></unit></pepkbd3>
+<unit type="glossary_term_dict"><!-- {"schizophrenia": 2, "psychosis": 1} --></unit></pepkbd3>
