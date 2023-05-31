@@ -62,27 +62,27 @@ resource "aws_cloudwatch_event_target" "nightly_data_pipeline_target" {
       {
         "directory" : "opasDataLoader",
         "utility" : "opasDataLoader",
-        "args" : "--sub _PEPFree --smartload --verbose"
+        "args" : "--sub _PEPFree --smartload --verbose --nocheck"
       },
       {
         "directory" : "opasDataLoader",
         "utility" : "opasDataLoader",
-        "args" : "--sub _PEPCurrent --smartload --verbose"
+        "args" : "--sub _PEPCurrent --smartload --verbose --nocheck"
       },
       {
         "directory" : "opasDataLoader",
         "utility" : "opasDataLoader",
-        "args" : "--sub _PEPSpecial --smartload --verbose"
+        "args" : "--sub _PEPSpecial --smartload --verbose --nocheck"
       },
       {
         "directory" : "opasDataLoader",
         "utility" : "opasDataLoader",
-        "args" : "--sub _PEPOffsite --smartload --verbose"
+        "args" : "--sub _PEPOffsite --smartload --verbose --nocheck"
       },
       {
         "directory" : "opasDataLoader",
         "utility" : "opasDataLoader",
-        "args" : "--sub _PEPArchive/Videostreams --smartload --verbose"
+        "args" : "--sub _PEPArchive/Videostreams --smartload --verbose --nocheck"
       },
     ],
     [
