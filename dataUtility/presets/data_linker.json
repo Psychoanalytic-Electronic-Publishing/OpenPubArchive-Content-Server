@@ -1,0 +1,64 @@
+[
+    [
+        {
+            "directory": "opasDataLoader",
+            "utility": "opasDataLinker",
+            "args": "--key ^A.* --halfway"
+        },
+        {
+            "directory": "opasDataLoader",
+            "utility": "opasDataLinker",
+            "args": "--key ^A.* --halfway --reverse"
+        },
+        {
+            "directory": "opasDataLoader",
+            "utility": "opasDataLinker",
+            "args": "--key ^[B-D].*"
+        },
+        {
+            "directory": "opasDataLoader",
+            "utility": "opasDataLinker",
+            "args": "--key ^[F-G].*"
+        },
+        {
+            "directory": "opasDataLoader",
+            "utility": "opasDataLinker",
+            "args": "--key ^I.* --halfway"
+        },
+        {
+            "directory": "opasDataLoader",
+            "utility": "opasDataLinker",
+            "args": "--key ^I.* --halfway --reverse"
+        },
+        {
+            "directory": "opasDataLoader",
+            "utility": "opasDataLinker",
+            "args": "--key ^J.*"
+        },
+        {
+            "directory": "opasDataLoader",
+            "utility": "opasDataLinker",
+            "args": "--key ^[L-O].*"
+        },
+        {
+            "directory": "opasDataLoader",
+            "utility": "opasDataLinker",
+            "args": "--key ^P.* --halfway"
+        },
+        {
+            "directory": "opasDataLoader",
+            "utility": "opasDataLinker",
+            "args": "--key ^P.* --halfway --reverse"
+        },
+        {
+            "directory": "opasDataLoader",
+            "utility": "opasDataLinker",
+            "args": "--key ^R.*"
+        },
+        {
+            "directory": "opasDataLoader",
+            "utility": "opasDataLinker",
+            "args": "--key ^[S-Z].*"
+        }
+    ]
+]
