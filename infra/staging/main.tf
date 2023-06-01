@@ -68,3 +68,11 @@ module "data_utility_s3" {
   env               = var.env
   state_machine_arn = module.data_utility.state_machine_arn
 }
+
+module "data_utility_cron" {
+  source = "../modules/data-utility-cron"
+
+  stack_name        = var.stack_name
+  env               = var.env
+  state_machine_arn = module.data_utility.state_machine_arn
+}
