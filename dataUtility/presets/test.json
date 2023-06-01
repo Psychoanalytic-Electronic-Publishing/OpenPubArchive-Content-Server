@@ -1,0 +1,9 @@
+[
+    [
+        {
+            "directory": "opasDataLoader",
+            "utility": "opasDataLoader",
+            "args": "--nofiles --help"
+        }
+    ]
+]
