@@ -18,6 +18,11 @@ module "execute_task_file" {
   }
 }
 
+data "aws_s3_bucket" "pep_web_live_data" {
+  bucket = "pep-web-live-data"
+}
+
+
 resource "aws_lambda_permission" "allow_execute_task_file" {
   statement_id  = "${var.stack_name}-allow-task-file-${var.env}"
   action        = "lambda:InvokeFunction"
