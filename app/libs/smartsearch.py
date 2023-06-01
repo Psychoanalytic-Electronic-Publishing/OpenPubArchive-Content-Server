@@ -224,48 +224,51 @@ def smart_search(smart_search_text):
         if ret_val == {}:
             # nothing found yet.
             # is it in quotes (phrase?)
-            words = smart_search_text.split(" ")
-            word_count = len(words)
-            words = [re.sub('\"|\\\:', "", n) for n in words]
-            words = " ".join(words)
-            words = smartsearchLib.cleanup_solr_query(words)
+            search_words = smart_search_text.split(" ")
+            word_count = len(search_words)
+            search_words = [re.sub('\"|\\\:', "", n) for n in search_words]
+            cleaned_search_str = " ".join(search_words)
+            cleaned_search_str = smartsearchLib.cleanup_solr_query(cleaned_search_str)
+            percent_upper, upper_count = smartsearchLib.percentage_uppercase_words(cleaned_search_str)
+            # print (f"Search string eval: Percent upper: {percent_upper}, count: {upper_count}, common: {smartsearchLib.has_common_words(cleaned_search_str)}")
 
             pattern_boolean_test = "&&|\|\||\s(AND|OR|NOT)\s"
-            has_bool = re.search(pattern_boolean_test, words) # case sensitive
+            has_bool = re.search(pattern_boolean_test, cleaned_search_str) # case sensitive
             # has_bool_insensitive = re.search(pattern_boolean_test, words, flags=re.I) # case sensitive
             
-            if smartsearchLib.is_value_in_field(words, core="docs", field=opasConfig.SEARCH_FIELD_AUTHOR_CITATION, match_type="proximate") and words[0].isupper():
+            if smartsearchLib.is_value_in_field(cleaned_search_str, core="docs", field=opasConfig.SEARCH_FIELD_AUTHOR_CITATION, match_type="proximate") \
+               and percent_upper >= 50 and not smartsearchLib.has_common_words(cleaned_search_str):
                 # see if it's a list of names
                 ret_val[opasConfig.KEY_SEARCH_TYPE] = opasConfig.SEARCH_TYPE_AUTHOR_CITATION
                 ret_val[opasConfig.KEY_SEARCH_FIELD] = opasConfig.SEARCH_FIELD_AUTHOR_CITATION 
-                ret_val[opasConfig.KEY_SEARCH_VALUE] = f"{words}"
-                ret_val[opasConfig.KEY_SEARCH_SMARTSEARCH] = f"Matched articles by authors: ({words})"
+                ret_val[opasConfig.KEY_SEARCH_VALUE] = f"{cleaned_search_str}"
+                ret_val[opasConfig.KEY_SEARCH_SMARTSEARCH] = f"Matched articles by authors: ({cleaned_search_str})"
 
             if ret_val == {}:
-                if ":" not in words:
-                    if smartsearchLib.is_value_in_field(words, core="docs", field=opasConfig.SEARCH_FIELD_AUTHOR_CITATION, match_type="boolean") != 0:
+                if ":" not in cleaned_search_str:
+                    if smartsearchLib.is_value_in_field(cleaned_search_str, core="docs", field=opasConfig.SEARCH_FIELD_AUTHOR_CITATION, match_type="boolean") != 0:
                         # boolean name search
-                        if words[0].isupper() and has_bool: 
+                        if percent_upper >= 50 and has_bool and not smartsearchLib.has_common_words(cleaned_search_str): 
                             # see if it's a list of names
                             ret_val[opasConfig.KEY_SEARCH_TYPE] = opasConfig.SEARCH_TYPE_AUTHOR_CITATION
                             ret_val[opasConfig.KEY_SEARCH_FIELD] = opasConfig.SEARCH_FIELD_AUTHOR_CITATION 
-                            ret_val[opasConfig.KEY_SEARCH_VALUE] = f"{words}"
-                            ret_val[opasConfig.KEY_SEARCH_SMARTSEARCH] = f"Matched by authors: (boolean query: {words})"
+                            ret_val[opasConfig.KEY_SEARCH_VALUE] = f"{cleaned_search_str}"
+                            ret_val[opasConfig.KEY_SEARCH_SMARTSEARCH] = f"Matched by authors: (boolean query: {cleaned_search_str})"
 
             if ret_val == {}:
-                if 0 != smartsearchLib.is_value_in_field(words, core="docs", field=opasConfig.SEARCH_FIELD_TITLE, match_type="ordered") == 1: # unique match only
+                if 0 != smartsearchLib.is_value_in_field(cleaned_search_str, core="docs", field=opasConfig.SEARCH_FIELD_TITLE, match_type="ordered") == 1: # unique match only
                     if word_count > 4:
-                        ret_val["title"] = re.sub(f'[{for_words_only_remove_punct}]', '', words)
+                        ret_val["title"] = re.sub(f'[{for_words_only_remove_punct}]', '', cleaned_search_str)
                         ret_val[opasConfig.KEY_SEARCH_TYPE] = opasConfig.SEARCH_TYPE_TITLE
-                        ret_val[opasConfig.KEY_SEARCH_SMARTSEARCH] = f"Matched words in titles: {words}"
+                        ret_val[opasConfig.KEY_SEARCH_SMARTSEARCH] = f"Matched words in titles: {cleaned_search_str}"
     
             if ret_val == {}:
                 # unique match only
-                if 1 == smartsearchLib.is_value_in_field(words, core="docs", field=opasConfig.SEARCH_FIELD_TITLE, match_type="proximate"): 
+                if 1 == smartsearchLib.is_value_in_field(cleaned_search_str, core="docs", field=opasConfig.SEARCH_FIELD_TITLE, match_type="proximate"): 
                     if word_count > 4:
-                        ret_val["title"] = re.sub(f'[{for_words_only_remove_punct}]', '', words)
+                        ret_val["title"] = re.sub(f'[{for_words_only_remove_punct}]', '', cleaned_search_str)
                         ret_val[opasConfig.KEY_SEARCH_TYPE] = opasConfig.SEARCH_TYPE_TITLE
-                        ret_val[opasConfig.KEY_SEARCH_SMARTSEARCH] = f"Matched words in titles: {words}"
+                        ret_val[opasConfig.KEY_SEARCH_SMARTSEARCH] = f"Matched words in titles: {cleaned_search_str}"
 
             if ret_val == {}:
                 if smartsearchLib.all_words_start_upper_case(smart_search_text) and "*" not in smart_search_text:
@@ -302,7 +305,7 @@ def smart_search(smart_search_text):
                             ret_val[opasConfig.KEY_SEARCH_SMARTSEARCH] = f"Matched articles for authors: {name_conjunction} "
 
             if ret_val == {}:
-                if 1 != smartsearchLib.is_value_in_field(words, core="docs", field=opasConfig.SEARCH_FIELD_TEXT, match_type="proximate"):
+                if 1 != smartsearchLib.is_value_in_field(cleaned_search_str, core="docs", field=opasConfig.SEARCH_FIELD_TEXT, match_type="proximate"):
                     orig_smart_search_text = smart_search_text
                     if not opasgenlib.in_quotes(smart_search_text):
                         if not opasgenlib.is_boolean(smart_search_text):

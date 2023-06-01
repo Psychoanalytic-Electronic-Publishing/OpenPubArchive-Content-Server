@@ -5,7 +5,7 @@ import sys
 from optparse import OptionParser
 import logging
 # import opasGenSupportLib as opasgenlib
-from configLib.opasCoreConfig import SOLRURL, SOLR_DOCS, CORES # solr_authors2, solr_gloss2, solr_docs_term_search, solr_authors_term_search
+from configLib.opasCoreConfig import CORES # SOLRURL, SOLR_DOCS, solr_authors2, solr_gloss2, solr_docs_term_search, solr_authors_term_search
 import opasConfig
 
 logger = logging.getLogger(__name__)
@@ -82,6 +82,8 @@ pat_str_has_author_id = re.compile(rx_str_has_author_id, flags=re.I)
 rx_str_has_author_name = r"[A-z]+\s[A-z]+\b"
 pat_str_has_author_name = re.compile(rx_str_has_author_name, flags=re.I)
 cores = CORES
+pat_common_words = opasConfig.PAT_COMMON_WORDS 
+rx_str_has_common_words = re.compile(pat_common_words, flags = re.I)
 
 class SearchEvaluation(object):
     def __init__(self, field=None, found=0, score=0): 
@@ -105,6 +107,14 @@ def all_words_start_upper_case(search_str):
 
     return ret_val
 
+def has_common_words(string):
+    ret_val = False
+    m = rx_str_has_common_words.search(string)
+    if m:
+        ret_val = True
+    return ret_val    
+
+
 def is_quoted_str(search_str):
     """
     Test if string which has a substring in quotes, that has wildcards.
@@ -120,6 +130,15 @@ def is_quoted_str(search_str):
         ret_val = True
 
     return ret_val
+
+def percentage_uppercase_words(string):
+    words = string.split()
+    count = 0
+    for word in words:
+        if word[0].isupper():
+            count += 1
+    percentage = count / len(words) * 100
+    return percentage, count
 
 def quoted_str_has_wildcards(search_str):
     """
@@ -156,14 +175,14 @@ def quoted_str_has_booleans(search_str):
 
     return ret_val
 
-def str_has_fuzzy_ops(search_str):
-    if pat_str_has_fuzzy_search.search(search_str):
+def quoted_str_has_colons(search_str):
+    if pat_quoted_str_has_colons.search(search_str):
         return True
     else:
         return False
 
-def quoted_str_has_colons(search_str):
-    if pat_quoted_str_has_colons.search(search_str):
+def str_has_fuzzy_ops(search_str):
+    if pat_str_has_fuzzy_search.search(search_str):
         return True
     else:
         return False
@@ -259,8 +278,8 @@ def cleanup_solr_query(solrquery):
         ret_val = ret_val.replace("*:* {", "{")  # if it's before a solr join for level 2 queries
         ret_val = pat_prefix_amps.sub("", ret_val)
 
-    ret_val = re.sub("\s+(AND)\s+", " && ", ret_val, flags=re.IGNORECASE)
-    ret_val = re.sub("\s+(OR)\s+", " || ", ret_val, flags=re.IGNORECASE)
+    ret_val = re.sub("\s+(AND)\s+", " && ", ret_val) # , flags=re.IGNORECASE)
+    ret_val = re.sub("\s+(OR)\s+", " || ", ret_val) # , flags=re.IGNORECASE)
  
     return ret_val
 

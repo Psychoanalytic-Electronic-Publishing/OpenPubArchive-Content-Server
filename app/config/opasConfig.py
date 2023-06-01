@@ -87,6 +87,10 @@ MAX_DISPLAY_LEN_CF_ARTICLES = 90
 MAX_LOGMSG_LEN = 120
 MAX_SOURCE_COUNT = 200 # used to extend limit of facet for sources above 100 in metadata_get_sourcecodes
 
+# Smart Search Configuration (see also smartsearchlib.py)
+# elimnate other types of searches when it's a word search/phrase.  It's likely a phrase if any of these words are found
+PAT_COMMON_WORDS = r"\b(the|of|in|is|an|other|der|die|das|el|es|esta|la|una|otro|il/di/un/altro/altra)\b" # right now just English, German, Spanish, Italian...expand later.
+
 # pgx link types
 BIBPGLINKBOOKS = "BIBPGLINKBOOKS" # link in a book to a references page, giving the referencing ID as the prefix
 BIBPGLINK = "BIBPGLINK" # link in a book to a references page, giving the referencing ID as the prefix
