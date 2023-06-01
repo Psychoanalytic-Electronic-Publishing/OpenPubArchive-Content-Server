@@ -39,7 +39,7 @@ resource "aws_iam_role_policy" "state_execution" {
         "states:StartExecution"
       ],
       "Effect": "Allow",
-      "Resource": "${module.step_function.state_machine_arn}"
+      "Resource": "${var.state_machine_arn}"
     }
   ]
 }
@@ -49,7 +49,7 @@ EOF
 resource "aws_cloudwatch_event_target" "nightly_data_pipeline_target" {
   rule     = aws_cloudwatch_event_rule.nightly_data_pipeline.name
   role_arn = aws_iam_role.allow_cloudwatch_to_execute_role.arn
-  arn      = module.step_function.state_machine_arn
+  arn      = var.state_machine_arn
   input = jsonencode([
     [
       {
