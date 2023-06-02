@@ -20,6 +20,8 @@ COPY ./app/opasGoogleMetadataExport/ ${ROOT_DIRECTORY}/opasGoogleMetadataExport/
 COPY ./app/opasPushSettings/ ${ROOT_DIRECTORY}/opasPushSettings/
 COPY ./app/opasSiteMapper/ ${ROOT_DIRECTORY}/opasSiteMapper/
 
+RUN mkdir -p ${ROOT_DIRECTORY}/opasDataLoader/data_update_logs
+
 # Set working directory to function root directory
 WORKDIR ${ROOT_DIRECTORY}
 
