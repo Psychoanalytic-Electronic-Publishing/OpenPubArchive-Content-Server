@@ -102,6 +102,8 @@ class StrReferenceParser(object):
         self.bib_volume_isroman = None
         self.bib_publisher = None
         self.last_update = None
+        self.biblioDB = None
+        self.rgxJrnlPubLocations = None
         
         # pattern matchers are at the class level...so only need to initialize once.
         try:

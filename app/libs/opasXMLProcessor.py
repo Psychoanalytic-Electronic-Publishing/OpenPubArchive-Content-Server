@@ -444,7 +444,7 @@ def update_biblio_links(parsed_xml, artInfo, ocd, pretty_print=False, verbose=Fa
                             a = ref.attrib["rx"]
                             del ref.attrib["rx"]
                         except Exception as e:
-                            log_everywhere_if(verbose, level=log_level_for_trace, f"attribute rx does not exist. {e}")
+                            log_everywhere_if(verbose, level=log_level_for_trace, msg = f"attribute rx does not exist. {e}")
                         else:
                             msg = f"\t\tRemoved rx link {bib_entry.ref_rx} Exists: {bib_entry.ref_exists}"
                             log_everywhere_if(verbose, level=log_level_for_trace, msg=msg)
@@ -462,7 +462,7 @@ def update_biblio_links(parsed_xml, artInfo, ocd, pretty_print=False, verbose=Fa
                         try:
                             a = ref.attrib["rxcf"]
                             del ref.attrib["rxcf"]
-                        except:
+                        except Exception as e:
                             logger.info(f"attribute rxcf does not exist. {e}")
                         else:
                             msg = f"\t\tRemoved rxcf link based on DB"
