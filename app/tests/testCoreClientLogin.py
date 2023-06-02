@@ -22,8 +22,8 @@ import unittest
 
 from starlette.testclient import TestClient
 
-from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_id, UNIT_TEST_CLIENT_ID, test_login
-from localsecrets import PADS_TEST_ID, PADS_TEST_PW, PADS_BASED_CLIENT_IDS, AUTH_KEY_NAME
+from unitTestConfig import base_plus_endpoint_encoded, headers, test_login
+# from localsecrets import PADS_TEST_ID, PADS_TEST_PW, PADS_BASED_CLIENT_IDS, AUTH_KEY_NAME
 
 from main import app
 client = TestClient(app)

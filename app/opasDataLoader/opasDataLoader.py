@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2023, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2023.0531/v2.1.036"
+__version__     = "2023.0602/v2.1.037"
 __status__      = "Development"
 
 # !!! IMPORTANT: Increment opasXMLProcessor version (if version chgd). It's written to the XML !!!
@@ -1038,12 +1038,13 @@ def main():
                             artInfo.art_qual = artInfo.art_id
                 else:
                     related, related_id_list = opasPySolrLib.get_articles_related_to_current_via_artqual(art_qual = artInfo.art_qual)
-                    if not opasgenlib.is_empty(related):
+                    if len(related_id_list) > 1:
                         msg = f"\t...Article is in a set of {len(related)} related articles {related_id_list} via artqual {artInfo.art_qual}"
                         log_everywhere_if(options.display_verbose, level="info", msg=msg)
                     else:
-                        msg = f"\t...Article art_qual indicates related articles ({artInfo.art_qual})"
+                        msg = f"\t...Article art_qual indicates related articles ({artInfo.art_qual} but none found. Setting to None.)"
                         log_everywhere_if(options.display_verbose, level="info", msg=msg)
+                        artInfo.art_qual = None
                     
                 try:
                     artInfo.file_classification = re.search("(?P<class>current|archive|future|free|special|offsite)", str(n.filespec), re.IGNORECASE).group("class")
@@ -1212,7 +1213,7 @@ def main():
                 filedata +=  "\t\t</articles>\n\t</issue>"
             filedata +=  '\n</issue_updates>'
 
-            success = fs.create_local_text_file(fname, data=filedata, delete_existing=True)            
+            success = fs.create_text_file(fname, data=filedata, delete_existing=True)            
 
             if count_records > 0 and success:
                 msg = f"{count_records} issue updates written to whatsnew log file."
@@ -1242,7 +1243,7 @@ def main():
             # write database_updated.txt
             try:
                 fname = f"{localsecrets.DATA_UPDATE_LOG_DIR}/database_updated.txt"
-                success = fs.create_local_text_file(fname, data='data loaded!\n', delete_existing=False)
+                success = fs.create_text_file(fname, data='data loaded!\n', delete_existing=False)
                 msg = f"Database was updated with {files_found - skipped_files} articles! Wrote {fname} in order to flag changes."
                 if success:
                     if 1: # options.display_verbose:

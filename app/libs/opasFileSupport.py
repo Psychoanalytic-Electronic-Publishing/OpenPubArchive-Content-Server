@@ -341,6 +341,8 @@ class FlexFileSystem(object):
     #-----------------------------------------------------------------------------
     def create_text_file(self, filespec, path=None, data=" ", encoding="utf-8", delete_existing=True, path_is_root_bucket=False):
         """
+         If a key is configured in the class instance, writes to s3, otherwise writes local.
+         
          >>> fs = FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root=localsecrets.XML_ORIGINALS_PATH)
          >>> res = fs.delete(filespec="test-delete.txt", path=localsecrets.XML_ORIGINALS_PATH)
          >>> fs.create_text_file('test-delete.txt')

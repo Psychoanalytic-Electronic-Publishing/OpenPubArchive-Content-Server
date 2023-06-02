@@ -9,7 +9,7 @@ Version: 2020-08-24
 import os.path
 import sys
 import re
-import urllib
+# import urllib
 import requests
 import opasDocPermissions
 import logging
@@ -26,7 +26,7 @@ else: # python running from should be within folder app
 
 # use the configured server.
 import localsecrets
-from localsecrets import use_server, PADS_TEST_ID, PADS_TEST_PW, APIURL
+from localsecrets import APIURL
 
 base_api = APIURL
 ALL_SOURCES_COUNT = 189 # OFFSITE doesn't count

@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2023, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2023.0601/v2.3.025"   # new admin char details report
+__version__     = "2023.0602/v2.3.026"   # new admin char details report
 __status__      = "Development/Libs/Loader"  
 
 """

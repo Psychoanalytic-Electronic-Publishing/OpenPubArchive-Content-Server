@@ -442,7 +442,7 @@ def has_names_only(phrase: str):
     # try to build a list of names, and check them individually
     ret_val = False
     new_q = ""
-    hnames = HumanNames(phrase)
+    # hnames = HumanNames(phrase)
     names = get_list_of_name_ids(phrase)
     for name in names:
         try:
