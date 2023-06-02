@@ -19,6 +19,10 @@ import opasXMLHelper as opasxmllib
 gDbg1 = 1 # details
 gDbg2 = 1 # big picture, status
 
+import logging
+logger = logging.getLogger(__name__)
+from loggingDebugStream import log_everywhere_if
+
 
 #============================================================================================
 class PEPGWSEParaConcordance:
@@ -94,14 +98,20 @@ class PEPGWSEParaConcordance:
                         node.attrib["lgrtype"] = "GroupIDTrans"
                     else:
                         try:
+                            a = node.attrib["lgrx"]
                             del node.attrib["lgrx"]
                         except KeyError:
                             pass
+                        except Exception as e:
+                            logger.info(f"node attrib 'lgrx' does not exist. {e}")
 
                         try:
+                            a = node.attrib["lgrtype"]
                             del node.attrib["lgrtype"]
                         except KeyError:
                             pass
+                        except Exception as e:
+                            logger.info(f"node attrib 'lgrtype' does not exist. {e}")
 
             if verbose:
                 print("\t...%d nodes marked with GW/SE related IDs" % lgIDCount)

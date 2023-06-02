@@ -2850,7 +2850,12 @@ class opasCentralDB(object):
         #del query_param_dict["author_list"]
         #del query_param_dict["author_name_list"]
         #del query_param_dict["ref"]
-        del query_param_dict["parsed_ref"]
+        try:
+            
+            a = query_param_dict["parsed_ref"]
+            del query_param_dict["parsed_ref"]
+        except Exception as e:
+            logger.info(f"query param dict 'parsed_ref' does not exist. {e}")
     
         res = ""
         try:
