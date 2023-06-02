@@ -43,7 +43,7 @@
         {
             "directory": "opasDataLoader",
             "utility": "opasDataLoader",
-            "args": "--sub _PEPArchive --key ^H.* --smartload --reload --verbose --nocheck --halfway"
+            "args": "--sub _PEPArchive --key ^H.* --smartload --reload --verbose --nocheck"
         },
         {
             "directory": "opasDataLoader",
@@ -63,7 +63,7 @@
         {
             "directory": "opasDataLoader",
             "utility": "opasDataLoader",
-            "args": "--sub _PEPArchive --key ^K.* --smartload --reload --verbose --nocheck --halfway"
+            "args": "--sub _PEPArchive --key ^K.* --smartload --reload --verbose --nocheck"
         },
         {
             "directory": "opasDataLoader",
@@ -83,7 +83,7 @@
         {
             "directory": "opasDataLoader",
             "utility": "opasDataLoader",
-            "args": "--sub _PEPArchive --key ^Q.* --smartload --reload --verbose --nocheck --halfway"
+            "args": "--sub _PEPArchive --key ^Q.* --smartload --reload --verbose --nocheck"
         },
         {
             "directory": "opasDataLoader",
