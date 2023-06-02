@@ -22,13 +22,78 @@
         },
         {
             "directory": "opasDataLoader",
-            "utility": "opasDataLoader",
-            "args": "--verbose --sub _PEPArchive --smartload --reload --halfway --nocheck"
+            "utility": "opasDataLinker",
+            "args": "--sub _PEPArchive --key ^A.* --smartload --reload --verbose --nocheck --halfway"
         },
         {
             "directory": "opasDataLoader",
-            "utility": "opasDataLoader",
-            "args": "--verbose --sub _PEPArchive --smartload --reload --reverse --halfway --nocheck"
+            "utility": "opasDataLinker",
+            "args": "--sub _PEPArchive --key ^A.* --smartload --reload --verbose --nocheck --halfway --reverse"
+        },
+        {
+            "directory": "opasDataLoader",
+            "utility": "opasDataLinker",
+            "args": "--sub _PEPArchive --key ^[B-D].* --smartload --reload --verbose --nocheck"
+        },
+        {
+            "directory": "opasDataLoader",
+            "utility": "opasDataLinker",
+            "args": "--sub _PEPArchive --key ^[F-G].* --smartload --reload --verbose --nocheck"
+        },
+        {
+            "directory": "opasDataLoader",
+            "utility": "opasDataLinker",
+            "args": "--sub _PEPArchive --key ^H.* --smartload --reload --verbose --nocheck --halfway"
+        },
+        {
+            "directory": "opasDataLoader",
+            "utility": "opasDataLinker",
+            "args": "--sub _PEPArchive --key ^I.* --smartload --reload --verbose --nocheck --halfway"
+        },
+        {
+            "directory": "opasDataLoader",
+            "utility": "opasDataLinker",
+            "args": "--sub _PEPArchive --key ^I.* --smartload --reload --verbose --nocheck --halfway --reverse"
+        },
+        {
+            "directory": "opasDataLoader",
+            "utility": "opasDataLinker",
+            "args": "--sub _PEPArchive --key ^J.* --smartload --reload --verbose --nocheck"
+        },
+        {
+            "directory": "opasDataLoader",
+            "utility": "opasDataLinker",
+            "args": "--sub _PEPArchive --key ^K.* --smartload --reload --verbose --nocheck --halfway"
+        },
+        {
+            "directory": "opasDataLoader",
+            "utility": "opasDataLinker",
+            "args": "--sub _PEPArchive --key ^[L-O].* --smartload --reload --verbose --nocheck"
+        },
+        {
+            "directory": "opasDataLoader",
+            "utility": "opasDataLinker",
+            "args": "--sub _PEPArchive --key ^P.* --smartload --reload --verbose --nocheck --halfway"
+        },
+        {
+            "directory": "opasDataLoader",
+            "utility": "opasDataLinker",
+            "args": "--sub _PEPArchive --key ^P.* --smartload --reload --verbose --nocheck --halfway --reverse"
+        },
+        {
+            "directory": "opasDataLoader",
+            "utility": "opasDataLinker",
+            "args": "--sub _PEPArchive --key ^Q.* --smartload --reload --verbose --nocheck --halfway"
+        },
+        {
+            "directory": "opasDataLoader",
+            "utility": "opasDataLinker",
+            "args": "--sub _PEPArchive --key ^R.* --smartload --reload --verbose --nocheck"
+        },
+        {
+            "directory": "opasDataLoader",
+            "utility": "opasDataLinker",
+            "args": "--sub _PEPArchive --key ^[S-Z].* --smartload --reload --verbose --nocheck"
         }
     ]
 ]
