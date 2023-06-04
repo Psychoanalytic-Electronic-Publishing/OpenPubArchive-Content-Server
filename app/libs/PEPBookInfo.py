@@ -184,6 +184,8 @@ class PEPBookInfo:
         (None, None, None)
 
     """
+    initd = None
+    bookRGXList = []
 
     keyList = list(gClassicBookTOCList.keys())
     specialKeyList = list(gSEIndex.keys()) + list(gGWIndex.keys())

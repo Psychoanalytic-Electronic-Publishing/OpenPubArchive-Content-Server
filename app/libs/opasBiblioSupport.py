@@ -40,7 +40,7 @@ import re
 #import statistics
 #from typing import List, Generic, TypeVar, Optional
 import models
-import time
+# import time
 
 import lxml
 from lxml import etree
@@ -56,7 +56,7 @@ gDbg3 = True
 
 parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=False)
 
-from pydantic import BaseModel, Field # removed Field, causing an error on AWS
+from pydantic.main import Field # for later: BaseModel, 
 
 #import localsecrets
 import opasConfig
@@ -294,6 +294,7 @@ def strip_extra_spaces(textstr:str):
 
 #------------------------------------------------------------------------------------------------------
 # BiblioMatch Class
+#  (eventually switch to pydantic model)
 #------------------------------------------------------------------------------------------------------
 class BiblioMatch(object):
     ref_rx: str = Field(None)

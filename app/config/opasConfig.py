@@ -8,7 +8,6 @@ from pathlib import Path
 import re
 import urllib.parse
 from urllib.parse import urlparse
-import string
 
 from schemaMap import PREDEFINED_SORTS
 import localsecrets

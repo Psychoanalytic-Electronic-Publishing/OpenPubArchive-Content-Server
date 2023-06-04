@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import sys
-import re
+# import re
 import logging
 logger = logging.getLogger(__name__)
 

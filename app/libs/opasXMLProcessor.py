@@ -441,10 +441,12 @@ def update_biblio_links(parsed_xml, artInfo, ocd, pretty_print=False, verbose=Fa
                 if bib_entry.link_updated: # update xml (not db, info was from db))
                     if bib_entry.ref_rx is None or not bib_entry.ref_exists:
                         try:
-                            a = ref.attrib["rx"]
+                            a = ref.attrib["rx"]   # cautionary (for debug purposes)...delete line later
                             del ref.attrib["rx"]
+                        except KeyError:
+                            pass
                         except Exception as e:
-                            log_everywhere_if(verbose, level=log_level_for_trace, msg = f"attribute rx does not exist. {e}")
+                            logger.error(f"Error deleting xml attribute {e}")
                         else:
                             msg = f"\t\tRemoved rx link {bib_entry.ref_rx} Exists: {bib_entry.ref_exists}"
                             log_everywhere_if(verbose, level=log_level_for_trace, msg=msg)
@@ -460,10 +462,12 @@ def update_biblio_links(parsed_xml, artInfo, ocd, pretty_print=False, verbose=Fa
                         
                     if bib_entry.ref_rxcf is None:
                         try:
-                            a = ref.attrib["rxcf"]
+                            a = ref.attrib["rxcf"]   # cautionary (for debug purposes)...delete line later
                             del ref.attrib["rxcf"]
+                        except KeyError:
+                            pass
                         except Exception as e:
-                            logger.info(f"attribute rxcf does not exist. {e}")
+                            logger.error(f"Error deleting xml attribute {e}")
                         else:
                             msg = f"\t\tRemoved rxcf link based on DB"
                             log_everywhere_if(verbose, level=log_level_for_trace, msg=msg)

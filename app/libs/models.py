@@ -42,10 +42,7 @@ class ExtendedEnum(Enum):
     def list(cls):
         return list(map(lambda c: c.value, cls))
     
-from pydantic import BaseModel, Field # removed Field, causing an error on AWS
-# from pydantic.types import EmailStr
-# from modelsOpasCentralPydantic import User
-#from opasCentralDBLib import opasCentralDB
+from pydantic.main import BaseModel, Field
 
 #-------------------------------------------------------
 #

@@ -1,7 +1,7 @@
 # -*- coding: utf8 -*-
 """
  Part of the larger PEPReferenceParser from the Python 2 Scilab code to process XML
- 
+
 """
 import re
 import sys
@@ -9,19 +9,19 @@ import sys
 #from UserDict import UserDict
 import logging
 logger = logging.getLogger(__name__)
-from loggingDebugStream import log_everywhere_if    # log as usual, but if first arg is true, also put to stdout for watching what's happening
-from typing import List, Generic, TypeVar, Optional
+# from loggingDebugStream import log_everywhere_if    # log as usual, but if first arg is true, also put to stdout for watching what's happening
+from typing import Optional # List, Generic, TypeVar, 
 from datetime import datetime
 
-from pydantic import BaseModel, Field # removed Field, causing an error on AWS
+from pydantic.main import Field # removed Field, causing an error on AWS
 
 import opasConfig
 import opasGenSupportLib as opasgenlib
-from opasGenSupportLib import trimPunctAndSpaces, is_empty, atoiYear
+from opasGenSupportLib import trimPunctAndSpaces, atoiYear
 import PEPJournalData
 gJrnlData = PEPJournalData.PEPJournalData()
 # import opasDocuments
-from opasDocuments import PageNumber, PageRange
+from opasDocuments import PageNumber #, PageRange
 from opasLocator import Locator
 import PEPBookInfo
 bookInfo = PEPBookInfo.PEPBookInfo()
@@ -32,16 +32,16 @@ gDbg2 = 1	# High level
 #--------------------------------------------------------------------------------
 class StrReferenceParser(object):
     """
-        
+
     >>> ref = "Freud, S. 1905 On psychotherapy Standard Edition 7"
     >>> str_parser = StrReferenceParser()
     >>> str_parser.parse_str(ref)
-    
+
     >> ref = 'Jones, D. (2009), Addiction and pathological accommodation: An intersubjective look at impediments to the utilization of Alcoholics Anonymous. Internat. J. Psychoanal. Self Psychol., 4:212–233.'
     >> str_parser = StrReferenceParser()
     >> str_parser.parse_str(ref)
 
-    
+
     """
     art_id: str = Field(None, title="Article ID (locator) of the instance containing the reference")
     bib_local_id: str = Field(None, title="ID of the be or binc element in the instance")
@@ -69,8 +69,8 @@ class StrReferenceParser(object):
     bib_volume_isroman: bool = Field(False, title="True if bib_volume is roman")
     bib_publisher: str = Field(None)
     last_update: datetime = Field(None)
-    
-    
+
+
     #--------------------------------------------------------------------------------
     def __init__(self):
         """
@@ -78,7 +78,7 @@ class StrReferenceParser(object):
         Load the translation dictionary for parsing references
         -----------------------------------------------------------
         """
-        
+
         self.art_id = None
         self.bib_local_id = None
         self.art_year = 0
@@ -104,7 +104,7 @@ class StrReferenceParser(object):
         self.last_update = None
         self.biblioDB = None
         self.rgxJrnlPubLocations = None
-        
+
         # pattern matchers are at the class level...so only need to initialize once.
         try:
             if self.reDictInitd==1:
@@ -288,7 +288,7 @@ class StrReferenceParser(object):
                                        |Oxford
                                        )(\:|\,)"""
 
-        rgxJrnlPubLocations = re.compile(patPubLocations, re.VERBOSE | re.IGNORECASE)
+        self.rgxJrnlPubLocations = re.compile(patPubLocations, re.VERBOSE | re.IGNORECASE)
 
         # Specific Args (should have group names)
 
@@ -335,7 +335,7 @@ class StrReferenceParser(object):
 
         Returns the key, if one is able to be computer
         ------------------------------------------------------------------
-        
+
         """
 
         ret_val = None
@@ -347,10 +347,10 @@ class StrReferenceParser(object):
         bpgstart = 0
         bpgend = 0
         bjournal = ""
-        
+
         self.art_id = art_id
         self.bib_local_id = bib_local_id
-        
+
         self.full_ref_text = ref_text
         m = self.gRegcVolPages.search(ref_text)
         if m is not None:
@@ -434,7 +434,7 @@ class StrReferenceParser(object):
             if not opasgenlib.is_empty(bauthors):
                 if bauthors[0] in ("'", '"'):
                     bauthors = re.sub('(\"\').*?(\1)', "", bauthors)
-                    
+
                 if bauthors != "":
                     self.bib_authors = bauthors
                     self.bib_author_list = self.__parse_authors(bauthors)
@@ -525,37 +525,37 @@ class StrReferenceParser(object):
                 str1 = None
 
             # MUST use local var jrnlName because we wan't the original name found!!!!
-            if opasgenlib.is_empty(self.bib_sourcetitle):
-                str2 = """\(?(
-							   Harmondsworth
-							   | Middlesex
-							   | London:
-							   | New\sYork
-							   | Bloomington
-							   | Cambridge
-							   | Philadelphia
-							   | Chichester
-							   | Boston
-							   | NY:
-							   | MA:
-							   | PA:
-							   | Chicago
-							   | England
-							   | NJ:
-							   | CA:
-							   | VT:
-							   | Paris
-							   | Geneva
-							   | Cleveland
-							   | Oxford
-							   | Melbourne
-							   | Detroit
-							   | Edited By
-							   | Journal
-						 )\)?
-					  """
-            else:
-                str2 = "(" + self.bib_sourcetitle + ")"
+            #if opasgenlib.is_empty(self.bib_sourcetitle):
+                #str2 = """\(?(
+                                                            #Harmondsworth
+                                                            #| Middlesex
+                                                            #| London:
+                                                            #| New\sYork
+                                                            #| Bloomington
+                                                            #| Cambridge
+                                                            #| Philadelphia
+                                                            #| Chichester
+                                                            #| Boston
+                                                            #| NY:
+                                                            #| MA:
+                                                            #| PA:
+                                                            #| Chicago
+                                                            #| England
+                                                            #| NJ:
+                                                            #| CA:
+                                                            #| VT:
+                                                            #| Paris
+                                                            #| Geneva
+                                                            #| Cleveland
+                                                            #| Oxford
+                                                            #| Melbourne
+                                                            #| Detroit
+                                                            #| Edited By
+                                                            #| Journal
+                                                    #)\)?
+                                            #"""
+            #else:
+                #str2 = "(" + self.bib_sourcetitle + ")"
 
             if str1 is not None:
                 # use date/authors and journal name; find title in between
@@ -611,7 +611,7 @@ class StrReferenceParser(object):
                     print("Exception: ", e)
                 except:
                     print(f"Ref - Can't form locator for str_parse")
-        
+
         self.bib_rx = ret_val
         self.bib_rx_confidence = opasConfig.RX_CONFIDENCE_PARSED_PROBABLE
         return ret_val

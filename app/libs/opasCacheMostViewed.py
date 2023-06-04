@@ -62,6 +62,8 @@ def load_most_viewed(viewperiod = 2,
     return ret_val
 
 class mostViewedCache(object):
+    most_viewed = None
+    
     def __init__(self,
                  viewperiod = 2, 
                  limit=DEFAULT_LIMIT_FOR_CACHE,
@@ -81,12 +83,28 @@ class mostViewedCache(object):
                                             limit=limit,
                                             session_info=session_info,
                                             req_url=req_url)
-        # response.status_message = "Success"
-        self.most_viewed.documentList.responseInfo.request = req_url
-        self.most_viewed.documentList.responseInfo.limit = limit
-        self.most_viewed.documentList.responseInfo.offset = offset       
-        
 
+        if self.most_viewed is None:
+            status_message = f"MostViewedError: Can't load cache"
+            logger.error(status_message)
+            raise HTTPException(
+                status_code=httpCodes.HTTP_400_BAD_REQUEST, 
+                detail=status_message
+            )        
+            
+        # response.status_message = "Success"
+        try:
+            self.most_viewed.documentList.responseInfo.request = req_url
+            self.most_viewed.documentList.responseInfo.limit = limit
+            self.most_viewed.documentList.responseInfo.offset = offset
+        except Exception as e:
+            status_message = f"MostViewedError: Can't load cache {e}"
+            logger.error(status_message)
+            raise HTTPException(
+                status_code=httpCodes.HTTP_400_BAD_REQUEST, 
+                detail=status_message
+            )        
+            
     def __del__(self):
         pass
     

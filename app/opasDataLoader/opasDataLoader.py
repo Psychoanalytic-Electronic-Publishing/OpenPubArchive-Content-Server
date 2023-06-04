@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# pylint: disable=C0321,C0103,C0301,E1101,C0303,E1004,C0330,R0915,R0914,W0703,C0326
+# pylint: disable=C0321,C0330,R0915,R0914,C0326
 # Disable many annoying pylint messages, warning me about variable naming for example.
 # yes, in my code I'm caught between two worlds of snake_case and camelCase (transitioning to snake_case).
 
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2023, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2023.0602/v2.1.037b (special debug for Del error)"
+__version__     = "2023.0603/v2.1.038 (some extra cautionary code--search 'cautionary')"
 __status__      = "Development"
 
 # !!! IMPORTANT: Increment opasXMLProcessor version (if version chgd). It's written to the XML !!!
@@ -131,7 +131,7 @@ from optparse import OptionParser
 
 import lxml
 from lxml import etree
-# import mysql.connector
+import pydantic
 
 import configLib.opasCoreConfig
 from configLib.opasCoreConfig import solr_authors2, solr_gloss2
@@ -1325,6 +1325,13 @@ if __name__ == "__main__":
     global options  # so the information can be used in support functions
     options = None
     description = "Load preprocessed XML Data to the PEP-Web Solr and SQL databases (preprocess and load in one step via --smartbuild). "
+    print (f"Running in Python: {sys.version_info[0]}.{sys.version_info[1]}")
+    print (f"Configuration used: {localsecrets.CONFIG}")
+    print (f"Database Name: {localsecrets.DBNAME}")
+    print (f"Version: {__version__}")
+    print (f"Pydantic Version {pydantic.__version__}")    
+    print (f"lxml Version {lxml.__version__}")    
+    print (f"pysolr Version {pysolr.__version__}")   
     
     parser = OptionParser(usage="%prog [options]", version=f"%prog ver. {__version__}", description=description)
 
@@ -1440,7 +1447,7 @@ will skip these from then on."""
     parser.add_option("--userid", dest="httpUserID", default=None,
                       help="UserID for the server")
 
-    parser.add_option("--verbose", action="store_true", dest="display_verbose", default=True,
+    parser.add_option("--verbose", action="store_true", dest="display_verbose", default=False,
                       help="Display status and operational timing info as load progresses.")
 
     parser.add_option("--whatsnewdays", dest="daysback", default=None,

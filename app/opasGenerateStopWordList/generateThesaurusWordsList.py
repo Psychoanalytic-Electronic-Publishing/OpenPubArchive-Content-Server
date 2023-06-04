@@ -39,4 +39,4 @@ with io.open(r".\PEPSolrThesaurus.txt", 'w', encoding='utf8') as fo:
 
 fo.close()
 
-print "Finished!  %s thesaurus lines written to output file." % countLines
+print ("Finished!  %s thesaurus lines written to output file." % countLines)

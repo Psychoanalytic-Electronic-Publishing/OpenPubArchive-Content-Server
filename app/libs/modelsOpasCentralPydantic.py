@@ -14,7 +14,7 @@ __version__     = "2019.0620.1"
 __status__      = "Development"
 
 # from datetime import datetime, timedelta
-from pydantic import BaseModel
+from pydantic.main import BaseModel
 
 #class User(BaseModel):  # snake_case names to match DB
     #user_id: int = None

@@ -1732,7 +1732,7 @@ class PEPJournalData:
         #  convert this parameter to volumnumber if so
         if isinstance(jrnlVol, str):  # supports string and unicode
             jrnlVol = opasDocuments.VolumeNumber(jrnlVol)
-            #print "Converted jrnlvol: ", jrnlVol
+            #print ("Converted jrnlvol: ", jrnlVol)
 
         if jrnlCode is not None:
             vol, volList = self.getVol(jrnlCode, jrnlYear)
@@ -1763,7 +1763,7 @@ class PEPJournalData:
                 elif jrnlVol == vol:
                     ret_val = True
 
-        #print "jrnlvol: '%s', vol: '%s', type: %s, equal: %s" % (jrnlVol, vol, type(jrnlVol), jrnlVol==vol)
+        #print ("jrnlvol: '%s', vol: '%s', type: %s, equal: %s" % (jrnlVol, vol, type(jrnlVol), jrnlVol==vol))
         return ret_val
 
 
@@ -1774,7 +1774,6 @@ class PEPJournalData:
         The data is from the global tables in this module.
         """
         ret_val = None
-        baseYear = 0
 
         if not opasDocuments.isVolumeNumber(jrnlVol):
             jrnlVol = opasDocuments.VolumeNumber(jrnlVol)
@@ -1782,12 +1781,11 @@ class PEPJournalData:
         try:
             currDict = self.all[jrnlCode.upper()]
         except:
-            #print "%s is a book; no year populated in locator." % jrnlCode
+            #print ("%s is a book; no year populated in locator." % jrnlCode)
             pass
         else:
             if currDict is not None:
                 for (year, vol) in currDict.items():
-                    #print "%s/%s/%s/" % (vol, year, jrnlVol)
                     if type(vol) == type([]):
                         # hmm. will this work with jrnlVol being an object?
                         if jrnlVol in vol:

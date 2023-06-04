@@ -20,7 +20,7 @@ import opasLocator
 import html
 import json
 # The following four functions moved from opasConfig - 2022-06-05
-from pydantic import BaseModel, Field # ValidationError, validator, Extra
+from pydantic.main import BaseModel, Field # ValidationError, validator, Extra
 
 import lxml
 from lxml import etree
@@ -928,9 +928,10 @@ class ArticleInfo(BaseModel):
                 logger.warning(f"Can't convert art_vol to int: {basic_art_info.art_vol_int} Error: {e}")
                 basic_art_info.art_vol_suffix = basic_art_info.art_vol_int[-1]
                 art_vol_ints = re.findall(r'\d+', basic_art_info.art_vol_str)
+                # fixed search replace error on var name which doubled it up...may be cause of recent Dealloc errors? 
                 if len(art_vol_ints) >= 1:
-                    basic_art_info.basic_art_info.art_vol_int = art_vol_ints[1]
-                    basic_art_info.basic_art_info.art_vol_int = int(basic_art_info.art_vol_int)
+                    basic_art_info.art_vol_int = art_vol_ints[1]
+                    basic_art_info.art_vol_int = int(basic_art_info.art_vol_int)
             except Exception as e:
                 logger.warning(f"Can't convert art_vol to int: {basic_art_info.art_vol_int} Error: {e}")
 

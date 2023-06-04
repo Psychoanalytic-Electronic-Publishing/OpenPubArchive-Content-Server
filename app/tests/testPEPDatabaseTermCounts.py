@@ -8,7 +8,7 @@ from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_
 # Get session, but not logged in.
 headers = get_headers_not_logged_in()
 
-from opasPySolrLib import get_term_index
+# from opasPySolrLib import get_term_index
 
 # two libs for the same function, different restrictions
 import opasSolrPyLib # eventually, we may want to get rid of this.

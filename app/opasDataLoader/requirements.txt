@@ -7,8 +7,8 @@
 aiofiles==0.5.0
 #
 bcrypt==3.1.7
-boto3==1.17.31        # updated 2021-03-18
-botocore==1.20.31     # updated 2021-03-18
+boto3==1.26.146        # updated 2023-06-02
+botocore==1.27.146     # updated 2023-06-02
 certifi==2020.6.20
 cffi==1.14.1
 chardet==3.0.4
@@ -42,7 +42,7 @@ pandas==1.1.1
 pytz==2020.1
 #
 passlib==1.7.2
-Pillow==9.0.1
+Pillow==9.1.0                  # updated 2023-06-02
 #
 pycparser==2.20
 pydantic==1.9.1

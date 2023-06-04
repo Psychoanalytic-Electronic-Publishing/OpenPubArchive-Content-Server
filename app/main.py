@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2023, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2023.0602/v2.3.026"   # new admin char details report
+__version__     = "2023.0604/v2.3.027"   # new admin char details report
 __status__      = "Development/Libs/Loader"  
 
 """
@@ -2930,7 +2930,11 @@ async def database_related_to_this(response: Response,
             responseSet = ret_val.documentList.responseSet
             if responseSet != []:
                 response = responseSet[0]
-                related_fieldname_data = response.relatedrx
+                try:
+                    related_fieldname_data = response.relatedrx
+                except Exception as e:
+                    logger.warning(f"response not documentlistitem: {e}")
+                    related_fieldname_data = None
             else:
                 related_fieldname_data = None
             
