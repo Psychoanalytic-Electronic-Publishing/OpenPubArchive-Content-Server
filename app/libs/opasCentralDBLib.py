@@ -2850,7 +2850,13 @@ class opasCentralDB(object):
         #del query_param_dict["author_list"]
         #del query_param_dict["author_name_list"]
         #del query_param_dict["ref"]
-        del query_param_dict["parsed_ref"]
+        try:
+            a = query_param_dict["parsed_ref"]   # cautionary (for debug purposes)...delete line later
+            del query_param_dict["parsed_ref"]
+        except KeyError:
+            pass
+        except Exception as e:
+            logger.error(f"Error deleting xml attribute {e}")
     
         res = ""
         try:

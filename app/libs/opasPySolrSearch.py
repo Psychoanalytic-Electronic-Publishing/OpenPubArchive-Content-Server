@@ -20,7 +20,7 @@ import starlette.status as httpCodes
 from configLib.opasCoreConfig import solr_docs2 #  , solr_authors2, solr_gloss2
 import opasConfig 
 from configLib.opasCoreConfig import EXTENDED_CORES
-from opasPySolrLib import remove_nuisance_word_hits
+from opasPySolrLib import remove_nuisance_word_hits, facet_processing
 
 from xml.sax import SAXParseException
 
@@ -28,9 +28,11 @@ import models
 import opasXMLHelper as opasxmllib
 import opasDocPermissions as opasDocPerm
 import opasQueryHelper
+import opasGenSupportLib as opasgenlib
 import pysolr
 # still using a function in solpy
 import solrpy as solr
+from opasPySolrLib import rcx_remove_nuisance_words
 
 LOG = logging.getLogger("pysolr")
 LOG.setLevel(logging.WARNING)

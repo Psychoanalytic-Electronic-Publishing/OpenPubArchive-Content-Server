@@ -1,0 +1,3 @@
+# Requirements for opasGenerateStopWords and opasGenerateThesaurus
+
+stop_words

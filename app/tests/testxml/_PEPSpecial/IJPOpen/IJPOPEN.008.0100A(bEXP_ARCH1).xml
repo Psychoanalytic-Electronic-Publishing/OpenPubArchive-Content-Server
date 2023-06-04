@@ -32,7 +32,7 @@
 <artvol actual="8">8</artvol>
 <artpgrg>1-2</artpgrg>
 <arttitle lang="en">Love and Idealization: A Test Sample File</arttitle>
-<artqual rx="IJPOPEN.008.0100A"/><artsub lang="en">For Consideration by The International Journal of Psychoanalysis</artsub>
+<artsub lang="en">For Consideration by The International Journal of Psychoanalysis</artsub>
 <artauth hidden="false">
             <aut affid="A01" authindexid="Revista, Fred" listed="true" role="author">
                 <nfirst>Fred</nfirst>
@@ -67,11 +67,11 @@
 <be id="B001">The reference from the author's master's thesis is missing as instructed in the instructions for authors.</be>
 <pb><n>43</n></pb>
 </bib>
-<unit type="glossary_term_dict"><!-- {} --></unit><unit type="previousversions">
+<unit type="glossary_term_dict"><!-- {"object": 1} --></unit><unit type="previousversions">
                 <h1>PEP-Web Manuscript Version History</h1>
                 <list type="BUL1">
                 	<li><p><impx type="RVDOC" rx="IJPOPEN.008.0100A">2021-10-01</impx></p></li>
-	<li><p><impx type="RVDOC" rx="IJPOPEN.008.0100B">2021-10-01</impx></p></li>
+	<li><p><impx type="RVDOC" rx="IJPOPEN.008.0100B">2021-10-03</impx></p></li>
 	<li><p><impx type="RVDOC" rx="IJPOPEN.008.0100C">2022-12-12</impx></p></li>
 
                 </list>

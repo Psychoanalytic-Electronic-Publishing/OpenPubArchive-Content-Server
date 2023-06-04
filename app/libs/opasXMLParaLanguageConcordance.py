@@ -19,6 +19,8 @@ import opasXMLHelper as opasxmllib
 gDbg1 = 1 # details
 gDbg2 = 1 # big picture, status
 
+import logging
+logger = logging.getLogger(__name__)
 
 #============================================================================================
 class PEPGWSEParaConcordance:
@@ -48,7 +50,7 @@ class PEPGWSEParaConcordance:
             lgIDCount = 0
             nodes = parsed_xml.xpath("//p2|//p|//arttitle|//n|//artsub|//h1|//h2|//h3|//h4|//h5|//h6|//h7")
             lastPXLink = ""
-            lastFtrPXLink = ""
+            # lastFtrPXLink = ""
             for node in nodes:
                 elementName = node.tag
                 lgrLink = node.attrib.get("lgrpid", None)
@@ -56,7 +58,7 @@ class PEPGWSEParaConcordance:
                     raise ValueError("lgrpid should not be in use.")
                 # lgrX = node.attrib.get("lgrx", None)
                 lgrID = node.attrib.get("lgrid", None)
-                lgrLinkType = node.attrib.get("lgrtype", None)
+                # lgrLinkType = node.attrib.get("lgrtype", None)
                 lgIDCount += 1
 
                 if lgrID is not None:
@@ -94,14 +96,20 @@ class PEPGWSEParaConcordance:
                         node.attrib["lgrtype"] = "GroupIDTrans"
                     else:
                         try:
+                            a = node.attrib["lgrx"]   # cautionary (for debug purposes)...delete line later
                             del node.attrib["lgrx"]
                         except KeyError:
                             pass
+                        except Exception as e:
+                            logger.error(f"Error deleting xml attribute {e}")
 
                         try:
+                            a = node.attrib["lgrtype"]   # cautionary (for debug purposes)...delete line later
                             del node.attrib["lgrtype"]
                         except KeyError:
                             pass
+                        except Exception as e:
+                            logger.error(f"Error deleting xml attribute {e}")
 
             if verbose:
                 print("\t...%d nodes marked with GW/SE related IDs" % lgIDCount)
