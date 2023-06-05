@@ -18,12 +18,77 @@
         {
             "directory": "opasDataLoader",
             "utility": "opasDataLoader",
-            "args": "--sub _PEPArchive --smartload --rebuild --halfway --verbose --nocheck"
+            "args": "--sub _PEPArchive --key ^A.* --smartload --rebuild --verbose --nocheck --halfway"
         },
         {
             "directory": "opasDataLoader",
             "utility": "opasDataLoader",
-            "args": "--sub _PEPArchive --smartload --rebuild --reverse --halfway --verbose --nocheck"
+            "args": "--sub _PEPArchive --key ^A.* --smartload --rebuild --verbose --nocheck --halfway --reverse"
+        },
+        {
+            "directory": "opasDataLoader",
+            "utility": "opasDataLoader",
+            "args": "--sub _PEPArchive --key ^[B-D].* --smartload --rebuild --verbose --nocheck"
+        },
+        {
+            "directory": "opasDataLoader",
+            "utility": "opasDataLoader",
+            "args": "--sub _PEPArchive --key ^[F-G].* --smartload --rebuild --verbose --nocheck"
+        },
+        {
+            "directory": "opasDataLoader",
+            "utility": "opasDataLoader",
+            "args": "--sub _PEPArchive --key ^H.* --smartload --rebuild --verbose --nocheck"
+        },
+        {
+            "directory": "opasDataLoader",
+            "utility": "opasDataLoader",
+            "args": "--sub _PEPArchive --key ^I.* --smartload --rebuild --verbose --nocheck --halfway"
+        },
+        {
+            "directory": "opasDataLoader",
+            "utility": "opasDataLoader",
+            "args": "--sub _PEPArchive --key ^I.* --smartload --rebuild --verbose --nocheck --halfway --reverse"
+        },
+        {
+            "directory": "opasDataLoader",
+            "utility": "opasDataLoader",
+            "args": "--sub _PEPArchive --key ^J.* --smartload --rebuild --verbose --nocheck"
+        },
+        {
+            "directory": "opasDataLoader",
+            "utility": "opasDataLoader",
+            "args": "--sub _PEPArchive --key ^K.* --smartload --rebuild --verbose --nocheck"
+        },
+        {
+            "directory": "opasDataLoader",
+            "utility": "opasDataLoader",
+            "args": "--sub _PEPArchive --key ^[L-O].* --smartload --rebuild --verbose --nocheck"
+        },
+        {
+            "directory": "opasDataLoader",
+            "utility": "opasDataLoader",
+            "args": "--sub _PEPArchive --key ^P.* --smartload --rebuild --verbose --nocheck --halfway"
+        },
+        {
+            "directory": "opasDataLoader",
+            "utility": "opasDataLoader",
+            "args": "--sub _PEPArchive --key ^P.* --smartload --rebuild --verbose --nocheck --halfway --reverse"
+        },
+        {
+            "directory": "opasDataLoader",
+            "utility": "opasDataLoader",
+            "args": "--sub _PEPArchive --key ^Q.* --smartload --rebuild --verbose --nocheck"
+        },
+        {
+            "directory": "opasDataLoader",
+            "utility": "opasDataLoader",
+            "args": "--sub _PEPArchive --key ^R.* --smartload --rebuild --verbose --nocheck"
+        },
+        {
+            "directory": "opasDataLoader",
+            "utility": "opasDataLoader",
+            "args": "--sub _PEPArchive --key ^[S-Z].* --smartload --rebuild --verbose --nocheck"
         },
         {
             "directory": "opasDataLoader",
