@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2023, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2023.0603/v2.1.038 (some extra cautionary code--search 'cautionary')"
+__version__     = "2023.0605/v2.1.039"
 __status__      = "Development"
 
 # !!! IMPORTANT: Increment opasXMLProcessor version (if version chgd). It's written to the XML !!!
@@ -610,6 +610,9 @@ def main():
                 except:
                     print ("Paragraphs only stored for sources indicated in loaderConfig.")
     
+            if options.parse_only:
+                print ("--parseonly is selected. Files will be parsed for xml errors but not processed.")
+
             if options.halfway:
                 print ("--halfway option selected. Including approximately one-half of the files that match.")
                 
@@ -701,6 +704,7 @@ def main():
     # record time in case options.nofiles is true
     timeStart = time.time()
     archived_files_not_loaded = 0
+    files_with_parse_errors = 0
     
     if options.no_files == False: # process and/or load files (no_files just generates a whats_new list, no processing or loading)
         print (f"Locating files for processing at {start_folder} with build pattern {input_build_pattern}. Started at ({time.ctime()}).")
@@ -792,6 +796,7 @@ def main():
             rc_skip_glossary_kbd3_files = re.compile(glossary_file_skip_pattern, re.IGNORECASE)
             insert_date = ocd.get_last_record_insertion_date()
             file_number = 0
+            parse_only_count = 0
             for n in filenames:
                 file_number += 1
                 fullfilename = n.filespec
@@ -839,13 +844,17 @@ def main():
                                                                                output_build=selected_output_build)
                 
                                    
-                if not options.forceRebuildAllFiles:  # not forced, but always force processed for single file 
-                    if not options.display_verbose and processed_files_count % 100 == 0 and processed_files_count != 0: # precompiled xml files loaded progress indicator
-                        print (f"Examining file #{file_number} Precompiled XML Files \t ...loaded {processed_files_count} out of {files_found} possible.")
-    
-                    if not options.display_verbose and skipped_files % 100 == 0 and skipped_files != 0: # xml files loaded progress indicator
-                        print (f"Examining file #{file_number} Skipped {skipped_files} so far \t...processed or loaded {processed_files_count} out of {files_found} possible." )
-                    
+                if not options.forceRebuildAllFiles:  # not forced, but always force processed for single file
+                    if not options.parse_only:
+                        if not options.display_verbose and processed_files_count % 100 == 0 and processed_files_count != 0: # precompiled xml files loaded progress indicator
+                            print (f"Examining file #{file_number} Precompiled XML Files \t ...loaded {processed_files_count} out of {files_found} possible.")
+        
+                        if not options.display_verbose and skipped_files % 100 == 0 and skipped_files != 0: # xml files loaded progress indicator
+                            print (f"Examining file #{file_number} Skipped {skipped_files} so far \t...processed or loaded {processed_files_count} out of {files_found} possible." )
+                    else:
+                        if options.parse_only and skipped_files % 100 == 0 and skipped_files != 0:
+                            print (f"Examining file #{file_number} Parsed {parse_only_count} so far out of {files_found} possible." )
+                        
                     # if smartload, this will be kbd3, and it basically only decides whether it needs to be built.
                     
                     if options.forceReloadAllFiles or input_file_was_updated or output_file_newer_than_solr:
@@ -895,8 +904,22 @@ def main():
                     input_filespec = n.filespec
                     fileXMLContents, input_fileinfo = fs.get_file_contents(input_filespec)
                     # print (f"Filespec: {input_filespec}")
-                    parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True)
-                    parsed_xml = etree.fromstring(opasxmllib.remove_encoding_string(fileXMLContents), parser)
+                    parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True, dtd_validation=True)
+                    try:
+                        parsed_xml = etree.fromstring(opasxmllib.remove_encoding_string(fileXMLContents), parser)
+                    except lxml.etree.ParseError as e:
+                        log_everywhere_if(True, level="error", msg=f"Parse error: {e}")
+                        files_with_parse_errors += 1
+                    except Exception as e:
+                        if fileXMLContents is None:
+                            logger.error(f"Can't parse empty converted XML string")
+                        else:
+                            logger.error(f"Can't parse XML {final_xml_filename} starting '{fileXMLContents[0:128]}'")
+                    else:
+                        if parsed_xml is None:
+                            logger.error(f"Rebuild failed. Can't parse converted XML! Skipping file {final_xml_filename}")
+                            continue
+                        
                     # save common document (article) field values into artInfo instance for both databases
                     artInfo = opasArticleIDSupport.ArticleInfo(parsed_xml=parsed_xml, art_id=art_id_from_filename, filename_base=base, fullfilename=input_filespec, logger=logger)
                     # check if artInfo artID matches the one from the filename
@@ -984,19 +1007,28 @@ def main():
                         print (f"SmartLoad: File not modified. No need to recompile.")
                         
                 # import into lxml
-                parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True)
+                parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True, dtd_validation=True)
                 try:
                     parsed_xml = etree.fromstring(opasxmllib.remove_encoding_string(fileXMLContents), parser)
+                except lxml.etree.ParseError as e:
+                    log_everywhere_if(True, level="error", msg=f"Parse error: {e}")
+                    files_with_parse_errors += 1
                 except Exception as e:
                     if fileXMLContents is None:
                         logger.error(f"Can't parse empty converted XML string")
                     else:
-                        logger.error(f"Can't parse XML starting '{fileXMLContents[0:64]}'")
+                        logger.error(f"Can't parse XML {final_xml_filename} starting '{fileXMLContents[0:128]}'")
                 else:
                     if parsed_xml is None:
                         logger.error(f"Rebuild failed. Can't parse converted XML! Skipping file {final_xml_filename}")
                         continue
-                    
+
+                if options.parse_only:
+                    # just parse but don't act on the file
+                    skipped_files += 1
+                    parse_only_count += 1
+                    continue
+                
                 #treeroot = pepxml.getroottree()
                 #root = pepxml.getroottree()
         
@@ -1140,7 +1172,7 @@ def main():
                 if options.display_verbose: print(f"\t...Time: {time.time() - fileTimeStart:.4f} seconds.")
         
             print (f"{pre_action_verb} process complete ({time.ctime()} ). Time: {time.time() - fileTimeStart:.4f} seconds.")
-            if processed_files_count > 0:
+            if processed_files_count > 0 and not options.parse_only:
                 try:
                     print ("Performing final commit.")
                     if not options.glossary_only: # options.fulltext_core_update:
@@ -1156,80 +1188,81 @@ def main():
                     if randomizer_seed is None:
                         randomizer_seed = int(datetime.utcnow().timestamp())
     
-    opasSolrLoadSupport.garbage_collect_stat(ocd)
-    if options.daysback is not None: #  get all updated records
-        print (f"Listing updates for {options.daysback} days.")
-        issue_updates = {}
-        try:
-            days_back = int(options.daysback)
-        except:
-            logger.error("Incorrect specification of days back. Must be integer.")
-        else:
-            article_list = ocd.get_articles_newer_than(days_back=days_back)
-            for art_id in article_list:
-                artInfoSolr = opasAPISupportLib.documents_get_abstracts(art_id)
-                try:
-                    art_citeas_xml = artInfoSolr.documents.responseSet[0].documentRefXML
-                    src_code = artInfoSolr.documents.responseSet[0].PEPCode
-                    art_year = artInfoSolr.documents.responseSet[0].year
-                    art_vol_str = artInfoSolr.documents.responseSet[0].vol
-                    art_issue = artInfoSolr.documents.responseSet[0].issue
-                    issue_id_str = f"<issue_id><src>{src_code}</src><yr>{art_year}</yr><vol>{art_vol_str}</vol><iss>{art_issue}</iss></issue_id>"
-                except IndexError:
-                    if re.search("IJPOPEN", art_id, re.IGNORECASE) is None: # IJPOPEN is more dynamic and has archive/removed articles, no need to log these
-                        logger.error(f"WhatNewList IndexError: can't find article info for: {art_id}")
-                except Exception as e:
-                    logger.error(f"WhatNewList Exception for: {art_id} {e}")
-                else:   
-                    if src_code not in loaderConfig.DATA_UPDATE_PREPUBLICATION_CODES_TO_IGNORE:
-                        art = f"<article id='{art_id}'>{art_citeas_xml}</article>"
-                        try:
-                            issue_updates[issue_id_str].append(art)
-                        except Exception as e:
-                            issue_updates[issue_id_str] = [art]
-    if issue_updates != {}:
-        random.seed(randomizer_seed)
-        try:
-            if options.whatsnewfile is None:
-                try:
-                    fname = f"{localsecrets.DATA_UPDATE_LOG_DIR}/updated_issues_{dtime.datetime.now().strftime('%Y%m%d_%H%M%S')}({random.randint(1000,9999)}).xml"
-                except Exception as e:
-                    fname = f"updated_issues_{dtime.datetime.now().strftime('%Y%m%d_%H%M%S')}({random.randint(1000,9999)}).xml"
+    if not options.parse_only:
+        opasSolrLoadSupport.garbage_collect_stat(ocd)
+        if options.daysback is not None: #  get all updated records
+            print (f"Listing updates for {options.daysback} days.")
+            issue_updates = {}
+            try:
+                days_back = int(options.daysback)
+            except:
+                logger.error("Incorrect specification of days back. Must be integer.")
             else:
-                fname = options.whatsnewfile
-            msg = f"Writing Issue updates.  Writing to file {fname}"
-            print (msg)
-            logger.info(msg)
-            filedata =  f'<?xml version="1.0" encoding="UTF-8"?>\n<issue_updates>\n'
-            count_records = 0
-            for k, a in issue_updates.items():
-                filedata +=  f"\n\t<issue>\n\t\t{str(k)}\n\t\t<articles>\n"
-                count_records += 1
-                for ref in a:
+                article_list = ocd.get_articles_newer_than(days_back=days_back)
+                for art_id in article_list:
+                    artInfoSolr = opasAPISupportLib.documents_get_abstracts(art_id)
                     try:
-                        filedata +=  f"\t\t\t{ref}\n"
+                        art_citeas_xml = artInfoSolr.documents.responseSet[0].documentRefXML
+                        src_code = artInfoSolr.documents.responseSet[0].PEPCode
+                        art_year = artInfoSolr.documents.responseSet[0].year
+                        art_vol_str = artInfoSolr.documents.responseSet[0].vol
+                        art_issue = artInfoSolr.documents.responseSet[0].issue
+                        issue_id_str = f"<issue_id><src>{src_code}</src><yr>{art_year}</yr><vol>{art_vol_str}</vol><iss>{art_issue}</iss></issue_id>"
+                    except IndexError:
+                        if re.search("IJPOPEN", art_id, re.IGNORECASE) is None: # IJPOPEN is more dynamic and has archive/removed articles, no need to log these
+                            logger.error(f"WhatNewList IndexError: can't find article info for: {art_id}")
                     except Exception as e:
-                        logger.error(f"Issue Update Article Write Error: ({e})")
-                filedata +=  "\t\t</articles>\n\t</issue>"
-            filedata +=  '\n</issue_updates>'
-
-            success = fs.create_text_file(fname, data=filedata, delete_existing=True)            
-
-            if count_records > 0 and success:
-                msg = f"{count_records} issue updates written to whatsnew log file."
+                        logger.error(f"WhatNewList Exception for: {art_id} {e}")
+                    else:   
+                        if src_code not in loaderConfig.DATA_UPDATE_PREPUBLICATION_CODES_TO_IGNORE:
+                            art = f"<article id='{art_id}'>{art_citeas_xml}</article>"
+                            try:
+                                issue_updates[issue_id_str].append(art)
+                            except Exception as e:
+                                issue_updates[issue_id_str] = [art]
+        if issue_updates != {}:
+            random.seed(randomizer_seed)
+            try:
+                if options.whatsnewfile is None:
+                    try:
+                        fname = f"{localsecrets.DATA_UPDATE_LOG_DIR}/updated_issues_{dtime.datetime.now().strftime('%Y%m%d_%H%M%S')}({random.randint(1000,9999)}).xml"
+                    except Exception as e:
+                        fname = f"updated_issues_{dtime.datetime.now().strftime('%Y%m%d_%H%M%S')}({random.randint(1000,9999)}).xml"
+                else:
+                    fname = options.whatsnewfile
+                msg = f"Writing Issue updates.  Writing to file {fname}"
                 print (msg)
                 logger.info(msg)
-
-        except Exception as e:
-            logger.error(f"Issue Update File Write Error: ({e})")
-            
-    else: # if issue_updates != {}
-        if options.daysback is not None:
-            msg = f"Note: There was nothing in the whats new request to output for days back == {options.daysback}."
-            logger.warning(msg)
-        else:
-            msg = f"Note: There was nothing new in the batch output whatsnew."
-            logger.warning(msg)
+                filedata =  f'<?xml version="1.0" encoding="UTF-8"?>\n<issue_updates>\n'
+                count_records = 0
+                for k, a in issue_updates.items():
+                    filedata +=  f"\n\t<issue>\n\t\t{str(k)}\n\t\t<articles>\n"
+                    count_records += 1
+                    for ref in a:
+                        try:
+                            filedata +=  f"\t\t\t{ref}\n"
+                        except Exception as e:
+                            logger.error(f"Issue Update Article Write Error: ({e})")
+                    filedata +=  "\t\t</articles>\n\t</issue>"
+                filedata +=  '\n</issue_updates>'
+    
+                success = fs.create_text_file(fname, data=filedata, delete_existing=True)            
+    
+                if count_records > 0 and success:
+                    msg = f"{count_records} issue updates written to whatsnew log file."
+                    print (msg)
+                    logger.info(msg)
+    
+            except Exception as e:
+                logger.error(f"Issue Update File Write Error: ({e})")
+                
+        else: # if issue_updates != {}
+            if options.daysback is not None:
+                msg = f"Note: There was nothing in the whats new request to output for days back == {options.daysback}."
+                logger.warning(msg)
+            else:
+                msg = f"Note: There was nothing new in the batch output whatsnew."
+                logger.warning(msg)
     # ---------------------------------------------------------
     # Closing time
     # ---------------------------------------------------------
@@ -1237,7 +1270,7 @@ def main():
     ocd.close_connection(force_close=True)
     #currentfile_info.close()
 
-    if not options.no_files: # no_files=false
+    if not options.no_files and not options.parse_only: # no_files=false
         database_updated = (files_found - skipped_files) != 0
         if database_updated:
             # write database_updated.txt
@@ -1305,11 +1338,20 @@ def main():
         msg = f"Note: File load time is not total elapsed time. Total elapsed time is: {elapsed_seconds:.2f} secs ({elapsed_minutes:.2f} minutes.)"
         logger.info(msg)
         print (msg)
+
         if processed_files_count > 0:
             msg = f"Files per elapsed min: {processed_files_count/elapsed_minutes:.4f}"
             logger.info(msg)
             print (msg)
-    else:  # no_files=True, just generates a whats_new list, no processing or loading
+
+        print (80 * "-")
+            
+
+    else:  # no_files=True or just parsed
+        msg = f"{files_with_parse_errors} files had XML parse errors."
+        logger.info(msg)
+        print (msg)
+
         print ("Processing finished.")
         elapsed_seconds = timeEnd-timeStart # actual processing time going through files
         elapsed_minutes = elapsed_seconds / 60
@@ -1317,7 +1359,7 @@ def main():
         logger.info(msg)
         print (msg)
         print (80 * "-")
-
+    
 # -------------------------------------------------------------------------------------------------------
 # run it!
 
@@ -1393,6 +1435,9 @@ will start skipping files since they have already been loaded into Solr in the c
 
     parser.add_option("--only", dest="file_only", default=None,
                       help="File spec for a single file to process.")
+    
+    parser.add_option("--parseonly", action="store_true", dest="parse_only", default=False,
+                      help="Parse (check) but don't store in Solr")
 
     parser.add_option("--outputbuild", dest="output_build", default=opasConfig.DEFAULT_OUTPUT_BUILD,
                       help=f"Specific output build specification, default='{opasConfig.DEFAULT_OUTPUT_BUILD}'. e.g., (bEXP_ARCH1) or just bEXP_ARCH1.")

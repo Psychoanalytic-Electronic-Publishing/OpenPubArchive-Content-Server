@@ -96,7 +96,6 @@ class PEPGWSEParaConcordance:
                         node.attrib["lgrtype"] = "GroupIDTrans"
                     else:
                         try:
-                            a = node.attrib["lgrx"]   # cautionary (for debug purposes)...delete line later
                             del node.attrib["lgrx"]
                         except KeyError:
                             pass
@@ -104,7 +103,6 @@ class PEPGWSEParaConcordance:
                             logger.error(f"Error deleting xml attribute {e}")
 
                         try:
-                            a = node.attrib["lgrtype"]   # cautionary (for debug purposes)...delete line later
                             del node.attrib["lgrtype"]
                         except KeyError:
                             pass

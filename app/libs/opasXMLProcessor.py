@@ -441,7 +441,6 @@ def update_biblio_links(parsed_xml, artInfo, ocd, pretty_print=False, verbose=Fa
                 if bib_entry.link_updated: # update xml (not db, info was from db))
                     if bib_entry.ref_rx is None or not bib_entry.ref_exists:
                         try:
-                            a = ref.attrib["rx"]   # cautionary (for debug purposes)...delete line later
                             del ref.attrib["rx"]
                         except KeyError:
                             pass
@@ -462,7 +461,6 @@ def update_biblio_links(parsed_xml, artInfo, ocd, pretty_print=False, verbose=Fa
                         
                     if bib_entry.ref_rxcf is None:
                         try:
-                            a = ref.attrib["rxcf"]   # cautionary (for debug purposes)...delete line later
                             del ref.attrib["rxcf"]
                         except KeyError:
                             pass
