@@ -220,15 +220,18 @@ class opasCentralDB(object):
         # try connection right away
         try:
             self.db = mysql.connector.connect(user=self.user, password=self.password, database=self.database, host=self.host, port=port)
+        except ConnectionError as e:
+            print(f"Error connecting to database {e}.  Can't continue")
+            sys.exit(1)
         except Exception as e:
-            logger.fatal("Connection not available")
+            logger.fatal(f"Error connecting {e}. Can't continue")
+            sys.exit(1)
         else:
             logger.debug(f"Database connection opened. Opening connection number: {self.connection_count}. Will retry after {opasConfig.DB_CONNECT_DELAY} seconds")            
             
         # self.library_version = self.get_mysql_version() # Removed since it's rarely needed and yet requires a db call to get
         self.session_id = session_id # deprecate?
         self.connection_count = 0
-        
 
     def __del__(self):
         pass
