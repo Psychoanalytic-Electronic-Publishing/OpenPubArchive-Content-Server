@@ -17,7 +17,7 @@ def handler(event, context):
 
     task_submissions = [event for event in sf_response["events"] if event["type"] == "TaskSubmitted"]
 
-    msg = "Task execution logs \n\n"
+    msg = "Task execution finished \n\n"
     msg += f"Execution details: {stepfunctions_url}{event['executionArn']} \n\n"
 
     for task_submission in task_submissions:
