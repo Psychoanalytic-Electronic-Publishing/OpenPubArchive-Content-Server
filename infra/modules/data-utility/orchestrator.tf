@@ -9,8 +9,17 @@ locals {
   definition_template = <<EOF
 {
   "Comment": "State machine for orchestrating data utility",
-  "StartAt": "Batch",
+  "StartAt": "Startup Email",
   "States": {
+    "Startup Email": {
+      "Type": "Task",
+      "Resource": "${module.send_startup_email.lambda_function_arn}",
+      "Parameters": {
+        "task.$": "$",
+        "executionArn.$": "$$.Execution.Id"
+      },
+      "Next": "Batch"
+    },
     "Batch": {
       "Type": "Map",
       "ItemProcessor": {
@@ -71,8 +80,16 @@ locals {
           }
         }
       },
-      "End": true,
+      "Next": "Completion Email",
       "MaxConcurrency": 1
+    },
+    "Completion Email": {
+      "Type": "Task",
+      "Parameters": {
+        "executionArn.$": "$$.Execution.Id"
+      },
+      "Resource": "${module.send_completion_email.lambda_function_arn}",
+      "End": true
     }
   }
 }
@@ -90,6 +107,13 @@ EOF
                 "ecs:DescribeTasks"
             ],
             "Resource": "*"
+        },
+        {
+          "Effect": "Allow",
+          "Action": [
+            "lambda:InvokeFunction"
+          ],
+          "Resource": "*"
         },
         {
             "Effect": "Allow",
