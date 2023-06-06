@@ -11,7 +11,8 @@ stepfunctions_url = "https://us-east-1.console.aws.amazon.com/states/home?region
 def handler(event, context):
 
     sf_response = sf.get_execution_history(
-        executionArn=event["executionArn"]
+        executionArn=event["executionArn"],
+        maxResults=1000
     )
 
     task_submissions = [event for event in sf_response["events"] if event["type"] == "TaskSubmitted"]
