@@ -17,3 +17,5 @@ def handler(event, context):
         Message=msg,
         Subject=subject
     )
+
+    return event["task"]
