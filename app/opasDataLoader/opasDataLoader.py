@@ -1551,4 +1551,5 @@ will skip these from then on."""
         traceback.print_exc()
         sys.exit(1)
     else:
+        print ("Normal exit...using 255")
         sys.exit(255) # My Special Exit Code for All Ok, Forced (actually means out of range)
