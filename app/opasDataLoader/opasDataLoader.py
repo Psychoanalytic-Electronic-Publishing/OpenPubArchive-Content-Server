@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2023, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2023.0605/v2.1.039"
+__version__     = "2023.0606/v2.1.040"
 __status__      = "Development"
 
 # !!! IMPORTANT: Increment opasXMLProcessor version (if version chgd). It's written to the XML !!!
@@ -119,6 +119,7 @@ import re
 import os
 import os.path
 import pathlib
+import traceback
 from opasFileSupport import FileInfo
 
 import datetime as dtime
@@ -1543,5 +1544,11 @@ will skip these from then on."""
         print ("Fini. opasDataLoader Tests complete.")
         sys.exit()
 
-
-    main()
+    try:
+        main()
+    except Exception as e:
+        logger.error(f"Main hit an exception in opasDataLoader {e}")
+        traceback.print_exc()
+        sys.exit(1)
+    else:
+        sys.exit(255) # My Special Exit Code for All Ok, Forced (actually means out of range)
