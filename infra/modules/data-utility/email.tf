@@ -1,3 +1,7 @@
+resource "aws_sns_topic" "status_updates" {
+  name = "${var.stack_name}-status-updates-${var.env}"
+}
+
 module "send_status_email" {
   source  = "terraform-aws-modules/lambda/aws"
   version = "4.9.0"
@@ -7,6 +11,10 @@ module "send_status_email" {
   handler                 = "index.handler"
   runtime                 = "python3.8"
   ignore_source_code_hash = true
+
+  environment_variables = {
+    SNS_TOPIC_ARN = aws_sns_topic.status_updates.arn
+  }
 
   tags = {
     stage = var.env
@@ -33,7 +41,7 @@ resource "aws_iam_role_policy" "send_status_email_lambda_policy" {
           "sns:Publish"
         ],
         Effect   = "Allow",
-        Resource = "arn:aws:sns:us-east-1:547758924192:gitlab-status-topic"
+        Resource = aws_sns_topic.status_updates.arn
       }
     ]
   })

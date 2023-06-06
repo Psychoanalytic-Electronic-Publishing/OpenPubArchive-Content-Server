@@ -1,5 +1,6 @@
 import boto3
 import json
+import os
 
 sf = boto3.client("stepfunctions")
 sns = boto3.client("sns")
@@ -33,7 +34,7 @@ def handler(event, context):
         msg += f"{cloudwatch_url}{execution_id}\n\n"
     
     sns.publish(
-        TargetArn="arn:aws:sns:us-east-1:547758924192:gitlab-status-topic",
+        TargetArn=os.environ["SNS_TOPIC_ARN"],
         Message=msg,
         Subject="Data Utility execution logs"
     )
