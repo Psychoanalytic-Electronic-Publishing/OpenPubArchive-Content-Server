@@ -492,7 +492,7 @@
 
   <!-- use this to search body without reference section (reference section above separately for search)-->
   <field name="body_xml" type="text_general" indexed="true" stored="true" multiValued="false"/> 
-  <field name="body_xml_syn" type="text_general_syn" indexed="true" stored="true" multiValued="false"/> 
+  <field name="body_xml_syn" type="text_general_syn" indexed="true" stored="false" multiValued="false"/> 
   <copyField source="body_xml" dest="body_xml_syn"/>
   <!--added in 2021-06-09 since lost appendixes when we removed most subpara searches.-->
   <field name="appxs_xml" type="text_general" indexed="true" stored="false" multiValued="true"/> 
