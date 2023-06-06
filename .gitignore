@@ -107,3 +107,4 @@ app/tests/testxml/_PEPFree/PEPGRANTVS.001.0017A(bEXP_ARCH1).xml
 sql/schemas/opascentralProductionBackup20230530.sql
 sql/schemas/temp_trackpads_calls_backup_before_delete.sql
 app/opasDataLoader/minrequirements.txt
+requirements-new.txt

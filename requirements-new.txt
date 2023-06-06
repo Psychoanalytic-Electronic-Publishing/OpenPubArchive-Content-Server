@@ -1,0 +1,69 @@
+# Updated 2021-03-11 to for pdfrw
+# Updated 2021-03-18 requests-2.25.1 urllib3-1.26.4 botocore-1.20.31 boto3-1.17.31
+#      many more need updating, but postponing for later.  Pillow was needed due to security bug
+# Updated 2021-06-10 Dependabot alerts, urllib3, Pillow, and FastAPI
+# Updated 2022-04-06 Dependabot alerts, Pillow to 9.0.1 (from 9.0.0)
+# Updated 2022-05-25 Update Weasyprint version, still doesn't have needed fixes though, but maybe will be in version 55 so will update.
+# Updated 2022-06-07 added roman support library from pypi for XML processing code
+# Updated 2022-07-15 xhtml2pdf, weasyprint, pydantic
+# Updated 2022-08-29 Changed protobuf version req per ERROR in online process: mysql-connector-python 8.0.30 has requirement protobuf<=3.20.1,>=3.11.0, but you'll have protobuf 4.21.5 which is incompatible.
+# Updated 2022-12-09 Botocore/Boto3/s3transfer updated
+# Updated 2023-01-27 Added jellyfish Library for fuzzy matching
+
+aiofiles==0.5.0
+arabic-reshaper~=3.0.0 # req by xhtml2pdf
+bcrypt~=4.0.1
+boto3==1.26.147        # updated 2023-06-02
+botocore==1.29.147     # updated 2023-06-02
+certifi==2023.5.7
+cffi~=1.15.1
+chardet~=5.1.0
+click~=8.1.3
+docutils~=0.20.1
+EbookLib~=0.18
+fastapi~=0.96.0
+fsspec~=2023.1.0
+future~=0.18.3
+h11~=0.14.0
+html5lib==1.1
+idna==3.4
+jellyfish~=0.11.0
+jmespath==1.0.1
+lxml~=4.9.2  # update per dependabot  from 4.6.5
+protobuf<=3.20.1,>=3.11.0 # Was protobuf>=3.0.0 # required by mysql-connector-python
+mysql-connector-python~=8.0.33
+nameparser==1.1.2
+namesparser==1.0.0
+# Required by pandas numpy and pytz installed when numpy is installed (2020-08-31)
+numpy~=1.21.6 # dependabot alert says 1.22.0 but it doesn't seem to exist
+pandas==1.3.5
+pytz==2023.1
+passlib==1.7.4
+Pillow==9.3.0                  # updated 2023-06-02
+pycparser~=2.20
+#pydantic>1.6.2,<2.0.0,!=1.8.1,!=1.8,!=1.7.3,!=1.7.2,!=1.7.1,!=1.7 # (per FastAPI)
+pydantic==1.9.1 # updated 2022-07-15
+PyJWT==1.7.1
+PyMySQL~=1.0.2
+fpdf2~=2.3.1
+pdfrw~=0.4
+PyPDF2~=1.27.5               # needed by Pisa, apparently
+pysolr==3.9.0
+python-dateutil~=2.8.2
+python-multipart==0.0.5
+roman==3.3
+reportlab==3.6.6
+requests~=2.26.0
+s3fs==0.4.2
+s3transfer~=0.6                # updated 2022-12-09 for s3 (boto3 required)
+six~=1.15.0
+starlette~=0.19.1
+urllib3>=1.21.1,<1.27
+uvicorn~=0.13.4
+webencodings==0.5.1
+websockets~=9.1
+weasyprint~=56.0       # updated 2022-07-15
+wget==3.2
+xhtml2pdf~=0.2.8       # updated 2022-07-15
+
+#watchtower==0.8.0
