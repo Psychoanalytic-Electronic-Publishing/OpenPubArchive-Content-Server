@@ -43,8 +43,3 @@ def handler(event, context):
         Message=msg,
         Subject=subject
     )
-
-    return {
-        'statusCode': 200,
-        'body': 'Hello from Lambda!'
-    }
