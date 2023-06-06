@@ -8,7 +8,7 @@ module "send_status_email" {
 
   function_name           = "${var.stack_name}-send-status-email-${var.env}"
   source_path             = "../../dataUtility/email"
-  handler                 = "index.handler"
+  handler                 = "finish.handler"
   runtime                 = "python3.8"
   ignore_source_code_hash = true
 
