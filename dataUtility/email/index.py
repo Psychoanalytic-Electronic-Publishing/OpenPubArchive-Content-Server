@@ -5,6 +5,7 @@ sf = boto3.client("stepfunctions")
 sns = boto3.client("sns")
 
 cloudwatch_url = "https://us-east-1.console.aws.amazon.com/cloudwatch/home?region=us-east-1#logsV2:log-groups/log-group/opas-data-utility-staging/log-events/ecs$252Fmain$252F"
+stepfunctions_url = "https://us-east-1.console.aws.amazon.com/states/home?region=us-east-1#/v2/executions/details/"
 
 def handler(event, context):
 
@@ -14,7 +15,8 @@ def handler(event, context):
 
     task_submissions = [event for event in sf_response["events"] if event["type"] == "TaskSubmitted"]
 
-    msg = "Task execution logs: \n\n"
+    msg = "Task execution logs \n\n"
+    msg += f"Execution details: {stepfunctions_url}{event['executionArn']} \n\n"
 
     for task_submission in task_submissions:
         output = json.loads(task_submission["taskSubmittedEventDetails"]["output"])
@@ -31,8 +33,9 @@ def handler(event, context):
         msg += f"{cloudwatch_url}{execution_id}\n\n"
     
     sns.publish(
-        "arn:aws:sns:us-east-1:547758924192:gitlab-status-topic",
-        msg
+        TargetArn="arn:aws:sns:us-east-1:547758924192:gitlab-status-topic",
+        Message=msg,
+        Subject="Data Utility execution logs"
     )
 
     return {
