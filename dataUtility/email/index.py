@@ -32,11 +32,15 @@ def handler(event, context):
         msg += f"Utility: {utility_name}\n"
         msg += f"Arguments: {utility_args}\n"
         msg += f"{cloudwatch_url}{execution_id}\n\n"
+
     
+
+    subject = f"Data Utility: {event['executionArn'].split(':')[-1]}"
+
     sns.publish(
         TargetArn=os.environ["SNS_TOPIC_ARN"],
         Message=msg,
-        Subject="Data Utility execution logs"
+        Subject=subject
     )
 
     return {
