@@ -76,3 +76,10 @@ module "data_utility_cron" {
   env               = var.env
   state_machine_arn = module.data_utility.state_machine_arn
 }
+
+module "server" {
+  source = "../modules/server"
+
+  stack_name = var.stack_name
+  env        = var.env
+}
