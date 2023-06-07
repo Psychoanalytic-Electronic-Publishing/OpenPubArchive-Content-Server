@@ -13,8 +13,8 @@
 aiofiles==23.1.0
 arabic-reshaper==3.0.0
 bcrypt==4.0.1
-boto3==1.26.147
-botocore==1.29.147
+boto3~=1.26.26
+botocore~=1.29.26
 certifi==2023.5.7
 cffi==1.15.1
 chardet==5.1.0
