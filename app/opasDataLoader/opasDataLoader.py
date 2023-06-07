@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2023, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2023.0606/v2.1.041"
+__version__     = "2023.0607/v2.1.042"
 __status__      = "Development"
 
 # !!! IMPORTANT: Increment opasXMLProcessor version (if version chgd). It's written to the XML !!!
@@ -1551,5 +1551,5 @@ will skip these from then on."""
         traceback.print_exc()
         sys.exit(1)
     else:
-        print ("Normal exit...using 255")
-        sys.exit(255) # My Special Exit Code for All Ok, Forced (actually means out of range)
+        print ("Normal exit...not using 255 this time")
+        sys.exit() # will change later back to 255, but for now back to normal exiting.
