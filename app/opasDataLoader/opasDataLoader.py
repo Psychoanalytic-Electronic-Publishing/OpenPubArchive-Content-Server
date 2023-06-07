@@ -1423,7 +1423,7 @@ will start skipping files since they have already been loaded into Solr in the c
     parser.add_option("--load", "--loadxml", action="store_true", dest="loadprecompiled", default=True,
                       help="Load precompiled XML, e.g. (bEXP_ARCH1) into database.")
 
-    parser.add_option("--nobibdbupdate", action="store_true", dest="no_bibdbupdate", default=False,
+    parser.add_option("--nobibdbupdate", action="store_true", dest="no_bibdbupdate", default=True,
                       help="Turn off save of biblio info to the database (i.e., if done using opasDataLinker")
 
     parser.add_option("--nocheck", action="store_true", dest="no_check", default=False,
