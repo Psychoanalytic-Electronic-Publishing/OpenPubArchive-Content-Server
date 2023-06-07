@@ -7,12 +7,14 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2023, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2023.0607/v2.1.044"
+__version__     = "2023.0607/v2.1.045"
 __status__      = "Development"
 
 # !!! IMPORTANT: Increment opasXMLProcessor version (if version chgd). It's written to the XML !!!
 
 programNameShort = "opasDataLoader"
+from pympler import muppy, summary
+import gc
 
 border = 80 * "*"
 print (f"""\n
@@ -654,6 +656,7 @@ def main():
     if localsecrets.SOLRUSER is not None and localsecrets.SOLRPW is not None:
         if 1: # options.fulltext_core_update:
             solr_docs2 = pysolr.Solr(solrurl_docs, auth=(localsecrets.SOLRUSER, localsecrets.SOLRPW))
+            solr_docs2.log.setLevel(logging.ERROR)
     else: #  no user and password needed
         solr_docs2 = pysolr.Solr(solrurl_docs)
 
@@ -798,6 +801,7 @@ def main():
             insert_date = ocd.get_last_record_insertion_date()
             file_number = 0
             parse_only_count = 0
+            parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True, dtd_validation=True)
             for n in filenames:
                 file_number += 1
                 fullfilename = n.filespec
@@ -905,7 +909,7 @@ def main():
                     input_filespec = n.filespec
                     fileXMLContents, input_fileinfo = fs.get_file_contents(input_filespec)
                     # print (f"Filespec: {input_filespec}")
-                    parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True, dtd_validation=True)
+                    # parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True, dtd_validation=True)
                     try:
                         parsed_xml = etree.fromstring(opasxmllib.remove_encoding_string(fileXMLContents), parser)
                     except lxml.etree.ParseError as e:
@@ -1009,7 +1013,7 @@ def main():
                         print (f"SmartLoad: File not modified. No need to recompile.")
                         
                 # import into lxml
-                parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True, dtd_validation=True)
+                # parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True, dtd_validation=True)
                 try:
                     parsed_xml = etree.fromstring(opasxmllib.remove_encoding_string(fileXMLContents), parser)
                 except lxml.etree.ParseError as e:
@@ -1143,6 +1147,11 @@ def main():
                     opasSolrLoadSupport.process_info_for_author_core(parsed_xml, artInfo, solr_authors2, verbose=options.display_verbose)
                     
                     if precommit_file_count > configLib.opasCoreConfig.COMMITLIMIT:
+                        if 1:
+                            all_objects = muppy.get_objects()
+                            sum1 = summary.summarize(all_objects)
+                            summary.print_(sum1)
+                            
                         precommit_file_count = 0
                         try:
                             solr_docs2.commit()
@@ -1169,9 +1178,15 @@ def main():
                             # perhaps only check if it exists when compiling xml. That would be faster. For now, to update, let it check
                             if bib_entry.link_updated or bib_entry.record_updated or not ocd.exists(table_name=opasConfig.BIBLIO_TABLE, where_conditional=f"art_id='{bib_entry.art_id}' AND ref_local_id='{bib_entry.ref_local_id}'"):
                                 ocd.save_ref_to_biblioxml_table(bib_entry)
+                            bib_entry = None
+
+                        bibReferences = None
     
                 # close the file, and do the next
                 if options.display_verbose: print(f"\t...Time: {time.time() - fileTimeStart:.4f} seconds.")
+                fileXMLContents = None
+                parsed_xml = None               
+                gc.collect()
         
             print (f"{pre_action_verb} process complete ({time.ctime()} ). Time: {time.time() - fileTimeStart:.4f} seconds.")
             if processed_files_count > 0 and not options.parse_only:
@@ -1423,7 +1438,7 @@ will start skipping files since they have already been loaded into Solr in the c
     parser.add_option("--load", "--loadxml", action="store_true", dest="loadprecompiled", default=True,
                       help="Load precompiled XML, e.g. (bEXP_ARCH1) into database.")
 
-    parser.add_option("--nobibdbupdate", action="store_true", dest="no_bibdbupdate", default=True,
+    parser.add_option("--nobibdbupdate", action="store_true", dest="no_bibdbupdate", default=False,
                       help="Turn off save of biblio info to the database (i.e., if done using opasDataLinker")
 
     parser.add_option("--nocheck", action="store_true", dest="no_check", default=False,
