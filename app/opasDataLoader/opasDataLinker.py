@@ -64,13 +64,13 @@ sys.path.append('../libs/configLib')
 # import string, sys, copy, re
 import logging
 logger = logging.getLogger(__name__)
-import re
+# import re
 import time
 import datetime
 today = datetime.date.today()  # Get today's date
 yesterday = today - datetime.timedelta(days=2)  # Subtract 24 hours to cover 
 
-from optparse import OptionParser
+# from optparse import OptionParser
 from loggingDebugStream import log_everywhere_if
 
 import opasConfig
@@ -95,8 +95,8 @@ gDbg2 = 1	# High level
 LOWER_RELEVANCE_LIMIT = 35
 
 ocd = opasCentralDBLib.opasCentralDB()
-import lxml.etree as ET
-import lxml
+# import lxml.etree as ET
+# import lxml
 sqlSelect = ""
 
 def walk_through_reference_set(ocd=ocd,
@@ -151,7 +151,7 @@ def walk_through_reference_set(ocd=ocd,
             log_everywhere_if(True, "info", f"{counter}/{count}:Analyzing Record Last Updated:{last_updated} ID:{ref_model.art_id}/{ref_model.ref_local_id}\nRef:{one_line_text}")
             # parsed_ref = ET.fromstring(ref_model.ref_xml, parser=parser)
             bib_entry = opasBiblioSupport.BiblioEntry(ref_model.art_id, db_bib_entry=ref_model, verbose=verbose)
-            art_id = bib_entry.art_id
+            # art_id = bib_entry.art_id
             if not bib_entry.ref_title:
                 # ignore this one from now on
                 log_everywhere_if(verbose, "info", f"\t...No title found, ignoring this one from now on.")

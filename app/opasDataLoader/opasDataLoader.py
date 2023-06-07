@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2023, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2023.0607/v2.1.042"
+__version__     = "2023.0607/v2.1.044"
 __status__      = "Development"
 
 # !!! IMPORTANT: Increment opasXMLProcessor version (if version chgd). It's written to the XML !!!
@@ -955,7 +955,8 @@ def main():
                                                                          pretty_print=options.pretty_printed,
                                                                          markup_terms=options.glossary_term_tagging,
                                                                          add_glossary_list=options.add_glossary_term_dict, 
-                                                                         verbose=options.display_verbose)
+                                                                         verbose=options.display_verbose,
+                                                                         no_database_update = options.no_bibdbupdate)
                     
                     # ##########################################################################################################
                     # Special IJPOpen Version Processing Part 2 (Post conversion)
@@ -1177,10 +1178,10 @@ def main():
                 try:
                     print ("Performing final commit.")
                     if not options.glossary_only: # options.fulltext_core_update:
-                        a = solr_docs2.commit()
-                        b = solr_authors2.commit()
+                        solr_docs2.commit()
+                        solr_authors2.commit()
                     if 1: # options.glossary_core_update:
-                        c = solr_gloss2.commit()
+                        solr_gloss2.commit()
                 except Exception as e:
                     print(("Exception: ", e))
                 else:

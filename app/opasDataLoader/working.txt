@@ -1,0 +1,229 @@
+solr 
+from dateutil import parser
+from ebooklib import epub
+from enum import Enum
+from fastapi.security.api_key import APIKeyQuery, APIKeyCookie, APIKeyHeader, APIKey
+from fpdf import FPDF, HTMLMixin
+from lxml import etree
+from passlib.context import CryptContext
+from past.builtins import long, unicode, basestring, PY3
+from pathlib import Path
+from pathlib import Path
+from pathlib import Path
+from pathlib import Path
+from pdfrw import PdfReader, PdfWriter, PageMerge
+from pepkeys import STAGE_DB_HOST, AWSDB_PWS, AWSDB_USERS, PRODUCTION_DB_HOST, AWSDEV_DB_HOST 
+from pydantic import BaseModel
+from pydantic import BaseModel, Field 
+from pydantic import ValidationError
+from pydantic import ValidationError
+from pydantic import ValidationError
+from pydantic import ValidationError
+from pydantic.main import BaseModel
+from pydantic.main import BaseModel, Field
+from pydantic.main import BaseModel, Field # ValidationError, validator, Extra
+from pydantic.main import Field # removed Field, causing an error on AWS
+from requests.auth import HTTPBasicAuth
+from requests.auth import HTTPBasicAuth
+from requests.auth import HTTPBasicAuth 
+from schemaMap import PREDEFINED_SORTS
+from six import BytesIO as StringIO
+from starlette.exceptions import HTTPException
+from starlette.middleware.cors import CORSMiddleware
+from starlette.middleware.cors import CORSMiddleware
+from starlette.middleware.cors import CORSMiddleware
+from starlette.requests import Request
+from starlette.requests import Request
+from starlette.requests import Request
+from starlette.requests import Request
+from starlette.requests import Request
+from starlette.responses import JSONResponse, Response, FileResponse, StreamingResponse # RedirectResponse
+from starlette.responses import JSONResponse, Response, FileResponse, StreamingResponse # RedirectResponse
+from starlette.responses import JSONResponse, Response, FileResponse, StreamingResponse # RedirectResponse
+from starlette.responses import Response
+from starlette.responses import Response
+from starlette.responses import Response
+from starlette.testclient import TestClient
+from starlette.testclient import TestClient
+from starlette.testclient import TestClient
+from starlette.testclient import TestClient
+from starlette.testclient import TestClient
+from starlette.testclient import TestClient
+from stdMessageLib import COPYRIGHT_PAGE_HTML  # copyright page text to be inserted in ePubs and PDFs
+from stop_words import get_stop_words
+from typing import List, TypeVar, Optional # Generic
+from typing import Optional # List, Generic, TypeVar
+from typing import Optional # List, Generic, TypeVar, 
+from typing import Union
+from typing import Union
+from typing import Union
+from typing import Union # , Optional, Tuple
+from unitTestConfig import base_api, base_plus_endpoint_encoded
+from unitTestConfig import base_api, base_plus_endpoint_encoded
+from unitTestConfig import base_api, base_plus_endpoint_encoded
+from unitTestConfig import base_api, base_plus_endpoint_encoded, headers
+from unitTestConfig import base_api, base_plus_endpoint_encoded, headers
+from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_id, UNIT_TEST_CLIENT_ID
+from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_id, UNIT_TEST_CLIENT_ID
+from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_id, UNIT_TEST_CLIENT_ID
+from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_id, UNIT_TEST_CLIENT_ID
+from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_id, UNIT_TEST_CLIENT_ID
+from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_id, UNIT_TEST_CLIENT_ID, BOOKCOUNT, ALL ...
+from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_id, UNIT_TEST_CLIENT_ID, get_headers_no ...
+from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_id, UNIT_TEST_CLIENT_ID, get_headers_no ...
+from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_id, UNIT_TEST_CLIENT_ID, get_headers_no ...
+from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_id, UNIT_TEST_CLIENT_ID, test_login
+from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_id, UNIT_TEST_CLIENT_ID, test_login
+from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_id, UNIT_TEST_CLIENT_ID, test_login
+from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_id, UNIT_TEST_CLIENT_ID, test_login
+from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_id, UNIT_TEST_CLIENT_ID, test_login
+from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_id, UNIT_TEST_CLIENT_ID, test_login
+from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_id, UNIT_TEST_CLIENT_ID, test_login
+from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_id, UNIT_TEST_CLIENT_ID, test_login
+from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_id, UNIT_TEST_CLIENT_ID, test_login
+from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_id, UNIT_TEST_CLIENT_ID, test_login
+from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_id, UNIT_TEST_CLIENT_ID, test_login
+from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_id, UNIT_TEST_CLIENT_ID, test_login
+from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_id, UNIT_TEST_CLIENT_ID, test_login
+from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_id, UNIT_TEST_CLIENT_ID, test_login
+from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_id, UNIT_TEST_CLIENT_ID, test_login
+from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_id, UNIT_TEST_CLIENT_ID, test_login, te ...
+from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_id, UNIT_TEST_CLIENT_ID, test_login, te ...
+from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_id, UNIT_TEST_CLIENT_ID, test_login, te ...
+from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_id, UNIT_TEST_CLIENT_ID, test_login, te ...
+from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_id, UNIT_TEST_CLIENT_ID, test_login, te ...
+from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_id, UNIT_TEST_CLIENT_ID, test_login, te ...
+from unitTestConfig import base_plus_endpoint_encoded, headers
+from unitTestConfig import base_plus_endpoint_encoded, headers
+from unitTestConfig import base_plus_endpoint_encoded, headers
+from unitTestConfig import base_plus_endpoint_encoded, headers
+from unitTestConfig import base_plus_endpoint_encoded, headers
+from unitTestConfig import base_plus_endpoint_encoded, headers
+from unitTestConfig import base_plus_endpoint_encoded, headers
+from unitTestConfig import base_plus_endpoint_encoded, headers
+from unitTestConfig import base_plus_endpoint_encoded, headers
+from unitTestConfig import base_plus_endpoint_encoded, headers
+from unitTestConfig import base_plus_endpoint_encoded, headers
+from unitTestConfig import base_plus_endpoint_encoded, headers
+from unitTestConfig import base_plus_endpoint_encoded, headers
+from unitTestConfig import base_plus_endpoint_encoded, headers, UNIT_TEST_CLIENT_ID
+from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in
+from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in
+from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in
+from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in
+from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in
+from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in
+from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in
+from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in
+from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in
+from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in
+from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in
+from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in
+from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in
+from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in
+from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in
+from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in
+from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in
+from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in
+from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in
+from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in
+from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in
+from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in
+from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in
+from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in
+from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in
+from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in
+from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in
+from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in
+from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in
+from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in
+from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in
+from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in
+from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in
+from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in
+from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in
+from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in
+from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in
+from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in
+from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in
+from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in
+from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in
+from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in
+from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in
+from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in
+from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in, test_login
+from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in, test_logout
+from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in, test_logout
+from unitTestConfig import base_plus_endpoint_encoded, headers, session_id
+from unitTestConfig import base_plus_endpoint_encoded, headers, session_id, UNIT_TEST_CLIENT_ID, test_login
+from unitTestConfig import base_plus_endpoint_encoded, headers, test_login
+from unitTestConfig import base_plus_endpoint_encoded, headers, test_login
+from unitTestConfig import base_plus_endpoint_encoded, headers, test_login
+from unitTestConfig import base_plus_endpoint_encoded, session_id, headers, session_id, UNIT_TEST_CLIENT_ID
+from unitTestConfig import headers, session_id, test_login
+from unitTestConfig import test_login
+from urllib import parse
+from urllib import parse
+from urllib import parse
+from urllib import request
+from urllib.parse import urlparse
+from weasyprint import HTML # , CSS
+from weasyprint.text.fonts import FontConfiguration
+from xhtml2pdf import pisa             # alt conversion when weasyprint fails
+from xml.dom.minidom import parseString
+from xml.sax import SAXParseException
+from xml.sax import SAXParseException
+from xml.sax import make_parser
+from xml.sax.handler import ContentHandler
+from xml.sax.saxutils import escape, quoteattr
+import base64
+import boto3
+import calendar
+import codecs
+import difflib
+import email.utils
+import errorMessages
+import fastapi
+import glob
+import html
+import io
+import json
+import libs.opasAPISupportLib as opasAPISupportLib
+import lxml
+import lxml.etree as ET
+import lxml.etree as ET
+import lxml.etree as ET
+import lxml.etree as ET
+import lxml.html as lhtml
+import math
+import mysql.connector
+import ntpath
+import numbers
+import pandas as pd
+import pathlib
+import pprint
+import pydantic
+import pymysql
+import pysolr
+import pytz # when we get to python 3.9, this isn&#x27;t needed
+import random
+import re
+import roman
+import s3fs
+import shlex, subprocess
+import shlex, subprocess
+import six
+import socket
+import solrpy as solr
+import starlette
+import stdMessageLib
+import tempfile
+import timeit
+import traceback
+import unitTestConfig
+import unittest
+import urllib
+import uuid
+import uvicorn
+import wget
+import wget
