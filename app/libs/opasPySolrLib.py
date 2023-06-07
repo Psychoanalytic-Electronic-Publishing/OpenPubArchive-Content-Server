@@ -3426,6 +3426,7 @@ def quick_docmeta_docsearch(q_str,
     Searches per query string and returns a document List
     """
     ret_val = None
+    results = []
     count = 0
     if fields is None:
         fields = opasConfig.DOCUMENT_ITEM_SUMMARY_FIELDS
