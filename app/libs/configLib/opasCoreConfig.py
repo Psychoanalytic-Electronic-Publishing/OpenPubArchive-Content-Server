@@ -23,7 +23,7 @@ SOLR_GLOSSARY = "pepwebglossary"
 SOLR_DEFAULT_CORE = SOLR_DOCS
 
 # constants
-COMMITLIMIT = 250  # commit the load to Solr every X articles
+COMMITLIMIT = 1000  # commit the load to Solr every X articles
 
 # for pysolr! (solrpy is now limited to a variant of term search and used only in opasSolrPyLib.py)
 if SOLRUSER is not None and SOLRPW is not None:
