@@ -207,7 +207,8 @@ class opasCentralDB(object):
                  port=localsecrets.DBPORT,
                  user=localsecrets.DBUSER,
                  password=localsecrets.DBPW,
-                 database=localsecrets.DBNAME):
+                 database=localsecrets.DBNAME,
+                 reuse_connection=opasConfig.DB_REUSE_CONNECTION):
 
         self.host = host
         self.port = port
@@ -216,7 +217,8 @@ class opasCentralDB(object):
         self.database = database
         self.connected = False
         self.connection_count = 0
-        self.reuse_db_connection = opasConfig.DB_REUSE_CONNECTION
+        self.reuse_db_connection = reuse_connection
+
         # try connection right away
         try:
             self.db = mysql.connector.connect(user=self.user, password=self.password, database=self.database, host=self.host, port=port)

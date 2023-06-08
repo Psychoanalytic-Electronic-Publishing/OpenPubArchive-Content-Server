@@ -28,4 +28,3 @@ uvicorn~=0.13.4
 wget==3.2
 weasyprint~=56.0      # updated 2022-07-15
 xhtml2pdf~=0.2.8      # updated 2022-07-15
-pympler
