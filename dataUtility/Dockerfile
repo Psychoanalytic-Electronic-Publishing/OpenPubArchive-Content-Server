@@ -8,6 +8,13 @@ ARG ROOT_DIRECTORY
 # Create function directory
 RUN mkdir -p ${ROOT_DIRECTORY}
 
+# Set working directory to function root directory
+WORKDIR ${ROOT_DIRECTORY}
+
+# Install the function's dependencies using file requirements.txt
+COPY ./requirements.txt .
+RUN  pip install -r requirements.txt
+
 # Copy local deps
 COPY ./app/libs/ ${ROOT_DIRECTORY}/libs/
 COPY ./app/config/ ${ROOT_DIRECTORY}/config/
@@ -21,13 +28,6 @@ COPY ./app/opasPushSettings/ ${ROOT_DIRECTORY}/opasPushSettings/
 COPY ./app/opasSiteMapper/ ${ROOT_DIRECTORY}/opasSiteMapper/
 
 RUN mkdir -p ${ROOT_DIRECTORY}/opasDataLoader/data_update_logs
-
-# Set working directory to function root directory
-WORKDIR ${ROOT_DIRECTORY}
-
-# Install the function's dependencies using file requirements.txt
-COPY ./requirements.txt .
-RUN  pip install -r requirements.txt
 
 # Copy runner
 COPY ./dataUtility/runner.sh ${ROOT_DIRECTORY}/runner.sh
