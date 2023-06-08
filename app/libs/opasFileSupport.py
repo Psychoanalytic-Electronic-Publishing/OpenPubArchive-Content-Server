@@ -159,6 +159,7 @@ class FlexFileSystem(object):
                 
         except Exception as e:
             logger.error(f"FlexFileSystemError: initiation error ({e})")
+            raise ConnectionError(e)
 
     def find(self, name, path_root=None):
         """
