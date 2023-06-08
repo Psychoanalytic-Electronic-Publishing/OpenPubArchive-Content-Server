@@ -218,7 +218,7 @@ class opasCentralDB(object):
         self.connected = False
         self.connection_count = 0
         self.reuse_db_connection = reuse_connection
-        
+
         # try connection right away
         try:
             self.db = mysql.connector.connect(user=self.user, password=self.password, database=self.database, host=self.host, port=port)
@@ -269,7 +269,6 @@ class opasCentralDB(object):
             if gDbg3: print (f"New Connection: Current Connection count {self.connection_count}")
         
         # if 1: print (f"Connection_count: {self.connection_count}")
-        print(f"Ref count: {sys.getrefcount(None)}")
         return self.db.is_connected()
         
     def close_connection(self, caller_name="", force_close=False):
