@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2023, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2023.0607/v2.1.044"
+__version__     = "2023.0607/v2.1.046"
 __status__      = "Development"
 
 # !!! IMPORTANT: Increment opasXMLProcessor version (if version chgd). It's written to the XML !!!
@@ -145,7 +145,6 @@ import opasConfig
 import opasXMLHelper as opasxmllib
 import opasGenSupportLib as opasgenlib
 import opasCentralDBLib
-ocd = opasCentralDBLib.opasCentralDB()
 
 # import opasProductLib
 import opasFileSupport
@@ -269,7 +268,7 @@ def file_was_loaded_to_solr_after(solrcore, after_date, art_id):
     return ret_val
 
 #------------------------------------------------------------------------------------------------------
-def output_file_needs_rebuilding(outputfilename, inputfilename=None, inputfilespec=None, art_id=None):
+def output_file_needs_rebuilding(outputfilename, inputfilename=None, inputfilespec=None, art_id=None, ocd=None):
     """
     Checks and returns true if:
        - output (precompiled markup) file doesn't exist
@@ -511,7 +510,7 @@ def main():
     processed_files_count = 0
     rebuild_count = 0
     reload_count = 0
-    ocd =  opasCentralDBLib.opasCentralDB()
+    ocd =  opasCentralDBLib.opasCentralDB(reuse_connection=options.reuse_connection)
     # options.rootFolder defaults to localsecrets.FILESYSTEM_ROOT, unless option is specified otherwise
     # this allows relative paths, by specifying dataroot="", example:
     #       --dataroot="" --only "./../tests/testxml/_PEPSpecial/IJPOpen/IJPOPEN.008.0100A(bKBD3).xml"
@@ -832,7 +831,8 @@ def main():
                 file_status_tuple = output_file_needs_rebuilding(inputfilespec=n,
                                                                  inputfilename=inputfilename,
                                                                  outputfilename=outputfilename,
-                                                                 art_id=art_id_from_filename)
+                                                                 art_id=art_id_from_filename,
+                                                                 ocd=ocd)
 
                 input_file_was_updated, infile_exists, outfile_exists, both_same = file_status_tuple
                 
@@ -1503,7 +1503,11 @@ will skip these from then on."""
     parser.add_option("--whatsnewfile", dest="whatsnewfile", default=None,
                       help="File name to force the file and path rather than a generated name for the log of files added in the last n days.")
 
+    parser.add_option("--reuseconnection", dest="reuse_connection", default=True,
+                      help="Reuse the connection to MySQL")
+
     (options, args) = parser.parse_args()
+
     
     if options.smartload:
         options.loadprecompiled = False # override default
