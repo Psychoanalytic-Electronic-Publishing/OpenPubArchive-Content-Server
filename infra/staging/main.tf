@@ -80,6 +80,9 @@ module "data_utility_cron" {
 module "server" {
   source = "../modules/server"
 
-  stack_name = var.stack_name
-  env        = var.env
+  stack_name     = var.stack_name
+  env            = var.env
+  account_id     = var.account_id
+  aws_region     = var.aws_region
+  repository_url = module.ecr.repository_url
 }
