@@ -88,7 +88,6 @@ module "server" {
   repository_url         = module.ecr.repository_url
   ecr_execution_role_arn = module.ecr.ecr_execution_role_arn
   cluster_arn            = module.ecs.cluster_arn
-  security_group_ids     = ["sg-0bcad315fce84ff36"]
   vpc_id                 = module.vpc.vpc_id
   cluster_name           = module.ecs.cluster_name
   api_domain             = "stage-api.pep-web.org"
