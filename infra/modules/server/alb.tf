@@ -34,10 +34,30 @@ resource "aws_lb_target_group" "server" {
   }
 }
 
-resource "aws_lb_listener" "server_listener" {
+resource "aws_lb_listener" "server_listener_http" {
   load_balancer_arn = aws_lb.server.arn
   port              = "80"
   protocol          = "HTTP"
+
+  default_action {
+    type = "redirect"
+
+    redirect {
+      port        = "443"
+      protocol    = "HTTPS"
+      status_code = "HTTP_301"
+    }
+  }
+}
+
+resource "aws_lb_listener" "server_listener_https" {
+  load_balancer_arn = aws_lb.server.arn
+  port              = "443"
+  protocol          = "HTTPS"
+
+  ssl_policy      = "ELBSecurityPolicy-2016-08"
+  certificate_arn = "arn:aws:acm:us-east-1:547758924192:certificate/0ef7fa01-6a14-4342-a5cd-a3a55719b160"
+
 
   default_action {
     type             = "forward"
