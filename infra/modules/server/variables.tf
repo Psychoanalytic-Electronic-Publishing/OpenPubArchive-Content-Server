@@ -34,3 +34,7 @@ variable "security_group_ids" {
 variable "vpc_id" {
   description = "VPC ID"
 }
+
+variable "cluster_name" {
+  description = "ECS cluster name"
+}

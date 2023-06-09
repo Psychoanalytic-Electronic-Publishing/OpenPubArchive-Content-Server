@@ -42,7 +42,7 @@ resource "aws_ecs_service" "server" {
   name            = "${var.stack_name}-server-${var.env}"
   cluster         = var.cluster_arn
   task_definition = aws_ecs_task_definition.server.arn
-  desired_count   = 2
+  desired_count   = 1
   launch_type     = "FARGATE"
 
   network_configuration {
@@ -55,6 +55,10 @@ resource "aws_ecs_service" "server" {
     target_group_arn = aws_lb_target_group.server.arn
     container_name   = "main"
     container_port   = 80
+  }
+
+  lifecycle {
+    ignore_changes = [desired_count]
   }
 
   tags = {

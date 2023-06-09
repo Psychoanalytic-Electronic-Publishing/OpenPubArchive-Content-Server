@@ -90,4 +90,5 @@ module "server" {
   cluster_arn            = module.ecs.cluster_arn
   security_group_ids     = ["sg-0bcad315fce84ff36"]
   vpc_id                 = module.vpc.vpc_id
+  cluster_name           = module.ecs.cluster_name
 }
