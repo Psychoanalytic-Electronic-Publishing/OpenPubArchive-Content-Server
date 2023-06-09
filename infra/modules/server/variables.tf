@@ -17,3 +17,7 @@ variable "account_id" {
 variable "repository_url" {
   description = "ECR repository URL"
 }
+
+variable "ecr_execution_role_arn" {
+  description = "ECR execution role ARN"
+}
