@@ -8,7 +8,7 @@ resource "aws_ecs_task_definition" "server" {
   execution_role_arn       = var.ecr_execution_role_arn
 
   cpu    = "1024"
-  memory = "1024"
+  memory = "2048"
 
   container_definitions = jsonencode([
     {

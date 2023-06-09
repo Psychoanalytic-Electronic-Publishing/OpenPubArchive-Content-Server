@@ -30,3 +30,8 @@ variable "security_group_ids" {
 variable "vpc_id" {
   description = "VPC ID"
 }
+
+variable "ecr_execution_role_arn" {
+  description = "ECR execution role ARN"
+}
+

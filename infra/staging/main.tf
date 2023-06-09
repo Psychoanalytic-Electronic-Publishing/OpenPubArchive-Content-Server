@@ -41,14 +41,15 @@ module "ecs" {
 module "data_utility" {
   source = "../modules/data-utility"
 
-  stack_name         = var.stack_name
-  env                = var.env
-  account_id         = var.account_id
-  aws_region         = var.aws_region
-  repository_url     = module.ecr.repository_url
-  cluster_arn        = module.ecs.cluster_arn
-  security_group_ids = var.security_group_ids
-  vpc_id             = module.vpc.vpc_id
+  stack_name             = var.stack_name
+  env                    = var.env
+  account_id             = var.account_id
+  aws_region             = var.aws_region
+  repository_url         = module.ecr.repository_url
+  cluster_arn            = module.ecs.cluster_arn
+  security_group_ids     = var.security_group_ids
+  vpc_id                 = module.vpc.vpc_id
+  ecr_execution_role_arn = module.ecr.ecr_execution_role_arn
 }
 
 module "data_utility_api" {
@@ -80,9 +81,10 @@ module "data_utility_cron" {
 module "server" {
   source = "../modules/server"
 
-  stack_name     = var.stack_name
-  env            = var.env
-  account_id     = var.account_id
-  aws_region     = var.aws_region
-  repository_url = module.ecr.repository_url
+  stack_name             = var.stack_name
+  env                    = var.env
+  account_id             = var.account_id
+  aws_region             = var.aws_region
+  repository_url         = module.ecr.repository_url
+  ecr_execution_role_arn = module.ecr.ecr_execution_role_arn
 }
