@@ -2,7 +2,7 @@ resource "aws_lb" "server" {
   name               = "${var.stack_name}-server-alb-${var.env}"
   internal           = false
   load_balancer_type = "application"
-  security_groups    = var.security_group_ids
+  security_groups    = [aws_security_group.server.id]
   subnets            = data.aws_subnets.private.ids
 
   tags = {
