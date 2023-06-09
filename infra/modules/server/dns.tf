@@ -1,11 +1,11 @@
-data "aws_route53_zone" "video_previews" {
+data "aws_route53_zone" "pep_web" {
   name         = "pep-web.org"
   private_zone = false
 }
 
-resource "aws_route53_record" "assets_alias" {
-  zone_id = data.aws_route53_zone.video_previews.zone_id
-  name    = "test.pep-web.org"
+resource "aws_route53_record" "api_alias" {
+  zone_id = data.aws_route53_zone.pep_web.zone_id
+  name    = var.api_domain
   type    = "A"
 
   alias {

@@ -38,3 +38,7 @@ variable "vpc_id" {
 variable "cluster_name" {
   description = "ECS cluster name"
 }
+
+variable "api_domain" {
+  description = "API domain"
+}

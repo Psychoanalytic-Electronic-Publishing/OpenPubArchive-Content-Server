@@ -91,4 +91,5 @@ module "server" {
   security_group_ids     = ["sg-0bcad315fce84ff36"]
   vpc_id                 = module.vpc.vpc_id
   cluster_name           = module.ecs.cluster_name
+  api_domain             = "stage-api.pep-web.org"
 }
