@@ -37,3 +37,29 @@ resource "aws_ecs_task_definition" "server" {
     env   = var.env
   }
 }
+
+data "aws_subnets" "private" {
+  filter {
+    name   = "vpc-id"
+    values = [var.vpc_id]
+  }
+}
+
+resource "aws_ecs_service" "server" {
+  name            = "${var.stack_name}-server-${var.env}"
+  cluster         = var.cluster_arn
+  task_definition = aws_ecs_task_definition.server.arn
+  desired_count   = 2
+  launch_type     = "FARGATE"
+
+  network_configuration {
+    subnets          = data.aws_subnets.private.ids
+    security_groups  = var.security_group_ids
+    assign_public_ip = true
+  }
+
+  tags = {
+    stack = var.stack_name
+    env   = var.env
+  }
+}

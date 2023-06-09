@@ -21,3 +21,16 @@ variable "repository_url" {
 variable "ecr_execution_role_arn" {
   description = "ECR execution role ARN"
 }
+
+variable "cluster_arn" {
+  description = "ECS cluster ARN"
+}
+
+variable "security_group_ids" {
+  description = "Security group IDs"
+  type        = list(string)
+}
+
+variable "vpc_id" {
+  description = "VPC ID"
+}
