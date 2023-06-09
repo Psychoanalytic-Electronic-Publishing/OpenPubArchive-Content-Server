@@ -38,13 +38,6 @@ resource "aws_ecs_task_definition" "server" {
   }
 }
 
-data "aws_subnets" "private" {
-  filter {
-    name   = "vpc-id"
-    values = [var.vpc_id]
-  }
-}
-
 resource "aws_ecs_service" "server" {
   name            = "${var.stack_name}-server-${var.env}"
   cluster         = var.cluster_arn
@@ -56,6 +49,12 @@ resource "aws_ecs_service" "server" {
     subnets          = data.aws_subnets.private.ids
     security_groups  = var.security_group_ids
     assign_public_ip = true
+  }
+
+  load_balancer {
+    target_group_arn = aws_lb_target_group.server.arn
+    container_name   = "main"
+    container_port   = 80
   }
 
   tags = {
