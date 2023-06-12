@@ -37,3 +37,11 @@ variable "cluster_name" {
 variable "api_domain" {
   description = "API domain"
 }
+
+variable "instance_cpu" {
+  description = "Instance CPU units"
+}
+
+variable "instance_memory" {
+  description = "Instance memory units"
+}
