@@ -4,7 +4,7 @@ resource "aws_lb" "server" {
   load_balancer_type = "application"
   security_groups    = [aws_security_group.server.id]
   subnets            = data.aws_subnets.private.ids
-  idle_timeout       = 120
+  idle_timeout       = 360
 
   tags = {
     stack = var.stack_name
