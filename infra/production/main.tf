@@ -92,6 +92,6 @@ module "server" {
   vpc_id                 = module.vpc.vpc_id
   cluster_name           = module.ecs.cluster_name
   api_domain             = "api.pep-web.org"
-  instance_cpu           = "1024"
+  instance_cpu           = "2048"
   instance_memory        = "4096"
 }
