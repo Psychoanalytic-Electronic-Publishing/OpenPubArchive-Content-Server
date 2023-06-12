@@ -5,7 +5,7 @@ resource "aws_ecs_task_definition" "data_utility" {
 
   requires_compatibilities = ["FARGATE"]
   network_mode             = "awsvpc"
-  execution_role_arn       = aws_iam_role.ecr_execution_role.arn
+  execution_role_arn       = var.ecr_execution_role_arn
 
   cpu    = "512"
   memory = "1024"
