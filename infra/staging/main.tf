@@ -103,4 +103,5 @@ module "database" {
   instance_class = "db.t3.micro"
   username       = var.username
   password       = var.password
+  vpc_id         = module.vpc.vpc_id
 }

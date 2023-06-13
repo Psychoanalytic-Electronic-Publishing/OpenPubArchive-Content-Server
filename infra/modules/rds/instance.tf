@@ -10,7 +10,7 @@ resource "aws_db_instance" "mysql" {
   password              = var.password
   parameter_group_name  = "default.mysql8.0"
   skip_final_snapshot   = true
-  db_subnet_group_name  = "default-vpc-0476e4a5a983d1193"
+  db_subnet_group_name  = aws_db_subnet_group.main.name
   vpc_security_group_ids = [
     "sg-0572c1cd62a2da75d"
   ]
@@ -21,6 +21,7 @@ resource "aws_db_instance" "mysql" {
   deletion_protection        = true
   copy_tags_to_snapshot      = true
   publicly_accessible        = true
+  apply_immediately          = true
 
   tags = {
     stack = var.stack_name

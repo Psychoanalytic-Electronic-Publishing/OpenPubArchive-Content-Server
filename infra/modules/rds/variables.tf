@@ -19,3 +19,7 @@ variable "password" {
 variable "instance_class" {
   description = "Instance class for the database"
 }
+
+variable "vpc_id" {
+  description = "VPC ID"
+}
