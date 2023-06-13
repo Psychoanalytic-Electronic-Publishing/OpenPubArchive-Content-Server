@@ -95,3 +95,14 @@ module "server" {
   instance_cpu           = "2048"
   instance_memory        = "4096"
 }
+
+module "database" {
+  source = "../modules/rds"
+
+  stack_name     = var.stack_name
+  env            = var.env
+  instance_class = "db.t3.small"
+  username       = var.username
+  password       = var.password
+  vpc_id         = module.vpc.vpc_id
+}
