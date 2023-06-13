@@ -94,3 +94,10 @@ module "server" {
   instance_cpu           = "256"
   instance_memory        = "1024"
 }
+
+module "database" {
+  source = "../modules/rds"
+
+  stack_name = var.stack_name
+  env        = var.env
+}
