@@ -21,7 +21,6 @@ resource "aws_db_instance" "mysql" {
   deletion_protection        = true
   copy_tags_to_snapshot      = true
   publicly_accessible        = true
-  apply_immediately          = true
 
   tags = {
     stack = var.stack_name
