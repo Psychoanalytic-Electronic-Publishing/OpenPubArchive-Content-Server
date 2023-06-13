@@ -98,6 +98,9 @@ module "server" {
 module "database" {
   source = "../modules/rds"
 
-  stack_name = var.stack_name
-  env        = var.env
+  stack_name     = var.stack_name
+  env            = var.env
+  instance_class = "db.t3.micro"
+  username       = var.username
+  password       = var.password
 }

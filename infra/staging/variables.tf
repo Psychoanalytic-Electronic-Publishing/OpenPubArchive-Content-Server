@@ -31,3 +31,13 @@ variable "pads_root" {
   description = "Root domain for PaDS"
   default     = "https://stage-pads.pep-web.org"
 }
+
+variable "username" {
+  description = "Username for the database"
+  sensitive   = true
+}
+
+variable "password" {
+  description = "Password for the database"
+  sensitive   = true
+}
