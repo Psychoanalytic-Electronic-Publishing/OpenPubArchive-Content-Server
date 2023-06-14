@@ -101,8 +101,8 @@ module "database" {
   stack_name               = var.stack_name
   env                      = var.env
   instance_class           = "db.t3.micro"
-  username                 = var.username
-  password                 = var.password
+  username                 = var.mysql_username
+  password                 = var.mysql_password
   vpc_id                   = module.vpc.vpc_id
   server_security_group_id = module.server.security_group_id
   gitlab_runner_ip         = "54.210.185.163/32"

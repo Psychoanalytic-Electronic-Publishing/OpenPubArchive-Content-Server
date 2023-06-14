@@ -32,12 +32,12 @@ variable "pads_root" {
   default     = "https://pads.pep-web.org"
 }
 
-variable "username" {
+variable "mysql_username" {
   description = "Username for the database"
   sensitive   = true
 }
 
-variable "password" {
+variable "mysql_password" {
   description = "Password for the database"
   sensitive   = true
 }
