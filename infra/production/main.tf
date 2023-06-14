@@ -107,5 +107,5 @@ module "database" {
   vpc_id                   = module.vpc.vpc_id
   server_security_group_id = module.server.security_group_id
   gitlab_runner_ip         = "54.210.185.163/32"
-  availability_zone        = "us-east-1d"
+  availability_zone        = "us-east-1f"
 }
