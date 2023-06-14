@@ -12,12 +12,12 @@ resource "aws_db_instance" "mysql" {
   skip_final_snapshot   = true
   db_subnet_group_name  = aws_db_subnet_group.main.name
   vpc_security_group_ids = [
-    "sg-0572c1cd62a2da75d"
+    aws_security_group.db.id,
   ]
   backup_retention_period    = 7
   backup_window              = "03:50-04:20"
   auto_minor_version_upgrade = false
-  availability_zone          = "us-east-1f"
+  availability_zone          = var.availability_zone
   deletion_protection        = true
   copy_tags_to_snapshot      = true
   publicly_accessible        = true
