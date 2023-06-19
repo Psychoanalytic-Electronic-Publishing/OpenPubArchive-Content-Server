@@ -1,6 +1,4 @@
-resource "aws_iam_role_policy" "start_task_lambda_policy" {
-  role = module.execute_task_file.lambda_role_name
-
+locals {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [

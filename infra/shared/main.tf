@@ -36,4 +36,10 @@ resource "aws_s3_bucket_notification" "bucket_notification" {
     filter_suffix       = ".json"
     filter_prefix       = "run_staging"
   }
+
+  lambda_function {
+    lambda_function_arn = var.staging_data_utility_smartload_lambda
+    events              = ["s3:ObjectCreated:*"]
+    filter_suffix       = ".xml"
+  }
 }

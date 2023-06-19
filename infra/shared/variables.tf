@@ -17,3 +17,8 @@ variable "production_data_utility_s3_lambda" {
   description = "Data utility S3 trigger function ARN for production"
   default     = "arn:aws:lambda:us-east-1:547758924192:function:opas-execute-task-file-handler-production"
 }
+
+variable "staging_data_utility_smartload_lambda" {
+  description = "Data utility S3 smartload function ARN for staging"
+  default     = "arn:aws:lambda:us-east-1:547758924192:function:opas-smartload-handler-staging"
+}
