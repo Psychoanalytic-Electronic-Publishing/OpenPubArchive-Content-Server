@@ -109,3 +109,16 @@ module "database" {
   gitlab_runner_ip         = "54.210.185.163/32"
   availability_zone        = "us-east-1f"
 }
+
+module "solr" {
+  source = "../modules/solr"
+
+  stack_name             = var.stack_name
+  env                    = var.env
+  account_id             = var.account_id
+  aws_region             = var.aws_region
+  repository_url         = module.ecr.repository_url
+  ecr_execution_role_arn = module.ecr.ecr_execution_role_arn
+  cluster_arn            = module.ecs.cluster_arn
+  vpc_id                 = module.vpc.vpc_id
+}
