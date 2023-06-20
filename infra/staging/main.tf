@@ -113,12 +113,14 @@ module "database" {
 module "solr" {
   source = "../modules/solr"
 
-  stack_name             = var.stack_name
-  env                    = var.env
-  account_id             = var.account_id
-  aws_region             = var.aws_region
-  repository_url         = module.ecr.repository_url
-  ecr_execution_role_arn = module.ecr.ecr_execution_role_arn
-  cluster_arn            = module.ecs.cluster_arn
-  vpc_id                 = module.vpc.vpc_id
+  stack_name               = var.stack_name
+  env                      = var.env
+  account_id               = var.account_id
+  aws_region               = var.aws_region
+  repository_url           = module.ecr.repository_url
+  ecr_execution_role_arn   = module.ecr.ecr_execution_role_arn
+  cluster_arn              = module.ecs.cluster_arn
+  vpc_id                   = module.vpc.vpc_id
+  data_utility_group_id    = var.security_group_ids[0]
+  server_security_group_id = module.server.security_group_id
 }

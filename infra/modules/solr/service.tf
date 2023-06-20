@@ -19,6 +19,10 @@ resource "aws_ecs_task_definition" "solr" {
         {
           containerPort = 80
           hostPort      = 80
+        },
+        {
+          containerPort = 8983
+          hostPort      = 8983
         }
       ]
       logConfiguration = {
@@ -51,11 +55,11 @@ resource "aws_ecs_service" "solr" {
     assign_public_ip = true
   }
 
-  #   load_balancer {
-  #     target_group_arn = aws_lb_target_group.server.arn
-  #     container_name   = "main"
-  #     container_port   = 80
-  #   }
+  load_balancer {
+    target_group_arn = aws_lb_target_group.solr.arn
+    container_name   = "main"
+    container_port   = 8983
+  }
 
   #   lifecycle {
   #     ignore_changes = [desired_count]

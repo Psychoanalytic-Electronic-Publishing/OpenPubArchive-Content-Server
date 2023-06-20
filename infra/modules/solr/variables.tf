@@ -29,3 +29,11 @@ variable "cluster_arn" {
 variable "vpc_id" {
   description = "VPC ID"
 }
+
+variable "server_security_group_id" {
+  description = "Security group ID for the server"
+}
+
+variable "data_utility_group_id" {
+  description = "Security group ID for the data-utility"
+}
