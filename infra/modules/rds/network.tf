@@ -45,6 +45,14 @@ resource "aws_security_group" "db" {
     security_groups = [var.data_utility_group_id]
   }
 
+  ingress {
+    description = "MySQL from self"
+    from_port   = 3306
+    to_port     = 3306
+    protocol    = "tcp"
+    self        = true
+  }
+
   egress {
     from_port        = 0
     to_port          = 0
