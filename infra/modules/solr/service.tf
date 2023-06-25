@@ -10,6 +10,15 @@ resource "aws_ecs_task_definition" "solr" {
   cpu    = "1024"
   memory = "2048"
 
+  volume {
+    name = "${var.stack_name}-solr-storage-${var.env}"
+
+    efs_volume_configuration {
+      file_system_id = module.efs.id
+      root_directory = "/"
+    }
+  }
+
   container_definitions = jsonencode([
     {
       name      = "main"
