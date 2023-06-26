@@ -109,4 +109,5 @@ module "database" {
   server_security_group_id = module.server.security_group_id
   gitlab_runner_ip         = "54.210.185.163/32"
   availability_zone        = "us-east-1f"
+  engineer_ips             = var.engineer_ips
 }
