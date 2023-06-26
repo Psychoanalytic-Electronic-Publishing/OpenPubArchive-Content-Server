@@ -16,7 +16,7 @@ jobs:
     environment: staging-vars
     outputs:
       aws_account_id: ${{ steps.set-outputs.outputs.aws_account_id}}
-      engineer_ips ${{ steps.set-outputs.outputs.engineer_ips}}
+      engineer_ips: ${{ steps.set-outputs.outputs.engineer_ips}}
     steps:
       - name: Set output
         id: set-outputs
