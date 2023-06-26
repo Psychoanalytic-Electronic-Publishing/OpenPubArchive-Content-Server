@@ -36,4 +36,4 @@ jobs:
       ENV_VARS: "TF_VAR_account_id=${{ needs.env.outputs.aws_account_id }}\n\
         TF_VAR_mysql_username=${{ secrets.MYSQL_USERNAME }}\n\
         TF_VAR_mysql_password=${{ secrets.MYSQL_PASSWORD }}\n\
-        TF_VAR_engineer_ips=${{ needs.env.outputs.engineer_ips }}\n\"
+        TF_VAR_engineer_ips=${{ needs.env.outputs.engineer_ips }}"
