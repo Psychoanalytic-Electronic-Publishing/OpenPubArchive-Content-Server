@@ -39,3 +39,8 @@ variable "data_utility_group_id" {
 variable "availability_zone" {
   description = "Availability zone"
 }
+
+variable "engineer_ips" {
+  description = "IPs for PEP engineers (comma delimited)"
+  type        = string
+}

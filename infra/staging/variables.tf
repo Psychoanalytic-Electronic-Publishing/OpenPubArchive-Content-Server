@@ -41,3 +41,9 @@ variable "mysql_password" {
   description = "Password for the database"
   sensitive   = true
 }
+
+variable "engineer_ips" {
+  description = "IPs for PEP engineers (comma delimited)"
+  sensitive   = true
+  type        = string
+}
