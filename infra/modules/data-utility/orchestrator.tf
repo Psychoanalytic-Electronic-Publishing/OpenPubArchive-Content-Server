@@ -1,10 +1,3 @@
-data "aws_subnets" "private" {
-  filter {
-    name   = "vpc-id"
-    values = [var.vpc_id]
-  }
-}
-
 locals {
   definition_template = <<EOF
 {
@@ -46,7 +39,7 @@ locals {
                     "NetworkConfiguration": {
                       "AwsvpcConfiguration": {
                         "Subnets": ${jsonencode(data.aws_subnets.private.ids)},
-                        "SecurityGroups": ${jsonencode(var.security_group_ids)},
+                        "SecurityGroups": [${jsonencode(aws_security_group.data_utility.id)}],
                         "AssignPublicIp": "ENABLED"
                       }
                     },
