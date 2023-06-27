@@ -23,9 +23,10 @@ data "aws_s3_bucket" "pep_web_live_data" {
 module "data_utility_s3" {
   source = "../modules/data-utility-s3"
 
-  stack_name                = var.stack_name
-  env                       = var.env
-  staging_state_machine_arn = "arn:aws:states:us-east-1:547758924192:stateMachine:opas-orchestrator-staging"
+  stack_name                   = var.stack_name
+  env                          = var.env
+  staging_state_machine_arn    = "arn:aws:states:us-east-1:547758924192:stateMachine:opas-orchestrator-staging"
+  production_state_machine_arn = "arn:aws:states:us-east-1:547758924192:stateMachine:opas-orchestrator-production"
 }
 
 resource "aws_s3_bucket_notification" "bucket_notification" {

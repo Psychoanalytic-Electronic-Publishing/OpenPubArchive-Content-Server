@@ -20,18 +20,24 @@ def handler(event, context):
 
         args = f"--sub {sub} --key {artId} --smartload --verbose --nocheck"
 
+        payload = [
+            [
+                {
+                    "directory": "opasDataLoader",
+                    "utility": "opasDataLoader",
+                    "args": args,
+                }
+            ]
+        ]
+
         sf_response = sf.start_execution(
-            stateMachineArn=os.environ["STATE_MACHINE_ARN"],
+            stateMachineArn=os.environ["STAGING_STATE_MACHINE_ARN"],
             name=str(uuid.uuid4()),
-            input=json.dumps(
-                [
-                    [
-                        {
-                            "directory": "opasDataLoader",
-                            "utility": "opasDataLoader",
-                            "args": args,
-                        }
-                    ]
-                ]
-            ),
+            input=json.dumps(payload),
+        )
+
+        sf_response = sf.start_execution(
+            stateMachineArn=os.environ["PRODUCTION_STATE_MACHINE_ARN"],
+            name=str(uuid.uuid4()),
+            input=json.dumps(payload),
         )

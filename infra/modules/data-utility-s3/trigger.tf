@@ -9,7 +9,7 @@ module "execute_task_file" {
   ignore_source_code_hash = true
 
   environment_variables = {
-    STATE_MACHINE_ARN = var.state_machine_arn
+    STATE_MACHINE_ARN = var.staging_state_machine_arn
   }
 
   tags = {
