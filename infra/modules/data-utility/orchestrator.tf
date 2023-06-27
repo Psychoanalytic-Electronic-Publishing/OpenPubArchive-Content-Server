@@ -39,7 +39,7 @@ locals {
                     "NetworkConfiguration": {
                       "AwsvpcConfiguration": {
                         "Subnets": ${jsonencode(data.aws_subnets.private.ids)},
-                        "SecurityGroups": [${jsonencode(aws_security_group.data_utility.id)}])}],
+                        "SecurityGroups": [${jsonencode(aws_security_group.data_utility.id)}],
                         "AssignPublicIp": "ENABLED"
                       }
                     },
