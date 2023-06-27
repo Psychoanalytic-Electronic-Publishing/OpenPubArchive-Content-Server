@@ -71,13 +71,13 @@ module "data_utility_s3" {
   state_machine_arn = module.data_utility.state_machine_arn
 }
 
-# module "data_utility_cron" {
-#   source = "../modules/data-utility-cron"
+module "data_utility_cron" {
+  source = "../modules/data-utility-cron"
 
-#   stack_name        = var.stack_name
-#   env               = var.env
-#   state_machine_arn = module.data_utility.state_machine_arn
-# }
+  stack_name        = var.stack_name
+  env               = var.env
+  state_machine_arn = module.data_utility.state_machine_arn
+}
 
 module "server" {
   source = "../modules/server"
