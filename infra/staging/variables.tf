@@ -17,11 +17,6 @@ variable "stack_name" {
   default     = "opas"
 }
 
-variable "security_group_ids" {
-  description = "Security group ID"
-  default     = ["sg-0a97fbfa3e8ac6431"]
-}
-
 variable "cors_origin" {
   description = "CORS origin"
   default     = "https://stage.pep-web.org"
