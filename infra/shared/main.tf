@@ -20,6 +20,14 @@ data "aws_s3_bucket" "pep_web_live_data" {
   bucket = "pep-web-live-data"
 }
 
+module "data_utility_s3" {
+  source = "../modules/data-utility-s3"
+
+  stack_name        = var.stack_name
+  env               = var.env
+  state_machine_arn = "1234"
+}
+
 resource "aws_s3_bucket_notification" "bucket_notification" {
   bucket = data.aws_s3_bucket.pep_web_live_data.id
 
