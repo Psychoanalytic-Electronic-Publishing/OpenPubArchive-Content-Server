@@ -65,6 +65,25 @@ locals {
                       ]
                     }
                   },
+                  "Catch": [
+                    {
+                      "ErrorEquals": [
+                        "States.ALL"
+                      ],
+                      "Comment": "Catch all errors",
+                      "Next": "Error Email",
+                      "ResultPath": "$.error"
+                    }
+                  ],
+                  "End": true
+                },
+                "Error Email": {
+                  "Type": "Task",
+                  "Resource": "${module.send_error_email.lambda_function_arn}",
+                  "Parameters": {
+                    "task.$": "$",
+                    "executionArn.$": "$$.Execution.Id"
+                  },
                   "End": true
                 }
               }
