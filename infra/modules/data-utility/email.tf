@@ -7,8 +7,8 @@ module "send_completion_email" {
   version = "4.9.0"
 
   function_name           = "${var.stack_name}-send-completion-email-${var.env}"
-  source_path             = "../../dataUtility/email"
-  handler                 = "finish.handler"
+  source_path             = "../../dataUtility/email/finish"
+  handler                 = "index.handler"
   runtime                 = "python3.8"
   ignore_source_code_hash = true
 
@@ -52,8 +52,8 @@ module "send_startup_email" {
   version = "4.9.0"
 
   function_name           = "${var.stack_name}-send-startup-email-${var.env}"
-  source_path             = "../../dataUtility/email"
-  handler                 = "start.handler"
+  source_path             = "../../dataUtility/email/start"
+  handler                 = "index.handler"
   runtime                 = "python3.8"
   ignore_source_code_hash = true
 
@@ -84,4 +84,44 @@ resource "aws_iam_role_policy" "send_startup_email_lambda_policy" {
     ]
   })
 }
+
+
+module "send_error_email" {
+  source  = "terraform-aws-modules/lambda/aws"
+  version = "4.9.0"
+
+  function_name           = "${var.stack_name}-send-error-email-${var.env}"
+  source_path             = "../../dataUtility/email/error"
+  handler                 = "index.handler"
+  runtime                 = "python3.8"
+  ignore_source_code_hash = true
+
+  environment_variables = {
+    SNS_TOPIC_ARN = aws_sns_topic.status_updates.arn
+  }
+
+  tags = {
+    stage = var.env
+    stack = var.stack_name
+  }
+}
+
+
+resource "aws_iam_role_policy" "send_error_email_lambda_policy" {
+  role = module.send_error_email.lambda_role_name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = [
+          "sns:Publish"
+        ],
+        Effect   = "Allow",
+        Resource = aws_sns_topic.status_updates.arn
+      }
+    ]
+  })
+}
+
 
