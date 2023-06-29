@@ -7,8 +7,8 @@ module "send_completion_email" {
   version = "4.9.0"
 
   function_name           = "${var.stack_name}-send-completion-email-${var.env}"
-  source_path             = "../../dataUtility/email"
-  handler                 = "finish.handler"
+  source_path             = "../../dataUtility/email/finish"
+  handler                 = "index.handler"
   runtime                 = "python3.8"
   ignore_source_code_hash = true
 
@@ -52,8 +52,8 @@ module "send_startup_email" {
   version = "4.9.0"
 
   function_name           = "${var.stack_name}-send-startup-email-${var.env}"
-  source_path             = "../../dataUtility/email"
-  handler                 = "start.handler"
+  source_path             = "../../dataUtility/email/start"
+  handler                 = "index.handler"
   runtime                 = "python3.8"
   ignore_source_code_hash = true
 
@@ -91,8 +91,8 @@ module "send_error_email" {
   version = "4.9.0"
 
   function_name           = "${var.stack_name}-send-error-email-${var.env}"
-  source_path             = "../../dataUtility/email"
-  handler                 = "error.handler"
+  source_path             = "../../dataUtility/email/error"
+  handler                 = "index.handler"
   runtime                 = "python3.8"
   ignore_source_code_hash = true
 
