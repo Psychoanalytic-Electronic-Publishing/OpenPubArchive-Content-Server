@@ -17,32 +17,104 @@ resource "aws_cloudwatch_event_target" "nightly_data_pipeline_target" {
       }
     ],
     [
-      {
-        "directory" : "opasDataLoader",
-        "utility" : "opasDataLoader",
-        "args" : "--sub _PEPFree --smartload --verbose --nocheck"
-      },
-      {
-        "directory" : "opasDataLoader",
-        "utility" : "opasDataLoader",
-        "args" : "--sub _PEPCurrent --smartload --verbose --nocheck"
-      },
-      {
-        "directory" : "opasDataLoader",
-        "utility" : "opasDataLoader",
-        "args" : "--sub _PEPSpecial --smartload --verbose --nocheck"
-      },
-      {
-        "directory" : "opasDataLoader",
-        "utility" : "opasDataLoader",
-        "args" : "--sub _PEPOffsite --smartload --verbose --nocheck"
-      },
-      {
-        "directory" : "opasDataLoader",
-        "utility" : "opasDataLoader",
-        "args" : "--sub _PEPArchive/Videostreams --smartload --verbose --nocheck"
-      },
-    ],
+      [
+        {
+          "directory" : "opasDataLoader",
+          "utility" : "opasDataLoader",
+          "args" : "--sub _PEPFree --smartload --verbose --nocheck"
+        },
+        {
+          "directory" : "opasDataLoader",
+          "utility" : "opasDataLoader",
+          "args" : "--sub _PEPCurrent --smartload --verbose --nocheck"
+        },
+        {
+          "directory" : "opasDataLoader",
+          "utility" : "opasDataLoader",
+          "args" : "--sub _PEPSpecial --smartload --verbose --nocheck"
+        },
+        {
+          "directory" : "opasDataLoader",
+          "utility" : "opasDataLoader",
+          "args" : "--sub _PEPOffsite --smartload --verbose --nocheck"
+        },
+        {
+          "directory" : "opasDataLoader",
+          "utility" : "opasDataLoader",
+          "args" : "--sub _PEPArchive --key ^A.* --smartload --verbose --nocheck --halfway"
+        },
+        {
+          "directory" : "opasDataLoader",
+          "utility" : "opasDataLoader",
+          "args" : "--sub _PEPArchive --key ^A.* --smartload --verbose --nocheck --halfway --reverse"
+        },
+        {
+          "directory" : "opasDataLoader",
+          "utility" : "opasDataLoader",
+          "args" : "--sub _PEPArchive --key ^[B-D].* --smartload --verbose --nocheck"
+        },
+        {
+          "directory" : "opasDataLoader",
+          "utility" : "opasDataLoader",
+          "args" : "--sub _PEPArchive --key ^[F-G].* --smartload --verbose --nocheck"
+        },
+        {
+          "directory" : "opasDataLoader",
+          "utility" : "opasDataLoader",
+          "args" : "--sub _PEPArchive --key ^H.* --smartload --verbose --nocheck"
+        },
+        {
+          "directory" : "opasDataLoader",
+          "utility" : "opasDataLoader",
+          "args" : "--sub _PEPArchive --key ^I.* --smartload --verbose --nocheck --halfway"
+        },
+        {
+          "directory" : "opasDataLoader",
+          "utility" : "opasDataLoader",
+          "args" : "--sub _PEPArchive --key ^I.* --smartload --verbose --nocheck --halfway --reverse"
+        },
+        {
+          "directory" : "opasDataLoader",
+          "utility" : "opasDataLoader",
+          "args" : "--sub _PEPArchive --key ^J.* --smartload --verbose --nocheck"
+        },
+        {
+          "directory" : "opasDataLoader",
+          "utility" : "opasDataLoader",
+          "args" : "--sub _PEPArchive --key ^K.* --smartload --verbose --nocheck"
+        },
+        {
+          "directory" : "opasDataLoader",
+          "utility" : "opasDataLoader",
+          "args" : "--sub _PEPArchive --key ^[L-O].* --smartload --verbose --nocheck"
+        },
+        {
+          "directory" : "opasDataLoader",
+          "utility" : "opasDataLoader",
+          "args" : "--sub _PEPArchive --key ^P.* --smartload --verbose --nocheck --halfway"
+        },
+        {
+          "directory" : "opasDataLoader",
+          "utility" : "opasDataLoader",
+          "args" : "--sub _PEPArchive --key ^P.* --smartload --verbose --nocheck --halfway --reverse"
+        },
+        {
+          "directory" : "opasDataLoader",
+          "utility" : "opasDataLoader",
+          "args" : "--sub _PEPArchive --key ^Q.* --smartload --verbose --nocheck"
+        },
+        {
+          "directory" : "opasDataLoader",
+          "utility" : "opasDataLoader",
+          "args" : "--sub _PEPArchive --key ^R.* --smartload --verbose --nocheck"
+        },
+        {
+          "directory" : "opasDataLoader",
+          "utility" : "opasDataLoader",
+          "args" : "--sub _PEPArchive --key ^[S-Z].* --smartload --verbose --nocheck"
+        }
+      ]
+    ]
     [
       {
         "directory" : "opasDataLoader",
@@ -52,4 +124,3 @@ resource "aws_cloudwatch_event_target" "nightly_data_pipeline_target" {
     ]
   ])
 }
-
