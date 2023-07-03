@@ -112,7 +112,7 @@ resource "aws_cloudwatch_event_target" "nightly_data_pipeline_target" {
         "utility" : "opasDataLoader",
         "args" : "--sub _PEPArchive --key ^[S-Z].* --smartload --verbose --nocheck"
       }
-    ]
+    ],
     [
       {
         "directory" : "opasDataLoader",
