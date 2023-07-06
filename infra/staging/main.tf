@@ -116,5 +116,5 @@ module "s3" {
   stack_name    = var.stack_name
   env           = var.env
   bucket_name   = "pep-web-staging-data"
-  smartload_arn = module.data_utility.smartload_lambda_arn
+  smartload_arn = module.data_utility_s3.smartload_lambda_arn
 }

@@ -9,8 +9,7 @@ module "smartload" {
   ignore_source_code_hash = true
 
   environment_variables = {
-    STAGING_STATE_MACHINE_ARN    = var.staging_state_machine_arn
-    PRODUCTION_STATE_MACHINE_ARN = var.production_state_machine_arn
+    STATE_MACHINE_ARN = var.state_machine_arn
   }
 
   tags = {
