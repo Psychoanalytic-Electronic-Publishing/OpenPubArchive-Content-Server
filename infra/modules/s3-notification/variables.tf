@@ -9,3 +9,7 @@ variable "stack_name" {
 variable "bucket_name" {
   description = "Name of the S3 bucket"
 }
+
+variable "smartload_arn" {
+  description = "ARN of the smartload lambda function"
+}
