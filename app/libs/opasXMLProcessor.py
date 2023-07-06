@@ -860,9 +860,10 @@ def xml_update(parsed_xml,
     # add nextpgnum with id to n, possibly filling in prefixused
     pgnbr_add_next_attrib(parsed_xml)
 
-    # Walk through biblio, add links
-    update_biblio_links(parsed_xml, artInfo, ocd, verbose=verbose) # in reference section(s)
-    update_bincs(parsed_xml, artInfo, ocd, verbose=verbose)  # throught, embedded refs
+    # Walk through biblio, add links unless option is turned off
+    if not no_database_update:
+        update_biblio_links(parsed_xml, artInfo, ocd, verbose=verbose) # in reference section(s)
+        update_bincs(parsed_xml, artInfo, ocd, verbose=verbose)  # throught, embedded refs
     
     # Add page number markup (next and prev page info on page breaks)
     add_page_number_markup(parsed_xml)
