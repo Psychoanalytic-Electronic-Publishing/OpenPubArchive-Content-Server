@@ -101,3 +101,11 @@ module "database" {
   availability_zone        = "us-east-1f"
   engineer_ips             = var.engineer_ips
 }
+
+module "s3" {
+  source = "../modules/s3"
+
+  stack_name = var.stack_name
+  env        = var.env
+  bucket_name = "pep-web-staging-data"
+}
