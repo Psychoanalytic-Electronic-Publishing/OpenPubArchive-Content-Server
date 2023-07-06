@@ -9,3 +9,7 @@ variable "stack_name" {
 variable "state_machine_arn" {
   description = "ARN of the state machine to invoke"
 }
+
+variable "bucket_name" {
+  description = "Name of the S3 bucket"
+}

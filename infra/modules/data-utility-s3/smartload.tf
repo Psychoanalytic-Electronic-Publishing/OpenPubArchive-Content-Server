@@ -30,5 +30,5 @@ resource "aws_lambda_permission" "allow_smartload" {
   action        = "lambda:InvokeFunction"
   function_name = module.smartload.lambda_function_name
   principal     = "s3.amazonaws.com"
-  source_arn    = data.aws_s3_bucket.pep_web_live_data.arn
+  source_arn    = data.aws_s3_bucket.pep_web_data.arn
 }
