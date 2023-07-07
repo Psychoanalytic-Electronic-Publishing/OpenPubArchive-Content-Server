@@ -39,18 +39,6 @@ data "aws_iam_policy_document" "allow_datasync_from_another_account" {
     resources = [
       "${data.aws_s3_bucket.pep_web_live_data.arn}"
     ]
-
-    condition {
-      test     = "StringLike"
-      variable = "s3:prefix"
-
-      values = [
-        "",
-        "_PEPArchive/*",
-        "_PEPFree/*",
-        "graphics/*",
-      ]
-    }
   }
 
   statement {

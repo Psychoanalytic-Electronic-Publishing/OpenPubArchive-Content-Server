@@ -677,7 +677,7 @@ class FlexFileSystem(object):
             
         if self.key is not None:
             for folder, subfolder, files in self.fs.walk(path=data_folder, **kwargs):
-                if len(files) > 1:
+                if len(files) > 0:
                     # yes, we have files.
                     for key, val_dict in files.items():
                         # print (key)
