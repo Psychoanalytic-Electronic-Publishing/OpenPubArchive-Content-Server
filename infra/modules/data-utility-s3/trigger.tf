@@ -9,8 +9,7 @@ module "execute_task_file" {
   ignore_source_code_hash = true
 
   environment_variables = {
-    STAGING_STATE_MACHINE_ARN    = var.staging_state_machine_arn
-    PRODUCTION_STATE_MACHINE_ARN = var.production_state_machine_arn
+    STATE_MACHINE_ARN = var.state_machine_arn
   }
 
   tags = {
@@ -30,5 +29,5 @@ resource "aws_lambda_permission" "allow_execute_task_file" {
   action        = "lambda:InvokeFunction"
   function_name = module.execute_task_file.lambda_function_name
   principal     = "s3.amazonaws.com"
-  source_arn    = data.aws_s3_bucket.pep_web_live_data.arn
+  source_arn    = data.aws_s3_bucket.pep_web_data.arn
 }

@@ -6,10 +6,10 @@ variable "stack_name" {
   description = "Root name for the stack"
 }
 
-variable "state_machine_arn" {
-  description = "ARN of the state machine to invoke"
-}
-
 variable "bucket_name" {
   description = "Name of the S3 bucket"
+}
+
+variable "smartload_arn" {
+  description = "ARN of the smartload lambda function"
 }

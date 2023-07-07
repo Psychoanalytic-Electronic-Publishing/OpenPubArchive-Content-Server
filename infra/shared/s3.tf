@@ -1,3 +1,8 @@
+data "aws_s3_bucket" "pep_web_live_data" {
+  bucket = "pep-web-live-data"
+}
+
+
 resource "aws_s3_bucket_policy" "pep_web_live_data" {
   bucket = data.aws_s3_bucket.pep_web_live_data.id
   policy = data.aws_iam_policy_document.allow_datasync_from_another_account.json

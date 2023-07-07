@@ -102,3 +102,32 @@ module "database" {
   availability_zone        = "us-east-1f"
   engineer_ips             = var.engineer_ips
 }
+
+module "s3" {
+  source = "../modules/s3"
+
+  stack_name  = var.stack_name
+  env         = var.env
+  bucket_name = "pep-web-live-data"
+}
+
+module "data_utility_s3" {
+  source = "../modules/data-utility-s3"
+
+  stack_name        = var.stack_name
+  env               = var.env
+  state_machine_arn = module.data_utility.state_machine_arn
+  bucket_name       = module.s3.bucket_name
+}
+
+
+module "s3_notification" {
+  depends_on = [module.s3, module.data_utility_s3]
+
+  source = "../modules/s3-notification"
+
+  stack_name    = var.stack_name
+  env           = var.env
+  bucket_name   = module.s3.bucket_name
+  smartload_arn = module.data_utility_s3.smartload_lambda_arn
+}
