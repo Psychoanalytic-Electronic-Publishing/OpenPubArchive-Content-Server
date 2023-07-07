@@ -120,13 +120,13 @@ module "data_utility_s3" {
 }
 
 
-module "s3_notification" {
-  depends_on = [module.s3, module.data_utility_s3]
+# module "s3_notification" {
+#   depends_on = [module.s3, module.data_utility_s3]
 
-  source = "../modules/s3-notification"
+#   source = "../modules/s3-notification"
 
-  stack_name    = var.stack_name
-  env           = var.env
-  bucket_name   = module.s3.bucket_name
-  smartload_arn = module.data_utility_s3.smartload_lambda_arn
-}
+#   stack_name    = var.stack_name
+#   env           = var.env
+#   bucket_name   = module.s3.bucket_name
+#   smartload_arn = module.data_utility_s3.smartload_lambda_arn
+# }
