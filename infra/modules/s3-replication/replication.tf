@@ -1,7 +1,5 @@
 
 resource "aws_s3_bucket_replication_configuration" "replication" {
-  depends_on = [aws_s3_bucket_versioning.source]
-
   role   = aws_iam_role.replication.arn
   bucket = var.source_bucket_name
 
