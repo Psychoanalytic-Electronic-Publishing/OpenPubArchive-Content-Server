@@ -3,7 +3,6 @@ resource "null_resource" "build_data_utility_image" {
   depends_on = [random_uuid.container]
 
   triggers = {
-    random_uuid                   = random_uuid.container.result
     localsecrets_etag             = data.aws_s3_object.localsecrets.etag
     config_sha1                   = local.config_sha1
     libs_sha1                     = local.libs_sha1
