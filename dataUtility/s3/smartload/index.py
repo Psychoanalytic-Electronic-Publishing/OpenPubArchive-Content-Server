@@ -18,16 +18,22 @@ def handler(event, context):
         sub = keyParts[0]
         artId = keyParts[-1].split("(")[0]
 
-        args = f"--sub {sub} --key {artId} --smartload --verbose --nocheck"
+        loadPayload = [{
+            "directory": "opasDataLoader",
+            "utility": "opasDataLoader",
+            "args": f"--sub {sub} --key {artId} --smartload --verbose --nocheck",
+        }]
+
+        linkPayload = [{
+            "directory": "opasDataLoader",
+            "utility": "opasDataLinker",
+            "args": f"--key {artId}",
+        }]
 
         payload = [
-            [
-                {
-                    "directory": "opasDataLoader",
-                    "utility": "opasDataLoader",
-                    "args": args,
-                }
-            ]
+            loadPayload,
+            linkPayload,
+            loadPayload
         ]
 
         sf_response = sf.start_execution(

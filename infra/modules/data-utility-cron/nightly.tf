@@ -15,40 +15,6 @@ resource "aws_cloudwatch_event_target" "nightly_data_pipeline_target" {
         "utility" : "opasDataCleaner",
         "args" : "--nocheck"
       }
-    ],
-    [
-      {
-        "directory" : "opasDataLoader",
-        "utility" : "opasDataLoader",
-        "args" : "--sub _PEPFree --smartload --verbose --nocheck"
-      },
-      {
-        "directory" : "opasDataLoader",
-        "utility" : "opasDataLoader",
-        "args" : "--sub _PEPCurrent --smartload --verbose --nocheck"
-      },
-      {
-        "directory" : "opasDataLoader",
-        "utility" : "opasDataLoader",
-        "args" : "--sub _PEPSpecial --smartload --verbose --nocheck"
-      },
-      {
-        "directory" : "opasDataLoader",
-        "utility" : "opasDataLoader",
-        "args" : "--sub _PEPOffsite --smartload --verbose --nocheck"
-      },
-      {
-        "directory" : "opasDataLoader",
-        "utility" : "opasDataLoader",
-        "args" : "--sub _PEPArchive/Videostreams --smartload --verbose --nocheck"
-      },
-    ],
-    [
-      {
-        "directory" : "opasDataLoader",
-        "utility" : "opasDataLinker",
-        "args" : "--nightly"
-      }
     ]
   ])
 }
