@@ -1,6 +1,10 @@
 resource "aws_ecs_task_definition" "server" {
   depends_on = [null_resource.build_server_image]
 
+  lifecycle {
+    replace_triggered_by = [null_resource.build_server_image]
+  }
+
   family = "${var.stack_name}-server-${var.env}"
 
   requires_compatibilities = ["FARGATE"]
