@@ -45,7 +45,7 @@ data "aws_iam_policy_document" "replication" {
       "s3:GetObjectVersionTagging",
     ]
 
-    resources = ["${data.aws_s3_bucket.source.arn}/*"]
+    resources = ["${data.aws_s3_bucket.source.arn}/*(bKBD3).xml"]
   }
 
   statement {
@@ -57,7 +57,7 @@ data "aws_iam_policy_document" "replication" {
       "s3:ReplicateTags",
     ]
 
-    resources = ["${data.aws_s3_bucket.destination.arn}/*"]
+    resources = ["${data.aws_s3_bucket.destination.arn}/*(bKBD3).xml"]
   }
 }
 
