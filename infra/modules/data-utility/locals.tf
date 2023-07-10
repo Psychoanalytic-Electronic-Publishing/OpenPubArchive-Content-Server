@@ -26,5 +26,5 @@ resource "random_uuid" "container" {
 }
 
 locals {
-  container_name = "data-utility-${random_uuid.container.result}"
+  container_name = "data-utility"
 }
