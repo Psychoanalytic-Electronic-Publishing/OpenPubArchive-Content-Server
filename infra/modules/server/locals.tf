@@ -3,14 +3,6 @@ locals {
   dockerfile_sha1 = filesha1("../../Dockerfile")
 }
 
-resource "random_uuid" "container" {
-  keepers = {
-    localsecrets_etag = data.aws_s3_object.localsecrets.etag
-    app_sha1          = local.app_sha1
-    dockerfile_sha1   = local.dockerfile_sha1
-  }
-}
-
 locals {
-  container_name = "server-${random_uuid.container.result}"
+  container_name = "server"
 }
