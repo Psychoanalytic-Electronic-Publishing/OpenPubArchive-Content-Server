@@ -14,6 +14,7 @@ module "send_completion_email" {
 
   environment_variables = {
     SNS_TOPIC_ARN = aws_sns_topic.status_updates.arn
+    ENV           = var.env
   }
 
   tags = {
@@ -98,6 +99,7 @@ module "send_error_email" {
 
   environment_variables = {
     SNS_TOPIC_ARN = aws_sns_topic.status_updates.arn
+    ENV           = var.env
   }
 
   tags = {
