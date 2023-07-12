@@ -4,7 +4,7 @@ import os
 
 sns = boto3.client("sns")
 
-cloudwatch_url = "https://us-east-1.console.aws.amazon.com/cloudwatch/home?region=us-east-1#logsV2:log-groups/log-group/opas-data-utility-staging/log-events/ecs$252Fmain$252F"
+cloudwatch_url = f"https://us-east-1.console.aws.amazon.com/cloudwatch/home?region=us-east-1#logsV2:log-groups/log-group/opas-data-utility-{os.environ['ENV']}/log-events/ecs$252Fmain$252F"
 stepfunctions_url = "https://us-east-1.console.aws.amazon.com/states/home?region=us-east-1#/v2/executions/details/"
 
 def handler(event, context):
