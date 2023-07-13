@@ -1469,6 +1469,7 @@ will start skipping files since they have already been loaded into Solr in the c
                       help="Seed so data update files don't collide if they start writing at exactly the same time.")
 
     parser.add_option("--writeupdates",
+                      action="store_true",
                       dest="write_updates", default=False,
                       help="Turn on XML issue updates.")
 
