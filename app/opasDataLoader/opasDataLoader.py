@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2023, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2023.0607/v2.1.046"
+__version__     = "2023.0607/v2.1.047"
 __status__      = "Development"
 
 # !!! IMPORTANT: Increment opasXMLProcessor version (if version chgd). It's written to the XML !!!
@@ -1092,7 +1092,7 @@ def main():
                 log_everywhere_if(options.display_verbose , level="info", msg=msg)
                 
                 # not a new journal, see if it's a new article.
-                if opasSolrLoadSupport.add_to_tracker_table(ocd, artInfo.art_id): # if true, added successfully, so new!
+                if opasSolrLoadSupport.add_to_tracker_table(ocd, artInfo.art_id) and options.write_updates: # if true, added successfully, so new!
                     # don't log to issue updates for journals that are new sources added during the annual update
                     if artInfo.src_code not in loaderConfig.DATA_UPDATE_PREPUBLICATION_CODES_TO_IGNORE:
                         art = f"<article id='{artInfo.art_id}'>{artInfo.art_citeas_xml}</article>"
@@ -1190,7 +1190,7 @@ def main():
                     if randomizer_seed is None:
                         randomizer_seed = int(datetime.utcnow().timestamp())
     
-    if not options.parse_only:
+    if not options.parse_only and options.write_updates:
         opasSolrLoadSupport.garbage_collect_stat(ocd)
         if options.daysback is not None: #  get all updated records
             print (f"Listing updates for {options.daysback} days.")
@@ -1467,6 +1467,10 @@ will start skipping files since they have already been loaded into Solr in the c
     parser.add_option("--seed",
                       dest="randomizer_seed", default=None,
                       help="Seed so data update files don't collide if they start writing at exactly the same time.")
+
+    parser.add_option("--writeupdates",
+                      dest="write_updates", default=False,
+                      help="Turn on XML issue updates.")
 
     msg = f"""Rebuild from source (e.g., bKBD3) if necessary, and load precompiled XML (e.g., bEXP_ARCH1) to
 the databases when new or updated. If inputbuild file is newer, output is missing, or there are changes to 
