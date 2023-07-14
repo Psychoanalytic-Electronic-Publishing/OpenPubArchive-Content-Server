@@ -53,8 +53,6 @@ resource "aws_security_group" "db" {
     self        = true
   }
 
-<<<<<<< HEAD
-=======
   ingress {
     description = "MySQL from PEP engineer"
     from_port   = 3306
@@ -63,7 +61,6 @@ resource "aws_security_group" "db" {
     cidr_blocks = formatlist("%s/32", split(",", var.engineer_ips))
   }
 
->>>>>>> Stage
   egress {
     from_port        = 0
     to_port          = 0
