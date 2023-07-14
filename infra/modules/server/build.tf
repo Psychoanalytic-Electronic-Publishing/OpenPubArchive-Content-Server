@@ -1,6 +1,4 @@
 resource "null_resource" "build_server_image" {
-  depends_on = [random_uuid.container]
-
   triggers = {
     localsecrets_etag = data.aws_s3_object.localsecrets.etag
     app_sha1          = local.app_sha1

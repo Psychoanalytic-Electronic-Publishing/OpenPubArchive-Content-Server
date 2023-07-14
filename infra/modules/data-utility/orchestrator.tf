@@ -1,10 +1,3 @@
-data "aws_subnets" "private" {
-  filter {
-    name   = "vpc-id"
-    values = [var.vpc_id]
-  }
-}
-
 locals {
   definition_template = <<EOF
 {
@@ -46,7 +39,7 @@ locals {
                     "NetworkConfiguration": {
                       "AwsvpcConfiguration": {
                         "Subnets": ${jsonencode(data.aws_subnets.private.ids)},
-                        "SecurityGroups": ${jsonencode(var.security_group_ids)},
+                        "SecurityGroups": [${jsonencode(aws_security_group.data_utility.id)}],
                         "AssignPublicIp": "ENABLED"
                       }
                     },
@@ -71,6 +64,25 @@ locals {
                         }
                       ]
                     }
+                  },
+                  "Catch": [
+                    {
+                      "ErrorEquals": [
+                        "States.ALL"
+                      ],
+                      "Comment": "Catch all errors",
+                      "Next": "Error Email",
+                      "ResultPath": "$.error"
+                    }
+                  ],
+                  "End": true
+                },
+                "Error Email": {
+                  "Type": "Task",
+                  "Resource": "${module.send_error_email.lambda_function_arn}",
+                  "Parameters": {
+                    "task.$": "$",
+                    "executionArn.$": "$$.Execution.Id"
                   },
                   "End": true
                 }

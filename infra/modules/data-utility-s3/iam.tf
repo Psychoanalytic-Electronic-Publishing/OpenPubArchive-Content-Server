@@ -8,7 +8,7 @@ locals {
           "s3:DeleteObject"
         ]
         Effect   = "Allow"
-        Resource = "${data.aws_s3_bucket.pep_web_live_data.arn}/*"
+        Resource = "${data.aws_s3_bucket.pep_web_data.arn}/*"
       },
       {
         Action = [

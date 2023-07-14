@@ -17,11 +17,6 @@ variable "stack_name" {
   default     = "opas"
 }
 
-variable "security_group_ids" {
-  description = "Security group ID"
-  default     = ["sg-0b6da54293d1ad2e1"]
-}
-
 variable "cors_origin" {
   description = "CORS origin"
   default     = "https://pep-web.org"
@@ -40,4 +35,10 @@ variable "mysql_username" {
 variable "mysql_password" {
   description = "Password for the database"
   sensitive   = true
+}
+
+variable "engineer_ips" {
+  description = "IPs for PEP engineers (comma delimited)"
+  sensitive   = true
+  type        = string
 }

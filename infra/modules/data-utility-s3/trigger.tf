@@ -29,5 +29,5 @@ resource "aws_lambda_permission" "allow_execute_task_file" {
   action        = "lambda:InvokeFunction"
   function_name = module.execute_task_file.lambda_function_name
   principal     = "s3.amazonaws.com"
-  source_arn    = data.aws_s3_bucket.pep_web_live_data.arn
+  source_arn    = data.aws_s3_bucket.pep_web_data.arn
 }

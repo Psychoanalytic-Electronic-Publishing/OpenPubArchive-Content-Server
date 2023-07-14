@@ -13,7 +13,7 @@ resource "aws_cloudwatch_event_target" "generate_subscription_update_target" {
       {
         "directory" : "opasDataLoader",
         "utility" : "opasDataLoader",
-        "args" : "--nocheck --nofiles --whatsnewdays=7"
+        "args" : "--nocheck --nofiles --writeupdates --whatsnewdays=7"
       }
     ]
   ])

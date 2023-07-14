@@ -47,7 +47,6 @@ module "data_utility" {
   aws_region             = var.aws_region
   repository_url         = module.ecr.repository_url
   cluster_arn            = module.ecs.cluster_arn
-  security_group_ids     = var.security_group_ids
   vpc_id                 = module.vpc.vpc_id
   ecr_execution_role_arn = module.ecr.ecr_execution_role_arn
 }
@@ -60,14 +59,6 @@ module "data_utility_api" {
   cors_origin       = var.cors_origin
   state_machine_arn = module.data_utility.state_machine_arn
   pads_root         = var.pads_root
-}
-
-module "data_utility_s3" {
-  source = "../modules/data-utility-s3"
-
-  stack_name        = var.stack_name
-  env               = var.env
-  state_machine_arn = module.data_utility.state_machine_arn
 }
 
 module "data_utility_cron" {
@@ -104,10 +95,40 @@ module "database" {
   username                 = var.mysql_username
   password                 = var.mysql_password
   vpc_id                   = module.vpc.vpc_id
-  data_utility_group_id    = var.security_group_ids[0]
+  data_utility_group_id    = module.data_utility.security_group_id
   server_security_group_id = module.server.security_group_id
   gitlab_runner_ip         = "54.210.185.163/32"
   availability_zone        = "us-east-1f"
+  engineer_ips             = var.engineer_ips
+}
+
+module "s3" {
+  source = "../modules/s3"
+
+  stack_name  = var.stack_name
+  env         = var.env
+  bucket_name = "pep-web-live-data-staging"
+}
+
+module "data_utility_s3" {
+  source = "../modules/data-utility-s3"
+
+  stack_name        = var.stack_name
+  env               = var.env
+  state_machine_arn = module.data_utility.state_machine_arn
+  bucket_name       = module.s3.bucket_name
+}
+
+
+module "s3_notification" {
+  depends_on = [module.s3, module.data_utility_s3]
+
+  source = "../modules/s3-notification"
+
+  stack_name    = var.stack_name
+  env           = var.env
+  bucket_name   = module.s3.bucket_name
+  smartload_arn = module.data_utility_s3.smartload_lambda_arn
 }
 
 module "solr" {

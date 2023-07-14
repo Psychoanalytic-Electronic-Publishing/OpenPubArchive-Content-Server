@@ -3,6 +3,11 @@ variable "env" {
   default     = "shared"
 }
 
+variable "stack_name" {
+  description = "Root name for the stack"
+  default     = "opas"
+}
+
 variable "aws_region" {
   description = "AWS region"
   default     = "us-east-1"

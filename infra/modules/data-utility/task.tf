@@ -1,4 +1,8 @@
 resource "aws_ecs_task_definition" "data_utility" {
+  lifecycle {
+    replace_triggered_by = [null_resource.build_data_utility_image]
+  }
+
   depends_on = [null_resource.build_data_utility_image]
 
   family = "${var.stack_name}-data-utility-${var.env}"
