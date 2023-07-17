@@ -20,7 +20,7 @@ resource "aws_lb_target_group" "solr" {
   target_type = "ip"
 
   health_check {
-    path                = "/solr/admin/ping"
+    path                = "/solr/pepwebdocs/admin/ping"
     port                = 8983
     protocol            = "HTTP"
     healthy_threshold   = 2

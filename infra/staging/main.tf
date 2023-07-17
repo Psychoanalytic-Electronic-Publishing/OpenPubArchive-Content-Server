@@ -142,6 +142,6 @@ module "solr" {
   ecr_execution_role_arn   = module.ecr.ecr_execution_role_arn
   cluster_arn              = module.ecs.cluster_arn
   vpc_id                   = module.vpc.vpc_id
-  data_utility_group_id    = var.security_group_ids[0]
+  data_utility_group_id    = module.data_utility.security_group_id
   server_security_group_id = module.server.security_group_id
 }
