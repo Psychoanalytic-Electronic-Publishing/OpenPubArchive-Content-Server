@@ -15,7 +15,6 @@ resource "aws_ecs_task_definition" "solr" {
 
     efs_volume_configuration {
       file_system_id = module.efs.id
-      root_directory = "/"
     }
   }
 
@@ -33,7 +32,14 @@ resource "aws_ecs_task_definition" "solr" {
           containerPort = 8983
           hostPort      = 8983
         }
-      ]
+      ],
+      mountPoints = [
+        {
+          sourceVolume  = "${var.stack_name}-solr-storage-${var.env}"
+          containerPath = "/var/solr/data"
+          readOnly      = false
+        }
+      ],
       logConfiguration = {
         logDriver = "awslogs"
         options = {
