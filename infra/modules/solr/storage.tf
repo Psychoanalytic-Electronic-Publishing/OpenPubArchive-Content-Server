@@ -34,7 +34,16 @@ module "efs" {
     vpc = {
       # relying on the defaults provdied for EFS/NFS (2049/TCP + ingress)
       description              = "NFS ingress from Solr ECS"
-      source_security_group_id = aws_security_group.solr.id
+      source_security_group_id = aws_security_group.solr.id,
+    },
+    self = {
+      description = "NFS ingress from self"
+      self        = true
+    }
+    self_egress = {
+      description = "NFS egress to self"
+      type        = "egress"
+      self        = true
     }
   }
 
