@@ -14,7 +14,8 @@ resource "aws_ecs_task_definition" "solr" {
     name = "${var.stack_name}-solr-storage-${var.env}"
 
     efs_volume_configuration {
-      file_system_id = module.efs.id
+      file_system_id     = module.efs.id
+      transit_encryption = "ENABLED"
     }
   }
 
