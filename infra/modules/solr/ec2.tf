@@ -20,7 +20,7 @@ resource "aws_instance" "efs_interface" {
   ami                    = data.aws_ami.amazon.id
   instance_type          = "t2.nano"
   vpc_security_group_ids = [aws_security_group.solr.id]
-  key_name               = "pep-staging"
+  key_name               = "pep-${var.env}"
   subnet_id              = data.aws_subnets.private.ids[0]
 
   user_data = <<-EOF
