@@ -37,3 +37,11 @@ variable "server_security_group_id" {
 variable "data_utility_group_id" {
   description = "Security group ID for the data-utility"
 }
+
+variable "instance_cpu" {
+  description = "CPU units for the instance"
+}
+
+variable "instance_memory" {
+  description = "Memory units for the instance"
+}

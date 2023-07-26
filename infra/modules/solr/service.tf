@@ -7,8 +7,8 @@ resource "aws_ecs_task_definition" "solr" {
   network_mode             = "awsvpc"
   execution_role_arn       = var.ecr_execution_role_arn
 
-  cpu    = "1024"
-  memory = "2048"
+  cpu    = var.instance_cpu
+  memory = var.instance_memory
 
   volume {
     name = "${var.stack_name}-solr-storage-${var.env}"

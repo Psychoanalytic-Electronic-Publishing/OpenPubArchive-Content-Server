@@ -144,4 +144,6 @@ module "solr" {
   vpc_id                   = module.vpc.vpc_id
   data_utility_group_id    = module.data_utility.security_group_id
   server_security_group_id = module.server.security_group_id
+  instance_cpu             = "1024"
+  instance_memory          = "2048"
 }
