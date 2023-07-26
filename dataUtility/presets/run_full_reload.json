@@ -94,6 +94,11 @@
             "directory": "opasDataLoader",
             "utility": "opasDataLoader",
             "args": "--sub _PEPArchive --key ^[S-Z].* --smartload --reload --verbose --nocheck"
+        },
+        {
+            "directory": "opasDataLoader",
+            "utility": "opasDataLoader",
+            "args": "--sub _PEPArchive/Videostreams --smartload --reload --verbose --nocheck --halfway"
         }
     ]
 ]
