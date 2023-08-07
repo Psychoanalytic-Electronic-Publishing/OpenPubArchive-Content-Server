@@ -130,3 +130,20 @@ module "s3_notification" {
   bucket_name   = module.s3.bucket_name
   smartload_arn = module.data_utility_s3.smartload_lambda_arn
 }
+
+module "solr" {
+  source = "../modules/solr"
+
+  stack_name               = var.stack_name
+  env                      = var.env
+  account_id               = var.account_id
+  aws_region               = var.aws_region
+  repository_url           = module.ecr.repository_url
+  ecr_execution_role_arn   = module.ecr.ecr_execution_role_arn
+  cluster_arn              = module.ecs.cluster_arn
+  vpc_id                   = module.vpc.vpc_id
+  data_utility_group_id    = module.data_utility.security_group_id
+  server_security_group_id = module.server.security_group_id
+  instance_cpu             = "1024"
+  instance_memory          = "2048"
+}
