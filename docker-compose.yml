@@ -1,23 +1,60 @@
 version: '3.3'
 services:
-  solr:
-      image: solr:latest
-      environment:
-          SOLR_JAVA_MEM: "-Xms1g -Xmx1g"
-      volumes:
-          - ./solrCoreConfigurations/data:/var/solr/data/
-      ports:
-          - "8983:8983"
-      command: solr-foreground
-      entrypoint: "docker-entrypoint.sh"
-      restart: always
+    solr:
+        image: solr:latest
+        environment:
+            SOLR_JAVA_MEM: "-Xms1g -Xmx1g"
+        volumes:
+            - ./local/solr/:/var/solr/data/
+        ports:
+            - "8983:8983"
+        command: solr-foreground
+        entrypoint: "docker-entrypoint.sh"
+        restart: always
 
+    mysql:
+        image: mysql/mysql-server:8.0.17
+        # NOTE: use of "mysql_native_password" is not recommended: https://dev.mysql.com/doc/refman/8.0/en/upgrading-from-previous-series.html#upgrade-caching-sha2-password
+        # (this is just an example, not intended to be a production configuration)
+        command: --default-authentication-plugin=mysql_native_password
+        restart: always
+        environment:
+            MYSQL_ROOT_PASSWORD: password
+            MYSQL_ROOT_HOST: '%'
+            MYSQL_DATABASE: pep_content_server
+        ports:
+            - 3306:3306
+            - 33060:33060
+        volumes:
+            - ./sql/schemas:/docker-entrypoint-initdb.d/:ro
+
+    dbeaver:
+        image: dbeaver/cloudbeaver:latest
+        restart: always
+        ports:
+            - 8080:8978
+        depends_on:
+            - mysql
+
+    app:
+        build: .
+        volumes:
+            - ./local/google-metadata:/app/local/google-metadata
+            - ./local/expert-picks:/app/local/expert-picks
+            - ./local/web-images:/app/local/web-images
+            - ./local/pdf-originals:/app/local/pdf-originals
+            - ./local/xml-originals:/app/local/xml-originals
+            - ./local/data-updates:/app/local/data-updates
+        ports:
+            - 80:80
+        depends_on:
+            - solr
+            - mysql
 
 # Names our volume
 volumes:
-  solrdata:
-      driver: local
-      driver_opts:
-          type: bind
-          device: ./solrCoreConfigurations/data
-
+    solrdata:
+        driver: local
+        driver_opts:
+            type: bind
+            device: ./solrCoreConfigurations/data

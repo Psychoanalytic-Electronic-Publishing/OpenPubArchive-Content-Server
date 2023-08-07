@@ -87,9 +87,9 @@ if CONFIG == "TestSetup": # 0
     # XML_CATALOG_NAME = LOCALDEV_XML_CATALOG_NAME # "x:/_PEPA1/catalog.xml"
 
 elif CONFIG == "Local": # 1
-    APIDOMAIN = "development.org"
+    APIDOMAIN = "host.docker.internal"
     API_PORT_MAIN = 9100
-    SITEMAP_PATH = pepkeys.LOCALDEV_SITEMAP_PATH # r"X:\AWS_S3\AWSProd PEP-Web-Google"
+    SITEMAP_PATH = r"localpath"
     DATA_SOURCE = f"OPAS.Local"                                # arbitrary name used for information from server
     COOKIE_DOMAIN = f".{APIDOMAIN}"
     BASEURL = APIDOMAIN
@@ -100,23 +100,23 @@ elif CONFIG == "Local": # 1
     # Local DB
     DBPORT = 3306 # default
     DBHOST = APIDOMAIN
-    DBUSER = pepkeys.LOCALDEV_DBUSER
-    DBPW = pepkeys.LOCALDEV_DBPW
+    DBUSER = "root"
+    DBPW = "password"
     DBVER = 5 # 8.04 and later use different REXP libs (8 implies 8.04 or newer)
-    DBNAME = "opascentral"
+    DBNAME = "pep_content_server"
     PADS_BASE_URL = pepkeys.PADS_STAGE_URL
     # must set to None for local paths for flex file system
     S3_KEY = None
     S3_SECRET = None
     # local paths
-    GOOGLE_METADATA_PATH = pepkeys.LOCALDEV_GOOGLE_METADATA_PATH
-    IMAGE_EXPERT_PICKS_PATH = pepkeys.LOCALDEV_IMAGE_EXPERT_PICKS_PATH
-    IMAGE_SOURCE_PATH = pepkeys.LOCALDEV_IMAGE_SOURCE_PATH # "X:\\AWS_S3\\AWS PEP-Web-Live-Data\\graphics"
-    PDF_ORIGINALS_PATH = pepkeys.LOCALDEV_PDF_ORIGINALS_PATH # "X:\\AWS_S3\\AWS PEP-Web-Live-Data\\PEPDownloads"
-    XML_ORIGINALS_PATH = pepkeys.LOCALDEV_XML_ORIGINALS_PATH # r"X:\AWS_S3\AWS PEP-Web-Live-Data"
-    DATA_UPDATE_LOG_DIR = pepkeys.LOCALDEV_DATA_UPDATE_LOG_DIR # "./dataUpdateLogs"
-    FILESYSTEM_ROOT = pepkeys.LOCALDEV_FILESYSTEM_ROOT 
-    PATH_SEPARATOR = "\\"
+    IMAGE_EXPERT_PICKS_PATH = r"/app/local/google-metadata"
+    IMAGE_EXPERT_PICKS_PATH = r"/app/local/expert-picks"
+    IMAGE_SOURCE_PATH = r"/app/local/web-images"
+    PDF_ORIGINALS_PATH = r"/app/local/pdf-originals"
+    XML_ORIGINALS_PATH = r"/app/local/xml-originals"
+    DATA_UPDATE_LOG_DIR = r"/app/local/data-updates"
+    FILESYSTEM_ROOT = XML_ORIGINALS_PATH 
+    PATH_SEPARATOR = "/"
     # XML_CATALOG_NAME = LOCALDEV_XML_CATALOG_NAME # "x:/_PEPA1/catalog.xml"
 
 elif CONFIG == "AWSStage": #2
