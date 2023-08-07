@@ -5,7 +5,7 @@ services:
         environment:
             SOLR_JAVA_MEM: "-Xms1g -Xmx1g"
         volumes:
-            - ./solrLocalConfigurations/data:/var/solr/data/
+            - ./local/solr/:/var/solr/data/
         ports:
             - "8983:8983"
         command: solr-foreground
@@ -38,6 +38,13 @@ services:
 
     app:
         build: .
+        volumes:
+            - ./local/google-metadata:/app/local/google-metadata
+            - ./local/expert-picks:/app/local/expert-picks
+            - ./local/web-images:/app/local/web-images
+            - ./local/pdf-originals:/app/local/pdf-originals
+            - ./local/xml-originals:/app/local/xml-originals
+            - ./local/data-updates:/app/local/data-updates
         ports:
             - 80:80
         depends_on:

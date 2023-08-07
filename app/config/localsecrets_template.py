@@ -109,12 +109,12 @@ elif CONFIG == "Local": # 1
     S3_KEY = None
     S3_SECRET = None
     # local paths
-    IMAGE_EXPERT_PICKS_PATH = r"/app/google-metadata"
-    IMAGE_EXPERT_PICKS_PATH = r"/app/expert-picks"
-    IMAGE_SOURCE_PATH = r"/app/web-images"
-    PDF_ORIGINALS_PATH = r"/app/pdf-originals"
-    XML_ORIGINALS_PATH = r"/app/xml-originals"
-    XML_ORIGINALS_PATH = r"/app/data-updates"
+    IMAGE_EXPERT_PICKS_PATH = r"/app/local/google-metadata"
+    IMAGE_EXPERT_PICKS_PATH = r"/app/local/expert-picks"
+    IMAGE_SOURCE_PATH = r"/app/local/web-images"
+    PDF_ORIGINALS_PATH = r"/app/local/pdf-originals"
+    XML_ORIGINALS_PATH = r"/app/local/xml-originals"
+    DATA_UPDATE_LOG_DIR = r"/app/local/data-updates"
     FILESYSTEM_ROOT = XML_ORIGINALS_PATH 
     PATH_SEPARATOR = "/"
     # XML_CATALOG_NAME = LOCALDEV_XML_CATALOG_NAME # "x:/_PEPA1/catalog.xml"
