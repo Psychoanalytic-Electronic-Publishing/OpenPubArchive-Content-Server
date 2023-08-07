@@ -5,7 +5,7 @@ services:
         environment:
             SOLR_JAVA_MEM: "-Xms1g -Xmx1g"
         volumes:
-            - ./solrCoreConfigurations/data:/var/solr/data/
+            - ./solrLocalConfigurations/data:/var/solr/data/
         ports:
             - "8983:8983"
         command: solr-foreground
