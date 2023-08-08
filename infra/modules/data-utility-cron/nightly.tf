@@ -14,6 +14,11 @@ resource "aws_cloudwatch_event_target" "nightly_data_pipeline_target" {
         "directory" : "opasDataLoader",
         "utility" : "opasDataCleaner",
         "args" : "--nocheck"
+      },
+      {
+        "directory" : "opasDataUpdateStat",
+        "utility" : "opasDataUpdateStat",
+        "args" : " "
       }
     ]
   ])
