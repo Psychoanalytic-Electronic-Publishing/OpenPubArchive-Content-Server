@@ -11,8 +11,8 @@ resource "aws_ecs_task_definition" "data_utility" {
   network_mode             = "awsvpc"
   execution_role_arn       = var.ecr_execution_role_arn
 
-  cpu    = "512"
-  memory = "1024"
+  cpu    = "1024"
+  memory = "8192"
 
   container_definitions = jsonencode([
     {

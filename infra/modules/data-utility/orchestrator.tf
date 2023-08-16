@@ -27,8 +27,79 @@ locals {
               "ProcessorConfig": {
                 "Mode": "INLINE"
               },
-              "StartAt": "ECS RunTask",
+              "StartAt": "Limit RAM usage?",
               "States": {
+                "Limit RAM usage?": {
+                  "Type": "Choice",
+                  "Choices": [
+                    {
+                      "Or": [
+                        {
+                          "Variable": "$.limitRam",
+                          "BooleanEquals": true
+                        },
+                        {
+                          "Not": {
+                            "Variable": "$.limitRam",
+                            "IsPresent": true
+                          }
+                        }
+                      ],
+                      "Next": "ECS RunTask (reduced RAM)"
+                    }
+                  ],
+                  "Default": "ECS RunTask"
+                },
+                "ECS RunTask (reduced RAM)": {
+                  "Type": "Task",
+                  "Resource": "arn:aws:states:::ecs:runTask.sync",
+                  "Parameters": {
+                    "LaunchType": "FARGATE",
+                    "Cluster": "${var.cluster_arn}",
+                    "TaskDefinition": "${aws_ecs_task_definition.data_utility.arn}",
+                    "NetworkConfiguration": {
+                      "AwsvpcConfiguration": {
+                        "Subnets": ${jsonencode(data.aws_subnets.private.ids)},
+                        "SecurityGroups": [${jsonencode(aws_security_group.data_utility.id)}],
+                        "AssignPublicIp": "ENABLED"
+                      }
+                    },
+                    "Overrides": {
+                      "ContainerOverrides": [
+                        {
+                          "Name": "main",
+                          "Cpu": 512,
+                          "Memory": 1024,
+                          "Environment": [    
+                            {
+                              "Name": "UTILITY_DIRECTORY",
+                              "Value.$": "$.directory"
+                            },
+                            {
+                              "Name": "UTILITY_NAME",
+                              "Value.$": "$.utility"
+                            },
+                            {
+                              "Name": "UTILITY_ARGS",
+                              "Value.$": "$.args"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  },
+                  "Catch": [
+                    {
+                      "ErrorEquals": [
+                        "States.ALL"
+                      ],
+                      "Comment": "Catch all errors",
+                      "Next": "Error Email",
+                      "ResultPath": "$.error"
+                    }
+                  ],
+                  "End": true
+                },
                 "ECS RunTask": {
                   "Type": "Task",
                   "Resource": "arn:aws:states:::ecs:runTask.sync",
