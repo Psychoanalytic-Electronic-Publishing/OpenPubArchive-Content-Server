@@ -55,7 +55,7 @@ def opas_sitemap_index(output_file=localsecrets.SITEMAP_PATH, sitemap_list=[]):
       sm_index_head = '<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
 
       if localsecrets.CONFIG != 'Local':
-         fs = s3fs.S3FileSystem(anon=False)
+         fs = s3fs.S3FileSystem(anon=False, key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET)
       else:
          fs = codecs
 
@@ -111,7 +111,7 @@ def metadata_export(outputFileName="../sitemap", total_records=140000, records_p
             break
          else: # write the file
             if localsecrets.CONFIG != 'Local':
-               fs = s3fs.S3FileSystem(anon=False)
+               fs = s3fs.S3FileSystem(anon=False, key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET)
             else:
                fs = codecs
 
