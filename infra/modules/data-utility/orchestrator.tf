@@ -35,14 +35,14 @@ locals {
                     {
                       "Or": [
                         {
-                          "Variable": "$.limitRam",
-                          "BooleanEquals": true
-                        },
-                        {
                           "Not": {
                             "Variable": "$.limitRam",
                             "IsPresent": true
                           }
+                        },
+                        {
+                          "Variable": "$.limitRam",
+                          "BooleanEquals": true
                         }
                       ],
                       "Next": "ECS RunTask (reduced RAM)"
