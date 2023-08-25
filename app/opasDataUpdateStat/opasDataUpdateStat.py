@@ -331,6 +331,8 @@ def update_solr_stat_data(solrcon, all_records:bool=False):
     remaining_count = item_count
     msg = f"Merging up to {item_count} stat records into Solr Docs core records."
     log_everywhere_if(True, "info", msg)
+
+    articleHasBeenUpdated = {}
     
     for key, art_stat in unified_article_stat.items():
         remaining_count -= 1
@@ -378,7 +380,6 @@ def update_solr_stat_data(solrcon, all_records:bool=False):
                     found = True
                 else:
                     skipped_as_missing += 1
-
         except Exception as e:
             log_everywhere_if(options.display_verbose, "error", f"Issue when finding Document ID {doc_id} in Solr...Exception: {e}")
             skipped_as_missing += 1
@@ -391,20 +392,20 @@ def update_solr_stat_data(solrcon, all_records:bool=False):
                     solr_art_cited_10 = result.get("art_cited_10", 0)
                     solr_art_cited_20 = result.get("art_cited_20", 0)
                     solr_art_cited_all = result.get("art_cited_all", 0)
-                    solr_art_cited_lastcalyear = result.get("art_cited_lastcalyear", 0)
-                    solr_art_cited_last12mos = result.get("art_cited_last12mos", 0)
-                    solr_art_cited_last6mos = result.get("art_cited_last6mos", 0)
-                    solr_art_cited_last1mos = result.get("art_cited_last1mos", 0)
-                    solr_art_cited_lastweek = result.get("art_cited_lastweek", 0)
+                    solr_art_views_lastcalyear = result.get("art_views_lastcalyear", 0)
+                    solr_art_views_last12mos = result.get("art_views_last12mos", 0)
+                    solr_art_views_last6mos = result.get("art_views_last6mos", 0)
+                    solr_art_views_last1mos = result.get("art_views_last1mos", 0)
+                    solr_art_views_lastweek = result.get("art_views_lastweek", 0)
                     if solr_art_cited_5 != art_stat.art_cited_5 or \
                        solr_art_cited_10 != art_stat.art_cited_10 or \
                        solr_art_cited_20 != art_stat.art_cited_20 or \
                        solr_art_cited_all != art_stat.art_cited_all or \
-                       solr_art_cited_lastcalyear != art_stat.art_views_lastcalyear or \
-                       solr_art_cited_last12mos != art_stat.art_views_last12mos or \
-                       solr_art_cited_last6mos != art_stat.art_views_last6mos or \
-                       solr_art_cited_last1mos != art_stat.art_views_last1mos or \
-                       solr_art_cited_lastweek != art_stat.art_views_lastweek:
+                       solr_art_views_lastcalyear != art_stat.art_views_lastcalyear or \
+                       solr_art_views_last12mos != art_stat.art_views_last12mos or \
+                       solr_art_views_last6mos != art_stat.art_views_last6mos or \
+                       solr_art_views_last1mos != art_stat.art_views_last1mos or \
+                       solr_art_views_lastweek != art_stat.art_views_lastweek:
                         update_rec = True
                     else:
                         update_rec = False
@@ -428,21 +429,26 @@ def update_solr_stat_data(solrcon, all_records:bool=False):
                                 print(f"Upd. solr stat {doc_id} {remaining_count} more to go. Vws 12m:{art_stat.art_views_last12mos} 6m:{art_stat.art_views_last6mos} 1m:{art_stat.art_views_last1mos} 1w:{art_stat.art_views_lastweek}")
                             else:
                                 print(f"...{remaining_count} more to go (views/citations). Updated:{doc_id} Cited: {solr_art_cited_all} Vws 12m:{art_stat.art_views_last12mos}")
-    
+
+                        alreadyUpdated = doc_id in articleHasBeenUpdated
+
                         upd_rec = {
                                     "id":doc_id,
                                     "art_id": doc_id,
-                                    "art_cited_5": art_stat.art_cited_5, 
-                                    "art_cited_10": art_stat.art_cited_10, 
-                                    "art_cited_20": art_stat.art_cited_20, 
-                                    "art_cited_all": art_stat.art_cited_all, 
-                                    "art_views_lastcalyear": art_stat.art_views_lastcalyear, 
-                                    "art_views_last12mos": art_stat.art_views_last12mos, 
-                                    "art_views_last6mos": art_stat.art_views_last6mos, 
-                                    "art_views_last1mos": art_stat.art_views_last1mos, 
-                                    "art_views_lastweek": art_stat.art_views_lastweek
-                        }                    
-            
+                                    "art_cited_5": art_stat.art_cited_5 if not alreadyUpdated else art_stat.art_cited_5 + solr_art_cited_5, 
+                                    "art_cited_10": art_stat.art_cited_10 if not alreadyUpdated else art_stat.art_cited_10 + solr_art_cited_10,
+                                    "art_cited_20": art_stat.art_cited_20 if not alreadyUpdated else art_stat.art_cited_20 + solr_art_cited_20,
+                                    "art_cited_all": art_stat.art_cited_all if not alreadyUpdated else art_stat.art_cited_all + solr_art_cited_all,
+                                    "art_views_lastcalyear": art_stat.art_views_lastcalyear if not alreadyUpdated else art_stat.art_views_lastcalyear + solr_art_views_lastcalyear,
+                                    "art_views_last12mos": art_stat.art_views_last12mos if not alreadyUpdated else art_stat.art_views_last12mos + solr_art_views_last12mos,
+                                    "art_views_last6mos": art_stat.art_views_last6mos if not alreadyUpdated else art_stat.art_views_last6mos + solr_art_views_last6mos,
+                                    "art_views_last1mos": art_stat.art_views_last1mos if not alreadyUpdated else art_stat.art_views_last1mos + solr_art_views_last1mos,
+                                    "art_views_lastweek": art_stat.art_views_lastweek if not alreadyUpdated else art_stat.art_views_lastweek + solr_art_views_lastweek
+                        }             
+
+                        if not alreadyUpdated:
+                            articleHasBeenUpdated[doc_id] = True       
+                
                         try:
                             solrcon.add([upd_rec], fieldUpdates={
                                                                  "art_cited_5": 'set',
