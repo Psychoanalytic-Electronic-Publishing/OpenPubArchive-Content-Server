@@ -77,8 +77,10 @@ def main():
 
     print("Exporting table data")
 
+    exportFilename = f"{options.table_name}-2023-08-27-{time.time() * 1000}.sql"
+
     result = subprocess.run(
-        f"mysqldump -h {localsecrets.DBHOST} -u {localsecrets.DBUSER} -p{localsecrets.DBPW} --port=3306 --set-gtid-purged=OFF --opt --compress opascentral {options.table_name} --where=\"last_update <= \"2023-08-27\"\" > api_article_endpoints.sql",
+        f"mysqldump -h {localsecrets.DBHOST} -u {localsecrets.DBUSER} -p{localsecrets.DBPW} --port=3306 --set-gtid-purged=OFF --opt --compress opascentral {options.table_name} --where=\"last_update <= \"2023-08-27\"\" > {exportFilename}",
         shell=True,
     )
 
