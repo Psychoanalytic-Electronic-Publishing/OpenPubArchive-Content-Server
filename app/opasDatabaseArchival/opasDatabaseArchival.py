@@ -46,7 +46,7 @@ import time
 import re
 import os
 import subprocess
-from datetime import datetime
+from datetime import datetime, timedelta
 from loggingDebugStream import log_everywhere_if
 import logging
 from optparse import OptionParser
@@ -77,10 +77,12 @@ def main():
 
     print("Exporting table data")
 
-    exportFilename = f"{options.table_name}-2023-08-27-{time.time() * 1000}.sql"
+    date_threshold = (datetime.today() - timedelta(days=int(options.archive_threshold_days))).strftime('%Y-%m-%d')
+
+    export_filename = f"{options.table_name}-2023-08-27-{time.time() * 1000}.sql"
 
     result = subprocess.run(
-        f"mysqldump -h {localsecrets.DBHOST} -u {localsecrets.DBUSER} -p{localsecrets.DBPW} --port=3306 --set-gtid-purged=OFF --opt --compress opascentral {options.table_name} --where=\"last_update <= \"2023-08-27\"\" > {exportFilename}",
+        f"mysqldump -h {localsecrets.DBHOST} -u {localsecrets.DBUSER} -p{localsecrets.DBPW} --port=3306 --set-gtid-purged=OFF --opt --compress opascentral {options.table_name} --where=\"last_update <= \"{date_threshold}\"\" > {export_filename}",
         shell=True,
     )
 
@@ -122,6 +124,8 @@ if __name__ == "__main__":
                       help="Turn off front-matter help")
     parser.add_option("--table", dest="table_name", default=None,
                       help="Name of table to export")
+    parser.add_option("--archivethreshold", dest="archive_threshold_days", default=30,
+                      help="Number of days to back from today to archive up to")
 
     (options, args) = parser.parse_args()
 
