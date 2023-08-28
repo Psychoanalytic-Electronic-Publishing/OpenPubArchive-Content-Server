@@ -7,6 +7,7 @@ locals {
   opasGoogleMetadataExport_sha1 = sha1(join("", [for f in fileset(path.cwd, "../../app/opasGoogleMetadataExport/**") : filesha1(f)]))
   opasPushSettings_sha1         = sha1(join("", [for f in fileset(path.cwd, "../../app/opasPushSettings/**") : filesha1(f)]))
   opasSiteMapper_sha1           = sha1(join("", [for f in fileset(path.cwd, "../../app/opasSiteMapper/**") : filesha1(f)]))
+  opasDatabaseArchival_sha1     = sha1(join("", [for f in fileset(path.cwd, "../../app/opasDatabaseArchival/**") : filesha1(f)]))
   fargate_sha1                  = sha1(join("", [for f in fileset(path.cwd, "../../dataUtility/**") : filesha1(f)]))
 }
 

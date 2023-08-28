@@ -10,6 +10,7 @@ resource "null_resource" "build_data_utility_image" {
     opasGoogleMetadataExport_sha1 = local.opasGoogleMetadataExport_sha1
     opasPushSettings_sha1         = local.opasPushSettings_sha1
     opasSiteMapper_sha1           = local.opasSiteMapper_sha1
+    opasDatabaseArchival_sha1     = local.opasDatabaseArchival_sha1
     fargate_sha1                  = local.fargate_sha1
   }
 
