@@ -78,7 +78,7 @@ def main():
     print("Exporting table data")
 
     result = subprocess.run(
-        f"mysqldump -h {localsecrets.DBHOST} -u {localsecrets.DBUSER} -p{localsecrets.DBPW} --port=3306 --set-gtid-purged=OFF --opt --compress opascentral api_session_endpoints --where=\"last_update <= \"2023-08-27\"\" > api_article_endpoints.sql",
+        f"mysqldump -h {localsecrets.DBHOST} -u {localsecrets.DBUSER} -p{localsecrets.DBPW} --port=3306 --set-gtid-purged=OFF --opt --compress opascentral {options.table_name} --where=\"last_update <= \"2023-08-27\"\" > api_article_endpoints.sql",
         shell=True,
     )
 
@@ -118,8 +118,13 @@ if __name__ == "__main__":
                       help="Display status and operational timing info as load progresses.")
     parser.add_option("--nohelp", action="store_true", dest="no_help", default=False,
                       help="Turn off front-matter help")
+    parser.add_option("--table", dest="table_name", default=None,
+                      help="Name of table to export")
 
     (options, args) = parser.parse_args()
+
+    if not options.table_name:
+        parser.error("Table name is required")
     
     if not options.no_help:
         log_everywhere_if(options.display_verbose, "info", help_text)
