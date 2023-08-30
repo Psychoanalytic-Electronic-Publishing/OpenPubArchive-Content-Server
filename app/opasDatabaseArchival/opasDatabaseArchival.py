@@ -80,8 +80,8 @@ def main():
 
     export_filename = f"{options.table_name}-{date_threshold}-{time.time() * 1000}.sql"
 
-    result = subprocess.run(
-        f"mysqldump -h {localsecrets.DBHOST} -u {localsecrets.DBUSER} -p{localsecrets.DBPW} --port=3306 --set-gtid-purged=OFF --opt --compress opascentral {options.table_name} --where=\"last_update <= \"{date_threshold}\"\" > {export_filename}",
+    subprocess.run(
+        f"mysqldump -h {localsecrets.DBHOST} -u {localsecrets.DBUSER} -p{localsecrets.DBPW} --port=3306 --set-gtid-purged=OFF --opt --compress opascentral {options.table_name} --where=\"last_update <= \\\"{date_threshold}\"\\\" > {export_filename}",
         shell=True,
     )
 
@@ -91,11 +91,16 @@ def main():
             for line in f:
                 f1.write(line) 
 
-    print(f"Exported table data to {export_filename}")
+    print(f"Exported table data to {options.destination_bucket}/{export_filename}")
 
 
     print("Cleaning table data")
 
+
+    subprocess.run(
+        f"mysql -h {localsecrets.DBHOST} -u {localsecrets.DBUSER} -p{localsecrets.DBPW} --port=3306  opascentral -e \"delete from {options.table_name} where last_update <= \\\"{date_threshold}\\\"\"",
+        shell=True,
+    )
     
     # ---------------------------------------------------------
     # Closing time
