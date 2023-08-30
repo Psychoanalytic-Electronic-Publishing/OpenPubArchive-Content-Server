@@ -87,7 +87,7 @@ def main():
 
     # Upload export file to S3
     with open(f"./{export_filename}") as f:
-        with s3fs.open(f"pep-stat-updater-archive-staging/{export_filename}", "w") as f1:
+        with s3fs.open(f"{options.destination_bucket}/{export_filename}", "w") as f1:
             for line in f:
                 f1.write(line) 
 
@@ -125,6 +125,8 @@ if __name__ == "__main__":
                       help="Name of table to export")
     parser.add_option("--archivethreshold", dest="archive_threshold_days", default=30,
                       help="Number of days to back from today to archive up to")
+    parser.add_option("--destination", dest="destination_bucket", default="pep-stat-updater-archive-staging",
+        help="Name of bucket to write export to")         
 
     (options, args) = parser.parse_args()
 
