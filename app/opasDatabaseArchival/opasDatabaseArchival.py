@@ -2,7 +2,7 @@ programNameShort = "opasDatabaseArchival"
 
 __copyright__   = "Copyright 2023, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2023.0825.1" 
+__version__     = "2023.0830.1" 
 
 import sys
 if sys.version_info[0] < 3:
@@ -18,23 +18,14 @@ print (f"""\n
 
 help_text = (
     fr""" 
-        - Look for files in the api_articles database that don't exist anymore in the filesystem and remove them
-            from the SQL DB and Solr. This is only necessary if incremental updates have been done but
-            corrections have been made to datafiles that affect their article ID. When that happens,
-            the same data exists in two articles of the database, one with the old, and one with the
-            corrected ID.
+        - Export session data from the given table to a file on S3 and delete the data from the table.
         
         Example Invocation:
-                $ python opasDataCleaner.py
+                $ python opasDatabaseArchival.py
                 
         Important option choices:
          -h, --help         List all help options
-         --nocheck          Don't prompt whether to proceed after showing setting/option choices
-         --nohelp           Turn off front-matter help (that displays when you run)
-         --verbose          Display progress information
          
-        Note:
-          S3 is set up with root=localsecrets.FILESYSTEM_ROOT (default).  The root must be the bucket name.
     """
 )
 
@@ -119,7 +110,7 @@ def main():
 if __name__ == "__main__":
     global options  # so the information can be used in support functions
     options = None
-    parser = OptionParser(usage="%prog [options] - PEP DataCleaner", version=f"%prog ver. {__version__}")
+    parser = OptionParser(usage="%prog [options] - PEP Database Archival", version=f"%prog ver. {__version__}")
     parser.add_option("-l", "--loglevel", dest="logLevel", default=logging.ERROR,
                       help="Level at which events should be logged (DEBUG, INFO, WARNING, ERROR")
     parser.add_option("--verbose", action="store_true", dest="display_verbose", default=False,
