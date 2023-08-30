@@ -51,6 +51,7 @@ from loggingDebugStream import log_everywhere_if
 import logging
 from optparse import OptionParser
 import localsecrets
+import s3fs
 
 #detect data is on *nix or windows system
 if "AWS" in localsecrets.CONFIG or re.search("/", localsecrets.IMAGE_SOURCE_PATH) is not None:
@@ -58,12 +59,10 @@ if "AWS" in localsecrets.CONFIG or re.search("/", localsecrets.IMAGE_SOURCE_PATH
 else:
     path_separator = r"\\"
 
-# Module Globals
-fs_flex = None
+s3fs = s3fs.S3FileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, anon=False)
 
 #------------------------------------------------------------------------------------------------------
 def main():
-    
     global options  # so the information can be used in support functions
 
     logger = logging.getLogger(programNameShort)
@@ -79,21 +78,21 @@ def main():
 
     date_threshold = (datetime.today() - timedelta(days=int(options.archive_threshold_days))).strftime('%Y-%m-%d')
 
-    export_filename = f"{options.table_name}-2023-08-27-{time.time() * 1000}.sql"
+    export_filename = f"{options.table_name}-{date_threshold}-{time.time() * 1000}.sql"
 
     result = subprocess.run(
         f"mysqldump -h {localsecrets.DBHOST} -u {localsecrets.DBUSER} -p{localsecrets.DBPW} --port=3306 --set-gtid-purged=OFF --opt --compress opascentral {options.table_name} --where=\"last_update <= \"{date_threshold}\"\" > {export_filename}",
         shell=True,
     )
 
-    print("Finished exporting table data")
+    # Upload export file to S3
+    with open(f"./{export_filename}") as f:
+        with s3fs.open(f"pep-stat-updater-archive-staging/{export_filename}", "w") as f1:
+            for line in f:
+                f1.write(line) 
 
-    files = [f for f in os.listdir('.') if os.path.isfile(f)]
-    for f in files:
-        print(f)
+    print(f"Exported table data to {export_filename}")
 
-
-    # Upload to bucket
 
     print("Cleaning table data")
 
