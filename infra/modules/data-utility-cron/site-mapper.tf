@@ -17,7 +17,7 @@ resource "aws_cloudwatch_event_target" "weekly_site_map_target" {
       {
         "directory" : "opasSiteMapper",
         "utility" : "opasSiteMapper",
-        "args" : "--recordsperfile=8000 --maxrecords=300000 --bucket pep-web-google --clear",
+        "args" : "--recordsperfile=2500 --maxrecords=300000 --bucket pep-web-google --clear",
         "limitRam" : false
       }
     ]
