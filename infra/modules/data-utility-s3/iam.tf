@@ -13,6 +13,9 @@ locals {
       {
         Action = [
           "states:StartExecution",
+          "states:ListExecutions",
+          "states:DescribeExecution",
+          "states:StopExecution"
         ]
         Effect   = "Allow"
         Resource = "*"
