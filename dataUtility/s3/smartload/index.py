@@ -1,43 +1,18 @@
-import boto3
-import json
-import os
-import uuid
 from urllib.parse import unquote
+from step_function_manager import stop_existing_executions, start_new_execution
 
-sf = boto3.client("stepfunctions")
 
 def handler(event, context):
     for record in event["Records"]:
         key = record["s3"]["object"]["key"]
         key = unquote(key)
 
-        if("(bKBD3)" not in key):
+        if "(bKBD3)" not in key:
             continue
 
         keyParts = key.split("/")
         sub = keyParts[0]
         artId = keyParts[-1].split("(")[0]
 
-        loadPayload = [{
-            "directory": "opasDataLoader",
-            "utility": "opasDataLoader",
-            "args": f"--sub {sub} --key {artId} --smartload --verbose --nocheck",
-        }]
-
-        linkPayload = [{
-            "directory": "opasDataLoader",
-            "utility": "opasDataLinker",
-            "args": f"--key {artId}",
-        }]
-
-        payload = [
-            loadPayload,
-            linkPayload,
-            loadPayload
-        ]
-
-        sf_response = sf.start_execution(
-            stateMachineArn=os.environ["STATE_MACHINE_ARN"],
-            name=str(uuid.uuid4()),
-            input=json.dumps(payload),
-        )
+        stop_existing_executions(sub, artId)
+        start_new_execution(sub, artId)
