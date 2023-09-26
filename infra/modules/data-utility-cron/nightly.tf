@@ -8,14 +8,15 @@ resource "aws_cloudwatch_event_target" "nightly_data_pipeline_target" {
   rule     = aws_cloudwatch_event_rule.nightly_data_pipeline.name
   role_arn = aws_iam_role.allow_cloudwatch_to_execute_role.arn
   arn      = var.state_machine_arn
-  input = jsonencode([
-    [
-      {
-        "directory" : "opasDataLoader",
-        "utility" : "opasDataCleaner",
-        "args" : "--nocheck"
-      }
-    ]
-  ])
+  input = jsonencode({
+    "task" : [
+      [
+        {
+          "directory" : "opasDataLoader",
+          "utility" : "opasDataCleaner",
+          "args" : "--nocheck"
+        }
+      ]
+  ] })
 }
 

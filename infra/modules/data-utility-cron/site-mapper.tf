@@ -12,15 +12,16 @@ resource "aws_cloudwatch_event_target" "weekly_site_map_target" {
   rule     = aws_cloudwatch_event_rule.weekly_site_map[0].name
   role_arn = aws_iam_role.allow_cloudwatch_to_execute_role.arn
   arn      = var.state_machine_arn
-  input = jsonencode([
-    [
-      {
-        "directory" : "opasSiteMapper",
-        "utility" : "opasSiteMapper",
-        "args" : "--recordsperfile=2500 --maxrecords=300000 --bucket pep-web-google --clear",
-        "limitRam" : false
-      }
-    ]
-  ])
+  input = jsonencode({
+    "task" : [
+      [
+        {
+          "directory" : "opasSiteMapper",
+          "utility" : "opasSiteMapper",
+          "args" : "--recordsperfile=2500 --maxrecords=300000 --bucket pep-web-google --clear",
+          "limitRam" : false
+        }
+      ]
+  ] })
 }
 

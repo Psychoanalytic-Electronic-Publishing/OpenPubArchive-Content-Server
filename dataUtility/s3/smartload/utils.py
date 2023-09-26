@@ -11,13 +11,12 @@ def list_all_running_executions(state_machine_arn):
         if next_token:
             list_executions_response = sf.list_executions(
                 stateMachineArn=state_machine_arn,
-                statusFilter='RUNNING',
-                nextToken=next_token
+                statusFilter="RUNNING",
+                nextToken=next_token,
             )
         else:
             list_executions_response = sf.list_executions(
-                stateMachineArn=state_machine_arn,
-                statusFilter='RUNNING'
+                stateMachineArn=state_machine_arn, statusFilter="RUNNING"
             )
 
         executions.extend(list_executions_response["executions"])
@@ -30,14 +29,19 @@ def list_all_running_executions(state_machine_arn):
 
 
 def get_payload(sub, artId):
-    loadPayload = [{
-        "directory": "opasDataLoader",
-        "utility": "opasDataLoader",
-        "args": f"--sub {sub} --key {artId} --smartload --verbose --nocheck",
-    }]
-    linkPayload = [{
-        "directory": "opasDataLoader",
-        "utility": "opasDataLinker",
-        "args": f"--key {artId}",
-    }]
-    return [loadPayload, linkPayload, loadPayload]
+    loadPayload = [
+        {
+            "directory": "opasDataLoader",
+            "utility": "opasDataLoader",
+            "args": f"--sub {sub} --key {artId} --smartload --verbose --nocheck",
+        }
+    ]
+    linkPayload = [
+        {
+            "directory": "opasDataLoader",
+            "utility": "opasDataLinker",
+            "args": f"--key {artId}",
+        }
+    ]
+
+    return {"task": [loadPayload, linkPayload, loadPayload]}

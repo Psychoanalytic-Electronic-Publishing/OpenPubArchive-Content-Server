@@ -12,14 +12,15 @@ resource "aws_cloudwatch_event_target" "weekly_stat_update_target" {
   rule     = aws_cloudwatch_event_rule.weekly_stat_update[0].name
   role_arn = aws_iam_role.allow_cloudwatch_to_execute_role.arn
   arn      = var.state_machine_arn
-  input = jsonencode([
-    [
-      {
-        "directory" : "opasDataUpdateStat",
-        "utility" : "opasDataUpdateStat",
-        "args" : "--everything"
-      }
-    ]
-  ])
+  input = jsonencode({
+    "task" : [
+      [
+        {
+          "directory" : "opasDataUpdateStat",
+          "utility" : "opasDataUpdateStat",
+          "args" : "--everything"
+        }
+      ]
+  ] })
 }
 
