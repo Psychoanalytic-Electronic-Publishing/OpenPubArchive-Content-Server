@@ -2,19 +2,40 @@ locals {
   definition_template = <<EOF
 {
   "Comment": "State machine for orchestrating data utility",
-  "StartAt": "Startup Email",
+  "StartAt": "Should Send Startup Email",
   "States": {
+    "Should Send Startup Email": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "And": [
+            {
+              "Variable": "$.verbose",
+              "IsPresent": true
+            },
+            {
+              "Variable": "$.verbose",
+              "BooleanEquals": true
+            }
+          ],
+          "Next": "Startup Email"
+        }
+      ],
+      "Default": "Batch"
+    },
     "Startup Email": {
       "Type": "Task",
       "Resource": "${module.send_startup_email.lambda_function_arn}",
       "Parameters": {
-        "task.$": "$",
+        "task.$": "$.task",
+        "verbose.$": "$.verbose",
         "executionArn.$": "$$.Execution.Id"
       },
       "Next": "Batch"
     },
     "Batch": {
       "Type": "Map",
+      "ItemsPath": "$.task",
       "ItemProcessor": {
         "ProcessorConfig": {
           "Mode": "INLINE"
@@ -163,8 +184,28 @@ locals {
           }
         }
       },
-      "Next": "Completion Email",
+      "Next": "Should Send Completion Email",
+      "ResultPath": "$.batchResult",
       "MaxConcurrency": 1
+    },
+    "Should Send Completion Email": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "And": [
+            {
+              "Variable": "$.verbose",
+              "IsPresent": true
+            },
+            {
+              "Variable": "$.verbose",
+              "BooleanEquals": true
+            }
+          ],
+          "Next": "Completion Email"
+        }
+      ],
+      "Default": "End"
     },
     "Completion Email": {
       "Type": "Task",
@@ -173,6 +214,9 @@ locals {
       },
       "Resource": "${module.send_completion_email.lambda_function_arn}",
       "End": true
+    },
+    "End": {
+      "Type": "Succeed"
     }
   }
 }
