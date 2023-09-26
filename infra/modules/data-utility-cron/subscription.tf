@@ -8,14 +8,16 @@ resource "aws_cloudwatch_event_target" "generate_subscription_update_target" {
   rule     = aws_cloudwatch_event_rule.generate_subscription_update.name
   role_arn = aws_iam_role.allow_cloudwatch_to_execute_role.arn
   arn      = var.state_machine_arn
-  input = jsonencode([
-    [
-      {
-        "directory" : "opasDataLoader",
-        "utility" : "opasDataLoader",
-        "args" : "--nocheck --nofiles --writeupdates --whatsnewdays=7"
-      }
+  input = jsonencode({
+    "task" : [
+      [
+        {
+          "directory" : "opasDataLoader",
+          "utility" : "opasDataLoader",
+          "args" : "--nocheck --nofiles --writeupdates --whatsnewdays=7"
+        }
+      ]
     ]
-  ])
+  })
 }
 
