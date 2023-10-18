@@ -2,8 +2,8 @@ data "aws_ami" "amazon" {
   most_recent = true
 
   filter {
-    name   = "name"
-    values = ["al2023-ami-2023.1.20230705.0-kernel-6.1-x86_64"]
+    name   = "image-id"
+    values = ["ami-041feb57c611358bd"]
   }
 
   filter {
