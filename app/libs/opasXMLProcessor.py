@@ -684,7 +684,7 @@ def tag_keywords(parsed_xml, artInfo, ocd, pretty_print=False, verbose=False):
     for node in nodes:
         markedup_list = []
         try:
-            keywords = node.text.split(",")
+            keywords = re.split("[,\.;]+", node.text)
         except Exception as e:
             if node.text is None:
                 msg = f"\t...Keyword list may already be marked up with impx. Leaving as is: {ET.tostring(node)}"
