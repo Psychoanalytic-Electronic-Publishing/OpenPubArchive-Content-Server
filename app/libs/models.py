@@ -629,6 +629,8 @@ class JournalInfoListItem(BaseModel):    # Same as SourceInfoListItem minus a fe
     accessClassification: str = Field(None, title="Document classification, e.g., Archive, Current, Free, OffSite")
     pubSourceURL: str = Field(None, title="URL of the original publication if applicable)")
     PEPRelease: str = Field(None, title="Year this was first published in the database")
+    # New fields 2023-10-30
+    publisher: str = Field(None, title="Publisher of this source")
     
 class JournalInfoStruct(BaseModel):
     responseInfo: ResponseInfo
