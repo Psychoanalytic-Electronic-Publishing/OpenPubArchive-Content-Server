@@ -109,6 +109,16 @@ module "s3" {
   stack_name  = var.stack_name
   env         = var.env
   bucket_name = "pep-web-live-data"
+  versioning  = true
+}
+
+module "s3_videos" {
+  source = "../modules/s3"
+
+  stack_name  = var.stack_name
+  env         = var.env
+  bucket_name = "pep-video-originals"
+  versioning  = false
 }
 
 module "data_utility_s3" {

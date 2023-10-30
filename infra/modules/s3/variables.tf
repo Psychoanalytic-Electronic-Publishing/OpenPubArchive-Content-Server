@@ -9,3 +9,8 @@ variable "stack_name" {
 variable "bucket_name" {
   description = "Name of the S3 bucket"
 }
+
+variable "versioning" {
+  description = "Enable versioning for the bucket"
+  default     = false
+}
