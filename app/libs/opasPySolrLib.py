@@ -1596,7 +1596,8 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                     documentListItem.kwicList = []
                     # no kwic list when full-text is requested.
                     kwic_list = []
-                    kwic = ""  # this has to be "" for PEP-Easy, or it hits an object error.                      if text_xml is not None and not solr_query_spec.fullReturn and solr_query_spec.solrQueryOpts.hl == 'true':
+                    kwic = ""  # this has to be "" for PEP-Easy, or it hits an object error.  
+                    if text_xml is not None and not solr_query_spec.fullReturn and solr_query_spec.solrQueryOpts.hl == 'true':
                         #kwicList = getKwicList(textXml, extraContextLen=extraContextLen)  # returning context matches as a list, making it easier for clients to work with
                         kwic_list = []
                         for n in text_xml:
@@ -1663,7 +1664,11 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                                                                                 page_limit=solr_query_spec.page_limit,
                                                                                 documentListItem=documentListItem,
                                                                                 fulltext_children_only=True)
-                    
+
+                    file_classification = result.get("file_classification", None)
+                    if file_classification == "preview":
+                        documentListItem.document = opasxmllib.xml_remove_tags_from_xmlstr(documentListItem.document,['redacted'])
+
                     stat = {}
                     count_all = result.get("art_cited_all", None)
                     if count_all is not None:
