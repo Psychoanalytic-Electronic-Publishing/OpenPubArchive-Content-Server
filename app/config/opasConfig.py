@@ -227,7 +227,8 @@ DOCUMENT_ACCESS_ARCHIVE = "archive"
 DOCUMENT_ACCESS_UNDEFINED = "undefined"
 DOCUMENT_ACCESS_OFFSITE = "offsite"
 DOCUMENT_ACCESS_SPECIAL = "special"
-DOCUMENT_ACCESS_TOC = "toc"              # special handling tocs (free)
+DOCUMENT_ACCESS_TOC = "toc"          
+DOCUMENT_ACCESS_PREVIEW = "preview"
 # Let this be the default, e.g., when there's no data, like for paras
 DOCUMENT_ACCESS_DEFAULT = DOCUMENT_ACCESS_ARCHIVE
 
