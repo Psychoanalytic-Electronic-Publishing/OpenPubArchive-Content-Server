@@ -1081,7 +1081,7 @@ def main():
                         artInfo.art_qual = None
                     
                 try:
-                    artInfo.file_classification = re.search("(?P<class>current|archive|future|free|special|offsite)", str(n.filespec), re.IGNORECASE).group("class")
+                    artInfo.file_classification = re.search("(?P<class>current|archive|future|free|special|offsite|preview)", str(n.filespec), re.IGNORECASE).group("class")
                     # set it to lowercase for ease of matching later
                     if artInfo.file_classification is not None:
                         artInfo.file_classification = artInfo.file_classification.lower()
