@@ -964,7 +964,15 @@ class ArticleInfo(BaseModel):
         self.src_is_book = False
         
         # Just init these.  Creator will set based on filename
-        self.file_classification = None
+        
+        try:
+            self.file_classification = re.search("(?P<class>current|archive|future|free|special|offsite|preview)", str(fullfilename), re.IGNORECASE).group("class")
+                    # set it to lowercase for ease of matching later
+            if self.file_classification  is not None:
+                self.file_classification = self.file_classification.lower()
+        except Exception as e:
+            logger.warning("Could not determine file classification for %s (%s)" % (fullfilename, e))
+            
         self.file_size = 0  
         self.filedatetime = ""
         self.filename = filename_base # filename without path
