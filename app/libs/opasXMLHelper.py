@@ -146,6 +146,22 @@ def xml_remove_tags(root, remove_tags=[]):
         ret_val = False
         
     return ret_val
+
+def xml_remove_children_from_xmllstr(xmlstr, remove_tags=[]):
+    ret_val = xmlstr
+    try:
+        root = etree.fromstring(xmlstr.encode())
+        for tag_to_remove in remove_tags:
+            elements = root.findall(f".//{tag_to_remove}")
+            for element in elements:
+                for child in list(element):
+                    element.remove(child)
+        ret_val = etree.tostring(root)
+        ret_val = ret_val.decode("UTF8")
+    except Exception as e:
+        logger.error(f"XMLError: Could not remove tags {remove_tags}. Exception {e}")
+    
+    return ret_val
     
 # -------------------------------------------------------------------------------------------------------
 class FirstPageCollector:
