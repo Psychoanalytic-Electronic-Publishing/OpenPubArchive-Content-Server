@@ -1667,7 +1667,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
 
                     file_classification = result.get("file_classification", None)
                     if file_classification == "preview":
-                        documentListItem.document = opasxmllib.xml_remove_tags_from_xmlstr(documentListItem.document,['redacted'])
+                        documentListItem.document = opasxmllib.xml_remove_children_from_xmllstr(documentListItem.document,['redacted'])
 
                     stat = {}
                     count_all = result.get("art_cited_all", None)
