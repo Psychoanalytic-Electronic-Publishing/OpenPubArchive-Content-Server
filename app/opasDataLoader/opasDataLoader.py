@@ -1079,14 +1079,6 @@ def main():
                         msg = f"\t...Article art_qual indicates related articles ({artInfo.art_qual} but none found. Setting to None.)"
                         log_everywhere_if(options.display_verbose, level="info", msg=msg)
                         artInfo.art_qual = None
-                    
-                try:
-                    artInfo.file_classification = re.search("(?P<class>current|archive|future|free|special|offsite|preview)", str(n.filespec), re.IGNORECASE).group("class")
-                    # set it to lowercase for ease of matching later
-                    if artInfo.file_classification is not None:
-                        artInfo.file_classification = artInfo.file_classification.lower()
-                except Exception as e:
-                    logger.warning("Could not determine file classification for %s (%s)" % (n.filespec, e))
                 
                 msg = f"\t...Loading precompiled XML file {final_fileinfo.basename} ({final_fileinfo.filesize} bytes) Access: {artInfo.file_classification }"
                 log_everywhere_if(options.display_verbose , level="info", msg=msg)
