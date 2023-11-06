@@ -973,11 +973,6 @@ def xml_update(parsed_xml,
         GWPageConcordance = opasXMLPageConcordance.PageConcordance()
         GWPageConcordance.insert_page_translations(parsed_xml, artInfo.art_id)
 
-    if artInfo.file_classification == "preview":
-        # add preview purchase notice with DOI link
-        preview = ET.Element("purchase", doi=artInfo.art_doi)
-        parsed_xml.find(".//body").insert(0, preview)
-
     
     ret_val = parsed_xml
 
