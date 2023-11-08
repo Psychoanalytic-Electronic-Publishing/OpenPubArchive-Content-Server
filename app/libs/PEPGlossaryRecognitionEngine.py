@@ -27,6 +27,8 @@ import opasConfig
 
 # no glossary link/markup if under these ancestoral tags
 default_ancestor_list = r"\b(abbr|abs|artinfo|artkwds|bkpubandloc|be|h[1-9]|cgrp|figx|frac|impx|ln|pgx|url|tbl|table|a|bx|bxe|webx)\b"
+skip_ancestor_regex = re.compile(default_ancestor_list)
+
 ocd = opasCentralDBLib.opasCentralDB()
 
 gDbg1 = 0 # general info
@@ -174,7 +176,7 @@ class GlossaryRecognitionEngine(UserDict):
         return retVal
 
     #--------------------------------------------------------------------------------
-    def doGlossaryMarkup(self, parsed_xml, skipIfHasAncestorRegx=default_ancestor_list, preface=None,
+    def doGlossaryMarkup(self, parsed_xml, skipIfHasAncestorRegx=skip_ancestor_regex, preface=None,
                          theGroupName=None, pretty_print=False, markup_terms=True, verbose=False):
         """
         Markup any glossary entries in paragraphs (only).
@@ -221,7 +223,7 @@ class GlossaryRecognitionEngine(UserDict):
             #para_working = para
             # skip if has skipped ancestor:
             # ancestors = opasxmllib.xml_node_list_ancestor_names(para_working)
-            ancestor_match = opasxmllib.xml_node_regx_ancestors(para_working, regx=skipIfHasAncestorRegx)
+            ancestor_match = opasxmllib.xml_node_regx_ancestors(para_working, skipIfHasAncestorRegx)
             if ancestor_match:
                 if self.diagnostics: print (f"\t\t...Skipped para {para_count} (due to ancestor)")
                 continue
@@ -309,7 +311,7 @@ class GlossaryRecognitionEngine(UserDict):
     def getGlossaryLists(self,
                          parsed_xml,
                          art_id=None, 
-                         skipIfHasAncestorRegx=default_ancestor_list,
+                         skipIfHasAncestorRegx=skip_ancestor_regex,
                          verbose=True):
         """
         Get glossary term lists from document without marking any up.
@@ -379,7 +381,6 @@ class GlossaryRecognitionEngine(UserDict):
                             
                     except Exception as e:
                         print (e)
-            
             ret_val = dict(sorted(found_term_dict.items(), key=lambda item: item[1], reverse=True))
             # add to artstat
             #update_rec = f"UPDATE artstat SET glossaryDict={ret_val} WHERE articleID={art_id}"
