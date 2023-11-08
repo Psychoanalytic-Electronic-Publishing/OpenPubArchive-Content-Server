@@ -941,7 +941,7 @@ def get_access_limitations(doc_id,
                     except Exception as e:
                         logger.error(f"{caller_name}: PEPCurrent document permission: {e}")
 
-            elif classification in (opasConfig.DOCUMENT_ACCESS_ARCHIVE):
+            elif classification in (opasConfig.DOCUMENT_ACCESS_ARCHIVE) or classification in (opasConfig.DOCUMENT_ACCESS_PREVIEW):
                 ret_val.accessLimitedDescription = msgdb.get_user_message(msg_code=opasConfig.ACCESS_CLASS_DESCRIPTION_ARCHIVE)
                 # if they end up without access, default reason.
                 ret_val.accessLimitedReason = msgdb.get_user_message(msg_code=opasConfig.ACCESS_LIMITED_REASON_NOK_ARCHIVE_CONTENT) #  Maybe we should redirect in this case? + " " + publisher_access # limited...get it elsewhere
