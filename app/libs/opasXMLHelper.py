@@ -1298,14 +1298,14 @@ def xml_node_list_ancestor_names(element_node, ancestor_tag="*"):
        
     return ret_val
 
-def xml_node_regx_ancestors(element_node, ancestor_tag="*", regx=".*"):
+def xml_node_regx_ancestors(element_node, pattern, ancestor_tag="*",):
     """
     Return True if an ancestor matches against the regx 
     """
     ret_val = False
     lst = [n.tag for n in element_node.iterancestors(ancestor_tag)]
     for n in lst:
-        ret_val = re.match(regx, n)
+        ret_val = pattern.match(n)
         if ret_val is not None:
             ret_val = True
             break
