@@ -700,6 +700,8 @@ class ArticleID(BaseModel):
     
 #------------------------------------------------------------------------------------------------------
     
+
+classification_regex = re.compile("(?P<class>current|archive|future|free|special|offsite|preview)", re.IGNORECASE)
 class ArticleInfo(BaseModel):
     """
     An entry from a documents metadata.
@@ -1495,6 +1497,14 @@ class ArticleInfo(BaseModel):
     
         if self.verbose and self.art_issue_title is not None:
             print (f"\t...Issue title: {self.art_issue_title}")
+    
+    # Defining file_classification in the constructor introduces too much overhead for search
+    def set_file_classification(self):
+        try:
+            match = classification_regex.search(str(self.fullfilename))
+            self.file_classification = match.group("class").lower()
+        except Exception as e:
+            logger.warning("Could not determine file classification for %s (%s)" % (self.fullfilename, e))
             
 
     
