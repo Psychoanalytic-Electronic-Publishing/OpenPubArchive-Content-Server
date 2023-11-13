@@ -343,7 +343,7 @@ class GlossaryRecognitionEngine(UserDict):
             allParas = parsed_xml.xpath(".//p|.//p2")  # get all paragraphs
             found_term_dict = {}
             for para_working in allParas:
-                ancestor_match = opasxmllib.xml_node_regx_ancestors(para_working, regx=skipIfHasAncestorRegx)
+                ancestor_match = opasxmllib.xml_node_regx_ancestors(para_working, skipIfHasAncestorRegx)
                 if ancestor_match:
                     if self.diagnostics: print (f"\t\t...Skipped para {para_count} (due to ancestor)")
                     continue
