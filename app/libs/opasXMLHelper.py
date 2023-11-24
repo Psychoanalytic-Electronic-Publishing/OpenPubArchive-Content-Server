@@ -162,7 +162,36 @@ def xml_remove_children_from_xmllstr(xmlstr, remove_tags=[]):
         logger.error(f"XMLError: Could not remove tags {remove_tags}. Exception {e}")
     
     return ret_val
-    
+
+def xml_process_redacted(xmlstr):
+    ret_val = xmlstr
+    try:
+        root = etree.fromstring(xmlstr.encode())
+
+        # Process each redacted element
+        redacted_elements = root.findall(".//redacted")
+        for redacted in redacted_elements:
+            # Find all pb elements within this redacted element
+            pb_elements = redacted.findall(".//pb")
+
+            # Extract text from each pb element and concatenate
+            page_numbers = [pb.findtext('.//n') for pb in pb_elements]
+            pages = ','.join(filter(None, page_numbers))
+
+            # Set the concatenated string as the pages attribute
+            redacted.set("pages", pages.lower())
+
+            # Remove all children of redacted elements
+            for child in list(redacted):
+                redacted.remove(child)
+
+        ret_val = etree.tostring(root)
+        ret_val = ret_val.decode("UTF8")
+    except Exception as e:
+        logger.error(f"XMLError: Could not process redacted tags. Exception {e}")
+
+    return ret_val
+
 # -------------------------------------------------------------------------------------------------------
 class FirstPageCollector:
     def __init__(self, skip_tags=["impx", "tab"], para_limit=opasConfig.MAX_EXCERPT_PARAS, char_limit=opasConfig.MAX_EXCERPT_CHARS, char_min=opasConfig.MIN_EXCERPT_CHARS):
