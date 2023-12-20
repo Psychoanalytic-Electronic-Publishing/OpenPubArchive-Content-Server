@@ -48,7 +48,7 @@ resource "aws_db_proxy_default_target_group" "proxy_group" {
 resource "aws_db_proxy_target" "proxy_target" {
   depends_on = [aws_db_proxy_default_target_group.proxy_group]
 
-  db_instance_identifier = aws_db_instance.mysql.id
+  db_instance_identifier = aws_db_instance.mysql.identifier
   db_proxy_name          = aws_db_proxy.rds.name
   target_group_name      = aws_db_proxy_default_target_group.proxy_group.name
 }
