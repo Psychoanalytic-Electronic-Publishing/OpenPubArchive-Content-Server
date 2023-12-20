@@ -15,7 +15,7 @@ locals {
     host                 = aws_db_instance.mysql.address
     port                 = aws_db_instance.mysql.port
     dbname               = aws_db_instance.mysql.db_name
-    dbInstanceIdentifier = aws_db_instance.mysql.id
+    dbInstanceIdentifier = aws_db_instance.mysql.identifier
   }
 }
 
