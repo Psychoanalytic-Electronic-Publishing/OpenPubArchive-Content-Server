@@ -1025,6 +1025,13 @@ class PEPBookInfo:
                             None
                             ),
 
+        "NLP.010.0000A": (  30,
+                            "Heimann|Tonnesmann", #"King, P. and Steiner, R.",
+                            f"About Children {patAnd} Children{patDash}No{patDash}Longer",
+                            "(1989)",
+                            None
+                            ),
+
         "NLP.011.0000A": (  30,
                             kingP+"|Steiner|Glover|Freud|Hoffer", #"King, P. and Steiner, R.",
                             patThe+"Freud"+patDashSlash+"Klein  Controversies("+patSubSep+" 1941"+dashSep+"(19)?45)?",
