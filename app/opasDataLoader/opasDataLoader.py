@@ -571,7 +571,7 @@ def main():
                 input_build_pattern, selected_input_build = get_defaults(options,
                                                                          default_build_pattern=loaderConfig.DEFAULT_PRECOMPILED_INPUT_BUILD_PATTERN,
                                                                          default_build=opasConfig.DEFAULT_OUTPUT_BUILD)
-                print(f"Precompiled XML of build {selected_input_build} will be loaded to the databases if newer than Solr, without examining source and compiling.")
+                print(f"Precompiled XML of build {selected_input_build} will be loaded to the databases if newer than Solr, without examining source and compiling")
                 pre_action_verb = "Load"
                 post_action_verb = "Loaded"
                 
