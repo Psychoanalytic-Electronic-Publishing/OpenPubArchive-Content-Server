@@ -31,10 +31,7 @@ COPY ./app/opasDatabaseArchival/ ${ROOT_DIRECTORY}/opasDatabaseArchival/
 RUN mkdir -p ${ROOT_DIRECTORY}/opasDataLoader/data_update_logs
 
 RUN apt-get update && apt-get install -y lsb-release inetutils-tools
-RUN wget https://dev.mysql.com/get/mysql-apt-config_0.8.24-1_all.deb
-RUN DEBIAN_FRONTEND=noninteractive dpkg -i mysql-apt-config_0.8.24-1_all.deb
-RUN apt-get update
-RUN apt install -y mysql-client
+RUN apt-get install -y default-mysql-client
 
 # Copy runner
 COPY ./dataUtility/runner.sh ${ROOT_DIRECTORY}/runner.sh
