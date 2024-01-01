@@ -1242,7 +1242,7 @@ def main():
                     filedata +=  "\t\t</articles>\n\t</issue>"
                 filedata +=  '\n</issue_updates>'
     
-                success = fs.create_text_file(fname, data=filedata, delete_existing=True)            
+                success = fs.create_text_file(fname, data=filedata, delete_existing=True, path_is_root_bucket=True)            
     
                 if count_records > 0 and success:
                     msg = f"{count_records} issue updates written to whatsnew log file."
@@ -1272,7 +1272,7 @@ def main():
             # write database_updated.txt
             try:
                 fname = f"{localsecrets.DATA_UPDATE_LOG_DIR}/database_updated.txt"
-                success = fs.create_text_file(fname, data='data loaded!\n', delete_existing=False)
+                success = fs.create_text_file(fname, data='data loaded!\n', delete_existing=False, path_is_root_bucket=True)
                 msg = f"Database was updated with {files_found - skipped_files} articles! Wrote {fname} in order to flag changes."
                 if success:
                     if 1: # options.display_verbose:
