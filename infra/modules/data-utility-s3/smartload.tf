@@ -6,6 +6,7 @@ module "smartload" {
   source_path             = "../../dataUtility/s3/smartload"
   handler                 = "index.handler"
   runtime                 = "python3.8"
+  timeout                 = 10
   ignore_source_code_hash = true
 
   environment_variables = {
