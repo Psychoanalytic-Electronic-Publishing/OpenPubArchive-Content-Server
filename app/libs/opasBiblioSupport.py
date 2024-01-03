@@ -870,8 +870,6 @@ class BiblioEntry(models.Biblioxml):
         
         """
 
-        ref_sourcetitle = ""
-        ref_title = ""
         title_distance = "~1"
         min_words = 3
         query = "art_id:*"
@@ -880,28 +878,20 @@ class BiblioEntry(models.Biblioxml):
             #source_title = self.ref_sourcetitle
             #query += f" AND art_sourcetitlefull:({self.ref_sourcetitle})"
             
-        if self.ref_title:
-            ref_title = opasgenlib.remove_these_chars(self.ref_title, SOLR_RESTRICTED_PUNCT)
-            query = f"art_title:{ref_title}{title_distance} OR art_sourcetitlefull:{ref_title}{title_distance}"
-            art_or_source_title = ref_title
-            words = len(ref_title.split(" "))
-            skip = False
-        elif self.ref_sourcetitle:
-            ref_sourcetitle = opasgenlib.remove_these_chars(self.ref_sourcetitle, SOLR_RESTRICTED_PUNCT)
-            if self.ref_is_book:
-                ref_title = ref_sourcetitle
-            query = f"art_title:{ref_sourcetitle}{title_distance} OR art_sourcetitlefull:{ref_sourcetitle}{title_distance}"
-            art_or_source_title = ref_sourcetitle
-            words = len(ref_sourcetitle.split(" "))
+        title = self.ref_title or self.ref_sourcetitle
+
+        if title:
+            query = f"art_title:\"{title}\"{title_distance} OR art_sourcetitlefull:\"{title}\"{title_distance}"
+            words = len(title.split(" "))
             skip = False
         else:
             words = ""
-            if verbose: print (f"\tNo title or source title ({self.ref_xml}")
+            if verbose: 
+                print(f"\tNo title or source title ({self.ref_xml})")
             skip = True
         
         if words <= min_words:
             skip = True
-            
         if not skip:
             title_list = []
             result, return_status = opasPySolrLib.search_text(query=query,
@@ -928,8 +918,7 @@ class BiblioEntry(models.Biblioxml):
                                                              item_isbook=locator.isBook()
                                                              )
                             considered["rx"] = item.documentID
-                            considered["source_title"] =  art_or_source_title
-                            
+                            considered["source_title"] =  title
                             if weighted_score >= minrxcf_wtd_similarity:
                                 title_list.append(considered)
                         
