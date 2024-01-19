@@ -958,6 +958,14 @@ class WhatsNewListItem(BaseModel):
     updated: str = Field(None, title="")
     volumeURL: str = Field(None, title="")
 
+class BiblioListItem(BaseModel):
+    art_id: str = Field(None, title="")
+    ref_local_id: str = Field(None, title="")
+    ref_rx: str = Field(None, title="")
+    ref_rxcf: str = Field(None, title="")
+
+BiblioList = List[BiblioListItem]
+
 class WhatsNewListStruct(BaseModel):
     responseInfo: ResponseInfo
     responseSet: List[WhatsNewListItem] = []   
