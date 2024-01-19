@@ -3796,7 +3796,27 @@ async def database_biblio(response: Response,
                     client_session:str= Depends(get_client_session)
                     ):
     """
-    ...description
+    ## Function
+    ### Return a bibliographic reference links for a specified document.
+
+    This endpoint retrieves the document IDs for each bibliographic reference associated with a specific document,
+    identified by its document ID.
+
+    ## Return Type
+    models.BiblioList
+
+    ## Status
+    This endpoint is working.
+
+    ## Sample Call
+        /v2/Database/Biblio/IJP.077.0217A/
+
+    ## Notes
+    The document ID should be a valid identifier in the database.
+
+    ## Potential Errors
+    Errors may include database access issues, or unexpected
+    server errors.
     """
 
     caller_name = "[v2/Database/Biblio]"
