@@ -3788,6 +3788,54 @@ def database_who_cited_this(response: Response,
     return ret_val
 
 #---------------------------------------------------------------------------------------------------------
+@app.get("/v2/Database/Biblio/{documentID}/", response_model=models.BiblioList, response_model_exclude_unset=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_WHO_CITED)
+async def database_biblio(response: Response, 
+                    request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
+                    documentID: str=Path(..., title=opasConfig.TITLE_DOCUMENT_ID, description=opasConfig.DESCRIPTION_DOCIDORPARTIAL),
+                    client_id:int=Depends(get_client_id), 
+                    client_session:str= Depends(get_client_session)
+                    ):
+    """
+    ...description
+    """
+
+    caller_name = "[v2/Database/Biblio]"
+    if opasConfig.DEBUG_TRACE:
+        print(f"{datetime.now().time().isoformat()}: {caller_name} {client_session}: ")
+
+    ts = time.time()
+    status_message = None
+    status_code = None
+    
+    opasDocPermissions.verify_header(request, caller_name) # for debugging client call    
+    log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
+
+    ocd, session_info = opasDocPermissions.get_session_info(request, response, session_id=client_session, client_id=client_id, caller_name=caller_name)
+
+    try:
+        ret_val = ocd.do_fetch_records("SELECT * FROM api_biblioxml2 where art_id = %(documentId)s;", {"documentId": documentID})
+        status_message = opasCentralDBLib.API_STATUS_SUCCESS
+        status_code = httpCodes.HTTP_200_OK
+    except Exception as e:
+        status_message = "An unexpected error occurred"
+        status_code = 500
+        raise HTTPException(
+            status_code=status_code, 
+            detail=f"{status_message}: {e}"
+        )
+    finally:
+        ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DATABASE_BIBLIO,
+                                    session_info=session_info, 
+                                    params=request.url._url,
+                                    item_of_interest=documentID, 
+                                    return_status_code=status_code,
+                                    status_message=status_message
+                                    )
+
+    log_endpoint_time(request, ts=ts, level="debug")
+    return ret_val
+
+#---------------------------------------------------------------------------------------------------------
 @app.get("/v2/Database/WhatsNew/", response_model=models.WhatsNewList, response_model_exclude_unset=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_WHATS_NEW)
 def database_whatsnew(response: Response,
                       request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
