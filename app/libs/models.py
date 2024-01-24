@@ -959,7 +959,7 @@ class WhatsNewListItem(BaseModel):
     volumeURL: str = Field(None, title="")
 
 class BiblioListItem(BaseModel):
-    art_id: str = Field(None, title="")
+    ref_text: str = Field(None, title="")
     ref_local_id: str = Field(None, title="")
     ref_rx: str = Field(None, title="")
     ref_rxcf: str = Field(None, title="")
