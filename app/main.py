@@ -3792,6 +3792,7 @@ def database_who_cited_this(response: Response,
 async def database_biblio(response: Response, 
                     request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
                     documentID: str=Path(..., title=opasConfig.TITLE_DOCUMENT_ID, description=opasConfig.DESCRIPTION_DOCIDORPARTIAL),
+                    documentYear: int=Query(None, title="Document year", description="Year of document publication"),
                     client_id:int=Depends(get_client_id), 
                     client_session:str= Depends(get_client_session)
                     ):
@@ -3831,7 +3832,7 @@ async def database_biblio(response: Response,
     log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
 
     permit, check_val = opasDocPermissions.authserver_permission_check(
-        client_session, documentID, 2000
+        client_session, documentID, documentYear
     )
 
     if not permit:
