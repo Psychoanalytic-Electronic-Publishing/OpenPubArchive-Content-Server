@@ -3830,6 +3830,16 @@ async def database_biblio(response: Response,
     opasDocPermissions.verify_header(request, caller_name) # for debugging client call    
     log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
 
+    permit, check_val = opasDocPermissions.authserver_permission_check(
+        client_session, documentID, 2000
+    )
+
+    if not permit:
+        raise HTTPException(
+            status_code=check_val.StatusCode or 500,
+            detail=check_val.ReasonStr
+        )
+
     ocd, session_info = opasDocPermissions.get_session_info(request, response, session_id=client_session, client_id=client_id, caller_name=caller_name)
 
     try:
