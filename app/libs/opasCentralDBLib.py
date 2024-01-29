@@ -137,6 +137,7 @@ API_DATABASE_OPENURL = 52	                 # /Database/OpenURL/
 API_DATABASE_WHOCITEDTHIS = 53               # /Database/WhoCitedThis/
 API_DATABASE_MORELIKETHIS = 54               # /Database/MoreLikeThis/
 API_DATABASE_RELATEDTOTHIS = 55              # /Database/RelatedDocuments/
+API_DATABASE_BIBLIO = 56                     # /Database/Biblio/
 
 def date_to_db_date(std_date):
     ret_val = None

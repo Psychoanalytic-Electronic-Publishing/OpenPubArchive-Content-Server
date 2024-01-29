@@ -3788,6 +3788,85 @@ def database_who_cited_this(response: Response,
     return ret_val
 
 #---------------------------------------------------------------------------------------------------------
+@app.get("/v2/Database/Biblio/{documentID}/", response_model=models.BiblioList, response_model_exclude_unset=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_WHO_CITED)
+async def database_biblio(response: Response, 
+                    request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
+                    documentID: str=Path(..., title=opasConfig.TITLE_DOCUMENT_ID, description=opasConfig.DESCRIPTION_DOCIDORPARTIAL),
+                    documentYear: int=Query(None, title="Document year", description="Year of document publication"),
+                    client_id:int=Depends(get_client_id), 
+                    client_session:str= Depends(get_client_session)
+                    ):
+    """
+    ## Function
+    ### Return a bibliographic reference links for a specified document.
+
+    This endpoint retrieves the document IDs for each bibliographic reference associated with a specific document,
+    identified by its document ID.
+
+    ## Return Type
+    models.BiblioList
+
+    ## Status
+    This endpoint is working.
+
+    ## Sample Call
+        /v2/Database/Biblio/IJP.077.0217A/
+
+    ## Notes
+    The document ID should be a valid identifier in the database.
+
+    ## Potential Errors
+    Errors may include database access issues, or unexpected
+    server errors.
+    """
+
+    caller_name = "[v2/Database/Biblio]"
+    if opasConfig.DEBUG_TRACE:
+        print(f"{datetime.now().time().isoformat()}: {caller_name} {client_session}: ")
+
+    ts = time.time()
+    status_message = None
+    status_code = None
+    
+    opasDocPermissions.verify_header(request, caller_name) # for debugging client call    
+    log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
+
+    permit, check_val = opasDocPermissions.authserver_permission_check(
+        client_session, documentID, documentYear
+    )
+
+    if not permit:
+        raise HTTPException(
+            status_code=check_val.StatusCode or 500,
+            detail=check_val.ReasonStr
+        )
+
+    ocd, session_info = opasDocPermissions.get_session_info(request, response, session_id=client_session, client_id=client_id, caller_name=caller_name)
+
+    try:
+        ret_val = ocd.do_fetch_records("SELECT * FROM api_biblioxml2 where art_id = %(documentId)s;", {"documentId": documentID})
+        status_message = opasCentralDBLib.API_STATUS_SUCCESS
+        status_code = httpCodes.HTTP_200_OK
+    except Exception as e:
+        status_message = "An unexpected error occurred"
+        status_code = 500
+        raise HTTPException(
+            status_code=status_code, 
+            detail=f"{status_message}: {e}"
+        )
+    finally:
+        ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DATABASE_BIBLIO,
+                                    session_info=session_info, 
+                                    params=request.url._url,
+                                    item_of_interest=documentID, 
+                                    return_status_code=status_code,
+                                    status_message=status_message
+                                    )
+
+    log_endpoint_time(request, ts=ts, level="debug")
+    return ret_val
+
+#---------------------------------------------------------------------------------------------------------
 @app.get("/v2/Database/WhatsNew/", response_model=models.WhatsNewList, response_model_exclude_unset=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_WHATS_NEW)
 def database_whatsnew(response: Response,
                       request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
