@@ -3,7 +3,7 @@ resource "aws_cloudwatch_event_rule" "weekly_data_linker" {
 
   name                = "${var.stack_name}-weekly-data-linker-${var.env}"
   description         = "Run ${var.env} state machine every thursday at 03:00 UTC"
-  schedule_expression = "cron(0 3 ? * 5 *)"
+  schedule_expression = "cron(0 3 ? * 4 *)"
 }
 
 resource "aws_cloudwatch_event_target" "weekly_data_linker_target" {
