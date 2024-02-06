@@ -77,8 +77,12 @@ import opasConfig
 # import opasGenSupportLib as opasgenlib
 import opasBiblioSupport
 import opasCentralDBLib
+import localsecrets
 import PEPBookInfo
 known_books = PEPBookInfo.PEPBookInfo()
+
+import csv
+import boto3
 
 # import opasPySolrLib
 # from opasLocator import Locator
@@ -98,6 +102,25 @@ ocd = opasCentralDBLib.opasCentralDB()
 # import lxml.etree as ET
 # import lxml
 sqlSelect = ""
+
+sns_client = boto3.client('sns', aws_access_key_id=localsecrets.S3_KEY, aws_secret_access_key=localsecrets.S3_SECRET)
+s3_client = boto3.client('s3', aws_access_key_id=localsecrets.S3_KEY, aws_secret_access_key=localsecrets.S3_SECRET)
+
+
+def upload_csv_to_s3(csv_file_path, bucket_name, object_name):
+    """Upload CSV file to S3 and return the object URL."""
+    s3_client.upload_file(csv_file_path, bucket_name, object_name)
+    object_url = f"https://{bucket_name}.s3.amazonaws.com/{object_name}"
+    return object_url
+
+def send_sns_notification(sns_topic_arn, message):
+    """Send an SNS notification."""
+    response = sns_client.publish(
+        TopicArn=sns_topic_arn,
+        Message=message
+    )
+    return response
+
 
 def walk_through_reference_set(ocd=ocd,
                                sql_set_select = "select * from api_biblioxml2 where art_id='CPS.031.0617A' and ref_local_id='B022'",
@@ -196,19 +219,35 @@ def walk_through_reference_set(ocd=ocd,
 
             if bib_entry.link_updated or bib_entry.record_updated or options.forceupdate:
                 updated_record_count += 1
-                success = ocd.save_ref_to_biblioxml_table(bib_entry, bib_entry_was_from_db=True)
-                if success:
-                    if bib_entry.link_updated or options.forceupdate:
-                        log_everywhere_if(verbose, "info", f"\t...Link updated.  Updating DB: rx:{bib_entry.ref_rx} rxcf:{bib_entry.ref_rxcf} source: ({bib_entry.ref_link_source})")
-                    else:
-                        log_everywhere_if(verbose, "info", f"\t...Record updated. Updating DB.")
-                    # save, and don't reread database bib_entry values first!
-                    log_everywhere_if(verbose, "info", f"\t...Time: {time.time() - reference_time_start:.4f} seconds.")
+                if options.dryrun:  # Check if dry run mode is enabled
+                    # Open the CSV file to append the intended change
+                    with open('dry_run_changes.csv', mode='a', newline='', encoding='utf-8') as file:
+                        writer = csv.writer(file)
+                        # Write headers if the file is new
+                        if file.tell() == 0:
+                            writer.writerow(['Action', 'Table', 'Article ID', 'Local ID', 'RX', 'RXCF', 'Source', 'Time'])
+                        # Prepare the data to write
+                        action = 'Update' if (bib_entry.link_updated or options.forceupdate) else 'Record Updated'
+                        data_row = [action, 'api_biblioxml2', bib_entry.art_id, bib_entry.ref_local_id, bib_entry.ref_rx, bib_entry.ref_rxcf, bib_entry.ref_link_source, f"{time.time() - reference_time_start:.4f} seconds"]
+                        # Write the intended change to the CSV
+                        writer.writerow(data_row)
+                        log_everywhere_if(verbose, "info", f"\t...Dry run: Intended database update written to CSV: {data_row}")
                 else:
-                    log_everywhere_if(verbose, "error", f"\t...Error saving record.")
-            #else:
-                #log_everywhere_if(verbose, "info", f"\t...No change.  Reference ID: {bib_entry.ref_rx} Confidence {bib_entry.ref_rx_confidence} Link Updated: {bib_entry.link_updated} Record Updated: {bib_entry.record_updated}")
-                
+                    # Proceed with actual database update
+                    success = ocd.save_ref_to_biblioxml_table(bib_entry, bib_entry_was_from_db=True)
+                    if success:
+                        if bib_entry.link_updated or options.forceupdate:
+                            log_everywhere_if(verbose, "info", f"\t...Link updated.  Updating DB: rx:{bib_entry.ref_rx} rxcf:{bib_entry.ref_rxcf} source: ({bib_entry.ref_link_source})")
+                        else:
+                            log_everywhere_if(verbose, "info", f"\t...Record updated. Updating DB.")
+                        log_everywhere_if(verbose, "info", f"\t...Time: {time.time() - reference_time_start:.4f} seconds.")
+                    else:
+                        log_everywhere_if(verbose, "error", f"\t...Error saving record.")
+
+    if options.dryrun and updated_record_count > 0:
+        object_url = upload_csv_to_s3("dry_run_changes.csv", "pep-web-live-data-staging", "dry_run_changes.csv")
+        message = f"Your CSV file is available in the S3 bucket: {object_url}"
+        send_sns_notification("arn:aws:sns:us-east-1:547758924192:opas-status-updates-staging", message)
                 
     ocd.close_connection(caller_name=fname) # make sure connection is closed
     timeEnd = time.time()
@@ -355,6 +394,9 @@ if __name__ == "__main__":
 
     parser.add_option("--verbose", action="store_true", dest="display_verbose", default=True,
                       help="Display status and operational timing info as load progresses.")
+
+    parser.add_option("--dryrun", action="store_true", dest="dryrun", default=False,
+                      help="Output what would be done, but don't do it")
 
     import optparse
     parser.formatter = optparse.IndentedHelpFormatter()
