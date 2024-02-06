@@ -221,7 +221,8 @@ def walk_through_reference_set(ocd=ocd,
                 updated_record_count += 1
                 if options.dryrun:  # Check if dry run mode is enabled
                     # Open the CSV file to append the intended change
-                    with open('dry_run_changes.csv', mode='a', newline='', encoding='utf-8') as file:
+                    fname = f"dry_run_changes_{cumulative_time_start}.csv"
+                    with open(fname, mode='a', newline='', encoding='utf-8') as file:
                         writer = csv.writer(file)
                         # Write headers if the file is new
                         if file.tell() == 0:
@@ -243,14 +244,16 @@ def walk_through_reference_set(ocd=ocd,
                         log_everywhere_if(verbose, "info", f"\t...Time: {time.time() - reference_time_start:.4f} seconds.")
                     else:
                         log_everywhere_if(verbose, "error", f"\t...Error saving record.")
-
-    if options.dryrun and updated_record_count > 0:
-        object_url = upload_csv_to_s3("dry_run_changes.csv", "pep-web-live-data-staging", "dry_run_changes.csv")
-        message = f"Your CSV file is available in the S3 bucket: {object_url}"
-        send_sns_notification("arn:aws:sns:us-east-1:547758924192:opas-status-updates-staging", message)
                 
     ocd.close_connection(caller_name=fname) # make sure connection is closed
     timeEnd = time.time()
+
+    if options.dryrun and updated_record_count > 0:
+        fname = f"dry_run_changes_{cumulative_time_start}.csv"
+        object_url = upload_csv_to_s3(fname, "pep-web-live-data-staging", fname)
+        message = f"Your CSV file is available in the S3 bucket: {object_url}"
+        send_sns_notification("arn:aws:sns:us-east-1:547758924192:opas-status-updates-staging", message)
+
     elapsed_seconds = timeEnd-cumulative_time_start # actual processing time going through files
     elapsed_minutes = elapsed_seconds / 60
     log_everywhere_if(True, "info", 80 * "-")
