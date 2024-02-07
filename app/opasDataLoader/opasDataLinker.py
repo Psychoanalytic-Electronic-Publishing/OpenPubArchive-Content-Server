@@ -61,6 +61,8 @@ sys.path.append('../libs')
 sys.path.append('../config')
 sys.path.append('../libs/configLib')
 
+import os
+
 # import string, sys, copy, re
 import logging
 logger = logging.getLogger(__name__)
@@ -280,9 +282,9 @@ def walk_through_reference_set(ocd=ocd,
         dryRunFile.close()
 
     if options.dryrun and updated_record_count > 0:
-        object_url = upload_csv_to_s3(dryRunFilename, "pep-web-live-data-staging", dryRunFilename)
+        object_url = upload_csv_to_s3(dryRunFilename, os.environ['DRY_RUN_BUCKET'], dryRunFilename)
         message = f"Your CSV file is available in the S3 bucket: {object_url}"
-        send_sns_notification("arn:aws:sns:us-east-1:547758924192:opas-status-updates-staging", message)
+        send_sns_notification(os.environ["SNS_TOPIC_ARN"], message)
 
     elapsed_seconds = timeEnd-cumulative_time_start # actual processing time going through files
     elapsed_minutes = elapsed_seconds / 60
