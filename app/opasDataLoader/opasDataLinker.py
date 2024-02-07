@@ -117,7 +117,8 @@ def send_sns_notification(sns_topic_arn, message):
     """Send an SNS notification."""
     response = sns_client.publish(
         TopicArn=sns_topic_arn,
-        Message=message
+        Message=message,
+        Subject="Data Linker: Dry Run Changes"
     )
     return response
 
