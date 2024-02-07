@@ -163,6 +163,15 @@ def walk_through_reference_set(ocd=ocd,
         log_everywhere_if(True, "info", f"Scanning {len(biblio_entries)} references in api_biblioxml2 to find new links.")
         counter = 0
         updated_record_count = 0
+
+        dryRunWriter = None
+        dryRunFile = None
+        if options.dryrun:
+            dryRunFile = f"dry_run_changes_{cumulative_time_start}.csv"
+            dryRunWriter = csv.writer(open(dryRunFile, mode='w', newline='', encoding='utf-8'))
+            log_everywhere_if(verbose, "info", f"Dry run: Writing intended database updates to CSV: {dryRunFile}")
+
+
         for ref_model in biblio_entries:
             reference_time_start = time.time()
             counter += 1
@@ -226,10 +235,30 @@ def walk_through_reference_set(ocd=ocd,
                         writer = csv.writer(file)
                         # Write headers if the file is new
                         if file.tell() == 0:
-                            writer.writerow(['Action', 'Table', 'Article ID', 'Local ID', 'RX', 'RXCF', 'Source', 'Time'])
+                            writer.writerow([
+                                'Article ID',
+                                'RX',
+                                'RX Conf',
+                                'RXCF',
+                                'RXCF Conf',
+                                'Ref text',
+                                'Source',
+                                'Time'
+                            ])
+        
                         # Prepare the data to write
                         action = 'Update' if (bib_entry.link_updated or options.forceupdate) else 'Record Updated'
-                        data_row = [action, 'api_biblioxml2', bib_entry.art_id, bib_entry.ref_local_id, bib_entry.ref_rx, bib_entry.ref_rxcf, bib_entry.ref_link_source, f"{time.time() - reference_time_start:.4f} seconds"]
+                        data_row = [
+                            bib_entry.art_id,
+                            bib_entry.ref_rx,
+                            bib_entry.ref_rx_confidence,
+                            bib_entry.ref_rxcf,
+                            bib_entry.ref_rxcf_confidence,
+                            bib_entry.ref_text,
+                            bib_entry.ref_link_source,
+                            f"{time.time() - reference_time_start:.4f} seconds"
+                        
+                        ]
                         # Write the intended change to the CSV
                         writer.writerow(data_row)
                         log_everywhere_if(verbose, "info", f"\t...Dry run: Intended database update written to CSV: {data_row}")
