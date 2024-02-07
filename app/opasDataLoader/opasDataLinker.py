@@ -122,11 +122,11 @@ def send_sns_notification(sns_topic_arn, message):
     )
     return response
 
-def write_dry_run_changes(bib_entry, file, verbose=False):
-    writer = csv.writer(file)
-    # Write headers if the file is new
-    if file.tell() == 0:
-        writer.writerow([
+def initialise_dry_run_writer(filename, verbose):
+    csvFile = open(filename, mode='w', newline='', encoding='utf-8')
+    writer = csv.writer(csvFile)
+
+    writer.writerow([
             'Article ID',
             'RX',
             'RX Conf',
@@ -134,8 +134,13 @@ def write_dry_run_changes(bib_entry, file, verbose=False):
             'RXCF Conf',
             'Ref text',
             'Source',
-        ])
+    ])
 
+    log_everywhere_if(verbose, "info", f"Dry run: initialised CSV - {filename}")
+
+    return writer, csvFile
+
+def write_dry_run_changes(bib_entry, writer, verbose=False):
     data_row = [
         bib_entry.art_id,
         bib_entry.ref_rx,
@@ -146,9 +151,8 @@ def write_dry_run_changes(bib_entry, file, verbose=False):
         bib_entry.ref_link_source,
     ]
 
-    # Write the intended change to the CSV
     writer.writerow(data_row)
-    log_everywhere_if(verbose, "info", f"\t...Dry run: Intended database update written to CSV: {data_row}")
+    log_everywhere_if(verbose, "info", f"\t...Dry run: Intended database update written to CSV -{data_row}")
 
 
 def walk_through_reference_set(ocd=ocd,
@@ -193,13 +197,9 @@ def walk_through_reference_set(ocd=ocd,
         counter = 0
         updated_record_count = 0
 
-        dryRunWriter = None
-        dryRunFile = None
         if options.dryrun:
-            dryRunFile = f"dry_run_changes_{cumulative_time_start}.csv"
-            dryRunWriter = csv.writer(open(dryRunFile, mode='w', newline='', encoding='utf-8'))
-            log_everywhere_if(verbose, "info", f"Dry run: Writing intended database updates to CSV: {dryRunFile}")
-
+            dryRunFilename = f"dry_run_changes_{cumulative_time_start}.csv"
+            dryRunWriter, dryRunFile = initialise_dry_run_writer(dryRunFilename, verbose)
 
         for ref_model in biblio_entries:
             reference_time_start = time.time()
@@ -258,11 +258,8 @@ def walk_through_reference_set(ocd=ocd,
             if bib_entry.link_updated or bib_entry.record_updated or options.forceupdate:
                 updated_record_count += 1
 
-                if options.dryrun:  # Check if dry run mode is enabled
-                    # Open the CSV file to append the intended change
-                    csvFilename = f"dry_run_changes_{cumulative_time_start}.csv"
-                    with open(csvFilename, mode='a', newline='', encoding='utf-8') as file:
-                        write_dry_run_changes(bib_entry, file, verbose)
+                if options.dryrun:
+                    write_dry_run_changes(bib_entry, dryRunWriter, verbose)
                     continue
      
                 # Proceed with actual database update
@@ -279,8 +276,11 @@ def walk_through_reference_set(ocd=ocd,
     ocd.close_connection(caller_name=fname) # make sure connection is closed
     timeEnd = time.time()
 
+    if dryRunFile:
+        dryRunFile.close()
+
     if options.dryrun and updated_record_count > 0:
-        object_url = upload_csv_to_s3(csvFilename, "pep-web-live-data-staging", csvFilename)
+        object_url = upload_csv_to_s3(dryRunFilename, "pep-web-live-data-staging", dryRunFilename)
         message = f"Your CSV file is available in the S3 bucket: {object_url}"
         send_sns_notification("arn:aws:sns:us-east-1:547758924192:opas-status-updates-staging", message)
 
