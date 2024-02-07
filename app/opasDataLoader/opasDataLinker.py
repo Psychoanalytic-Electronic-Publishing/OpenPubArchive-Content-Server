@@ -110,7 +110,7 @@ s3_client = boto3.client('s3', aws_access_key_id=localsecrets.S3_KEY, aws_secret
 def upload_csv_to_s3(csv_file_path, bucket_name, object_name):
     """Upload CSV file to S3 and return the object URL."""
     s3_client.upload_file(csv_file_path, bucket_name, object_name)
-    object_url = f"https://{bucket_name}.s3.amazonaws.com/{object_name}"
+    object_url = f"https://s3.console.aws.amazon.com/s3/object/{bucket_name}?prefix={csv_file_path}"
     return object_url
 
 def send_sns_notification(sns_topic_arn, message):
@@ -230,8 +230,8 @@ def walk_through_reference_set(ocd=ocd,
                 updated_record_count += 1
                 if options.dryrun:  # Check if dry run mode is enabled
                     # Open the CSV file to append the intended change
-                    fname = f"dry_run_changes_{cumulative_time_start}.csv"
-                    with open(fname, mode='a', newline='', encoding='utf-8') as file:
+                    csvFilename = f"dry_run_changes_{cumulative_time_start}.csv"
+                    with open(csvFilename, mode='a', newline='', encoding='utf-8') as file:
                         writer = csv.writer(file)
                         # Write headers if the file is new
                         if file.tell() == 0:
@@ -278,8 +278,7 @@ def walk_through_reference_set(ocd=ocd,
     timeEnd = time.time()
 
     if options.dryrun and updated_record_count > 0:
-        fname = f"dry_run_changes_{cumulative_time_start}.csv"
-        object_url = upload_csv_to_s3(fname, "pep-web-live-data-staging", fname)
+        object_url = upload_csv_to_s3(csvFilename, "pep-web-live-data-staging", csvFilename)
         message = f"Your CSV file is available in the S3 bucket: {object_url}"
         send_sns_notification("arn:aws:sns:us-east-1:547758924192:opas-status-updates-staging", message)
 
