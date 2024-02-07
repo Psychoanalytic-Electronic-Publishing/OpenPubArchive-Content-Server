@@ -122,6 +122,34 @@ def send_sns_notification(sns_topic_arn, message):
     )
     return response
 
+def write_dry_run_changes(bib_entry, file, verbose=False):
+    writer = csv.writer(file)
+    # Write headers if the file is new
+    if file.tell() == 0:
+        writer.writerow([
+            'Article ID',
+            'RX',
+            'RX Conf',
+            'RXCF',
+            'RXCF Conf',
+            'Ref text',
+            'Source',
+        ])
+
+    data_row = [
+        bib_entry.art_id,
+        bib_entry.ref_rx,
+        bib_entry.ref_rx_confidence,
+        bib_entry.ref_rxcf,
+        bib_entry.ref_rxcf_confidence,
+        bib_entry.ref_text,
+        bib_entry.ref_link_source,
+    ]
+
+    # Write the intended change to the CSV
+    writer.writerow(data_row)
+    log_everywhere_if(verbose, "info", f"\t...Dry run: Intended database update written to CSV: {data_row}")
+
 
 def walk_through_reference_set(ocd=ocd,
                                sql_set_select = "select * from api_biblioxml2 where art_id='CPS.031.0617A' and ref_local_id='B022'",
@@ -229,51 +257,24 @@ def walk_through_reference_set(ocd=ocd,
 
             if bib_entry.link_updated or bib_entry.record_updated or options.forceupdate:
                 updated_record_count += 1
+
                 if options.dryrun:  # Check if dry run mode is enabled
                     # Open the CSV file to append the intended change
                     csvFilename = f"dry_run_changes_{cumulative_time_start}.csv"
                     with open(csvFilename, mode='a', newline='', encoding='utf-8') as file:
-                        writer = csv.writer(file)
-                        # Write headers if the file is new
-                        if file.tell() == 0:
-                            writer.writerow([
-                                'Article ID',
-                                'RX',
-                                'RX Conf',
-                                'RXCF',
-                                'RXCF Conf',
-                                'Ref text',
-                                'Source',
-                                'Time'
-                            ])
-        
-                        # Prepare the data to write
-                        action = 'Update' if (bib_entry.link_updated or options.forceupdate) else 'Record Updated'
-                        data_row = [
-                            bib_entry.art_id,
-                            bib_entry.ref_rx,
-                            bib_entry.ref_rx_confidence,
-                            bib_entry.ref_rxcf,
-                            bib_entry.ref_rxcf_confidence,
-                            bib_entry.ref_text,
-                            bib_entry.ref_link_source,
-                            f"{time.time() - reference_time_start:.4f} seconds"
-                        
-                        ]
-                        # Write the intended change to the CSV
-                        writer.writerow(data_row)
-                        log_everywhere_if(verbose, "info", f"\t...Dry run: Intended database update written to CSV: {data_row}")
-                else:
-                    # Proceed with actual database update
-                    success = ocd.save_ref_to_biblioxml_table(bib_entry, bib_entry_was_from_db=True)
-                    if success:
-                        if bib_entry.link_updated or options.forceupdate:
-                            log_everywhere_if(verbose, "info", f"\t...Link updated.  Updating DB: rx:{bib_entry.ref_rx} rxcf:{bib_entry.ref_rxcf} source: ({bib_entry.ref_link_source})")
-                        else:
-                            log_everywhere_if(verbose, "info", f"\t...Record updated. Updating DB.")
-                        log_everywhere_if(verbose, "info", f"\t...Time: {time.time() - reference_time_start:.4f} seconds.")
+                        write_dry_run_changes(bib_entry, file, verbose)
+                    continue
+     
+                # Proceed with actual database update
+                success = ocd.save_ref_to_biblioxml_table(bib_entry, bib_entry_was_from_db=True)
+                if success:
+                    if bib_entry.link_updated or options.forceupdate:
+                        log_everywhere_if(verbose, "info", f"\t...Link updated.  Updating DB: rx:{bib_entry.ref_rx} rxcf:{bib_entry.ref_rxcf} source: ({bib_entry.ref_link_source})")
                     else:
-                        log_everywhere_if(verbose, "error", f"\t...Error saving record.")
+                        log_everywhere_if(verbose, "info", f"\t...Record updated. Updating DB.")
+                    log_everywhere_if(verbose, "info", f"\t...Time: {time.time() - reference_time_start:.4f} seconds.")
+                else:
+                    log_everywhere_if(verbose, "error", f"\t...Error saving record.")
                 
     ocd.close_connection(caller_name=fname) # make sure connection is closed
     timeEnd = time.time()
