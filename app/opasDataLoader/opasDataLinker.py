@@ -200,7 +200,7 @@ def walk_through_reference_set(ocd=ocd,
         updated_record_count = 0
 
         if options.dryrun:
-            dryRunFilename = f"dry_run_changes_{cumulative_time_start}.csv"
+            dryRunFilename = f"linker_dry_run_changes_{cumulative_time_start}.csv"
             dryRunWriter, dryRunFile = initialise_dry_run_writer(dryRunFilename, verbose)
 
         for ref_model in biblio_entries:
