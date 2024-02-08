@@ -278,10 +278,8 @@ def walk_through_reference_set(ocd=ocd,
     ocd.close_connection(caller_name=fname) # make sure connection is closed
     timeEnd = time.time()
 
-    if dryRunFile:
+    if options.dryrun:
         dryRunFile.close()
-
-    if options.dryrun and updated_record_count > 0:
         object_url = upload_csv_to_s3(dryRunFilename, os.environ['DRY_RUN_BUCKET'], dryRunFilename)
         message = f"Your CSV file is available in the S3 bucket: {object_url}"
         send_sns_notification(os.environ["SNS_TOPIC_ARN"], message)
