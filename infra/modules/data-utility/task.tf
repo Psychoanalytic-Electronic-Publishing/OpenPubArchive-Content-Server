@@ -20,7 +20,7 @@ resource "aws_ecs_task_definition" "data_utility" {
       image     = "${var.repository_url}:${local.container_name}"
       essential = true
       environment = [
-        { NAME = "DRY_RUN_BUCKET", VALUE = "pep-web-live-data-staging" },
+        { NAME = "DRY_RUN_BUCKET", VALUE = var.dry_run_bucket },
         { NAME = "SNS_TOPIC_ARN", VALUE = aws_sns_topic.status_updates.arn },
       ]
       portMappings = [
