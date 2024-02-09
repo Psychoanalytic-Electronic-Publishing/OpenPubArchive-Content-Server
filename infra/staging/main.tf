@@ -38,6 +38,14 @@ module "ecs" {
   env        = var.env
 }
 
+module "s3_dry_run" {
+  source = "../modules/s3"
+
+  stack_name  = var.stack_name
+  env         = var.env
+  bucket_name = "pep-web-dry-run-staging"
+}
+
 module "data_utility" {
   source = "../modules/data-utility"
 
@@ -49,6 +57,7 @@ module "data_utility" {
   cluster_arn            = module.ecs.cluster_arn
   vpc_id                 = module.vpc.vpc_id
   ecr_execution_role_arn = module.ecr.ecr_execution_role_arn
+  dry_run_bucket         = module.s3_dry_run.bucket_name
 }
 
 module "data_utility_api" {
