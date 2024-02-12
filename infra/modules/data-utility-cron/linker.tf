@@ -8,7 +8,7 @@ resource "aws_cloudwatch_event_rule" "weekly_data_linker" {
 
 resource "aws_cloudwatch_event_target" "weekly_data_linker_target" {
   count = var.env == "production" ? 1 : 0
-
+  
   rule     = aws_cloudwatch_event_rule.weekly_data_linker.name
   role_arn = aws_iam_role.allow_cloudwatch_to_execute_role.arn
   arn      = var.state_machine_arn
