@@ -800,12 +800,13 @@ def main():
             for n in filenames:
                 file_number += 1
                 fullfilename = n.filespec
+                fileTimeStart = time.time()
 
                 if loaderConfig.FUTURE_DIRECTORY_NAME in str(n.filespec):
                     print(f"Skipping file in excluded subdirectory: {n.filespec}")
+                    skipped_files += 1
                     continue
 
-                fileTimeStart = time.time()
                 input_file_was_updated = False
                 output_file_newer_than_solr = False
                 smart_file_rebuild = False
@@ -866,7 +867,7 @@ def main():
                     if options.forceReloadAllFiles or input_file_was_updated or output_file_newer_than_solr:
                         reload_count += 1
                     else:
-                        skipped_files += 1
+                        skipped_filesskipped_files
                         if file_number % 250 == 0 and options.display_verbose:
                             print (f"#Skipped {skipped_files} of {len(filenames)}")
                         continue
