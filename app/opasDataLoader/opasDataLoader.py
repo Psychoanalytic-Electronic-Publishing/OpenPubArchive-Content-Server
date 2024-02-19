@@ -800,6 +800,11 @@ def main():
             for n in filenames:
                 file_number += 1
                 fullfilename = n.filespec
+
+                if loaderConfig.FUTURE_DIRECTORY_NAME in str(n.filespec):
+                    print(f"Skipping file in excluded subdirectory: {n.filespec}")
+                    continue
+
                 fileTimeStart = time.time()
                 input_file_was_updated = False
                 output_file_newer_than_solr = False
