@@ -18,3 +18,6 @@ DATA_UPDATE_PREPUBLICATION_CODES_TO_IGNORE = ["IPL", "ZBK", "NLP", "SE", "GW"] #
 
 # SmartBuild Exceptions (these have only output builds, no input file to build, this loads output file into file list even with smart build)
 SMARTBUILD_EXCEPTIONS = "(ZBK.069)"
+
+# Directory to be excluded from build process
+FUTURE_DIRECTORY_NAME = "_PEPFuture"
