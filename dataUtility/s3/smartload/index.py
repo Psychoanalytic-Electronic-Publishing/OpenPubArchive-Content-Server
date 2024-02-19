@@ -7,7 +7,7 @@ def handler(event, context):
         key = record["s3"]["object"]["key"]
         key = unquote(key)
 
-        if "(bKBD3)" not in key:
+        if "(bKBD3)" not in key or "_PEPFuture" in key:
             continue
 
         keyParts = key.split("/")
