@@ -55,17 +55,18 @@ ocd = opasCentralDBLib.opasCentralDB()
 pat_prefix_amps = re.compile("^\s*&& ")
 
 #-----------------------------------------------------------------------------
-def get_document_download_permission(documentInfoXML):
+def get_document_download_permission(documentInfoXML, accessClassification=None):
     # added 2021-11-23 to dynamically return download permission data from XML without preloading it in Solr.
     #   should be fast enough but otherwise 'could' be added to Solr model.
 
-    ret_val = True # Default
+    if accessClassification is not None and access in (opasConfig.DOCUMENT_ACCESS_PREVIEW):
+        return False
+
     if documentInfoXML is not None:
         if re.search('download\s*=\s*(\"|\')false(\"|\')', documentInfoXML, re.IGNORECASE):
-            ret_val = False
-        else: 
-            ret_val = True
-    return ret_val
+            return False
+
+    return True
 
 #-----------------------------------------------------------------------------
 def get_base_article_info_by_id(art_id, session_info=None):
@@ -2037,7 +2038,7 @@ def get_base_article_info_from_search_result(result: dict, documentListItem: mod
             documentListItem.embargotype = result.get("art_embargotype", None)
             # added 2021-11-23 to dynamically return download permission data from XML without preloading it in Solr.
             #   should be fast enough but otherwise 'could' be added to Solr model.
-            documentListItem.downloads = get_document_download_permission(documentListItem.documentInfoXML)
+            documentListItem.downloads = get_document_download_permission(documentListItem.documentInfoXML, documentListItem.accessClassification)
             #if documentListItem.documentInfoXML is not None:
                 #if re.search('download\s*=\s*(\"|\')false(\"|\')', documentListItem.documentInfoXML, re.IGNORECASE):
                     #documentListItem.downloads = False
@@ -2114,7 +2115,7 @@ def get_base_article_info_from_search_result(result: dict, documentListItem: mod
                     documentListItem = merge_documentListItems(documentListItem, top_level_doc)
 
             # New printing and downloading restrictions from 2021-12-08    
-            documentListItem.downloads = get_document_download_permission(documentInfoXML=documentListItem.documentInfoXML)
+            documentListItem.downloads = get_document_download_permission(documentListItem.documentInfoXML, documentListItem.accessClassification)
             if documentListItem.pgCount is not None:
                 if documentListItem.downloads == True: # this disables downloading and printing per the client if the condition below is met, even though downloads=True in the XML
                     if documentListItem.pgCount >= opasConfig.DOWNLOADS_LIMIT_PAGE_COUNT and documentListItem.sourceType in opasConfig.DOWNLOADS_LIMIT_TYPES_RESTRICTED:
