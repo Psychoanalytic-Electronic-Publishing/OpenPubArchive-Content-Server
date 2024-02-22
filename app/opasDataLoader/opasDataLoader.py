@@ -867,7 +867,7 @@ def main():
                     if options.forceReloadAllFiles or input_file_was_updated or output_file_newer_than_solr:
                         reload_count += 1
                     else:
-                        skipped_filesskipped_files
+                        skipped_files += 1
                         if file_number % 250 == 0 and options.display_verbose:
                             print (f"#Skipped {skipped_files} of {len(filenames)}")
                         continue
