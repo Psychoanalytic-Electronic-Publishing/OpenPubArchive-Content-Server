@@ -44,4 +44,4 @@ def get_payload(sub, artId):
         }
     ]
 
-    return {"task": [loadPayload, linkPayload, loadPayload]}
+    return {"task": [loadPayload, linkPayload]}
