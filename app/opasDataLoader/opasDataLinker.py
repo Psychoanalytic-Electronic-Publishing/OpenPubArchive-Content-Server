@@ -284,7 +284,7 @@ def walk_through_reference_set(ocd=ocd,
         reportFile.close()
         uploadFilename = f"dry_run_{reportFilename}" if options.dryrun else reportFilename
         uploadFilepath = f"linker/{uploadFilename}"
-        object_url = upload_csv_to_s3(reportFilename, os.environ['DRY_RUN_BUCKET'], uploadFilepath)
+        object_url = upload_csv_to_s3(reportFilename, os.environ['REPORT_BUCKET'], uploadFilepath)
         message = f"Your CSV file is available in the S3 bucket: {object_url}"
         subject = "Data Linker: Dry Run" if options.dryrun else "Data Linker: Report"
         send_sns_notification(os.environ["SNS_TOPIC_ARN"], message, subject)

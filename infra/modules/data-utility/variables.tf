@@ -30,6 +30,6 @@ variable "ecr_execution_role_arn" {
   description = "ECR execution role ARN"
 }
 
-variable "dry_run_bucket" {
-  description = "S3 bucket for dry run data"
+variable "report_bucket" {
+  description = "S3 bucket for data reports"
 }
