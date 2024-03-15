@@ -112,19 +112,19 @@ s3_client = boto3.client('s3', aws_access_key_id=localsecrets.S3_KEY, aws_secret
 def upload_csv_to_s3(csv_file_path, bucket_name, object_name):
     """Upload CSV file to S3 and return the object URL."""
     s3_client.upload_file(csv_file_path, bucket_name, object_name)
-    object_url = f"https://s3.console.aws.amazon.com/s3/object/{bucket_name}?prefix={csv_file_path}"
+    object_url = f"https://s3.console.aws.amazon.com/s3/object/{bucket_name}?prefix={object_name}"
     return object_url
 
-def send_sns_notification(sns_topic_arn, message):
+def send_sns_notification(sns_topic_arn, message, subject):
     """Send an SNS notification."""
     response = sns_client.publish(
         TopicArn=sns_topic_arn,
         Message=message,
-        Subject="Data Linker: Dry Run Changes"
+        Subject=subject
     )
     return response
 
-def initialise_dry_run_writer(filename, verbose):
+def initialise_report_writer(filename, verbose):
     csvFile = open(filename, mode='w', newline='', encoding='utf-8')
     writer = csv.writer(csvFile)
 
@@ -138,11 +138,11 @@ def initialise_dry_run_writer(filename, verbose):
             'Source',
     ])
 
-    log_everywhere_if(verbose, "info", f"Dry run: initialised CSV - {filename}")
+    log_everywhere_if(verbose, "info", f"Report: initialised CSV - {filename}")
 
     return writer, csvFile
 
-def write_dry_run_changes(bib_entry, writer, verbose=False):
+def report_write_changes(bib_entry, writer, verbose=False):
     data_row = [
         bib_entry.art_id,
         bib_entry.ref_rx,
@@ -154,7 +154,7 @@ def write_dry_run_changes(bib_entry, writer, verbose=False):
     ]
 
     writer.writerow(data_row)
-    log_everywhere_if(verbose, "info", f"\t...Dry run: Intended database update written to CSV -{data_row}")
+    log_everywhere_if(verbose, "info", f"\t...Report: Database update written to CSV -{data_row}")
 
 
 def walk_through_reference_set(ocd=ocd,
@@ -199,9 +199,9 @@ def walk_through_reference_set(ocd=ocd,
         counter = 0
         updated_record_count = 0
 
-        if options.dryrun:
-            dryRunFilename = f"linker_dry_run_changes_{cumulative_time_start}.csv"
-            dryRunWriter, dryRunFile = initialise_dry_run_writer(dryRunFilename, verbose)
+        if options.dryrun or options.report_changes:
+            reportFilename = f"linker_change_report_{cumulative_time_start}.csv"
+            reportWriter, reportFile = initialise_report_writer(reportFilename, verbose)
 
         for ref_model in biblio_entries:
             reference_time_start = time.time()
@@ -260,8 +260,10 @@ def walk_through_reference_set(ocd=ocd,
             if bib_entry.link_updated or bib_entry.record_updated or options.forceupdate:
                 updated_record_count += 1
 
+                if options.dryrun or options.report_changes:
+                    report_write_changes(bib_entry, reportWriter, verbose)
+                
                 if options.dryrun:
-                    write_dry_run_changes(bib_entry, dryRunWriter, verbose)
                     continue
      
                 # Proceed with actual database update
@@ -278,11 +280,14 @@ def walk_through_reference_set(ocd=ocd,
     ocd.close_connection(caller_name=fname) # make sure connection is closed
     timeEnd = time.time()
 
-    if options.dryrun:
-        dryRunFile.close()
-        object_url = upload_csv_to_s3(dryRunFilename, os.environ['DRY_RUN_BUCKET'], dryRunFilename)
+    if options.dryrun or options.report_changes:
+        reportFile.close()
+        uploadFilename = f"dry_run_{reportFilename}" if options.dryrun else reportFilename
+        uploadFilepath = f"linker/{uploadFilename}"
+        object_url = upload_csv_to_s3(reportFilename, os.environ['REPORT_BUCKET'], uploadFilepath)
         message = f"Your CSV file is available in the S3 bucket: {object_url}"
-        send_sns_notification(os.environ["SNS_TOPIC_ARN"], message)
+        subject = "Data Linker: Dry Run" if options.dryrun else "Data Linker: Report"
+        send_sns_notification(os.environ["SNS_TOPIC_ARN"], message, subject)
 
     elapsed_seconds = timeEnd-cumulative_time_start # actual processing time going through files
     elapsed_minutes = elapsed_seconds / 60
@@ -430,6 +435,9 @@ if __name__ == "__main__":
 
     parser.add_option("--dryrun", action="store_true", dest="dryrun", default=False,
                       help="Output what would be done, but don't do it")
+
+    parser.add_option("--report", action="store_true", dest="report_changes", default=False,
+                      help="Generate a report of changes performed")
 
     import optparse
     parser.formatter = optparse.IndentedHelpFormatter()

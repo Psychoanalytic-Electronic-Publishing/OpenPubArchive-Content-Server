@@ -19,7 +19,7 @@ resource "aws_cloudwatch_event_target" "weekly_data_linker_target" {
           "limitRam" : false,
           "directory" : "opasDataLoader",
           "utility" : "opasDataLinker",
-          "args" : "--verbose --key ^*.* --unlinked"
+          "args" : "--verbose --key ^*.* --unlinked --report"
         }
       ]
     ]
