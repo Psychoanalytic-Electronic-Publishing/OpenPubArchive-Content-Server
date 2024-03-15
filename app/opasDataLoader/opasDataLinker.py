@@ -199,7 +199,7 @@ def walk_through_reference_set(ocd=ocd,
         counter = 0
         updated_record_count = 0
 
-        if options.dryrun:
+        if options.dryrun or options.report_changes:
             dryRunFilename = f"linker_dry_run_changes_{cumulative_time_start}.csv"
             dryRunWriter, dryRunFile = initialise_dry_run_writer(dryRunFilename, verbose)
 
@@ -260,8 +260,10 @@ def walk_through_reference_set(ocd=ocd,
             if bib_entry.link_updated or bib_entry.record_updated or options.forceupdate:
                 updated_record_count += 1
 
-                if options.dryrun:
+                if options.dryrun or options.report_changes:
                     write_dry_run_changes(bib_entry, dryRunWriter, verbose)
+                
+                if options.dryrun:
                     continue
      
                 # Proceed with actual database update
@@ -278,7 +280,7 @@ def walk_through_reference_set(ocd=ocd,
     ocd.close_connection(caller_name=fname) # make sure connection is closed
     timeEnd = time.time()
 
-    if options.dryrun:
+    if options.dryrun or options.report_changes:
         dryRunFile.close()
         object_url = upload_csv_to_s3(dryRunFilename, os.environ['DRY_RUN_BUCKET'], dryRunFilename)
         message = f"Your CSV file is available in the S3 bucket: {object_url}"
@@ -430,6 +432,9 @@ if __name__ == "__main__":
 
     parser.add_option("--dryrun", action="store_true", dest="dryrun", default=False,
                       help="Output what would be done, but don't do it")
+
+    parser.add_option("--report", action="store_true", dest="report_changes", default=False,
+                      help="Generate a report of changes performed")
 
     import optparse
     parser.formatter = optparse.IndentedHelpFormatter()
