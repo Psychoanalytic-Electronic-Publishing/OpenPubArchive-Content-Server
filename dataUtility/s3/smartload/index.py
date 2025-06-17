@@ -1,18 +1,57 @@
+import json
 from urllib.parse import unquote
 from step_function_manager import stop_existing_executions, start_new_execution
 
+def parse_key(key):
+    """
+    Example:
+      key = _PEPFree/RGK/2020/2/finafiwang.xml
+      sub -> _PEPFree/RGK/2020/2
+      artId -> finafiwang
+    """
+    # Remove any leading/trailing slashes just in case
+    keyParts = key.split("/")
+    sub = keyParts[0]
+    artId = keyParts[-1].split("(")[0]
+
+    return sub, artId
 
 def handler(event, context):
-    for record in event["Records"]:
-        key = record["s3"]["object"]["key"]
-        key = unquote(key)
+    print(event)
 
-        if "(bKBD3)" not in key or "_PEPFuture" in key:
+    # Dictionary mapping sub -> set of artIds
+    sub_articles_map = {}
+
+    for sqs_record in event["Records"]:
+        # Convert body to dict if it is a JSON string
+        body = (
+            json.loads(sqs_record["body"])
+            if isinstance(sqs_record["body"], str)
+            else sqs_record["body"]
+        )
+
+        for record in body["Records"]:
+            key = unquote(record["s3"]["object"]["key"])
+
+            # Skip keys that do not match your criteria
+            if "(bKBD3)" not in key or "_PEPFuture" in key:
+                continue
+
+            # Parse the key into sub and artId properly
+            sub, artId = parse_key(key)
+
+            if sub not in sub_articles_map:
+                sub_articles_map[sub] = set()
+
+            sub_articles_map[sub].add(artId)
+
+    # Now you have a dictionary of { sub: {artId1, artId2, ...}, ... }
+    # Decide whether to run separate Step Function executions per article
+    # or combine them into one execution per sub.
+
+    for sub, artIds in sub_articles_map.items():
+        if not artIds:
             continue
-
-        keyParts = key.split("/")
-        sub = keyParts[0]
-        artId = keyParts[-1].split("(")[0]
-
-        stop_existing_executions(sub, artId)
-        start_new_execution(sub, artId)
+        combined_keys_regex = "|".join(sorted(artIds))
+        stop_existing_executions(sub, combined_keys_regex)
+        start_new_execution(sub, combined_keys_regex)

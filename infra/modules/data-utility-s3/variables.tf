@@ -13,3 +13,7 @@ variable "state_machine_arn" {
 variable "bucket_name" {
   description = "Name of the S3 bucket"
 }
+
+variable "queue_arn" {
+  description = "ARN of the SQS queue"
+}
