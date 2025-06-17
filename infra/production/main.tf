@@ -101,7 +101,7 @@ module "database" {
 
   stack_name               = var.stack_name
   env                      = var.env
-  instance_class           = "db.t3.medium"
+  instance_class           = "db.t3.medium"  # Not used for Aurora Serverless v2
   username                 = var.mysql_username
   password                 = var.mysql_password
   vpc_id                   = module.vpc.vpc_id
@@ -110,6 +110,14 @@ module "database" {
   gitlab_runner_ip         = "54.210.185.163/32"
   availability_zone        = "us-east-1f"
   engineer_ips             = var.engineer_ips
+  pads_security_group_id   = "sg-082ec49ff5d9e76cb"
+  pads_ips                 = ["52.200.214.35/32", "34.202.154.34/32"]
+  
+  # Aurora Serverless v2 settings
+  min_capacity             = 0.5  # AWS minimum is 0.5 (actual cluster has 0 - requires AWS support)
+  max_capacity             = 128  # AWS maximum is 128 (actual cluster has 256 - requires AWS support)
+  backup_retention_period  = 1    # Match actual cluster configuration
+  deletion_protection      = false # Match actual cluster configuration
 }
 
 module "s3" {
@@ -137,6 +145,7 @@ module "data_utility_s3" {
   env               = var.env
   state_machine_arn = module.data_utility.state_machine_arn
   bucket_name       = module.s3.bucket_name
+  queue_arn         = module.data_utility.queue_arn
 }
 
 module "s3_notification" {
@@ -147,7 +156,7 @@ module "s3_notification" {
   stack_name    = var.stack_name
   env           = var.env
   bucket_name   = module.s3.bucket_name
-  smartload_arn = module.data_utility_s3.smartload_lambda_arn
+  queue_arn     = module.data_utility.queue_arn
 }
 
 module "solr" {

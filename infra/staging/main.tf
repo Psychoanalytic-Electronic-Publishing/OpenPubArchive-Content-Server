@@ -100,7 +100,7 @@ module "database" {
 
   stack_name               = var.stack_name
   env                      = var.env
-  instance_class           = "db.t3.micro"
+  instance_class           = "db.serverless"
   username                 = var.mysql_username
   password                 = var.mysql_password
   vpc_id                   = module.vpc.vpc_id
@@ -109,6 +109,14 @@ module "database" {
   gitlab_runner_ip         = "54.210.185.163/32"
   availability_zone        = "us-east-1f"
   engineer_ips             = var.engineer_ips
+  pads_security_group_id   = "sg-082ec49ff5d9e76cb"
+  pads_ips                 = ["54.211.127.208/32"]
+  min_capacity             = 0.5
+  max_capacity             = 1
+  instance_count           = 1
+  backup_retention_period  = 7
+  skip_final_snapshot      = true
+  deletion_protection      = false
 }
 
 module "s3" {
@@ -126,6 +134,7 @@ module "data_utility_s3" {
   env               = var.env
   state_machine_arn = module.data_utility.state_machine_arn
   bucket_name       = module.s3.bucket_name
+  queue_arn         = module.data_utility.queue_arn
 }
 
 
@@ -134,10 +143,10 @@ module "s3_notification" {
 
   source = "../modules/s3-notification"
 
-  stack_name    = var.stack_name
-  env           = var.env
-  bucket_name   = module.s3.bucket_name
-  smartload_arn = module.data_utility_s3.smartload_lambda_arn
+  stack_name  = var.stack_name
+  env         = var.env
+  bucket_name = module.s3.bucket_name
+  queue_arn   = module.data_utility.queue_arn
 }
 
 module "solr" {
