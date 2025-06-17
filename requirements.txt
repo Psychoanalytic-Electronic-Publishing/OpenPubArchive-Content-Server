@@ -30,3 +30,5 @@ pypdf==4.3.1
 weasyprint~=56.0      # updated 2022-07-15
 xhtml2pdf~=0.2.8      # updated 2022-07-15
 python-multipart==0.0.8
+python-bidi==0.4.2
+reportlab==3.5.67

@@ -23,6 +23,10 @@ import logging
 import localsecrets
 # import urllib.parse
 # import json
+import hmac
+import hashlib
+import boto3
+import ipaddress
 from fastapi import HTTPException
 from errorMessages import *
 
@@ -55,6 +59,71 @@ msgdb = opasMessageLib.messageDB()
 import opasGenSupportLib as opasgenlib
 
 ocd = opasCentralDBLib.opasCentralDB()
+
+# Global cache for IP HMAC secret
+_cached_ip_hmac_secret = None
+
+def get_ip_hmac_secret():
+    """
+    Fetch the IP HMAC secret from AWS Secrets Manager with caching.
+    Returns the secret string for generating IP signatures.
+    """
+    global _cached_ip_hmac_secret
+    
+    if _cached_ip_hmac_secret is not None:
+        return _cached_ip_hmac_secret
+    
+    if not hasattr(localsecrets, 'IP_HMAC_SECRET_ARN') or localsecrets.IP_HMAC_SECRET_ARN is None:
+        logger.warning("IP_HMAC_SECRET_ARN not configured in localsecrets - IP signature generation unavailable")
+        return None
+    
+    try:
+        # Create Secrets Manager client
+        secrets_client = boto3.client('secretsmanager')
+        
+        # Fetch the secret
+        response = secrets_client.get_secret_value(SecretId=localsecrets.IP_HMAC_SECRET_ARN)
+        _cached_ip_hmac_secret = response['SecretString']
+        
+        return _cached_ip_hmac_secret
+        
+    except Exception as e:
+        logger.error(f"Failed to fetch IP HMAC secret from AWS Secrets Manager: {e}")
+        return None
+
+def generate_ip_signature(ip_address):
+    """
+    Generate HMAC-SHA256 signature for IP address using the secret from AWS Secrets Manager.
+    This matches the JavaScript logic: hmac.sha256(secret, ip).hexdigest()
+    
+    Args:
+        ip_address (str): The IP address to sign
+        
+    Returns:
+        str: Hexadecimal HMAC-SHA256 signature, or None if secret unavailable
+    """
+    if not ip_address:
+        logger.warning("Cannot generate IP signature for empty IP address")
+        return None
+        
+    secret = get_ip_hmac_secret()
+    if not secret:
+        logger.warning("IP HMAC secret not available, cannot generate signature")
+        return None
+    
+    try:
+        # Generate HMAC-SHA256 signature matching JS: hmac.update(ip); return hmac.digest('hex')
+        signature = hmac.new(
+            secret.encode('utf-8'),
+            ip_address.encode('utf-8'),
+            hashlib.sha256
+        ).hexdigest()
+        
+        return signature
+        
+    except Exception as e:
+        logger.error(f"Failed to generate IP signature for {ip_address}: {e}")
+        return None
 
 def user_logged_in_per_header(request, session_id=None, caller_name="unknown") -> bool:
     """
@@ -150,19 +219,75 @@ def find_client_session_id(request: Request,
 
 def get_user_ip(request: Request):
     """
-    Returns a users IP if passed in the headers.
+    Get the true, unspoofable IP that actually connected to the ALB.
+    Equivalent to CloudFront's event.requestContext.identity.sourceIp.
+    
+    For ALB, this is the IP that opened the TCP connection to the load balancer:
+    - Direct user -> ALB: user's real IP
+    - User -> Proxy -> ALB: proxy's IP (what we want for institutional auth)
     """
     ret_val = None
-    if request is not None:
-        ret_val = request.headers.get(opasConfig.X_FORWARDED_FOR, None)
-        if ret_val is not None:
+    if request is None:
+        return ret_val
+    
+    # Try standard ALB X-Forwarded-For header first
+    forwarded_for = request.headers.get("X-Forwarded-For", None)
+    
+    if forwarded_for:
+        try:
+            # Parse comma-separated IPs
+            ip_list = [ip.strip() for ip in forwarded_for.split(',')]
+            
+            # Find the rightmost public IP (the one that connected to ALB)
+            # ALB sees the actual connecting IP, which is unspoofable
+            for ip in reversed(ip_list):
+                try:
+                    ip_obj = ipaddress.ip_address(ip)
+                    # Skip private/internal IPs (ALB internal IPs)
+                    if not ip_obj.is_private and not ip_obj.is_loopback:
+                        ret_val = ip
+                        break
+                except ValueError:
+                    continue
+                    
+            # If no public IP found, take the last valid IP (even if private)
+            if ret_val is None:
+                for ip in reversed(ip_list):
+                    try:
+                        ipaddress.ip_address(ip)
+                        ret_val = ip
+                        break
+                    except ValueError:
+                        continue
+                        
+        except Exception as e:
+            logger.warning(f"Error parsing X-Forwarded-For header '{forwarded_for}': {e}")
+    
+    # Fallback to legacy custom header for backward compatibility
+    if ret_val is None:
+        legacy_ip = request.headers.get(opasConfig.X_FORWARDED_FOR, None)
+        if legacy_ip:
             try:
-                req_url = request.url
-                msg = f"X-Forwarded-For from header: {ret_val}. URL: {req_url}"
-                logger.debug(msg)
-            except Exception as e:
-                logger.error(f"Error: {e}")               
-
+                # Validate legacy IP format
+                ipaddress.ip_address(legacy_ip.strip())
+                ret_val = legacy_ip.strip()
+            except ValueError as e:
+                logger.warning(f"Invalid IP in legacy header '{legacy_ip}': {e}")
+    
+    # Final fallback - try to get from direct connection
+    if ret_val is None:
+        try:
+            # This might be available in some ASGI servers
+            client_host = getattr(request.client, 'host', None) if hasattr(request, 'client') else None
+            if client_host:
+                ipaddress.ip_address(client_host)
+                ret_val = client_host
+        except (ValueError, AttributeError):
+            pass
+    
+    if ret_val is None:
+        logger.warning("No valid connecting IP found in any headers or connection info")
+    
     return ret_val
     
 def fix_userinfo_invalid_nones(response_data, caller_name="DocPermissionsError"):
@@ -279,7 +404,8 @@ def get_base_session_info(request=None, session_id=None, client_id=4, pads_sessi
         if session_id is None: # get a new session id
             pads_session_info = get_pads_session_info(session_id=None,
                                                       client_id=client_id,
-                                                      retry=False)
+                                                      retry=False,
+                                                      request=request)
             
             session_id = pads_session_info.SessionId
 
@@ -1185,16 +1311,34 @@ def get_pads_session_info(session_id=None,
             pass
     
     user_ip = get_user_ip(request) # returns an IP if X_FORWARDED_FOR address is in header
+    
     try:
         logger.debug(f"{caller_name}: calling PaDS")
         if user_ip is not None and user_ip is not '':
-            headers = { opasConfig.X_FORWARDED_FOR:user_ip }
-            pads_session_info = requests.get(full_URL, headers) # Call PaDS
+            # PaDS now requires signed IP headers for ALL authentication requests
+            ip_signature = generate_ip_signature(user_ip)
+            if ip_signature is not None:
+                # Use new signed IP format (required by PaDS for all requests)
+                headers = {
+                    'client-ip': user_ip,
+                    'client-ip-signature': ip_signature
+                }
+            else:
+                # Fallback to old format if signature generation fails
+                headers = { opasConfig.X_FORWARDED_FOR: user_ip }
+                logger.warning(f"{caller_name}: IP signature unavailable, falling back to legacy headers - PaDS may reject this")
+            
+            pads_session_info = requests.get(full_URL, headers=headers) # Call PaDS
             status_code = pads_session_info.status_code # save it for a bit (we replace pads_session_info below); this is only in PaDS return of pads_session_info, not in the model.
-            msg = f"{caller_name}: Session ID:{session_id}. X_FORWARDED_FOR from authenticateIP: {user_ip}. URL: {req_url} PaDS Session Info: {pads_session_info}"
+            
+            headers_type = "signed IP" if 'client-ip-signature' in headers else "legacy X-Forwarded-For"
+            msg = f"{caller_name}: Session ID:{session_id}. IP Auth ({headers_type}): {user_ip}. URL: {req_url} PaDS Session Info: {pads_session_info}"
             logger.debug(msg)
             if opasConfig.PADS_INFO_TRACE: print (f"PADS Monitor: {msg}")
         else:
+            # No user IP available - making request without IP headers
+            logger.warning(f"{caller_name}: No user IP available, making PaDS request without IP headers")
+            
             if session_id is not None:
                 pads_session_info = requests.get(full_URL) # Call PaDS
                 status_code = pads_session_info.status_code # save it for a bit (we replace pads_session_info below)
@@ -1213,8 +1357,23 @@ def get_pads_session_info(session_id=None,
         ocd.log_pads_calls(caller=caller_name, reason=caller_name, session_id=session_id, pads_call=full_URL, ip_address=user_ip, return_status_code=status_code) # Log Call PaDS
 
         if status_code > 403: # e.g., (httpCodes.HTTP_500_INTERNAL_SERVER_ERROR, httpCodes.HTTP_503_SERVICE_UNAVAILABLE):
+            # Get detailed response information for debugging
+            try:
+                response_text = pads_session_info.text[:1000] if hasattr(pads_session_info, 'text') else "No response text"
+                response_headers = dict(pads_session_info.headers) if hasattr(pads_session_info, 'headers') else {}
+            except:
+                response_text = "Unable to get response text"
+                response_headers = {}
+            
+            # Check if headers was defined (it might not be if no user IP)  
+            try:
+                request_headers = headers
+            except NameError:
+                request_headers = "No headers (no user IP available)"
+            
             error_text = f"{caller_name}: PaDS session_info status_code is {status_code}"
-            logger.error(error_text)
+            detailed_error = f"{error_text}\nURL: {full_URL}\nRequest Headers: {request_headers}\nResponse Text: {response_text}\nResponse Headers: {response_headers}"
+            logger.error(detailed_error)
             # try once without the session ID
             if retry == True:
                 # recursive call
