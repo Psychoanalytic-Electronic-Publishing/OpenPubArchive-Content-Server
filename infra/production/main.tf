@@ -58,6 +58,7 @@ module "data_utility" {
   vpc_id                 = module.vpc.vpc_id
   ecr_execution_role_arn = module.ecr.ecr_execution_role_arn
   report_bucket          = module.s3_reports.bucket_name
+  build_id               = var.build_id
 }
 
 
@@ -94,6 +95,7 @@ module "server" {
   api_domain             = "api.pep-web.org"
   instance_cpu           = "2048"
   instance_memory        = "4096"
+  build_id               = var.build_id
 }
 
 module "database" {
@@ -174,4 +176,5 @@ module "solr" {
   server_security_group_id = module.server.security_group_id
   instance_cpu             = "2048"
   instance_memory          = "16384"
+  build_id                 = var.build_id
 }
