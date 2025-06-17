@@ -45,3 +45,8 @@ variable "instance_cpu" {
 variable "instance_memory" {
   description = "Memory units for the instance"
 }
+
+variable "build_id" {
+  description = "Unique build identifier"
+  type        = string
+}
