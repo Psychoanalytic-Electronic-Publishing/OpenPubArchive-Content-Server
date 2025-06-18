@@ -44,3 +44,61 @@ variable "engineer_ips" {
   description = "IPs for PEP engineers (comma delimited)"
   type        = string
 }
+
+variable "pads_ips" {
+  description = "IP of the PaDS instances"
+  type        = list(string)
+}
+
+
+variable "pads_security_group_id" {
+  description = "Security group ID for the PaDS"
+}
+
+variable "min_capacity" {
+  description = "Minimum capacity for Aurora Serverless v2 in ACUs"
+  type        = number
+  default     = 0.5
+}
+
+variable "max_capacity" {
+  description = "Maximum capacity for Aurora Serverless v2 in ACUs"
+  type        = number
+  default     = 128
+}
+
+variable "instance_count" {
+  description = "Number of Aurora instances in the cluster"
+  type        = number
+  default     = 1
+}
+
+variable "backup_retention_period" {
+  description = "Backup retention period in days"
+  type        = number
+  default     = 7
+}
+
+variable "preferred_backup_window" {
+  description = "Preferred backup window"
+  type        = string
+  default     = "10:21-10:51"
+}
+
+variable "preferred_maintenance_window" {
+  description = "Preferred maintenance window"
+  type        = string
+  default     = "wed:06:47-wed:07:17"
+}
+
+variable "skip_final_snapshot" {
+  description = "Skip final snapshot on deletion"
+  type        = bool
+  default     = true
+}
+
+variable "deletion_protection" {
+  description = "Enable deletion protection"
+  type        = bool
+  default     = true
+}

@@ -10,6 +10,7 @@ resource "aws_ecs_task_definition" "server" {
   requires_compatibilities = ["FARGATE"]
   network_mode             = "awsvpc"
   execution_role_arn       = var.ecr_execution_role_arn
+  task_role_arn            = aws_iam_role.server_task_role.arn
 
   cpu    = var.instance_cpu
   memory = var.instance_memory

@@ -20,6 +20,15 @@ locals {
         Effect   = "Allow"
         Resource = "*"
       },
+      {
+        Action = [
+          "sqs:ReceiveMessage",
+          "sqs:DeleteMessage",
+          "sqs:GetQueueAttributes"
+        ]
+        Effect   = "Allow"
+        Resource = "*"
+      },
     ]
   })
 }

@@ -25,11 +25,11 @@ resource "aws_iam_role_policy" "smartload_lambda_policy" {
   policy = local.policy
 }
 
-
-resource "aws_lambda_permission" "allow_smartload" {
-  statement_id  = "${var.stack_name}-allow-samrtload-${var.env}"
-  action        = "lambda:InvokeFunction"
-  function_name = module.smartload.lambda_function_name
-  principal     = "s3.amazonaws.com"
-  source_arn    = data.aws_s3_bucket.pep_web_data.arn
+resource "aws_lambda_event_source_mapping" "smartload_sqs_trigger" {
+  event_source_arn = var.queue_arn
+  function_name    = module.smartload.lambda_function_name
+  batch_size       = 50
+  maximum_batching_window_in_seconds = 30
 }
+
+# Removed direct S3 permission - now using SQS trigger

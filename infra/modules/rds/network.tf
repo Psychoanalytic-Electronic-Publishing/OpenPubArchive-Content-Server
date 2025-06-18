@@ -30,6 +30,15 @@ resource "aws_security_group" "db" {
   }
 
   ingress {
+    description     = "MySQL from PaDS"
+    from_port       = 3306
+    to_port         = 3306
+    protocol        = "tcp"
+    security_groups = [var.pads_security_group_id]
+    cidr_blocks     = var.pads_ips
+  }
+
+  ingress {
     description     = "MySQL from server"
     from_port       = 3306
     to_port         = 3306

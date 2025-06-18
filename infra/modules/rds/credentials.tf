@@ -1,6 +1,8 @@
 resource "aws_secretsmanager_secret" "credentials" {
   name = "${var.stack_name}/rds-credentials/${var.env}"
 
+  kms_key_id = "arn:aws:kms:us-east-1:547758924192:key/7b802a2f-38b3-40af-bca1-cdbc45ad8ceb"
+
   tags = {
     stack = var.stack_name
     env   = var.env
@@ -9,13 +11,13 @@ resource "aws_secretsmanager_secret" "credentials" {
 
 locals {
   credentials = {
-    username             = var.username
-    password             = var.password
+    dbInstanceIdentifier = var.env
+    dbname               = aws_rds_cluster.aurora_mysql.database_name
     engine               = "mysql"
-    host                 = aws_db_instance.mysql.address
-    port                 = aws_db_instance.mysql.port
-    dbname               = aws_db_instance.mysql.db_name
-    dbInstanceIdentifier = aws_db_instance.mysql.identifier
+    host                 = aws_rds_cluster.aurora_mysql.endpoint
+    password             = var.password
+    port                 = aws_rds_cluster.aurora_mysql.port
+    username             = var.username
   }
 }
 
