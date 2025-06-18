@@ -15,9 +15,10 @@ resource "aws_ecr_lifecycle_policy" "opas_policy" {
     "rules": [
         {
             "rulePriority": 1,
-            "description": "Keep last 10 tagged images",
+            "description": "Keep last 10 server images",
             "selection": {
                 "tagStatus": "tagged",
+                "tagPrefixList": ["server-"],
                 "countType": "imageCountMoreThan",
                 "countNumber": 10
             },
@@ -27,6 +28,32 @@ resource "aws_ecr_lifecycle_policy" "opas_policy" {
         },
         {
             "rulePriority": 2,
+            "description": "Keep last 10 solr images",
+            "selection": {
+                "tagStatus": "tagged",
+                "tagPrefixList": ["solr-"],
+                "countType": "imageCountMoreThan",
+                "countNumber": 10
+            },
+            "action": {
+                "type": "expire"
+            }
+        },
+        {
+            "rulePriority": 3,
+            "description": "Keep last 10 data-utility images",
+            "selection": {
+                "tagStatus": "tagged",
+                "tagPrefixList": ["data-utility-"],
+                "countType": "imageCountMoreThan",
+                "countNumber": 10
+            },
+            "action": {
+                "type": "expire"
+            }
+        },
+        {
+            "rulePriority": 4,
             "description": "Expire untagged images older than 1 day",
             "selection": {
                 "tagStatus": "untagged",
