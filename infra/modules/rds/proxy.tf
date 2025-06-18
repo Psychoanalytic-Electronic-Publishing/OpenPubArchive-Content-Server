@@ -45,5 +45,8 @@ resource "aws_db_proxy_default_target_group" "proxy_group" {
   }
 }
 
-# Aurora clusters automatically register with RDS Proxy through the default target group
-# No explicit target resource needed
+resource "aws_db_proxy_target" "cluster" {
+  db_cluster_identifier = aws_rds_cluster.aurora_mysql.cluster_identifier
+  db_proxy_name         = aws_db_proxy.rds.name
+  target_group_name     = aws_db_proxy_default_target_group.proxy_group.name
+}
