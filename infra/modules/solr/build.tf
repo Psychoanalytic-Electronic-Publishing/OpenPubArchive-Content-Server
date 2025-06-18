@@ -1,6 +1,4 @@
 resource "null_resource" "build_solr_image" {
-  depends_on = [random_uuid.container]
-
   triggers = {
     dockerfile_sha1 = local.dockerfile_sha1
   }
