@@ -33,3 +33,8 @@ variable "ecr_execution_role_arn" {
 variable "report_bucket" {
   description = "S3 bucket for data reports"
 }
+
+variable "build_id" {
+  description = "Unique build identifier"
+  type        = string
+}

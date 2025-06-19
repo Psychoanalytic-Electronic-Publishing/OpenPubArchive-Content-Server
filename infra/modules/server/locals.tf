@@ -4,5 +4,5 @@ locals {
 }
 
 locals {
-  container_name = "server"
+  container_name = "server-${var.build_id}"
 }

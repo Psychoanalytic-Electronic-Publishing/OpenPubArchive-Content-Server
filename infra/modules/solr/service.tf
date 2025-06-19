@@ -71,6 +71,9 @@ resource "aws_ecs_service" "solr" {
     assign_public_ip = true
   }
 
+  deployment_maximum_percent         = 100
+  deployment_minimum_healthy_percent = 0
+
   load_balancer {
     target_group_arn = aws_lb_target_group.solr.arn
     container_name   = "main"

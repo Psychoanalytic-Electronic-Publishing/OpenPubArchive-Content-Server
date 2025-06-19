@@ -42,3 +42,9 @@ variable "engineer_ips" {
   sensitive   = true
   type        = string
 }
+
+variable "build_id" {
+  description = "Unique build identifier"
+  type        = string
+  default     = "local"
+}

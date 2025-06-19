@@ -1,4 +1,4 @@
-FROM solr:latest
+FROM solr:9.3.0
 
 ENV SOLR_JAVA_MEM="-Xms512m -Xmx512m"
 

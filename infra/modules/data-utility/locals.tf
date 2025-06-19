@@ -12,5 +12,5 @@ locals {
 }
 
 locals {
-  container_name = "data-utility"
+  container_name = "data-utility-${var.build_id}"
 }
