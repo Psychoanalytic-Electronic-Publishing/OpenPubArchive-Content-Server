@@ -5,7 +5,8 @@ resource "aws_ecs_task_definition" "solr" {
     replace_triggered_by = [null_resource.build_solr_image]
   }
 
-  family = "${var.stack_name}-solr-${var.env}"
+  family       = "${var.stack_name}-solr-${var.env}"
+  skip_destroy = true
 
   requires_compatibilities = ["FARGATE"]
   network_mode             = "awsvpc"
