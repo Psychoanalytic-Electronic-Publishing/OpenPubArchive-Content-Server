@@ -4,5 +4,7 @@ locals {
 }
 
 locals {
-  container_name = "server-${var.build_id}"
+  content_hash = substr(sha1("${local.app_sha1}-${local.dockerfile_sha1}-${data.aws_s3_object.localsecrets.etag}"), 0, 8)
+  image_tag = "server-${local.content_hash}"
+  container_name = "server"
 }

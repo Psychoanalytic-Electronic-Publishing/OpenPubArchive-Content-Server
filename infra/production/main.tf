@@ -55,6 +55,7 @@ module "data_utility" {
   account_id             = var.account_id
   aws_region             = var.aws_region
   repository_url         = module.ecr.repository_url
+  repository_name        = module.ecr.repository_name
   cluster_arn            = module.ecs.cluster_arn
   vpc_id                 = module.vpc.vpc_id
   ecr_execution_role_arn = module.ecr.ecr_execution_role_arn
@@ -89,6 +90,7 @@ module "server" {
   account_id             = var.account_id
   aws_region             = var.aws_region
   repository_url         = module.ecr.repository_url
+  repository_name        = module.ecr.repository_name
   ecr_execution_role_arn = module.ecr.ecr_execution_role_arn
   cluster_arn            = module.ecs.cluster_arn
   vpc_id                 = module.vpc.vpc_id
@@ -110,10 +112,8 @@ module "database" {
   vpc_id                   = module.vpc.vpc_id
   data_utility_group_id    = module.data_utility.security_group_id
   server_security_group_id = module.server.security_group_id
-  gitlab_runner_ip         = "54.210.185.163/32"
   availability_zone        = "us-east-1f"
-  engineer_ips             = var.engineer_ips
-  pads_security_group_id   = "sg-082ec49ff5d9e76cb"
+  pads_security_group_id   = "631911044226/sg-082ec49ff5d9e76cb"
   pads_ips                 = ["52.200.214.35/32", "34.202.154.34/32"]
 
   # Aurora Serverless v2 settings
@@ -170,6 +170,7 @@ module "solr" {
   account_id               = var.account_id
   aws_region               = var.aws_region
   repository_url           = module.ecr.repository_url
+  repository_name          = module.ecr.repository_name
   ecr_execution_role_arn   = module.ecr.ecr_execution_role_arn
   cluster_arn              = module.ecs.cluster_arn
   vpc_id                   = module.vpc.vpc_id

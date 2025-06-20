@@ -1,7 +1,12 @@
 resource "aws_ecs_task_definition" "solr" {
   depends_on = [null_resource.build_solr_image]
 
-  family = "${var.stack_name}-solr-${var.env}"
+  lifecycle {
+    replace_triggered_by = [null_resource.build_solr_image]
+  }
+
+  family       = "${var.stack_name}-solr-${var.env}"
+  skip_destroy = true
 
   requires_compatibilities = ["FARGATE"]
   network_mode             = "awsvpc"
@@ -22,7 +27,7 @@ resource "aws_ecs_task_definition" "solr" {
   container_definitions = jsonencode([
     {
       name      = "main"
-      image     = "${var.repository_url}:${local.container_name}"
+      image     = "${var.repository_url}:${local.image_tag}"
       essential = true
       portMappings = [
         {

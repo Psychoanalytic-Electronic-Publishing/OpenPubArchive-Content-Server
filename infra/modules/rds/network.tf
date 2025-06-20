@@ -20,22 +20,20 @@ resource "aws_security_group" "db" {
 
   vpc_id = var.vpc_id
 
-  // GitLab Runner - To be deprecated
   ingress {
-    description = "MySQL from GitLab"
-    from_port   = 3306
-    to_port     = 3306
-    protocol    = "tcp"
-    cidr_blocks = [var.gitlab_runner_ip]
-  }
-
-  ingress {
-    description     = "MySQL from PaDS"
+    description     = "MySQL from PaDS security group"
     from_port       = 3306
     to_port         = 3306
     protocol        = "tcp"
     security_groups = [var.pads_security_group_id]
-    cidr_blocks     = var.pads_ips
+  }
+
+  ingress {
+    description = "MySQL from PaDS IPs"
+    from_port   = 3306
+    to_port     = 3306
+    protocol    = "tcp"
+    cidr_blocks = var.pads_ips
   }
 
   ingress {
@@ -62,13 +60,6 @@ resource "aws_security_group" "db" {
     self        = true
   }
 
-  ingress {
-    description = "MySQL from PEP engineer"
-    from_port   = 3306
-    to_port     = 3306
-    protocol    = "tcp"
-    cidr_blocks = formatlist("%s/32", split(",", var.engineer_ips))
-  }
 
   egress {
     from_port        = 0

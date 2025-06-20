@@ -16,13 +16,11 @@ jobs:
     environment: production-vars
     outputs:
       aws_account_id: ${{ steps.set-outputs.outputs.aws_account_id}}
-      engineer_ips: ${{ steps.set-outputs.outputs.engineer_ips}}
     steps:
       - name: Set output
         id: set-outputs
         run: |
           echo "aws_account_id=${{ vars.AWS_ACCOUNT_ID }}" >> $GITHUB_OUTPUT
-          echo "engineer_ips=${{ vars.ENGINEER_IPS }}" >> $GITHUB_OUTPUT
 
   infrastructure:
     needs: [env]
@@ -37,5 +35,4 @@ jobs:
       ENV_VARS: "TF_VAR_account_id=${{ needs.env.outputs.aws_account_id }}\n\
         TF_VAR_build_id=${{ github.sha }}\n\
         TF_VAR_mysql_username=${{ secrets.MYSQL_USERNAME }}\n\
-        TF_VAR_mysql_password=${{ secrets.MYSQL_PASSWORD }}\n\
-        TF_VAR_engineer_ips=${{ needs.env.outputs.engineer_ips }}"
+        TF_VAR_mysql_password=${{ secrets.MYSQL_PASSWORD }}"
