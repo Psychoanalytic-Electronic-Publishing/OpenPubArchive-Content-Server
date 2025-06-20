@@ -24,9 +24,6 @@ variable "vpc_id" {
   description = "VPC ID"
 }
 
-variable "gitlab_runner_ip" {
-  description = "IP of the GitLab runner"
-}
 
 variable "server_security_group_id" {
   description = "Security group ID for the server"
@@ -40,10 +37,6 @@ variable "availability_zone" {
   description = "Availability zone"
 }
 
-variable "engineer_ips" {
-  description = "IPs for PEP engineers (comma delimited)"
-  type        = string
-}
 
 variable "pads_ips" {
   description = "IP of the PaDS instances"

@@ -111,9 +111,7 @@ module "database" {
   vpc_id                   = module.vpc.vpc_id
   data_utility_group_id    = module.data_utility.security_group_id
   server_security_group_id = module.server.security_group_id
-  gitlab_runner_ip         = "54.210.185.163/32"
   availability_zone        = "us-east-1f"
-  engineer_ips             = var.engineer_ips
   pads_security_group_id   = "sg-082ec49ff5d9e76cb"
   pads_ips                 = ["54.211.127.208/32"]
   min_capacity             = 0.5

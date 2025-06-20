@@ -37,11 +37,6 @@ variable "mysql_password" {
   sensitive   = true
 }
 
-variable "engineer_ips" {
-  description = "IPs for PEP engineers (comma delimited)"
-  sensitive   = true
-  type        = string
-}
 
 variable "build_id" {
   description = "Unique build identifier"
