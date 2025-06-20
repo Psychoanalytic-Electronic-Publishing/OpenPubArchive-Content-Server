@@ -55,6 +55,7 @@ module "data_utility" {
   account_id             = var.account_id
   aws_region             = var.aws_region
   repository_url         = module.ecr.repository_url
+  repository_name        = module.ecr.repository_name
   cluster_arn            = module.ecs.cluster_arn
   vpc_id                 = module.vpc.vpc_id
   ecr_execution_role_arn = module.ecr.ecr_execution_role_arn
@@ -88,6 +89,7 @@ module "server" {
   account_id             = var.account_id
   aws_region             = var.aws_region
   repository_url         = module.ecr.repository_url
+  repository_name        = module.ecr.repository_name
   ecr_execution_role_arn = module.ecr.ecr_execution_role_arn
   cluster_arn            = module.ecs.cluster_arn
   vpc_id                 = module.vpc.vpc_id
@@ -160,6 +162,7 @@ module "solr" {
   account_id               = var.account_id
   aws_region               = var.aws_region
   repository_url           = module.ecr.repository_url
+  repository_name          = module.ecr.repository_name
   ecr_execution_role_arn   = module.ecr.ecr_execution_role_arn
   cluster_arn              = module.ecs.cluster_arn
   vpc_id                   = module.vpc.vpc_id
