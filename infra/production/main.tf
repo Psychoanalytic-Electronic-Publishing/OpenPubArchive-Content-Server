@@ -113,7 +113,7 @@ module "database" {
   data_utility_group_id    = module.data_utility.security_group_id
   server_security_group_id = module.server.security_group_id
   availability_zone        = "us-east-1f"
-  pads_security_group_id   = "sg-082ec49ff5d9e76cb"
+  pads_security_group_id   = "631911044226/sg-082ec49ff5d9e76cb"
   pads_ips                 = ["52.200.214.35/32", "34.202.154.34/32"]
 
   # Aurora Serverless v2 settings
