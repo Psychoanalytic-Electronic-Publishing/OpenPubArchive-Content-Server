@@ -18,6 +18,10 @@ variable "repository_url" {
   description = "ECR repository URL"
 }
 
+variable "repository_name" {
+  description = "ECR repository name"
+}
+
 variable "cluster_arn" {
   description = "ECS cluster ARN"
 }
