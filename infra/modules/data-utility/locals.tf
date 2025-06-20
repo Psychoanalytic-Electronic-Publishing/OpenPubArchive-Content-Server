@@ -12,5 +12,19 @@ locals {
 }
 
 locals {
-  container_name = "data-utility-${var.build_id}"
+  content_hash = substr(sha1(join("", [
+    local.config_sha1,
+    local.libs_sha1,
+    local.opasDataLoader_sha1,
+    local.opasDataUpdateStat_sha1,
+    local.opasEndnoteExport_sha1,
+    local.opasGoogleMetadataExport_sha1,
+    local.opasPushSettings_sha1,
+    local.opasSiteMapper_sha1,
+    local.opasDatabaseArchival_sha1,
+    local.fargate_sha1,
+    data.aws_s3_object.localsecrets.etag
+  ])), 0, 8)
+  image_tag = "data-utility-${local.content_hash}"
+  container_name = "data-utility"
 }
