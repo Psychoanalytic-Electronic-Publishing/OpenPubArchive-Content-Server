@@ -499,6 +499,7 @@ def file_is_same_as_in_solr(solrcore, filename, timestamp_str):
 
 #------------------------------------------------------------------------------------------------------
 def main():
+    # Test change
     
     global options  # so the information can be used in support functions
     
