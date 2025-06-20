@@ -8,3 +8,5 @@ USER solr
 
 ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["solr-foreground"]
+
+# Test change
