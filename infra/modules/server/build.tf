@@ -1,8 +1,6 @@
 resource "null_resource" "build_server_image" {
   triggers = {
-    localsecrets_etag = data.aws_s3_object.localsecrets.etag
-    app_sha1          = local.app_sha1
-    dockerfile_sha1   = local.dockerfile_sha1
+    content_hash = local.content_hash
   }
 
   provisioner "local-exec" {
@@ -10,9 +8,21 @@ resource "null_resource" "build_server_image" {
     command     = <<-EOT
       aws s3 cp s3://pep-configuration/${var.env}/localsecrets.py app/config/localsecrets.py
       aws ecr get-login-password --region ${var.aws_region} | docker login --username AWS --password-stdin ${var.account_id}.dkr.ecr.${var.aws_region}.amazonaws.com
-      docker build --platform linux/amd64 -t ${local.container_name} -f ./Dockerfile  .
-      docker tag ${local.container_name} ${var.repository_url}:${local.container_name}
-      docker push ${var.repository_url}:${local.container_name}
+      if aws ecr describe-images --repository-name=${var.repository_name} --image-ids=imageTag=${local.image_tag} --region ${var.aws_region} 2>/dev/null; then
+        echo "Image ${local.image_tag} already exists in ECR, skipping build"
+      else
+        echo "Building new image ${local.image_tag}"
+        docker build --platform linux/amd64 \
+          --label "build_id=${var.build_id}" \
+          --label "content_hash=${local.content_hash}" \
+          -t ${local.image_tag} -f ./Dockerfile .
+        docker tag ${local.image_tag} ${var.repository_url}:${local.image_tag}
+        docker push ${var.repository_url}:${local.image_tag}
+        
+        # Also tag with BUILD_ID for reference
+        docker tag ${local.image_tag} ${var.repository_url}:build-${var.build_id}
+        docker push ${var.repository_url}:build-${var.build_id}
+      fi
       rm -rf app/config/localsecrets.py
     EOT
   }
