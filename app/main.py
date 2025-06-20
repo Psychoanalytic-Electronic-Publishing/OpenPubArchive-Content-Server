@@ -1182,7 +1182,6 @@ async def api_live_doc(api_key: APIKey = Depends(get_api_key)):
     response = get_swagger_ui_html(openapi_url="/v2/Api/OpenapiSpec", title="docs")
 
     return response
-    # Test change
 
 #-----------------------------------------------------------------------------
 @app.get("/v2/Api/OpenapiSpec", tags=["API documentation"], summary=opasConfig.ENDPOINT_SUMMARY_OPEN_API)
