@@ -499,7 +499,7 @@ def file_is_same_as_in_solr(solrcore, filename, timestamp_str):
 
 #------------------------------------------------------------------------------------------------------
 def main():
-    
+    # New test change
     global options  # so the information can be used in support functions
     
     cumulative_file_time_start = time.time()
