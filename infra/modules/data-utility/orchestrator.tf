@@ -266,7 +266,8 @@ EOF
 }
 
 module "step_function" {
-  source = "terraform-aws-modules/step-functions/aws"
+  source  = "terraform-aws-modules/step-functions/aws"
+  version = "~> 4.2.1"
 
   name       = "${var.stack_name}-orchestrator-${var.env}"
   definition = local.definition_template

@@ -1,5 +1,6 @@
 module "cluster" {
-  source = "terraform-aws-modules/ecs/aws"
+  source  = "terraform-aws-modules/ecs/aws"
+  version = "~> 5.12.1"
 
   cluster_name = "${var.stack_name}-ecs-${var.env}"
 
