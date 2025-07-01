@@ -36,6 +36,3 @@ terraform.rc
 # Ignore build files
 build/
 builds/
-
-# Ignore lock files
-.terraform.lock.hcl
