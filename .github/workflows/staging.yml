@@ -4,6 +4,7 @@ on:
   pull_request:
     branches:
       - Stage
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.ref }}-deploy
