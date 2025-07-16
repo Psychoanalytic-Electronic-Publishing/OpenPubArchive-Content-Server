@@ -957,6 +957,28 @@ async def admin_reports(response: Response,
             "ref_text",
             ]
         fields = ", ".join(header)
+    elif report == models.ReportTypeEnum.royaltyCharCountsJournals:
+        report_view = "vw_royalty_charcounts_journals"
+        orderby_clause = f"ORDER BY report_code, publisher, sortorder {sortorder}"
+        header = ["Report Code",
+                  "Title",
+                  "Publisher",
+                  "Char Count",
+                  "No-Space Char Count",
+                  "Article Count"
+                  ]
+    elif report == models.ReportTypeEnum.royaltyCharCountsBooks:
+        report_view = "vw_royalty_charcounts_books"
+        orderby_clause = f"ORDER BY report_code, publisher, sortorder {sortorder}"
+        header = ["Report Code",
+                  "Char Count",
+                  "No-Space Char Count",
+                  "Article Count",
+                  "Views",
+                  "Title",
+                  "Publisher",
+                  "Author"
+                  ]
     else:
         report_view = None
 

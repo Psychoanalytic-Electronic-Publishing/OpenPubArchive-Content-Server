@@ -83,6 +83,8 @@ class ReportTypeEnum(str, Enum):
     characterCountsBookDetails = "Character-Count-Details-Book-Report"
     productTable = "Product-Table"
     documentReferences = "Document-References"
+    royaltyCharCountsJournals = "Royalty-Char-Counts-Journals"
+    royaltyCharCountsBooks = "Royalty-Char-Counts-Books"
     
 class TermTypeIDEnum(str, ExtendedEnum):
     termid = "ID"
