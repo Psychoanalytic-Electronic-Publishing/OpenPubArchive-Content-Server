@@ -200,7 +200,18 @@ def main():
         # look to see if they exist
         for article in article_list:
             art_id = article["art_id"]
-            filename = article["filename"].upper()
+            filename = article.get("filename")        # may be None
+            if not filename:                          # NULL or empty string
+                log_everywhere_if(True, "warning",
+                f"art_id {art_id} has NULL filename – deleting record(s)")
+                if not options.testmode:
+                    solr_docs2.delete(q=f"art_id:{art_id}")
+                    solr_authors.delete(q=f"art_id:{art_id}")
+                    ocd.delete_specific_article_data(art_id=art_id)
+                    delete_count += 1
+                continue
+
+            filename = filename.upper()
             rootname = filename[:filename.find('(')]
             rootname_demarcated = f"#{rootname}#"
             if rootname_demarcated in name_str:
