@@ -115,15 +115,15 @@ module "database" {
   server_security_group_id = module.server.security_group_id
   # Reworked NextJS app access
   additional_security_group_ids = ["sg-01f3f40cb22a6f7b7"]
-  availability_zone        = "us-east-1f"
-  pads_security_group_id   = "631911044226/sg-082ec49ff5d9e76cb"
-  pads_ips                 = ["54.211.127.208/32"]
-  min_capacity             = 0.5
-  max_capacity             = 5
-  instance_count           = 1
-  backup_retention_period  = 7
-  skip_final_snapshot      = true
-  deletion_protection      = false
+  availability_zone             = "us-east-1f"
+  pads_security_group_id        = "631911044226/sg-082ec49ff5d9e76cb"
+  pads_ips                      = ["54.211.127.208/32"]
+  min_capacity                  = 0.5
+  max_capacity                  = 5
+  instance_count                = 1
+  backup_retention_period       = 7
+  skip_final_snapshot           = true
+  deletion_protection           = false
 
   # Reworked NextJS app access
   proxy_additional_secret_arns = [
@@ -186,7 +186,7 @@ module "solr" {
   admin_ip_cidrs       = var.admin_ip_cidrs
   admin_ip_description = var.admin_ip_description
   admin_ip_ports       = var.solr_admin_ip_ports
-  instance_cpu             = "1024"
-  instance_memory          = "2048"
-  build_id                 = var.build_id
+  instance_cpu         = "1024"
+  instance_memory      = "2048"
+  build_id             = var.build_id
 }

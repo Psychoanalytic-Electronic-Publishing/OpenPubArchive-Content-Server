@@ -116,9 +116,9 @@ module "database" {
   server_security_group_id = module.server.security_group_id
   # Reworked NextJS app access
   additional_security_group_ids = ["sg-07cca2c3dc7040bd8"]
-  availability_zone        = "us-east-1f"
-  pads_security_group_id   = "631911044226/sg-082ec49ff5d9e76cb"
-  pads_ips                 = ["52.200.214.35/32", "34.202.154.34/32"]
+  availability_zone             = "us-east-1f"
+  pads_security_group_id        = "631911044226/sg-082ec49ff5d9e76cb"
+  pads_ips                      = ["52.200.214.35/32", "34.202.154.34/32"]
 
   # Aurora Serverless v2 settings
   min_capacity            = 0.5   # AWS minimum is 0.5 (actual cluster has 0 - requires AWS support)
@@ -190,10 +190,10 @@ module "solr" {
   server_security_group_id = module.server.security_group_id
   # Reworked NextJS app access
   additional_security_group_ids = ["sg-07cca2c3dc7040bd8"]
-  admin_ip_cidrs       = var.admin_ip_cidrs
-  admin_ip_description = var.admin_ip_description
-  admin_ip_ports       = var.solr_admin_ip_ports
-  instance_cpu             = "2048"
-  instance_memory          = "16384"
-  build_id                 = var.build_id
+  admin_ip_cidrs                = var.admin_ip_cidrs
+  admin_ip_description          = var.admin_ip_description
+  admin_ip_ports                = var.solr_admin_ip_ports
+  instance_cpu                  = "2048"
+  instance_memory               = "16384"
+  build_id                      = var.build_id
 }
