@@ -21,8 +21,18 @@ resource "aws_security_group" "solr" {
     from_port       = 80
     to_port         = 80
     protocol        = "tcp"
-    cidr_blocks     = ["90.207.64.214/32"]
-    security_groups = [var.data_utility_group_id, var.server_security_group_id]
+    security_groups = distinct(concat([var.data_utility_group_id, var.server_security_group_id], var.additional_security_group_ids))
+  }
+
+  dynamic "ingress" {
+    for_each = length(var.admin_ip_cidrs) > 0 ? toset(var.admin_ip_ports) : toset([])
+    content {
+      description = var.admin_ip_description
+      from_port   = ingress.value
+      to_port     = ingress.value
+      protocol    = "tcp"
+      cidr_blocks = var.admin_ip_cidrs
+    }
   }
 
   egress {

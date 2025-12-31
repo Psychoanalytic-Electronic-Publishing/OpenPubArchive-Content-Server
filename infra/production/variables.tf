@@ -43,3 +43,21 @@ variable "build_id" {
   type        = string
   default     = "local"
 }
+
+variable "admin_ip_cidrs" {
+  description = "Developer/admin CIDR blocks for SG ingress"
+  type        = list(string)
+  default     = []
+}
+
+variable "admin_ip_description" {
+  description = "Description for developer/admin CIDR ingress"
+  type        = string
+  default     = "Developer access"
+}
+
+variable "solr_admin_ip_ports" {
+  description = "Ports to allow from developer/admin CIDRs to Solr"
+  type        = list(number)
+  default     = [80, 8983]
+}
