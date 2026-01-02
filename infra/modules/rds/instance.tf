@@ -2,7 +2,7 @@ resource "aws_rds_cluster" "aurora_mysql" {
   cluster_identifier      = "${var.env}-v2-cluster"
   engine                  = "aurora-mysql"
   engine_mode             = "provisioned"
-  engine_version          = "8.0.mysql_aurora.3.08.1"
+  engine_version          = "8.0.mysql_aurora.3.08.2"
   database_name           = "opascentral"
   master_username         = var.username
   master_password         = var.password

@@ -66,6 +66,30 @@ variable "instance_count" {
   default     = 1
 }
 
+variable "proxy_additional_secret_arns" {
+  description = "Additional Secrets Manager ARNs for RDS Proxy auth (reworked NextJS app access)"
+  type        = list(string)
+  default     = []
+}
+
+variable "additional_security_group_ids" {
+  description = "Additional security group IDs allowed to access MySQL (reworked NextJS app access)"
+  type        = list(string)
+  default     = []
+}
+
+variable "admin_ip_cidrs" {
+  description = "Developer/admin CIDRs allowed to access MySQL"
+  type        = list(string)
+  default     = []
+}
+
+variable "admin_ip_description" {
+  description = "Description for developer/admin CIDR access"
+  type        = string
+  default     = "Developer access"
+}
+
 variable "backup_retention_period" {
   description = "Backup retention period in days"
   type        = number

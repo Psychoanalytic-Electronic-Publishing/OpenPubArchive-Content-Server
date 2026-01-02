@@ -22,9 +22,20 @@ resource "aws_db_proxy" "rds" {
   vpc_subnet_ids         = local.private_subnet_ids_filtered
 
   auth {
-    auth_scheme = "SECRETS"
-    iam_auth    = "DISABLED"
-    secret_arn  = aws_secretsmanager_secret.credentials.arn
+    auth_scheme               = "SECRETS"
+    client_password_auth_type = "MYSQL_NATIVE_PASSWORD"
+    iam_auth                  = "DISABLED"
+    secret_arn                = aws_secretsmanager_secret.credentials.arn
+  }
+
+  dynamic "auth" {
+    for_each = var.proxy_additional_secret_arns
+    content {
+      auth_scheme               = "SECRETS"
+      client_password_auth_type = "MYSQL_NATIVE_PASSWORD"
+      iam_auth                  = "DISABLED"
+      secret_arn                = auth.value
+    }
   }
 
   tags = {

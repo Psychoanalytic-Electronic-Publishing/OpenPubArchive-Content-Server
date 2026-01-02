@@ -56,8 +56,11 @@ resource "aws_iam_role_policy" "proxy_policy" {
           "secretsmanager:GetResourcePolicy",
           "secretsmanager:DescribeSecret"
         ]
-        Effect   = "Allow"
-        Resource = aws_secretsmanager_secret.credentials.arn
+        Effect = "Allow"
+        Resource = distinct(concat(
+          [aws_secretsmanager_secret.credentials.arn],
+          var.proxy_additional_secret_arns
+        ))
         Sid      = "GetSecrets"
       }
     ]

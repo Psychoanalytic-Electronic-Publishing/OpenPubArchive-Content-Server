@@ -4,9 +4,14 @@ resource "null_resource" "build_solr_image" {
   }
 
   provisioner "local-exec" {
+    interpreter = ["/bin/bash", "-c"]
     working_dir = "../../solrCoreConfigurations"
 
     command = <<-EOT
+      set -euo pipefail
+      DOCKER_CONFIG="$(mktemp -d)"
+      export DOCKER_CONFIG
+      trap 'rm -rf "$DOCKER_CONFIG"' EXIT
       aws ecr get-login-password --region ${var.aws_region} | docker login --username AWS --password-stdin ${var.account_id}.dkr.ecr.${var.aws_region}.amazonaws.com
       if aws ecr describe-images --repository-name=${var.repository_name} --image-ids=imageTag=${local.image_tag} --region ${var.aws_region} 2>/dev/null; then
         echo "Image ${local.image_tag} already exists in ECR, skipping build"
