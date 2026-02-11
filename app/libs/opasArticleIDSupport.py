@@ -974,7 +974,7 @@ class ArticleInfo(BaseModel):
         self.art_id_from_filename = parse_artid_from_filename(fullfilename)
 
         try: #  lookup source in db
-            if self.src_code in ["ZBK", "IPL", "NLP", "RGK"]:
+            if self.src_code in ["ZBK", "IPL", "NLP", "CWB", "RGK"]:
                 self.src_prodkey = pepsrccode = f"{self.src_code}%03d" % self.art_vol_int
                 self.src_type = "book"
                 self.src_is_book = True
