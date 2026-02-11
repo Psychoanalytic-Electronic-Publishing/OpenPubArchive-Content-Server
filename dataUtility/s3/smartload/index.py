@@ -2,6 +2,9 @@ import json
 from urllib.parse import unquote
 from step_function_manager import stop_existing_executions, start_new_execution
 
+SMARTLOAD_TRIGGER_BUILDS = ("(bKBD3)", "(bSeriesTOC)")
+
+
 def parse_key(key):
     """
     Example:
@@ -33,8 +36,10 @@ def handler(event, context):
         for record in body["Records"]:
             key = unquote(record["s3"]["object"]["key"])
 
-            # Skip keys that do not match your criteria
-            if "(bKBD3)" not in key or "_PEPFuture" in key:
+            # Skip future and non-source builds (smartload should run only from source XML builds).
+            if "_PEPFuture" in key:
+                continue
+            if not any(build in key for build in SMARTLOAD_TRIGGER_BUILDS):
                 continue
 
             # Parse the key into sub and artId properly

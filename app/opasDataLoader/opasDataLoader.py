@@ -902,8 +902,14 @@ def main():
                 msg = f"{80*'-'}\nExamining file #%s of %s: %s (%s bytes)." % (processed_files_count, files_found, n.basename, n.filesize)
                 log_everywhere_if(options.display_verbose, level="info", msg=msg)
 
+                # Use the file's actual build token so mixed build patterns (e.g., bKBD3 + bSeriesTOC)
+                # resolve to the correct compiled output path.
+                input_build_for_file = opasFileSupport.get_build_name(str(n.filespec))
+                if input_build_for_file is None:
+                    input_build_for_file = selected_input_build
+
                 final_xml_filename = derive_output_filename(n.filespec, 
-                                                            input_build=selected_input_build, 
+                                                            input_build=input_build_for_file, 
                                                             output_build=options.output_build)
                 separated_input_output = final_xml_filename != n.filespec
                 just_compiled = False
