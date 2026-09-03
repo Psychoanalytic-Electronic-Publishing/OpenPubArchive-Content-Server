@@ -29,6 +29,12 @@ resource "aws_ecs_task_definition" "solr" {
       name      = "main"
       image     = "${var.repository_url}:${local.image_tag}"
       essential = true
+      environment = [
+        {
+          name  = "SOLR_MODULES"
+          value = "analysis-extras"
+        }
+      ]
       portMappings = [
         {
           containerPort = 80
