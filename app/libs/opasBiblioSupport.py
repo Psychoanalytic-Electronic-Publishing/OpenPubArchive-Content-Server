@@ -551,7 +551,7 @@ class BiblioEntry(models.Biblioxml):
                     self.ref_is_book = True
                     self.record_updated = True
                     if verbose: print (f"\t...Recognized GW. Record will be updated.")
-        elif self.ref_sourcecode in ("GW", "SE", "IPL", "NLP", "ZBK"):
+        elif self.ref_sourcecode in ("GW", "SE", "IPL", "NLP", "CWB", "ZBK"):
                 self.ref_in_pep = True
                 self.ref_is_book = True
             

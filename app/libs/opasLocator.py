@@ -1008,12 +1008,12 @@ class Locator:
         retVal = None
         if self.isBook():
             if not self.isSplitBook() or self.isMainTOC:
-                if self.jrnlCode in ['IPL', 'NLP', 'SE']:
+                if self.jrnlCode in ['IPL', 'NLP', 'SE', 'CWB']:
                     retVal = REFBOOKSERIES
                 else:
                     retVal = REFBOOK
             else:
-                if self.jrnlCode in ['IPL', 'NLP', 'SE']:
+                if self.jrnlCode in ['IPL', 'NLP', 'SE', 'CWB']:
                     retVal = REFBOOKSERIESARTICLE
                 else:
                     retVal = REFBOOKARTICLE
