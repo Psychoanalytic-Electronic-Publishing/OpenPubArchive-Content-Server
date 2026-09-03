@@ -83,7 +83,12 @@ resource "aws_ecs_service" "solr" {
   }
 
   deployment_maximum_percent         = 100
-  deployment_minimum_healthy_percent = 0
+  deployment_minimum_healthy_percent = 0 # single-instance: full replace deploys only
+
+  # Solr takes ~20s+ to load cores off EFS; without this the ALB
+  # (10s interval x 2 unhealthy) kills the replacement task before
+  # it can ever go healthy and the deployment fails.
+  health_check_grace_period_seconds = 300
 
   load_balancer {
     target_group_arn = aws_lb_target_group.solr.arn
