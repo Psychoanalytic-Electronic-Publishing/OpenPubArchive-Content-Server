@@ -75,6 +75,7 @@ resource "aws_ecs_service" "solr" {
   task_definition = aws_ecs_task_definition.solr.arn
   launch_type     = "FARGATE"
   desired_count   = 1
+  enable_execute_command = true
 
   network_configuration {
     subnets          = data.aws_subnets.private.ids
