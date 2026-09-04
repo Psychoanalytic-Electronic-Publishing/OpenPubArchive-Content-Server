@@ -87,20 +87,22 @@ module "data_utility_cron" {
 module "server" {
   source = "../modules/server"
 
-  stack_name             = var.stack_name
-  env                    = var.env
-  account_id             = var.account_id
-  aws_region             = var.aws_region
-  repository_url         = module.ecr.repository_url
-  repository_name        = module.ecr.repository_name
-  ecr_execution_role_arn = module.ecr.ecr_execution_role_arn
-  cluster_arn            = module.ecs.cluster_arn
-  vpc_id                 = module.vpc.vpc_id
-  cluster_name           = module.ecs.cluster_name
-  api_domain             = "api.pep-web.org"
-  instance_cpu           = "2048"
-  instance_memory        = "4096"
-  build_id               = var.build_id
+  stack_name               = var.stack_name
+  env                      = var.env
+  account_id               = var.account_id
+  aws_region               = var.aws_region
+  repository_url           = module.ecr.repository_url
+  repository_name          = module.ecr.repository_name
+  ecr_execution_role_arn   = module.ecr.ecr_execution_role_arn
+  cluster_arn              = module.ecs.cluster_arn
+  vpc_id                   = module.vpc.vpc_id
+  cluster_name             = module.ecs.cluster_name
+  api_domain               = "api.pep-web.org"
+  instance_cpu             = "2048"
+  instance_memory          = "4096"
+  autoscaling_min_capacity = 3
+  autoscaling_max_capacity = 10
+  build_id                 = var.build_id
 }
 
 module "database" {

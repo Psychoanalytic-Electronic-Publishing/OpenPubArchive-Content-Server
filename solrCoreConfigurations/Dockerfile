@@ -1,6 +1,7 @@
 FROM solr:9.3.0
 
 ENV SOLR_JAVA_MEM="-Xms512m -Xmx512m"
+ENV SOLR_MODULES="analysis-extras"
 
 EXPOSE 8983
 
