@@ -54,3 +54,15 @@ variable "build_id" {
   description = "Unique build identifier"
   type        = string
 }
+
+variable "autoscaling_min_capacity" {
+  description = "Minimum number of server tasks"
+  type        = number
+  default     = 1
+}
+
+variable "autoscaling_max_capacity" {
+  description = "Maximum number of server tasks"
+  type        = number
+  default     = 5
+}

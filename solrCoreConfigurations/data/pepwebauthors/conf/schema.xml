@@ -100,6 +100,12 @@
     <analyzer type="query">
         <tokenizer class="solr.KeywordTokenizerFactory"/>
         <filter class="solr.LowerCaseFilterFactory"/>
+        <filter class="solr.ICUFoldingFilterFactory"/>
+    </analyzer>
+    <analyzer type="index">
+        <tokenizer class="solr.KeywordTokenizerFactory"/>
+        <filter class="solr.LowerCaseFilterFactory"/>
+        <filter class="solr.ICUFoldingFilterFactory"/>
     </analyzer>
   </fieldType>  
 
@@ -112,8 +118,10 @@
     <analyzer>
       <!-- nrs added HTMLStripCharFilterFactory -->
       <charFilter class="solr.HTMLStripCharFilterFactory"/>
+      <charFilter class="solr.MappingCharFilterFactory" mapping="mapping-FoldedAscii.txt"/>
       <tokenizer class="solr.StandardTokenizerFactory"/>
       <filter class="solr.LowerCaseFilterFactory"/>
+      <filter class="solr.ICUFoldingFilterFactory"/>
     </analyzer>
   </fieldType>
 
@@ -127,6 +135,7 @@
     <analyzer type="index">
       <!-- nrs added HTMLStripCharFilterFactory -->
       <charFilter class="solr.HTMLStripCharFilterFactory"/>
+      <charFilter class="solr.MappingCharFilterFactory" mapping="mapping-FoldedAscii.txt"/>
       <tokenizer class="solr.StandardTokenizerFactory"/>
       <filter class="solr.StopFilterFactory" ignoreCase="true" words="stopwords.txt" />
       <!-- in this example, we will only use synonyms at query time
@@ -134,12 +143,15 @@
       <filter class="solr.FlattenGraphFilterFactory"/>
       -->
       <filter class="solr.LowerCaseFilterFactory"/>
+      <filter class="solr.ICUFoldingFilterFactory"/>
     </analyzer>
     <analyzer type="query">
+      <charFilter class="solr.MappingCharFilterFactory" mapping="mapping-FoldedAscii.txt"/>
       <tokenizer class="solr.StandardTokenizerFactory"/>
       <filter class="solr.StopFilterFactory" ignoreCase="true" words="stopwords.txt" />
       <filter class="solr.SynonymGraphFilterFactory" synonyms="synonyms.txt" ignoreCase="true" expand="true"/>
       <filter class="solr.LowerCaseFilterFactory"/>
+      <filter class="solr.ICUFoldingFilterFactory"/>
     </analyzer>
   </fieldType>
 
