@@ -191,11 +191,14 @@ module "solr" {
   data_utility_group_id    = module.data_utility.security_group_id
   server_security_group_id = module.server.security_group_id
   # Reworked NextJS app access
-  additional_security_group_ids = ["sg-07cca2c3dc7040bd8"]
-  admin_ip_cidrs                = var.admin_ip_cidrs
-  admin_ip_description          = var.admin_ip_description
-  admin_ip_ports                = var.solr_admin_ip_ports
-  instance_cpu                  = "2048"
-  instance_memory               = "16384"
-  build_id                      = var.build_id
+  additional_security_group_ids = [
+    "sg-07cca2c3dc7040bd8",
+    "sg-0ca6d2b886283d0d7", # pep-next-prod-runner: Solr access during Next.js builds
+  ]
+  admin_ip_cidrs       = var.admin_ip_cidrs
+  admin_ip_description = var.admin_ip_description
+  admin_ip_ports       = var.solr_admin_ip_ports
+  instance_cpu         = "2048"
+  instance_memory      = "16384"
+  build_id             = var.build_id
 }
