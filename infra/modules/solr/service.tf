@@ -11,6 +11,7 @@ resource "aws_ecs_task_definition" "solr" {
   requires_compatibilities = ["FARGATE"]
   network_mode             = "awsvpc"
   execution_role_arn       = var.ecr_execution_role_arn
+  task_role_arn            = aws_iam_role.solr_task_role.arn
 
   cpu    = var.instance_cpu
   memory = var.instance_memory
@@ -29,6 +30,12 @@ resource "aws_ecs_task_definition" "solr" {
       name      = "main"
       image     = "${var.repository_url}:${local.image_tag}"
       essential = true
+      environment = [
+        {
+          name  = "SOLR_MODULES"
+          value = "analysis-extras"
+        }
+      ]
       portMappings = [
         {
           containerPort = 80
@@ -69,6 +76,7 @@ resource "aws_ecs_service" "solr" {
   task_definition = aws_ecs_task_definition.solr.arn
   launch_type     = "FARGATE"
   desired_count   = 1
+  enable_execute_command = true
 
   network_configuration {
     subnets          = data.aws_subnets.private.ids
@@ -77,7 +85,12 @@ resource "aws_ecs_service" "solr" {
   }
 
   deployment_maximum_percent         = 100
-  deployment_minimum_healthy_percent = 0
+  deployment_minimum_healthy_percent = 0 # single-instance: full replace deploys only
+
+  # Solr takes ~20s+ to load cores off EFS; without this the ALB
+  # (10s interval x 2 unhealthy) kills the replacement task before
+  # it can ever go healthy and the deployment fails.
+  health_check_grace_period_seconds = 300
 
   load_balancer {
     target_group_arn = aws_lb_target_group.solr.arn

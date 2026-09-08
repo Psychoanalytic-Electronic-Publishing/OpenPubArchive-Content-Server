@@ -98,7 +98,12 @@
         {
             "directory": "opasDataLoader",
             "utility": "opasDataLoader",
-            "args": "--sub _PEPArchive/Videostreams --smartload --reload --verbose --nocheck --halfway"
+            "args": "--sub _PEPArchive/Videostreams --smartload --reload --verbose --nocheck"
+        },
+        {
+            "directory": "opasDataLoader",
+            "utility": "opasDataLoader",
+            "args": "--sub _PEPFuture --smartload --reload --verbose --nocheck"
         }
     ]
 ]

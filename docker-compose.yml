@@ -4,6 +4,7 @@ services:
         image: solr:latest
         environment:
             SOLR_JAVA_MEM: "-Xms1g -Xmx1g"
+            SOLR_MODULES: "analysis-extras"
         volumes:
             - ./local/solr/:/var/solr/data/
         ports:
