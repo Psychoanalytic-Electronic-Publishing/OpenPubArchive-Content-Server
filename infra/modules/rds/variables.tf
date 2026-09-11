@@ -90,6 +90,12 @@ variable "admin_ip_description" {
   default     = "Developer access"
 }
 
+variable "peer_vpc_cidrs" {
+  description = "CIDRs of peered VPCs allowed to reach MySQL (S-PRO PEP agentic-search ETL)"
+  type        = list(string)
+  default     = []
+}
+
 variable "backup_retention_period" {
   description = "Backup retention period in days"
   type        = number
