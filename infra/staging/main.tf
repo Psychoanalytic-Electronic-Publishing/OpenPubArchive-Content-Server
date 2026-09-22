@@ -132,6 +132,9 @@ module "database" {
   ]
   admin_ip_cidrs       = var.admin_ip_cidrs
   admin_ip_description = var.admin_ip_description
+
+  # S-PRO PEP agentic-search ETL, over the VPC peerings declared in peering.tf
+  peer_vpc_cidrs = [for p in var.pep_search_peerings : p.cidr]
 }
 
 module "s3" {

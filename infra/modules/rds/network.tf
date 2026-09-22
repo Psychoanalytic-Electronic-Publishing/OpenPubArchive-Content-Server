@@ -74,6 +74,19 @@ resource "aws_security_group" "db" {
     }
   }
 
+  # Peered VPCs (S-PRO PEP agentic-search). This security group is also used by
+  # the -bak cluster, so the rule opens both.
+  dynamic "ingress" {
+    for_each = length(var.peer_vpc_cidrs) > 0 ? [1] : []
+    content {
+      description = "MySQL from peered S-PRO PEP agentic-search VPCs"
+      from_port   = 3306
+      to_port     = 3306
+      protocol    = "tcp"
+      cidr_blocks = var.peer_vpc_cidrs
+    }
+  }
+
   ingress {
     description = "MySQL from self"
     from_port   = 3306
