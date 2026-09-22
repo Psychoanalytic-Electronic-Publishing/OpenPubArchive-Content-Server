@@ -21,18 +21,22 @@ variable "pep_search_peerings" {
   }))
   default = {
     dev = {
-      peering_connection_id = "pcx-0f43dc6b853ee16d3"
+      peering_connection_id = "pcx-0e09c4e6fbc69ef60"
       cidr                  = "10.60.0.0/16"
     }
     stage = {
-      peering_connection_id = "pcx-0d82a1e0635039dd8"
+      peering_connection_id = "pcx-0e85a4529341c17cb"
       cidr                  = "10.61.0.0/16"
     }
   }
 }
 
-# Accept the requests. The requester side (S-PRO) owns the connection; a
-# pending request expires after seven days if it is not accepted.
+# Adopt the connections. The requester side (S-PRO) owns them, and a pending
+# request expires after seven days: the first pair opened for this change died
+# to exactly that while the PR waited for approval. The replacements above were
+# accepted by hand the day they were opened, which stops the timer for good.
+# auto_accept only fires while a connection is still pending-acceptance, so
+# applying this against an already-active one just records it in state.
 resource "aws_vpc_peering_connection_accepter" "pep_search" {
   for_each = var.pep_search_peerings
 
