@@ -43,6 +43,22 @@ resource "aws_vpc_peering_connection_accepter" "pep_search" {
   vpc_peering_connection_id = each.value.peering_connection_id
   auto_accept               = true
 
+  # Without this the data path does not work, even with the routes and the 3306
+  # rule in place. staging-v2 is PubliclyAccessible, so the cluster endpoint
+  # resolves to its public address for anyone outside this VPC -- including the
+  # peered VPCs. Their traffic then matches 0.0.0.0/0 to the internet gateway
+  # and never reaches the peering. Allowing DNS resolution from the remote VPC
+  # makes the endpoint resolve to its 172.30.x private address over the
+  # peering instead, which is the address the routes below actually serve.
+  #
+  # This has to be set on the accepter half, ours: the requester half controls
+  # the opposite direction and was measured to have no effect here. Both
+  # opas-staging-vpc DNS attributes are already enabled, so nothing outside
+  # this resource changes.
+  accepter {
+    allow_remote_vpc_dns_resolution = true
+  }
+
   tags = {
     Name  = "${var.stack_name}-${var.env}-to-pep-search-${each.key}"
     stack = var.stack_name
